@@ -21,6 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { TimelineView } from "@/components/timeline-view";
+import { ThemePicker } from "@/components/theme-picker";
 import type { Milestone } from "@shared/schema";
 
 interface MilestoneForm {
@@ -30,11 +31,6 @@ interface MilestoneForm {
   date: string;
   color: string;
 }
-
-const PRESET_COLORS = [
-  "#2563eb", "#7c3aed", "#db2777", "#ea580c",
-  "#16a34a", "#0891b2", "#4f46e5", "#ca8a04",
-];
 
 export default function CreateTimeline() {
   const [, navigate] = useLocation();
@@ -266,29 +262,8 @@ export default function CreateTimeline() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Accent Color</Label>
-                <div className="flex items-center gap-2 flex-wrap">
-                  {PRESET_COLORS.map((c) => (
-                    <button
-                      key={c}
-                      className="w-7 h-7 rounded-md transition-transform"
-                      style={{
-                        backgroundColor: c,
-                        outline: color === c ? "2px solid currentColor" : "none",
-                        outlineOffset: "2px",
-                      }}
-                      onClick={() => setColor(c)}
-                      data-testid={`button-color-${c}`}
-                    />
-                  ))}
-                  <Input
-                    type="color"
-                    value={color}
-                    onChange={(e) => setColor(e.target.value)}
-                    className="w-9 h-9 p-0 border-0 cursor-pointer"
-                    data-testid="input-custom-color"
-                  />
-                </div>
+                <Label>Theme</Label>
+                <ThemePicker value={color} onChange={setColor} />
               </div>
             </Card>
 

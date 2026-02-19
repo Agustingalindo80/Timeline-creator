@@ -41,6 +41,7 @@ import {
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { TimelineView, TimelineViewHorizontal } from "@/components/timeline-view";
+import { ThemePicker } from "@/components/theme-picker";
 import type { TimelineWithMilestones } from "@shared/schema";
 
 type ViewMode = "vertical" | "horizontal";
@@ -53,6 +54,7 @@ export default function TimelineDetail() {
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
+  const [editColor, setEditColor] = useState("");
   const timelineRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
 
@@ -65,6 +67,7 @@ export default function TimelineDetail() {
       await apiRequest("PATCH", `/api/timelines/${id}`, {
         title: editTitle,
         description: editDescription || null,
+        color: editColor,
       });
     },
     onSuccess: () => {
@@ -112,6 +115,7 @@ export default function TimelineDetail() {
     if (timeline) {
       setEditTitle(timeline.title);
       setEditDescription(timeline.description || "");
+      setEditColor(timeline.color);
       setEditing(true);
     }
   };
@@ -299,41 +303,15 @@ export default function TimelineDetail() {
             >
               <ArrowLeft className="w-4 h-4" />
             </Button>
-            {editing ? (
-              <div className="flex items-center gap-2">
-                <Input
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
-                  className="w-52"
-                  data-testid="input-edit-title"
-                />
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => updateMutation.mutate()}
-                  disabled={updateMutation.isPending}
-                  data-testid="button-save-edit"
-                >
-                  <Save className="w-4 h-4" />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => setEditing(false)}
-                  data-testid="button-cancel-edit"
-                >
-                  <X className="w-4 h-4" />
-                </Button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <div
-                  className="w-2.5 h-2.5 rounded-full shrink-0"
-                  style={{ backgroundColor: timeline.color }}
-                />
-                <h1 className="text-lg font-semibold" data-testid="text-timeline-title">
-                  {timeline.title}
-                </h1>
+            <div className="flex items-center gap-2">
+              <div
+                className="w-2.5 h-2.5 rounded-full shrink-0"
+                style={{ backgroundColor: timeline.color }}
+              />
+              <h1 className="text-lg font-semibold" data-testid="text-timeline-title">
+                {timeline.title}
+              </h1>
+              {!editing && (
                 <Button
                   size="icon"
                   variant="ghost"
@@ -342,8 +320,8 @@ export default function TimelineDetail() {
                 >
                   <Edit3 className="w-3.5 h-3.5" />
                 </Button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -393,6 +371,53 @@ export default function TimelineDetail() {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+        {editing && (
+          <Card className="p-5 mb-6 space-y-4">
+            <div className="space-y-3">
+              <div className="flex gap-3 flex-wrap">
+                <div className="flex-1 min-w-[200px] space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Title</label>
+                  <Input
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    data-testid="input-edit-title"
+                  />
+                </div>
+                <div className="flex-1 min-w-[200px] space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Description</label>
+                  <Input
+                    value={editDescription}
+                    onChange={(e) => setEditDescription(e.target.value)}
+                    placeholder="Optional description"
+                    data-testid="input-edit-description"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Theme</label>
+                <ThemePicker value={editColor} onChange={setEditColor} compact />
+              </div>
+            </div>
+            <div className="flex items-center gap-2 justify-end">
+              <Button
+                variant="ghost"
+                onClick={() => setEditing(false)}
+                data-testid="button-cancel-edit"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => updateMutation.mutate()}
+                disabled={!editTitle.trim() || updateMutation.isPending}
+                data-testid="button-save-edit"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                {updateMutation.isPending ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
+          </Card>
+        )}
+
         {timeline.description && !editing && (
           <p className="text-sm text-muted-foreground mb-6">{timeline.description}</p>
         )}
