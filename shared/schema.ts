@@ -1,18 +1,32 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, timestamp, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const users = pgTable("users", {
+export const timelines = pgTable("timelines", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  color: text("color").notNull().default("#2563eb"),
 });
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
+export const milestones = pgTable("milestones", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  timelineId: varchar("timeline_id").notNull().references(() => timelines.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  date: text("date").notNull(),
+  color: text("color"),
+  icon: text("icon"),
+  sortOrder: integer("sort_order").notNull().default(0),
 });
 
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = typeof users.$inferSelect;
+export const insertTimelineSchema = createInsertSchema(timelines).omit({ id: true });
+export const insertMilestoneSchema = createInsertSchema(milestones).omit({ id: true });
+
+export type InsertTimeline = z.infer<typeof insertTimelineSchema>;
+export type Timeline = typeof timelines.$inferSelect;
+export type InsertMilestone = z.infer<typeof insertMilestoneSchema>;
+export type Milestone = typeof milestones.$inferSelect;
+
+export type TimelineWithMilestones = Timeline & { milestones: Milestone[] };

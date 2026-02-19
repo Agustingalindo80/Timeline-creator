@@ -1,38 +1,80 @@
-import { type User, type InsertUser } from "@shared/schema";
-import { randomUUID } from "crypto";
-
-// modify the interface with any CRUD methods
-// you might need
+import { eq } from "drizzle-orm";
+import { db } from "./db";
+import {
+  timelines,
+  milestones,
+  type Timeline,
+  type InsertTimeline,
+  type Milestone,
+  type InsertMilestone,
+  type TimelineWithMilestones,
+} from "@shared/schema";
 
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  getTimelines(): Promise<TimelineWithMilestones[]>;
+  getTimeline(id: string): Promise<TimelineWithMilestones | undefined>;
+  createTimeline(data: InsertTimeline): Promise<Timeline>;
+  updateTimeline(id: string, data: Partial<InsertTimeline>): Promise<Timeline | undefined>;
+  deleteTimeline(id: string): Promise<void>;
+  createMilestone(data: InsertMilestone): Promise<Milestone>;
+  deleteMilestone(id: string): Promise<void>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
+export class DatabaseStorage implements IStorage {
+  async getTimelines(): Promise<TimelineWithMilestones[]> {
+    const allTimelines = await db.select().from(timelines);
+    const allMilestones = await db.select().from(milestones);
 
-  constructor() {
-    this.users = new Map();
+    return allTimelines.map((t) => ({
+      ...t,
+      milestones: allMilestones
+        .filter((m) => m.timelineId === t.id)
+        .sort((a, b) => a.sortOrder - b.sortOrder),
+    }));
   }
 
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+  async getTimeline(id: string): Promise<TimelineWithMilestones | undefined> {
+    const [timeline] = await db.select().from(timelines).where(eq(timelines.id, id));
+    if (!timeline) return undefined;
+
+    const timelineMilestones = await db
+      .select()
+      .from(milestones)
+      .where(eq(milestones.timelineId, id));
+
+    return {
+      ...timeline,
+      milestones: timelineMilestones.sort((a, b) => a.sortOrder - b.sortOrder),
+    };
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+  async createTimeline(data: InsertTimeline): Promise<Timeline> {
+    const [timeline] = await db.insert(timelines).values(data).returning();
+    return timeline;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+  async updateTimeline(id: string, data: Partial<InsertTimeline>): Promise<Timeline | undefined> {
+    const [timeline] = await db
+      .update(timelines)
+      .set(data)
+      .where(eq(timelines.id, id))
+      .returning();
+    return timeline;
+  }
+
+  async deleteTimeline(id: string): Promise<void> {
+    await db.delete(milestones).where(eq(milestones.timelineId, id));
+    await db.delete(timelines).where(eq(timelines.id, id));
+  }
+
+  async createMilestone(data: InsertMilestone): Promise<Milestone> {
+    const [milestone] = await db.insert(milestones).values(data).returning();
+    return milestone;
+  }
+
+  async deleteMilestone(id: string): Promise<void> {
+    await db.delete(milestones).where(eq(milestones.id, id));
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
