@@ -185,47 +185,47 @@ export default function TimelineDetail() {
 
         const source = timelineRef.current;
 
-        const colorClassPattern = /\b(text-(?:foreground|muted-foreground|card-foreground|muted|primary|secondary|destructive|accent-foreground|popover-foreground|sidebar-foreground)|bg-(?:background|card|muted|primary|secondary|destructive|accent|popover|sidebar)|border-(?:border|card-border)|ring-(?:background|ring))\b/g;
-
-        const sourceAll = Array.from(source.querySelectorAll<HTMLElement>("*"));
-        const styleData: { color: string; bg: string; border: string; outline: string }[] = [];
-        sourceAll.forEach((el) => {
-          const cs = getComputedStyle(el);
-          styleData.push({
-            color: cs.color,
-            bg: cs.backgroundColor,
-            border: cs.borderColor,
-            outline: cs.outlineColor,
-          });
-        });
-
         const clone = source.cloneNode(true) as HTMLElement;
+
+        const lightColors = {
+          bg: "#ffffff",
+          text: "#1a1a2e",
+          textMuted: "#64748b",
+          cardBg: "#f8f9fa",
+          border: "#e2e8f0",
+        };
 
         clone.style.cssText = `
           position: absolute; left: -9999px; top: 0;
           overflow: visible; padding: 32px;
           width: ${source.scrollWidth + 64}px;
-          background-color: #ffffff !important;
-          color: #1a1a2e !important;
+          background-color: ${lightColors.bg} !important;
+          color: ${lightColors.text} !important;
         `;
-        clone.className = clone.className.replace(colorClassPattern, "");
 
-        const cloneAll = Array.from(clone.querySelectorAll<HTMLElement>("*"));
-        cloneAll.forEach((child, i) => {
-          const sd = styleData[i];
-          if (!sd) return;
-
-          child.className = child.className.replace(colorClassPattern, "");
-
-          child.style.setProperty("color", sd.color, "important");
+        const allChildren = Array.from(clone.querySelectorAll<HTMLElement>("*"));
+        allChildren.forEach((child) => {
+          child.style.setProperty("color", lightColors.text, "important");
           child.style.setProperty("overflow", "visible", "important");
 
-          const hasBg = sd.bg && sd.bg !== "rgba(0, 0, 0, 0)" && sd.bg !== "transparent";
-          if (hasBg) {
-            child.style.setProperty("background-color", sd.bg, "important");
+          const cls = child.className || "";
+
+          if (cls.includes("bg-card") || cls.includes("bg-muted")) {
+            child.style.setProperty("background-color", lightColors.cardBg, "important");
+            child.style.setProperty("border-color", lightColors.border, "important");
           }
-          if (sd.border) {
-            child.style.setProperty("border-color", sd.border, "important");
+          if (cls.includes("bg-background")) {
+            child.style.setProperty("background-color", lightColors.bg, "important");
+          }
+          if (cls.includes("text-muted")) {
+            child.style.setProperty("color", lightColors.textMuted, "important");
+          }
+          if (cls.includes("border-border") || cls.includes("border ")) {
+            child.style.setProperty("border-color", lightColors.border, "important");
+          }
+          if (cls.includes("ring-background")) {
+            child.style.setProperty("--tw-ring-color", lightColors.bg, "important");
+            child.style.setProperty("box-shadow", `0 0 0 4px ${lightColors.bg}`, "important");
           }
         });
 
@@ -233,7 +233,7 @@ export default function TimelineDetail() {
         await new Promise((r) => setTimeout(r, 100));
 
         const canvas = await html2canvas(clone, {
-          backgroundColor: "#ffffff",
+          backgroundColor: lightColors.bg,
           scale: 2,
           useCORS: true,
           logging: false,
