@@ -59,6 +59,8 @@ export function TimelineView({ milestones, tasks, timelineColor, showTasks = tru
     );
   }
 
+  const shouldClampDescriptions = sorted.length >= 4;
+
   return (
     <div className="relative py-8">
       <div className="relative">
@@ -66,6 +68,7 @@ export function TimelineView({ milestones, tasks, timelineColor, showTasks = tru
           const isLeft = index % 2 === 0;
           const dotColor = milestone.color || timelineColor;
           const hasActual = !!milestone.actualDate;
+          const clampDesc = shouldClampDescriptions;
           return (
             <div key={`m-${milestone.id}`} className="relative" data-testid={`milestone-${milestone.id}`}>
               {index < sorted.length - 1 && (
@@ -102,7 +105,12 @@ export function TimelineView({ milestones, tasks, timelineColor, showTasks = tru
                     </div>
                     <h3 className="font-semibold text-sm mb-1">{milestone.title}</h3>
                     {milestone.description && (
-                      <p className="text-xs text-muted-foreground leading-relaxed">
+                      <p
+                        className={cn(
+                          "text-xs text-muted-foreground leading-relaxed",
+                          clampDesc && "line-clamp-2"
+                        )}
+                      >
                         {milestone.description}
                       </p>
                     )}

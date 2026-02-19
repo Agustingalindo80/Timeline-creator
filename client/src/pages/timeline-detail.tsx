@@ -311,6 +311,7 @@ export default function TimelineDetail() {
 
         const source = timelineRef.current;
 
+        const extraPadding = 48;
         const canvas = await html2canvas(source, {
           backgroundColor: "#ffffff",
           scale: 2,
@@ -319,9 +320,9 @@ export default function TimelineDetail() {
           scrollX: 0,
           scrollY: -window.scrollY,
           width: source.scrollWidth,
-          height: source.scrollHeight,
+          height: source.scrollHeight + extraPadding,
           windowWidth: Math.max(source.scrollWidth + 200, 1400),
-          windowHeight: source.scrollHeight + 200,
+          windowHeight: source.scrollHeight + extraPadding + 200,
           onclone: (clonedDoc: Document) => {
             clonedDoc.documentElement.classList.remove("dark");
             clonedDoc.documentElement.setAttribute("style", "color-scheme: light !important;");
@@ -376,6 +377,7 @@ export default function TimelineDetail() {
             const targetEl = clonedDoc.querySelector("[data-export-timeline]") as HTMLElement;
             if (targetEl) {
               targetEl.style.padding = "32px";
+              targetEl.style.paddingBottom = "48px";
               targetEl.style.backgroundColor = "hsl(0 0% 100%)";
               const allEls = targetEl.querySelectorAll<HTMLElement>("*");
               allEls.forEach((el) => {
