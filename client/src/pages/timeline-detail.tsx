@@ -184,6 +184,27 @@ export default function TimelineDetail() {
         const html2canvas = (await import("html2canvas")).default;
 
         const source = timelineRef.current;
+
+        const sourceEls = source.querySelectorAll<HTMLElement>("*");
+        const computedStyles: {
+          color: string;
+          bg: string;
+          borderColor: string;
+          boxShadow: string;
+        }[] = [];
+        sourceEls.forEach((el) => {
+          const cs = getComputedStyle(el);
+          computedStyles.push({
+            color: cs.color,
+            bg: cs.backgroundColor,
+            borderColor: cs.borderColor,
+            boxShadow: cs.boxShadow,
+          });
+        });
+        const rootCs = getComputedStyle(source);
+        const rootColor = rootCs.color;
+        const rootBg = rootCs.backgroundColor;
+
         const clone = source.cloneNode(true) as HTMLElement;
 
         clone.style.position = "absolute";
@@ -192,32 +213,30 @@ export default function TimelineDetail() {
         clone.style.overflow = "visible";
         clone.style.padding = "32px";
         clone.style.width = source.scrollWidth + 64 + "px";
-        clone.style.background = "#ffffff";
-        clone.style.color = "#0a0a0a";
+        clone.style.backgroundColor = "#ffffff";
+        clone.style.color = rootColor;
 
-        clone.querySelectorAll<HTMLElement>("*").forEach((child) => {
+        const cloneEls = clone.querySelectorAll<HTMLElement>("*");
+        cloneEls.forEach((child, i) => {
+          const styles = computedStyles[i];
+          if (styles) {
+            child.style.color = styles.color;
+            if (styles.bg && styles.bg !== "rgba(0, 0, 0, 0)") {
+              child.style.backgroundColor = styles.bg;
+            }
+            if (styles.borderColor) {
+              child.style.borderColor = styles.borderColor;
+            }
+            if (styles.boxShadow && styles.boxShadow !== "none") {
+              child.style.boxShadow = styles.boxShadow;
+            }
+          }
           child.style.overflow = "visible";
         });
 
-        const cssOverrides = document.createElement("style");
-        cssOverrides.textContent = `
-          .export-clone, .export-clone * {
-            --background: 0 0% 100% !important;
-            --foreground: 222 15% 12% !important;
-            --card: 0 0% 98% !important;
-            --card-foreground: 222 15% 12% !important;
-            --card-border: 220 13% 94% !important;
-            --muted: 220 14% 94% !important;
-            --muted-foreground: 222 13% 38% !important;
-            --border: 220 13% 91% !important;
-            --ring: 0 0% 100% !important;
-          }
-        `;
-        clone.classList.add("export-clone");
-        document.body.appendChild(cssOverrides);
         document.body.appendChild(clone);
 
-        await new Promise((r) => setTimeout(r, 100));
+        await new Promise((r) => setTimeout(r, 50));
 
         const canvas = await html2canvas(clone, {
           backgroundColor: "#ffffff",
@@ -233,7 +252,6 @@ export default function TimelineDetail() {
         });
 
         document.body.removeChild(clone);
-        document.body.removeChild(cssOverrides);
 
         if (format === "png") {
           const link = document.createElement("a");
