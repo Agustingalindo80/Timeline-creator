@@ -163,6 +163,59 @@ export async function registerRoutes(
     }
   });
 
+  // ADD task to timeline
+  app.post("/api/timelines/:id/tasks", async (req, res) => {
+    try {
+      const { title, description, startDate, endDate, color, sortOrder } = req.body;
+      if (!title || !startDate || !endDate) {
+        return res.status(400).json({ message: "Title, start date, and end date are required" });
+      }
+
+      const task = await storage.createTask({
+        timelineId: req.params.id,
+        title,
+        description: description || null,
+        startDate,
+        endDate,
+        color: color || null,
+        sortOrder: sortOrder ?? 0,
+      });
+      res.status(201).json(task);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // UPDATE task
+  app.patch("/api/tasks/:id", async (req, res) => {
+    try {
+      const { title, description, startDate, endDate, color, sortOrder } = req.body;
+      const updates: any = {};
+      if (title !== undefined) updates.title = title;
+      if (description !== undefined) updates.description = description;
+      if (startDate !== undefined) updates.startDate = startDate;
+      if (endDate !== undefined) updates.endDate = endDate;
+      if (color !== undefined) updates.color = color;
+      if (sortOrder !== undefined) updates.sortOrder = sortOrder;
+
+      const task = await storage.updateTask(req.params.id, updates);
+      if (!task) return res.status(404).json({ message: "Task not found" });
+      res.json(task);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // DELETE task
+  app.delete("/api/tasks/:id", async (req, res) => {
+    try {
+      await storage.deleteTask(req.params.id);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // PARSE Excel/CSV file
   app.post("/api/parse-excel", upload.single("file"), async (req, res) => {
     try {

@@ -15,6 +15,9 @@ import {
   Image,
   FileText,
   Check,
+  ListFilter,
+  Calendar,
+  ClipboardList,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -45,12 +48,14 @@ import { ThemePicker } from "@/components/theme-picker";
 import type { TimelineWithMilestones } from "@shared/schema";
 
 type ViewMode = "vertical" | "horizontal";
+type FilterMode = "all" | "milestones";
 
 export default function TimelineDetail() {
   const { id } = useParams<{ id: string }>();
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [viewMode, setViewMode] = useState<ViewMode>("vertical");
+  const [filterMode, setFilterMode] = useState<FilterMode>("all");
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
@@ -111,6 +116,39 @@ export default function TimelineDetail() {
     },
   });
 
+  const addTaskMutation = useMutation({
+    mutationFn: async (data: { title: string; startDate: string; endDate: string; description?: string }) => {
+      await apiRequest("POST", `/api/timelines/${id}/tasks`, {
+        ...data,
+        sortOrder: (timeline?.tasks.length || 0),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/timelines", id] });
+      toast({ title: "Task added" });
+    },
+  });
+
+  const updateTaskMutation = useMutation({
+    mutationFn: async ({ taskId, data }: { taskId: string; data: { title?: string; startDate?: string; endDate?: string; description?: string | null } }) => {
+      await apiRequest("PATCH", `/api/tasks/${taskId}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/timelines", id] });
+      toast({ title: "Task updated" });
+    },
+  });
+
+  const deleteTaskMutation = useMutation({
+    mutationFn: async (taskId: string) => {
+      await apiRequest("DELETE", `/api/tasks/${taskId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/timelines", id] });
+      toast({ title: "Task deleted" });
+    },
+  });
+
   const startEditing = () => {
     if (timeline) {
       setEditTitle(timeline.title);
@@ -125,10 +163,22 @@ export default function TimelineDetail() {
   const [newDate, setNewDate] = useState("");
   const [newDesc, setNewDesc] = useState("");
 
+  const [showAddTaskForm, setShowAddTaskForm] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [newTaskStart, setNewTaskStart] = useState("");
+  const [newTaskEnd, setNewTaskEnd] = useState("");
+  const [newTaskDesc, setNewTaskDesc] = useState("");
+
   const [editingMilestoneId, setEditingMilestoneId] = useState<string | null>(null);
   const [editMTitle, setEditMTitle] = useState("");
   const [editMDate, setEditMDate] = useState("");
   const [editMDesc, setEditMDesc] = useState("");
+
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [editTTitle, setEditTTitle] = useState("");
+  const [editTStart, setEditTStart] = useState("");
+  const [editTEnd, setEditTEnd] = useState("");
+  const [editTDesc, setEditTDesc] = useState("");
 
   const startEditingMilestone = (m: { id: string; title: string; date: string; description: string | null }) => {
     setEditingMilestoneId(m.id);
@@ -160,6 +210,38 @@ export default function TimelineDetail() {
     setEditingMilestoneId(null);
   };
 
+  const startEditingTask = (t: { id: string; title: string; startDate: string; endDate: string; description: string | null }) => {
+    setEditingTaskId(t.id);
+    setEditTTitle(t.title);
+    setEditTStart(t.startDate);
+    setEditTEnd(t.endDate);
+    setEditTDesc(t.description || "");
+  };
+
+  const saveTaskEdit = () => {
+    if (!editingTaskId || !editTTitle.trim() || !editTStart.trim() || !editTEnd.trim()) return;
+    updateTaskMutation.mutate(
+      {
+        taskId: editingTaskId,
+        data: {
+          title: editTTitle.trim(),
+          startDate: editTStart.trim(),
+          endDate: editTEnd.trim(),
+          description: editTDesc.trim() || null,
+        },
+      },
+      {
+        onSuccess: () => {
+          setEditingTaskId(null);
+        },
+      }
+    );
+  };
+
+  const cancelTaskEdit = () => {
+    setEditingTaskId(null);
+  };
+
   const handleAddMilestone = () => {
     if (!newTitle.trim() || !newDate.trim()) return;
     addMilestoneMutation.mutate(
@@ -170,6 +252,22 @@ export default function TimelineDetail() {
           setNewDate("");
           setNewDesc("");
           setShowAddForm(false);
+        },
+      }
+    );
+  };
+
+  const handleAddTask = () => {
+    if (!newTaskTitle.trim() || !newTaskStart.trim() || !newTaskEnd.trim()) return;
+    addTaskMutation.mutate(
+      { title: newTaskTitle, startDate: newTaskStart, endDate: newTaskEnd, description: newTaskDesc || undefined },
+      {
+        onSuccess: () => {
+          setNewTaskTitle("");
+          setNewTaskStart("");
+          setNewTaskEnd("");
+          setNewTaskDesc("");
+          setShowAddTaskForm(false);
         },
       }
     );
@@ -323,6 +421,8 @@ export default function TimelineDetail() {
     );
   }
 
+  const showTasks = filterMode === "all";
+
   return (
     <div className="min-h-screen bg-background">
       <Helmet>
@@ -361,7 +461,7 @@ export default function TimelineDetail() {
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Button
               size="icon"
               variant={viewMode === "vertical" ? "secondary" : "ghost"}
@@ -378,6 +478,29 @@ export default function TimelineDetail() {
             >
               <AlignHorizontalDistributeCenter className="w-4 h-4" />
             </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant={filterMode === "milestones" ? "secondary" : "outline"}
+                  data-testid="button-filter"
+                >
+                  <ListFilter className="w-4 h-4 mr-2" />
+                  {filterMode === "all" ? "All" : "Milestones Only"}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setFilterMode("all")} data-testid="filter-all">
+                  <Calendar className="w-4 h-4 mr-2" />
+                  All (Milestones + Tasks)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setFilterMode("milestones")} data-testid="filter-milestones">
+                  <ClipboardList className="w-4 h-4 mr-2" />
+                  Milestones Only
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" disabled={exporting} data-testid="button-export">
@@ -396,14 +519,31 @@ export default function TimelineDetail() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button
-              variant="outline"
-              onClick={() => setShowAddForm(!showAddForm)}
-              data-testid="button-toggle-add"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Milestone
-            </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" data-testid="button-add-item">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => { setShowAddForm(!showAddForm); setShowAddTaskForm(false); }}
+                  data-testid="button-add-milestone"
+                >
+                  <Calendar className="w-4 h-4 mr-2" />
+                  Add Milestone
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => { setShowAddTaskForm(!showAddTaskForm); setShowAddForm(false); }}
+                  data-testid="button-add-task"
+                >
+                  <ClipboardList className="w-4 h-4 mr-2" />
+                  Add Task
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
@@ -462,6 +602,7 @@ export default function TimelineDetail() {
 
         {showAddForm && (
           <Card className="p-4 mb-6">
+            <h4 className="text-xs font-medium text-muted-foreground mb-3">New Milestone</h4>
             <div className="flex items-end gap-3 flex-wrap">
               <div className="flex-1 min-w-[160px]">
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">Title</label>
@@ -501,18 +642,86 @@ export default function TimelineDetail() {
           </Card>
         )}
 
-        <div className="mb-4 flex items-center justify-between gap-2">
+        {showAddTaskForm && (
+          <Card className="p-4 mb-6">
+            <h4 className="text-xs font-medium text-muted-foreground mb-3">New Task</h4>
+            <div className="flex items-end gap-3 flex-wrap">
+              <div className="flex-1 min-w-[160px]">
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Title</label>
+                <Input
+                  value={newTaskTitle}
+                  onChange={(e) => setNewTaskTitle(e.target.value)}
+                  placeholder="Task title"
+                  data-testid="input-new-task-title"
+                />
+              </div>
+              <div className="w-36">
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Start Date</label>
+                <Input
+                  value={newTaskStart}
+                  onChange={(e) => setNewTaskStart(e.target.value)}
+                  placeholder="e.g. Jan 2025"
+                  data-testid="input-new-task-start"
+                />
+              </div>
+              <div className="w-36">
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">End Date</label>
+                <Input
+                  value={newTaskEnd}
+                  onChange={(e) => setNewTaskEnd(e.target.value)}
+                  placeholder="e.g. Mar 2025"
+                  data-testid="input-new-task-end"
+                />
+              </div>
+              <div className="flex-1 min-w-[160px]">
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Description</label>
+                <Input
+                  value={newTaskDesc}
+                  onChange={(e) => setNewTaskDesc(e.target.value)}
+                  placeholder="Optional"
+                  data-testid="input-new-task-desc"
+                />
+              </div>
+              <Button
+                onClick={handleAddTask}
+                disabled={!newTaskTitle.trim() || !newTaskStart.trim() || !newTaskEnd.trim() || addTaskMutation.isPending}
+                data-testid="button-submit-new-task"
+              >
+                {addTaskMutation.isPending ? "Adding..." : "Add"}
+              </Button>
+            </div>
+          </Card>
+        )}
+
+        <div className="mb-4 flex items-center gap-2 flex-wrap">
           <Badge variant="secondary">
             {timeline.milestones.length} milestone{timeline.milestones.length !== 1 ? "s" : ""}
           </Badge>
+          <Badge variant="secondary">
+            {timeline.tasks.length} task{timeline.tasks.length !== 1 ? "s" : ""}
+          </Badge>
+          {filterMode === "milestones" && (
+            <Badge variant="outline">
+              Showing milestones only
+            </Badge>
+          )}
         </div>
 
-        {/* Timeline visualization - wrapped in ref for export */}
         <div ref={timelineRef} data-export-timeline className="bg-background rounded-md">
           {viewMode === "vertical" ? (
-            <TimelineView milestones={timeline.milestones} timelineColor={timeline.color} />
+            <TimelineView
+              milestones={timeline.milestones}
+              tasks={timeline.tasks}
+              timelineColor={timeline.color}
+              showTasks={showTasks}
+            />
           ) : (
-            <TimelineViewHorizontal milestones={timeline.milestones} timelineColor={timeline.color} />
+            <TimelineViewHorizontal
+              milestones={timeline.milestones}
+              tasks={timeline.tasks}
+              timelineColor={timeline.color}
+              showTasks={showTasks}
+            />
           )}
         </div>
 
@@ -588,18 +797,18 @@ export default function TimelineDetail() {
                           <p className="text-sm font-medium truncate" data-testid={`text-milestone-title-${m.id}`}>{m.title}</p>
                           <p className="text-xs text-muted-foreground">{m.date}</p>
                           {m.description && (
-                            <p className="text-xs text-muted-foreground/70 truncate mt-0.5">{m.description}</p>
+                            <p className="text-xs text-muted-foreground truncate max-w-md">{m.description}</p>
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-1 shrink-0">
+                      <div className="flex items-center gap-1">
                         <Button
                           size="icon"
                           variant="ghost"
                           onClick={() => startEditingMilestone(m)}
                           data-testid={`button-edit-milestone-${m.id}`}
                         >
-                          <Edit3 className="w-3.5 h-3.5 text-muted-foreground" />
+                          <Edit3 className="w-3.5 h-3.5" />
                         </Button>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
@@ -608,21 +817,150 @@ export default function TimelineDetail() {
                               variant="ghost"
                               data-testid={`button-delete-milestone-${m.id}`}
                             >
-                              <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
+                              <Trash2 className="w-3.5 h-3.5" />
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
                               <AlertDialogTitle>Delete milestone?</AlertDialogTitle>
                               <AlertDialogDescription>
-                                This will remove "{m.title}" from the timeline.
+                                This will permanently remove "{m.title}" from this timeline.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancel</AlertDialogCancel>
                               <AlertDialogAction
                                 onClick={() => deleteMilestoneMutation.mutate(m.id)}
-                                data-testid="button-confirm-delete-milestone"
+                                data-testid={`button-confirm-delete-milestone-${m.id}`}
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </div>
+                  )}
+                </Card>
+              ))}
+          </div>
+        )}
+
+        {/* Task management list */}
+        {timeline.tasks.length > 0 && (
+          <div className="mt-8 space-y-2">
+            <h3 className="text-sm font-medium text-muted-foreground mb-3">
+              Manage Tasks
+            </h3>
+            {[...timeline.tasks]
+              .sort((a, b) => a.sortOrder - b.sortOrder)
+              .map((t) => (
+                <Card
+                  key={t.id}
+                  className="p-3"
+                  data-testid={`manage-task-${t.id}`}
+                >
+                  {editingTaskId === t.id ? (
+                    <div className="space-y-2">
+                      <div className="flex gap-2 flex-wrap">
+                        <div className="flex-1 min-w-[140px]">
+                          <Input
+                            value={editTTitle}
+                            onChange={(e) => setEditTTitle(e.target.value)}
+                            placeholder="Title"
+                            data-testid={`input-edit-task-title-${t.id}`}
+                          />
+                        </div>
+                        <div className="w-36">
+                          <Input
+                            value={editTStart}
+                            onChange={(e) => setEditTStart(e.target.value)}
+                            placeholder="Start date"
+                            data-testid={`input-edit-task-start-${t.id}`}
+                          />
+                        </div>
+                        <div className="w-36">
+                          <Input
+                            value={editTEnd}
+                            onChange={(e) => setEditTEnd(e.target.value)}
+                            placeholder="End date"
+                            data-testid={`input-edit-task-end-${t.id}`}
+                          />
+                        </div>
+                      </div>
+                      <Input
+                        value={editTDesc}
+                        onChange={(e) => setEditTDesc(e.target.value)}
+                        placeholder="Description (optional)"
+                        data-testid={`input-edit-task-desc-${t.id}`}
+                      />
+                      <div className="flex items-center gap-2 justify-end">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={cancelTaskEdit}
+                          data-testid={`button-cancel-edit-task-${t.id}`}
+                        >
+                          <X className="w-3.5 h-3.5 mr-1" />
+                          Cancel
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={saveTaskEdit}
+                          disabled={!editTTitle.trim() || !editTStart.trim() || !editTEnd.trim() || updateTaskMutation.isPending}
+                          data-testid={`button-save-edit-task-${t.id}`}
+                        >
+                          <Check className="w-3.5 h-3.5 mr-1" />
+                          {updateTaskMutation.isPending ? "Saving..." : "Save"}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div
+                          className="w-4 h-1.5 rounded-sm shrink-0"
+                          style={{ backgroundColor: t.color || timeline.color }}
+                        />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate" data-testid={`text-task-title-${t.id}`}>{t.title}</p>
+                          <p className="text-xs text-muted-foreground">{t.startDate} — {t.endDate}</p>
+                          {t.description && (
+                            <p className="text-xs text-muted-foreground truncate max-w-md">{t.description}</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => startEditingTask(t)}
+                          data-testid={`button-edit-task-${t.id}`}
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              data-testid={`button-delete-task-${t.id}`}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete task?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will permanently remove "{t.title}" from this timeline.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => deleteTaskMutation.mutate(t.id)}
+                                data-testid={`button-confirm-delete-task-${t.id}`}
                               >
                                 Delete
                               </AlertDialogAction>

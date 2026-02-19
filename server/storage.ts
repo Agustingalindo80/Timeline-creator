@@ -3,10 +3,13 @@ import { db } from "./db";
 import {
   timelines,
   milestones,
+  tasks,
   type Timeline,
   type InsertTimeline,
   type Milestone,
   type InsertMilestone,
+  type Task,
+  type InsertTask,
   type TimelineWithMilestones,
 } from "@shared/schema";
 
@@ -19,17 +22,24 @@ export interface IStorage {
   createMilestone(data: InsertMilestone): Promise<Milestone>;
   updateMilestone(id: string, data: Partial<InsertMilestone>): Promise<Milestone | undefined>;
   deleteMilestone(id: string): Promise<void>;
+  createTask(data: InsertTask): Promise<Task>;
+  updateTask(id: string, data: Partial<InsertTask>): Promise<Task | undefined>;
+  deleteTask(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
   async getTimelines(): Promise<TimelineWithMilestones[]> {
     const allTimelines = await db.select().from(timelines);
     const allMilestones = await db.select().from(milestones);
+    const allTasks = await db.select().from(tasks);
 
     return allTimelines.map((t) => ({
       ...t,
       milestones: allMilestones
         .filter((m) => m.timelineId === t.id)
+        .sort((a, b) => a.sortOrder - b.sortOrder),
+      tasks: allTasks
+        .filter((task) => task.timelineId === t.id)
         .sort((a, b) => a.sortOrder - b.sortOrder),
     }));
   }
@@ -43,9 +53,15 @@ export class DatabaseStorage implements IStorage {
       .from(milestones)
       .where(eq(milestones.timelineId, id));
 
+    const timelineTasks = await db
+      .select()
+      .from(tasks)
+      .where(eq(tasks.timelineId, id));
+
     return {
       ...timeline,
       milestones: timelineMilestones.sort((a, b) => a.sortOrder - b.sortOrder),
+      tasks: timelineTasks.sort((a, b) => a.sortOrder - b.sortOrder),
     };
   }
 
@@ -64,6 +80,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteTimeline(id: string): Promise<void> {
+    await db.delete(tasks).where(eq(tasks.timelineId, id));
     await db.delete(milestones).where(eq(milestones.timelineId, id));
     await db.delete(timelines).where(eq(timelines.id, id));
   }
@@ -84,6 +101,24 @@ export class DatabaseStorage implements IStorage {
 
   async deleteMilestone(id: string): Promise<void> {
     await db.delete(milestones).where(eq(milestones.id, id));
+  }
+
+  async createTask(data: InsertTask): Promise<Task> {
+    const [task] = await db.insert(tasks).values(data).returning();
+    return task;
+  }
+
+  async updateTask(id: string, data: Partial<InsertTask>): Promise<Task | undefined> {
+    const [task] = await db
+      .update(tasks)
+      .set(data)
+      .where(eq(tasks.id, id))
+      .returning();
+    return task;
+  }
+
+  async deleteTask(id: string): Promise<void> {
+    await db.delete(tasks).where(eq(tasks.id, id));
   }
 }
 

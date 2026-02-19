@@ -25,15 +25,27 @@ A visual timeline creation tool that supports two input methods:
 - `shared/schema.ts` - Drizzle schema + Zod types
 
 ## API Routes
-- GET /api/timelines - List all timelines with milestones
+- GET /api/timelines - List all timelines with milestones and tasks
 - GET /api/timelines/:id - Get single timeline
 - POST /api/timelines - Create timeline with milestones
 - PATCH /api/timelines/:id - Update timeline
 - DELETE /api/timelines/:id - Delete timeline
 - POST /api/timelines/:id/milestones - Add milestone
+- PATCH /api/milestones/:id - Update milestone
 - DELETE /api/milestones/:id - Delete milestone
+- POST /api/timelines/:id/tasks - Add task
+- PATCH /api/tasks/:id - Update task
+- DELETE /api/tasks/:id - Delete task
 - POST /api/parse-excel - Parse Excel/CSV file (multipart form)
 
 ## Database
 - timelines: id, title, description, color
 - milestones: id, timelineId, title, description, date, color, icon, sortOrder
+- tasks: id, timelineId, title, description, startDate, endDate, color, sortOrder
+
+## Features
+- Milestones: point-in-time events shown as dots on the timeline
+- Tasks: duration-based items shown as solid bars on the timeline
+- Filter toggle: "All" shows milestones + tasks, "Milestones Only" hides tasks for clean roadmap exports
+- Export: PNG and PDF downloads via html2canvas + jspdf
+- Themes: 12 named color themes for timelines
