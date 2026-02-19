@@ -185,67 +185,79 @@ export default function TimelineDetail() {
 
         const source = timelineRef.current;
 
-        const clone = source.cloneNode(true) as HTMLElement;
-
-        const lightColors = {
-          bg: "#ffffff",
-          text: "#1a1a2e",
-          textMuted: "#64748b",
-          cardBg: "#f8f9fa",
-          border: "#e2e8f0",
-        };
-
-        clone.style.cssText = `
-          position: absolute; left: -9999px; top: 0;
-          overflow: visible; padding: 32px;
-          width: ${source.scrollWidth + 64}px;
-          background-color: ${lightColors.bg} !important;
-          color: ${lightColors.text} !important;
-        `;
-
-        const allChildren = Array.from(clone.querySelectorAll<HTMLElement>("*"));
-        allChildren.forEach((child) => {
-          child.style.setProperty("color", lightColors.text, "important");
-          child.style.setProperty("overflow", "visible", "important");
-
-          const cls = child.className || "";
-
-          if (cls.includes("bg-card") || cls.includes("bg-muted")) {
-            child.style.setProperty("background-color", lightColors.cardBg, "important");
-            child.style.setProperty("border-color", lightColors.border, "important");
-          }
-          if (cls.includes("bg-background")) {
-            child.style.setProperty("background-color", lightColors.bg, "important");
-          }
-          if (cls.includes("text-muted")) {
-            child.style.setProperty("color", lightColors.textMuted, "important");
-          }
-          if (cls.includes("border-border") || cls.includes("border ")) {
-            child.style.setProperty("border-color", lightColors.border, "important");
-          }
-          if (cls.includes("ring-background")) {
-            child.style.setProperty("--tw-ring-color", lightColors.bg, "important");
-            child.style.setProperty("box-shadow", `0 0 0 4px ${lightColors.bg}`, "important");
-          }
-        });
-
-        document.body.appendChild(clone);
-        await new Promise((r) => setTimeout(r, 100));
-
-        const canvas = await html2canvas(clone, {
-          backgroundColor: lightColors.bg,
+        const canvas = await html2canvas(source, {
+          backgroundColor: "#ffffff",
           scale: 2,
           useCORS: true,
           logging: false,
           scrollX: 0,
           scrollY: -window.scrollY,
-          width: clone.scrollWidth,
-          height: clone.scrollHeight,
-          windowWidth: Math.max(clone.scrollWidth + 200, 1400),
-          windowHeight: clone.scrollHeight + 200,
-        });
+          width: source.scrollWidth,
+          height: source.scrollHeight,
+          windowWidth: Math.max(source.scrollWidth + 200, 1400),
+          windowHeight: source.scrollHeight + 200,
+          onclone: (clonedDoc: Document) => {
+            clonedDoc.documentElement.classList.remove("dark");
+            clonedDoc.documentElement.setAttribute("style", "color-scheme: light !important;");
 
-        document.body.removeChild(clone);
+            const style = clonedDoc.createElement("style");
+            style.textContent = `
+              :root, html, *, *::before, *::after {
+                --background: 0 0% 100% !important;
+                --foreground: 222 15% 12% !important;
+                --card: 0 0% 98% !important;
+                --card-foreground: 222 15% 12% !important;
+                --card-border: 220 13% 94% !important;
+                --muted: 220 14% 94% !important;
+                --muted-foreground: 222 13% 38% !important;
+                --border: 220 13% 91% !important;
+                --ring: 217 91% 48% !important;
+                --popover: 0 0% 96% !important;
+                --popover-foreground: 222 15% 12% !important;
+                --primary: 217 91% 48% !important;
+                --primary-foreground: 210 40% 98% !important;
+                --secondary: 220 14% 93% !important;
+                --secondary-foreground: 222 15% 12% !important;
+                --accent: 220 15% 95% !important;
+                --accent-foreground: 222 15% 12% !important;
+                --input: 220 13% 85% !important;
+                color-scheme: light !important;
+              }
+              .dark {
+                --background: 0 0% 100% !important;
+                --foreground: 222 15% 12% !important;
+                --card: 0 0% 98% !important;
+                --card-foreground: 222 15% 12% !important;
+                --card-border: 220 13% 94% !important;
+                --muted: 220 14% 94% !important;
+                --muted-foreground: 222 13% 38% !important;
+                --border: 220 13% 91% !important;
+                --ring: 217 91% 48% !important;
+                --popover: 0 0% 96% !important;
+                --popover-foreground: 222 15% 12% !important;
+                --primary: 217 91% 48% !important;
+                --primary-foreground: 210 40% 98% !important;
+                --secondary: 220 14% 93% !important;
+                --secondary-foreground: 222 15% 12% !important;
+                --accent: 220 15% 95% !important;
+                --accent-foreground: 222 15% 12% !important;
+                --input: 220 13% 85% !important;
+                color-scheme: light !important;
+              }
+            `;
+            clonedDoc.head.appendChild(style);
+
+            const targetEl = clonedDoc.querySelector("[data-export-timeline]") as HTMLElement;
+            if (targetEl) {
+              targetEl.style.padding = "32px";
+              targetEl.style.backgroundColor = "hsl(0 0% 100%)";
+              const allEls = targetEl.querySelectorAll<HTMLElement>("*");
+              allEls.forEach((el) => {
+                el.style.overflow = "visible";
+              });
+            }
+          },
+        });
 
         if (format === "png") {
           const link = document.createElement("a");
@@ -496,7 +508,7 @@ export default function TimelineDetail() {
         </div>
 
         {/* Timeline visualization - wrapped in ref for export */}
-        <div ref={timelineRef} className="bg-background rounded-md">
+        <div ref={timelineRef} data-export-timeline className="bg-background rounded-md">
           {viewMode === "vertical" ? (
             <TimelineView milestones={timeline.milestones} timelineColor={timeline.color} />
           ) : (
