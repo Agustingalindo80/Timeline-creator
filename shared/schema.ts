@@ -29,6 +29,7 @@ export const tasks = pgTable("tasks", {
   startDate: text("start_date").notNull(),
   endDate: text("end_date").notNull(),
   color: text("color"),
+  percentComplete: integer("percent_complete").notNull().default(0),
   sortOrder: integer("sort_order").notNull().default(0),
 });
 

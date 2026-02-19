@@ -171,6 +171,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Title, start date, and end date are required" });
       }
 
+      const { percentComplete } = req.body;
       const task = await storage.createTask({
         timelineId: req.params.id,
         title,
@@ -178,6 +179,7 @@ export async function registerRoutes(
         startDate,
         endDate,
         color: color || null,
+        percentComplete: percentComplete ?? 0,
         sortOrder: sortOrder ?? 0,
       });
       res.status(201).json(task);
@@ -189,13 +191,14 @@ export async function registerRoutes(
   // UPDATE task
   app.patch("/api/tasks/:id", async (req, res) => {
     try {
-      const { title, description, startDate, endDate, color, sortOrder } = req.body;
+      const { title, description, startDate, endDate, color, percentComplete, sortOrder } = req.body;
       const updates: any = {};
       if (title !== undefined) updates.title = title;
       if (description !== undefined) updates.description = description;
       if (startDate !== undefined) updates.startDate = startDate;
       if (endDate !== undefined) updates.endDate = endDate;
       if (color !== undefined) updates.color = color;
+      if (percentComplete !== undefined) updates.percentComplete = percentComplete;
       if (sortOrder !== undefined) updates.sortOrder = sortOrder;
 
       const task = await storage.updateTask(req.params.id, updates);
