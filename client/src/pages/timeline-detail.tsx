@@ -185,58 +185,52 @@ export default function TimelineDetail() {
 
         const source = timelineRef.current;
 
-        const sourceEls = source.querySelectorAll<HTMLElement>("*");
-        const computedStyles: {
-          color: string;
-          bg: string;
-          borderColor: string;
-          boxShadow: string;
-        }[] = [];
-        sourceEls.forEach((el) => {
+        const colorClassPattern = /\b(text-(?:foreground|muted-foreground|card-foreground|muted|primary|secondary|destructive|accent-foreground|popover-foreground|sidebar-foreground)|bg-(?:background|card|muted|primary|secondary|destructive|accent|popover|sidebar)|border-(?:border|card-border)|ring-(?:background|ring))\b/g;
+
+        const sourceAll = Array.from(source.querySelectorAll<HTMLElement>("*"));
+        const styleData: { color: string; bg: string; border: string; outline: string }[] = [];
+        sourceAll.forEach((el) => {
           const cs = getComputedStyle(el);
-          computedStyles.push({
+          styleData.push({
             color: cs.color,
             bg: cs.backgroundColor,
-            borderColor: cs.borderColor,
-            boxShadow: cs.boxShadow,
+            border: cs.borderColor,
+            outline: cs.outlineColor,
           });
         });
-        const rootCs = getComputedStyle(source);
-        const rootColor = rootCs.color;
-        const rootBg = rootCs.backgroundColor;
 
         const clone = source.cloneNode(true) as HTMLElement;
 
-        clone.style.position = "absolute";
-        clone.style.left = "-9999px";
-        clone.style.top = "0";
-        clone.style.overflow = "visible";
-        clone.style.padding = "32px";
-        clone.style.width = source.scrollWidth + 64 + "px";
-        clone.style.backgroundColor = "#ffffff";
-        clone.style.color = rootColor;
+        clone.style.cssText = `
+          position: absolute; left: -9999px; top: 0;
+          overflow: visible; padding: 32px;
+          width: ${source.scrollWidth + 64}px;
+          background-color: #ffffff !important;
+          color: #1a1a2e !important;
+        `;
+        clone.className = clone.className.replace(colorClassPattern, "");
 
-        const cloneEls = clone.querySelectorAll<HTMLElement>("*");
-        cloneEls.forEach((child, i) => {
-          const styles = computedStyles[i];
-          if (styles) {
-            child.style.color = styles.color;
-            if (styles.bg && styles.bg !== "rgba(0, 0, 0, 0)") {
-              child.style.backgroundColor = styles.bg;
-            }
-            if (styles.borderColor) {
-              child.style.borderColor = styles.borderColor;
-            }
-            if (styles.boxShadow && styles.boxShadow !== "none") {
-              child.style.boxShadow = styles.boxShadow;
-            }
+        const cloneAll = Array.from(clone.querySelectorAll<HTMLElement>("*"));
+        cloneAll.forEach((child, i) => {
+          const sd = styleData[i];
+          if (!sd) return;
+
+          child.className = child.className.replace(colorClassPattern, "");
+
+          child.style.setProperty("color", sd.color, "important");
+          child.style.setProperty("overflow", "visible", "important");
+
+          const hasBg = sd.bg && sd.bg !== "rgba(0, 0, 0, 0)" && sd.bg !== "transparent";
+          if (hasBg) {
+            child.style.setProperty("background-color", sd.bg, "important");
           }
-          child.style.overflow = "visible";
+          if (sd.border) {
+            child.style.setProperty("border-color", sd.border, "important");
+          }
         });
 
         document.body.appendChild(clone);
-
-        await new Promise((r) => setTimeout(r, 50));
+        await new Promise((r) => setTimeout(r, 100));
 
         const canvas = await html2canvas(clone, {
           backgroundColor: "#ffffff",
@@ -244,10 +238,10 @@ export default function TimelineDetail() {
           useCORS: true,
           logging: false,
           scrollX: 0,
-          scrollY: 0,
+          scrollY: -window.scrollY,
           width: clone.scrollWidth,
           height: clone.scrollHeight,
-          windowWidth: clone.scrollWidth + 200,
+          windowWidth: Math.max(clone.scrollWidth + 200, 1400),
           windowHeight: clone.scrollHeight + 200,
         });
 
