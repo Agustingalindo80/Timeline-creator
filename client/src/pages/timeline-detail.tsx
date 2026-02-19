@@ -180,41 +180,60 @@ export default function TimelineDetail() {
       if (!timelineRef.current || !timeline) return;
       setExporting(true);
 
-      const el = timelineRef.current;
-      const origOverflow = el.style.overflow;
-      const origPadding = el.style.padding;
-
-      const scrollableChildren = el.querySelectorAll<HTMLElement>("[class*='overflow']");
-      const origStyles: { el: HTMLElement; overflow: string }[] = [];
-
       try {
         const html2canvas = (await import("html2canvas")).default;
 
-        el.style.overflow = "visible";
-        el.style.padding = "24px";
+        const source = timelineRef.current;
+        const clone = source.cloneNode(true) as HTMLElement;
 
-        scrollableChildren.forEach((child) => {
-          origStyles.push({
-            el: child,
-            overflow: child.style.overflow,
-          });
+        clone.style.position = "absolute";
+        clone.style.left = "-9999px";
+        clone.style.top = "0";
+        clone.style.overflow = "visible";
+        clone.style.padding = "32px";
+        clone.style.width = source.scrollWidth + 64 + "px";
+        clone.style.background = "#ffffff";
+        clone.style.color = "#0a0a0a";
+
+        clone.querySelectorAll<HTMLElement>("*").forEach((child) => {
           child.style.overflow = "visible";
         });
 
-        await new Promise((r) => requestAnimationFrame(r));
+        const cssOverrides = document.createElement("style");
+        cssOverrides.textContent = `
+          .export-clone, .export-clone * {
+            --background: 0 0% 100% !important;
+            --foreground: 222 15% 12% !important;
+            --card: 0 0% 98% !important;
+            --card-foreground: 222 15% 12% !important;
+            --card-border: 220 13% 94% !important;
+            --muted: 220 14% 94% !important;
+            --muted-foreground: 222 13% 38% !important;
+            --border: 220 13% 91% !important;
+            --ring: 0 0% 100% !important;
+          }
+        `;
+        clone.classList.add("export-clone");
+        document.body.appendChild(cssOverrides);
+        document.body.appendChild(clone);
 
-        const canvas = await html2canvas(el, {
+        await new Promise((r) => setTimeout(r, 100));
+
+        const canvas = await html2canvas(clone, {
           backgroundColor: "#ffffff",
           scale: 2,
           useCORS: true,
           logging: false,
           scrollX: 0,
           scrollY: 0,
-          width: el.scrollWidth,
-          height: el.scrollHeight,
-          windowWidth: el.scrollWidth + 100,
-          windowHeight: el.scrollHeight + 100,
+          width: clone.scrollWidth,
+          height: clone.scrollHeight,
+          windowWidth: clone.scrollWidth + 200,
+          windowHeight: clone.scrollHeight + 200,
         });
+
+        document.body.removeChild(clone);
+        document.body.removeChild(cssOverrides);
 
         if (format === "png") {
           const link = document.createElement("a");
@@ -244,11 +263,6 @@ export default function TimelineDetail() {
           variant: "destructive",
         });
       } finally {
-        el.style.overflow = origOverflow;
-        el.style.padding = origPadding;
-        origStyles.forEach(({ el: child, overflow }) => {
-          child.style.overflow = overflow;
-        });
         setExporting(false);
       }
     },
