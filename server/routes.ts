@@ -172,6 +172,7 @@ export async function registerRoutes(
       }
 
       const { percentComplete } = req.body;
+      const clampedPercent = Math.max(0, Math.min(100, parseInt(percentComplete) || 0));
       const task = await storage.createTask({
         timelineId: req.params.id,
         title,
@@ -179,7 +180,7 @@ export async function registerRoutes(
         startDate,
         endDate,
         color: color || null,
-        percentComplete: percentComplete ?? 0,
+        percentComplete: clampedPercent,
         sortOrder: sortOrder ?? 0,
       });
       res.status(201).json(task);
@@ -198,7 +199,7 @@ export async function registerRoutes(
       if (startDate !== undefined) updates.startDate = startDate;
       if (endDate !== undefined) updates.endDate = endDate;
       if (color !== undefined) updates.color = color;
-      if (percentComplete !== undefined) updates.percentComplete = percentComplete;
+      if (percentComplete !== undefined) updates.percentComplete = Math.max(0, Math.min(100, parseInt(percentComplete) || 0));
       if (sortOrder !== undefined) updates.sortOrder = sortOrder;
 
       const task = await storage.updateTask(req.params.id, updates);

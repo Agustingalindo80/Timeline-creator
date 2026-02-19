@@ -117,7 +117,7 @@ export default function TimelineDetail() {
   });
 
   const addTaskMutation = useMutation({
-    mutationFn: async (data: { title: string; startDate: string; endDate: string; description?: string }) => {
+    mutationFn: async (data: { title: string; startDate: string; endDate: string; description?: string; percentComplete?: number }) => {
       await apiRequest("POST", `/api/timelines/${id}/tasks`, {
         ...data,
         sortOrder: (timeline?.tasks.length || 0),
@@ -130,7 +130,7 @@ export default function TimelineDetail() {
   });
 
   const updateTaskMutation = useMutation({
-    mutationFn: async ({ taskId, data }: { taskId: string; data: { title?: string; startDate?: string; endDate?: string; description?: string | null } }) => {
+    mutationFn: async ({ taskId, data }: { taskId: string; data: { title?: string; startDate?: string; endDate?: string; description?: string | null; percentComplete?: number } }) => {
       await apiRequest("PATCH", `/api/tasks/${taskId}`, data);
     },
     onSuccess: () => {
@@ -168,6 +168,7 @@ export default function TimelineDetail() {
   const [newTaskStart, setNewTaskStart] = useState("");
   const [newTaskEnd, setNewTaskEnd] = useState("");
   const [newTaskDesc, setNewTaskDesc] = useState("");
+  const [newTaskPercent, setNewTaskPercent] = useState(0);
 
   const [editingMilestoneId, setEditingMilestoneId] = useState<string | null>(null);
   const [editMTitle, setEditMTitle] = useState("");
@@ -179,6 +180,7 @@ export default function TimelineDetail() {
   const [editTStart, setEditTStart] = useState("");
   const [editTEnd, setEditTEnd] = useState("");
   const [editTDesc, setEditTDesc] = useState("");
+  const [editTPercent, setEditTPercent] = useState(0);
 
   const startEditingMilestone = (m: { id: string; title: string; date: string; description: string | null }) => {
     setEditingMilestoneId(m.id);
@@ -210,12 +212,13 @@ export default function TimelineDetail() {
     setEditingMilestoneId(null);
   };
 
-  const startEditingTask = (t: { id: string; title: string; startDate: string; endDate: string; description: string | null }) => {
+  const startEditingTask = (t: { id: string; title: string; startDate: string; endDate: string; description: string | null; percentComplete: number }) => {
     setEditingTaskId(t.id);
     setEditTTitle(t.title);
     setEditTStart(t.startDate);
     setEditTEnd(t.endDate);
     setEditTDesc(t.description || "");
+    setEditTPercent(t.percentComplete ?? 0);
   };
 
   const saveTaskEdit = () => {
@@ -228,6 +231,7 @@ export default function TimelineDetail() {
           startDate: editTStart.trim(),
           endDate: editTEnd.trim(),
           description: editTDesc.trim() || null,
+          percentComplete: editTPercent,
         },
       },
       {
@@ -260,13 +264,14 @@ export default function TimelineDetail() {
   const handleAddTask = () => {
     if (!newTaskTitle.trim() || !newTaskStart.trim() || !newTaskEnd.trim()) return;
     addTaskMutation.mutate(
-      { title: newTaskTitle, startDate: newTaskStart, endDate: newTaskEnd, description: newTaskDesc || undefined },
+      { title: newTaskTitle, startDate: newTaskStart, endDate: newTaskEnd, description: newTaskDesc || undefined, percentComplete: newTaskPercent },
       {
         onSuccess: () => {
           setNewTaskTitle("");
           setNewTaskStart("");
           setNewTaskEnd("");
           setNewTaskDesc("");
+          setNewTaskPercent(0);
           setShowAddTaskForm(false);
         },
       }
@@ -682,6 +687,17 @@ export default function TimelineDetail() {
                   data-testid="input-new-task-desc"
                 />
               </div>
+              <div className="w-24">
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">% Done</label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={newTaskPercent}
+                  onChange={(e) => setNewTaskPercent(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
+                  data-testid="input-new-task-percent"
+                />
+              </div>
               <Button
                 onClick={handleAddTask}
                 disabled={!newTaskTitle.trim() || !newTaskStart.trim() || !newTaskEnd.trim() || addTaskMutation.isPending}
@@ -888,12 +904,28 @@ export default function TimelineDetail() {
                           />
                         </div>
                       </div>
-                      <Input
-                        value={editTDesc}
-                        onChange={(e) => setEditTDesc(e.target.value)}
-                        placeholder="Description (optional)"
-                        data-testid={`input-edit-task-desc-${t.id}`}
-                      />
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex-1 min-w-[140px]">
+                          <Input
+                            value={editTDesc}
+                            onChange={(e) => setEditTDesc(e.target.value)}
+                            placeholder="Description (optional)"
+                            data-testid={`input-edit-task-desc-${t.id}`}
+                          />
+                        </div>
+                        <div className="flex items-center gap-2 w-44">
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">% Done</span>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={100}
+                            value={editTPercent}
+                            onChange={(e) => setEditTPercent(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
+                            className="w-20"
+                            data-testid={`input-edit-task-percent-${t.id}`}
+                          />
+                        </div>
+                      </div>
                       <div className="flex items-center gap-2 justify-end">
                         <Button
                           size="sm"
@@ -922,12 +954,25 @@ export default function TimelineDetail() {
                           className="w-4 h-1.5 rounded-sm shrink-0"
                           style={{ backgroundColor: t.color || timeline.color }}
                         />
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium truncate" data-testid={`text-task-title-${t.id}`}>{t.title}</p>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-medium truncate" data-testid={`text-task-title-${t.id}`}>{t.title}</p>
+                            <span className="text-xs text-muted-foreground" data-testid={`text-task-percent-${t.id}`}>{t.percentComplete}%</span>
+                          </div>
                           <p className="text-xs text-muted-foreground">{t.startDate} — {t.endDate}</p>
                           {t.description && (
                             <p className="text-xs text-muted-foreground truncate max-w-md">{t.description}</p>
                           )}
+                          <div className="mt-1 h-1.5 rounded-full bg-muted overflow-hidden w-full max-w-xs">
+                            <div
+                              className="h-full rounded-full transition-all"
+                              style={{
+                                width: `${t.percentComplete}%`,
+                                backgroundColor: t.color || timeline.color,
+                              }}
+                              data-testid={`bar-task-progress-${t.id}`}
+                            />
+                          </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-1">

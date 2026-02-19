@@ -236,14 +236,22 @@ function TaskBarsSection({
                   }}
                 >
                   <div
+                    className="absolute left-0 top-0 bottom-0 rounded-l-md transition-all"
+                    style={{
+                      backgroundColor: `${barColor}40`,
+                      width: `${task.percentComplete}%`,
+                    }}
+                    data-testid={`task-fill-${task.id}`}
+                  />
+                  <div
                     className="absolute left-0 top-0 bottom-0 w-1 rounded-l-md"
                     style={{ backgroundColor: barColor }}
                   />
-                  {task.description && (
-                    <span className="text-[10px] text-muted-foreground truncate pl-2">
-                      {task.description}
-                    </span>
-                  )}
+                  <span className="text-[10px] text-muted-foreground truncate pl-2 relative z-10">
+                    {task.percentComplete > 0 ? `${task.percentComplete}%` : ""}
+                    {task.percentComplete > 0 && task.description ? " \u00B7 " : ""}
+                    {task.description || ""}
+                  </span>
                 </div>
               </div>
             </div>
@@ -385,9 +393,20 @@ export function TimelineViewHorizontal({ milestones, tasks, timelineColor, showT
                         }}
                       >
                         <div
+                          className="absolute left-0 top-0 bottom-0 rounded-l-md transition-all"
+                          style={{
+                            backgroundColor: `${barColor}40`,
+                            width: `${task.percentComplete}%`,
+                          }}
+                          data-testid={`task-fill-h-${task.id}`}
+                        />
+                        <div
                           className="absolute left-0 top-0 bottom-0 w-1 rounded-l-md"
                           style={{ backgroundColor: barColor }}
                         />
+                        <span className="text-[10px] text-muted-foreground truncate pl-2 relative z-10">
+                          {task.percentComplete > 0 ? `${task.percentComplete}%` : ""}
+                        </span>
                       </div>
                     </div>
                   </div>
