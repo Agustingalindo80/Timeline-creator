@@ -1,5 +1,6 @@
 import type { Milestone, Task } from "@shared/schema";
 import { cn } from "@/lib/utils";
+import { Clock } from "lucide-react";
 
 interface TimelineViewProps {
   milestones: Milestone[];
@@ -101,41 +102,34 @@ export function TimelineView({ milestones, tasks, timelineColor, showTasks = tru
                     }}
                   />
                 )}
-                <div
-                  className={cn(
-                    "flex items-start gap-6 mb-10 relative z-10",
-                    isLeft ? "flex-row" : "flex-row-reverse"
-                  )}
-                >
-                  <div className={cn("flex-1", isLeft ? "text-right" : "text-left")}>
+                <div className="flex items-start gap-0 mb-10 relative z-10">
+                  <div className={cn("flex-1", isLeft ? "text-right pr-3" : "text-left pl-3 order-3")}>
                     <div
                       className={cn(
-                        "inline-block rounded-md p-4 max-w-sm transition-all",
+                        "inline-block max-w-sm",
                         isLeft ? "mr-0 ml-auto" : "ml-0 mr-auto"
                       )}
-                      style={{
-                        backgroundColor: `${barColor}12`,
-                        borderLeft: `3px solid ${barColor}`,
-                      }}
                     >
-                      <p className="text-xs font-medium text-muted-foreground mb-1">
-                        {task.startDate} — {task.endDate}
-                      </p>
-                      <h3 className="font-semibold text-sm mb-1">{task.title}</h3>
+                      <h3 className="font-semibold text-sm">{task.title}</h3>
                       {task.description && (
-                        <p className="text-xs text-muted-foreground leading-relaxed">
+                        <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
                           {task.description}
                         </p>
                       )}
                     </div>
                   </div>
-                  <div className="relative flex items-center justify-center shrink-0 w-5">
+                  <div className={cn("flex flex-col items-center shrink-0", isLeft ? "" : "order-2")}>
                     <div
-                      className="w-5 h-2 rounded-sm ring-2 ring-background z-10"
+                      className="rounded-md px-3 py-1.5 flex items-center gap-2 ring-2 ring-background z-10"
                       style={{ backgroundColor: barColor }}
-                    />
+                    >
+                      <Clock className="w-3 h-3 text-white" />
+                      <span className="text-[11px] font-semibold text-white whitespace-nowrap">
+                        {task.startDate} — {task.endDate}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex-1" />
+                  <div className={cn("flex-1", isLeft ? "order-3" : "pr-3")} />
                 </div>
               </div>
             );
@@ -239,16 +233,13 @@ export function TimelineViewHorizontal({ milestones, tasks, timelineColor, showT
             return (
               <div
                 key={`t-${task.id}`}
-                className="relative flex flex-col items-center px-6"
+                className="relative flex flex-col items-center px-4"
                 style={{ minWidth: "200px" }}
                 data-testid={`task-h-${task.id}`}
               >
                 {isAbove ? (
                   <>
-                    <div className="mb-4 text-center max-w-[200px]">
-                      <p className="text-xs font-medium text-muted-foreground mb-0.5">
-                        {task.startDate} — {task.endDate}
-                      </p>
+                    <div className="mb-3 text-center max-w-[200px]">
                       <h3 className="font-semibold text-xs mb-0.5">{task.title}</h3>
                       {task.description && (
                         <p className="text-[11px] text-muted-foreground leading-relaxed">
@@ -257,22 +248,29 @@ export function TimelineViewHorizontal({ milestones, tasks, timelineColor, showT
                       )}
                     </div>
                     <div
-                      className="h-2 rounded-sm ring-2 ring-background z-10 shrink-0"
-                      style={{ backgroundColor: barColor, width: "40px" }}
-                    />
-                    <div className="h-16" />
+                      className="rounded-md px-2.5 py-1 flex items-center gap-1.5 ring-2 ring-background z-10 shrink-0"
+                      style={{ backgroundColor: barColor }}
+                    >
+                      <Clock className="w-2.5 h-2.5 text-white" />
+                      <span className="text-[10px] font-semibold text-white whitespace-nowrap">
+                        {task.startDate} — {task.endDate}
+                      </span>
+                    </div>
+                    <div className="h-14" />
                   </>
                 ) : (
                   <>
-                    <div className="h-16" />
+                    <div className="h-14" />
                     <div
-                      className="h-2 rounded-sm ring-2 ring-background z-10 shrink-0"
-                      style={{ backgroundColor: barColor, width: "40px" }}
-                    />
-                    <div className="mt-4 text-center max-w-[200px]">
-                      <p className="text-xs font-medium text-muted-foreground mb-0.5">
+                      className="rounded-md px-2.5 py-1 flex items-center gap-1.5 ring-2 ring-background z-10 shrink-0"
+                      style={{ backgroundColor: barColor }}
+                    >
+                      <Clock className="w-2.5 h-2.5 text-white" />
+                      <span className="text-[10px] font-semibold text-white whitespace-nowrap">
                         {task.startDate} — {task.endDate}
-                      </p>
+                      </span>
+                    </div>
+                    <div className="mt-3 text-center max-w-[200px]">
                       <h3 className="font-semibold text-xs mb-0.5">{task.title}</h3>
                       {task.description && (
                         <p className="text-[11px] text-muted-foreground leading-relaxed">
