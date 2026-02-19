@@ -100,7 +100,7 @@ export function TimelineViewHorizontal({ milestones, timelineColor }: TimelineVi
   }
 
   return (
-    <div className="relative overflow-x-auto py-8 px-4">
+    <div className="relative overflow-x-auto py-12 px-4">
       <div className="relative flex items-center min-w-max">
         {/* Horizontal line */}
         <div
@@ -121,13 +121,13 @@ export function TimelineViewHorizontal({ milestones, timelineColor }: TimelineVi
             >
               {isAbove ? (
                 <>
-                  <div className="mb-3 text-center max-w-[160px]">
+                  <div className="mb-4 text-center max-w-[180px]">
                     <p className="text-xs font-medium text-muted-foreground mb-0.5">
                       {milestone.date}
                     </p>
                     <h3 className="font-semibold text-xs mb-0.5">{milestone.title}</h3>
                     {milestone.description && (
-                      <p className="text-[11px] text-muted-foreground line-clamp-2">
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
                         {milestone.description}
                       </p>
                     )}
@@ -136,22 +136,22 @@ export function TimelineViewHorizontal({ milestones, timelineColor }: TimelineVi
                     className="w-3 h-3 rounded-full ring-4 ring-background z-10 shrink-0"
                     style={{ backgroundColor: dotColor }}
                   />
-                  <div className="h-12" />
+                  <div className="h-16" />
                 </>
               ) : (
                 <>
-                  <div className="h-12" />
+                  <div className="h-16" />
                   <div
                     className="w-3 h-3 rounded-full ring-4 ring-background z-10 shrink-0"
                     style={{ backgroundColor: dotColor }}
                   />
-                  <div className="mt-3 text-center max-w-[160px]">
+                  <div className="mt-4 text-center max-w-[180px]">
                     <p className="text-xs font-medium text-muted-foreground mb-0.5">
                       {milestone.date}
                     </p>
                     <h3 className="font-semibold text-xs mb-0.5">{milestone.title}</h3>
                     {milestone.description && (
-                      <p className="text-[11px] text-muted-foreground line-clamp-2">
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
                         {milestone.description}
                       </p>
                     )}

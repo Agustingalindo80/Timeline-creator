@@ -175,13 +175,41 @@ export default function TimelineDetail() {
     async (format: "png" | "pdf") => {
       if (!timelineRef.current || !timeline) return;
       setExporting(true);
+
+      const el = timelineRef.current;
+      const origOverflow = el.style.overflow;
+      const origPadding = el.style.padding;
+
+      const scrollableChildren = el.querySelectorAll<HTMLElement>("[class*='overflow']");
+      const origStyles: { el: HTMLElement; overflow: string }[] = [];
+
       try {
         const html2canvas = (await import("html2canvas")).default;
-        const canvas = await html2canvas(timelineRef.current, {
-          backgroundColor: null,
+
+        el.style.overflow = "visible";
+        el.style.padding = "24px";
+
+        scrollableChildren.forEach((child) => {
+          origStyles.push({
+            el: child,
+            overflow: child.style.overflow,
+          });
+          child.style.overflow = "visible";
+        });
+
+        await new Promise((r) => requestAnimationFrame(r));
+
+        const canvas = await html2canvas(el, {
+          backgroundColor: "#ffffff",
           scale: 2,
           useCORS: true,
           logging: false,
+          scrollX: 0,
+          scrollY: 0,
+          width: el.scrollWidth,
+          height: el.scrollHeight,
+          windowWidth: el.scrollWidth + 100,
+          windowHeight: el.scrollHeight + 100,
         });
 
         if (format === "png") {
@@ -212,6 +240,11 @@ export default function TimelineDetail() {
           variant: "destructive",
         });
       } finally {
+        el.style.overflow = origOverflow;
+        el.style.padding = origPadding;
+        origStyles.forEach(({ el: child, overflow }) => {
+          child.style.overflow = overflow;
+        });
         setExporting(false);
       }
     },
