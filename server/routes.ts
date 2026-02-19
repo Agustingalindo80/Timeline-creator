@@ -133,6 +133,26 @@ export async function registerRoutes(
     }
   });
 
+  // UPDATE milestone
+  app.patch("/api/milestones/:id", async (req, res) => {
+    try {
+      const { title, description, date, color, icon, sortOrder } = req.body;
+      const updates: any = {};
+      if (title !== undefined) updates.title = title;
+      if (description !== undefined) updates.description = description;
+      if (date !== undefined) updates.date = date;
+      if (color !== undefined) updates.color = color;
+      if (icon !== undefined) updates.icon = icon;
+      if (sortOrder !== undefined) updates.sortOrder = sortOrder;
+
+      const milestone = await storage.updateMilestone(req.params.id, updates);
+      if (!milestone) return res.status(404).json({ message: "Milestone not found" });
+      res.json(milestone);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // DELETE milestone
   app.delete("/api/milestones/:id", async (req, res) => {
     try {

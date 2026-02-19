@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
 import { Helmet } from "react-helmet-async";
@@ -7,17 +7,26 @@ import {
   Edit3,
   Plus,
   Trash2,
-  Download,
   AlignHorizontalDistributeCenter,
   AlignVerticalDistributeCenter,
   Save,
   X,
+  Download,
+  Image,
+  FileText,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,6 +53,8 @@ export default function TimelineDetail() {
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
+  const timelineRef = useRef<HTMLDivElement>(null);
+  const [exporting, setExporting] = useState(false);
 
   const { data: timeline, isLoading } = useQuery<TimelineWithMilestones>({
     queryKey: ["/api/timelines", id],
@@ -77,6 +88,16 @@ export default function TimelineDetail() {
     },
   });
 
+  const updateMilestoneMutation = useMutation({
+    mutationFn: async ({ milestoneId, data }: { milestoneId: string; data: { title?: string; date?: string; description?: string | null } }) => {
+      await apiRequest("PATCH", `/api/milestones/${milestoneId}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/timelines", id] });
+      toast({ title: "Milestone updated" });
+    },
+  });
+
   const deleteMilestoneMutation = useMutation({
     mutationFn: async (milestoneId: string) => {
       await apiRequest("DELETE", `/api/milestones/${milestoneId}`);
@@ -100,6 +121,41 @@ export default function TimelineDetail() {
   const [newDate, setNewDate] = useState("");
   const [newDesc, setNewDesc] = useState("");
 
+  const [editingMilestoneId, setEditingMilestoneId] = useState<string | null>(null);
+  const [editMTitle, setEditMTitle] = useState("");
+  const [editMDate, setEditMDate] = useState("");
+  const [editMDesc, setEditMDesc] = useState("");
+
+  const startEditingMilestone = (m: { id: string; title: string; date: string; description: string | null }) => {
+    setEditingMilestoneId(m.id);
+    setEditMTitle(m.title);
+    setEditMDate(m.date);
+    setEditMDesc(m.description || "");
+  };
+
+  const saveMilestoneEdit = () => {
+    if (!editingMilestoneId || !editMTitle.trim() || !editMDate.trim()) return;
+    updateMilestoneMutation.mutate(
+      {
+        milestoneId: editingMilestoneId,
+        data: {
+          title: editMTitle.trim(),
+          date: editMDate.trim(),
+          description: editMDesc.trim() || null,
+        },
+      },
+      {
+        onSuccess: () => {
+          setEditingMilestoneId(null);
+        },
+      }
+    );
+  };
+
+  const cancelMilestoneEdit = () => {
+    setEditingMilestoneId(null);
+  };
+
   const handleAddMilestone = () => {
     if (!newTitle.trim() || !newDate.trim()) return;
     addMilestoneMutation.mutate(
@@ -114,6 +170,53 @@ export default function TimelineDetail() {
       }
     );
   };
+
+  const handleExport = useCallback(
+    async (format: "png" | "pdf") => {
+      if (!timelineRef.current || !timeline) return;
+      setExporting(true);
+      try {
+        const html2canvas = (await import("html2canvas")).default;
+        const canvas = await html2canvas(timelineRef.current, {
+          backgroundColor: null,
+          scale: 2,
+          useCORS: true,
+          logging: false,
+        });
+
+        if (format === "png") {
+          const link = document.createElement("a");
+          link.download = `${timeline.title.replace(/[^a-zA-Z0-9]/g, "_")}_timeline.png`;
+          link.href = canvas.toDataURL("image/png");
+          link.click();
+          toast({ title: "PNG downloaded" });
+        } else {
+          const { jsPDF } = await import("jspdf");
+          const imgData = canvas.toDataURL("image/png");
+          const imgWidth = canvas.width;
+          const imgHeight = canvas.height;
+          const isLandscape = imgWidth > imgHeight;
+          const pdf = new jsPDF({
+            orientation: isLandscape ? "landscape" : "portrait",
+            unit: "px",
+            format: [imgWidth, imgHeight],
+          });
+          pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
+          pdf.save(`${timeline.title.replace(/[^a-zA-Z0-9]/g, "_")}_timeline.pdf`);
+          toast({ title: "PDF downloaded" });
+        }
+      } catch (err: any) {
+        toast({
+          title: "Export failed",
+          description: err.message || "Something went wrong during export.",
+          variant: "destructive",
+        });
+      } finally {
+        setExporting(false);
+      }
+    },
+    [timeline, toast]
+  );
 
   if (isLoading) {
     return (
@@ -226,6 +329,24 @@ export default function TimelineDetail() {
             >
               <AlignHorizontalDistributeCenter className="w-4 h-4" />
             </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" disabled={exporting} data-testid="button-export">
+                  <Download className="w-4 h-4 mr-2" />
+                  {exporting ? "Exporting..." : "Export"}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleExport("png")} data-testid="button-export-png">
+                  <Image className="w-4 h-4 mr-2" />
+                  Download as PNG
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport("pdf")} data-testid="button-export-pdf">
+                  <FileText className="w-4 h-4 mr-2" />
+                  Download as PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button
               variant="outline"
               onClick={() => setShowAddForm(!showAddForm)}
@@ -290,11 +411,14 @@ export default function TimelineDetail() {
           </Badge>
         </div>
 
-        {viewMode === "vertical" ? (
-          <TimelineView milestones={timeline.milestones} timelineColor={timeline.color} />
-        ) : (
-          <TimelineViewHorizontal milestones={timeline.milestones} timelineColor={timeline.color} />
-        )}
+        {/* Timeline visualization - wrapped in ref for export */}
+        <div ref={timelineRef} className="bg-background rounded-md">
+          {viewMode === "vertical" ? (
+            <TimelineView milestones={timeline.milestones} timelineColor={timeline.color} />
+          ) : (
+            <TimelineViewHorizontal milestones={timeline.milestones} timelineColor={timeline.color} />
+          )}
+        </div>
 
         {/* Milestone management list */}
         {timeline.milestones.length > 0 && (
@@ -307,47 +431,111 @@ export default function TimelineDetail() {
               .map((m) => (
                 <Card
                   key={m.id}
-                  className="p-3 flex items-center justify-between gap-3"
+                  className="p-3"
                   data-testid={`manage-milestone-${m.id}`}
                 >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div
-                      className="w-2 h-2 rounded-full shrink-0"
-                      style={{ backgroundColor: m.color || timeline.color }}
-                    />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{m.title}</p>
-                      <p className="text-xs text-muted-foreground">{m.date}</p>
-                    </div>
-                  </div>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        data-testid={`button-delete-milestone-${m.id}`}
-                      >
-                        <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete milestone?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This will remove "{m.title}" from the timeline.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => deleteMilestoneMutation.mutate(m.id)}
-                          data-testid="button-confirm-delete-milestone"
+                  {editingMilestoneId === m.id ? (
+                    <div className="space-y-2">
+                      <div className="flex gap-2 flex-wrap">
+                        <div className="flex-1 min-w-[140px]">
+                          <Input
+                            value={editMTitle}
+                            onChange={(e) => setEditMTitle(e.target.value)}
+                            placeholder="Title"
+                            data-testid={`input-edit-milestone-title-${m.id}`}
+                          />
+                        </div>
+                        <div className="w-36">
+                          <Input
+                            value={editMDate}
+                            onChange={(e) => setEditMDate(e.target.value)}
+                            placeholder="Date"
+                            data-testid={`input-edit-milestone-date-${m.id}`}
+                          />
+                        </div>
+                      </div>
+                      <Input
+                        value={editMDesc}
+                        onChange={(e) => setEditMDesc(e.target.value)}
+                        placeholder="Description (optional)"
+                        data-testid={`input-edit-milestone-desc-${m.id}`}
+                      />
+                      <div className="flex items-center gap-2 justify-end">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={cancelMilestoneEdit}
+                          data-testid={`button-cancel-edit-milestone-${m.id}`}
                         >
-                          Delete
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                          <X className="w-3.5 h-3.5 mr-1" />
+                          Cancel
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={saveMilestoneEdit}
+                          disabled={!editMTitle.trim() || !editMDate.trim() || updateMilestoneMutation.isPending}
+                          data-testid={`button-save-edit-milestone-${m.id}`}
+                        >
+                          <Check className="w-3.5 h-3.5 mr-1" />
+                          {updateMilestoneMutation.isPending ? "Saving..." : "Save"}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div
+                          className="w-2 h-2 rounded-full shrink-0"
+                          style={{ backgroundColor: m.color || timeline.color }}
+                        />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate" data-testid={`text-milestone-title-${m.id}`}>{m.title}</p>
+                          <p className="text-xs text-muted-foreground">{m.date}</p>
+                          {m.description && (
+                            <p className="text-xs text-muted-foreground/70 truncate mt-0.5">{m.description}</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => startEditingMilestone(m)}
+                          data-testid={`button-edit-milestone-${m.id}`}
+                        >
+                          <Edit3 className="w-3.5 h-3.5 text-muted-foreground" />
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              data-testid={`button-delete-milestone-${m.id}`}
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete milestone?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will remove "{m.title}" from the timeline.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => deleteMilestoneMutation.mutate(m.id)}
+                                data-testid="button-confirm-delete-milestone"
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </div>
+                  )}
                 </Card>
               ))}
           </div>

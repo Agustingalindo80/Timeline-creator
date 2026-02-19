@@ -17,6 +17,7 @@ export interface IStorage {
   updateTimeline(id: string, data: Partial<InsertTimeline>): Promise<Timeline | undefined>;
   deleteTimeline(id: string): Promise<void>;
   createMilestone(data: InsertMilestone): Promise<Milestone>;
+  updateMilestone(id: string, data: Partial<InsertMilestone>): Promise<Milestone | undefined>;
   deleteMilestone(id: string): Promise<void>;
 }
 
@@ -69,6 +70,15 @@ export class DatabaseStorage implements IStorage {
 
   async createMilestone(data: InsertMilestone): Promise<Milestone> {
     const [milestone] = await db.insert(milestones).values(data).returning();
+    return milestone;
+  }
+
+  async updateMilestone(id: string, data: Partial<InsertMilestone>): Promise<Milestone | undefined> {
+    const [milestone] = await db
+      .update(milestones)
+      .set(data)
+      .where(eq(milestones.id, id))
+      .returning();
     return milestone;
   }
 
