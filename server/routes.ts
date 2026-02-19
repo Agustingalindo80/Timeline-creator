@@ -41,6 +41,7 @@ export async function registerRoutes(
       title: z.string().min(1, "Milestone title is required"),
       description: z.string().nullable().optional(),
       date: z.string().min(1, "Milestone date is required"),
+      actualDate: z.string().nullable().optional(),
       color: z.string().nullable().optional(),
       icon: z.string().nullable().optional(),
       sortOrder: z.number().default(0),
@@ -69,6 +70,7 @@ export async function registerRoutes(
             title: m.title,
             description: m.description || null,
             date: m.date,
+            actualDate: m.actualDate || null,
             color: m.color || null,
             icon: m.icon || null,
             sortOrder: m.sortOrder ?? 0,
@@ -113,7 +115,7 @@ export async function registerRoutes(
   // ADD milestone to timeline
   app.post("/api/timelines/:id/milestones", async (req, res) => {
     try {
-      const { title, description, date, color, icon, sortOrder } = req.body;
+      const { title, description, date, actualDate, color, icon, sortOrder } = req.body;
       if (!title || !date) {
         return res.status(400).json({ message: "Title and date are required" });
       }
@@ -123,6 +125,7 @@ export async function registerRoutes(
         title,
         description: description || null,
         date,
+        actualDate: actualDate || null,
         color: color || null,
         icon: icon || null,
         sortOrder: sortOrder ?? 0,
@@ -136,11 +139,12 @@ export async function registerRoutes(
   // UPDATE milestone
   app.patch("/api/milestones/:id", async (req, res) => {
     try {
-      const { title, description, date, color, icon, sortOrder } = req.body;
+      const { title, description, date, actualDate, color, icon, sortOrder } = req.body;
       const updates: any = {};
       if (title !== undefined) updates.title = title;
       if (description !== undefined) updates.description = description;
       if (date !== undefined) updates.date = date;
+      if (actualDate !== undefined) updates.actualDate = actualDate;
       if (color !== undefined) updates.color = color;
       if (icon !== undefined) updates.icon = icon;
       if (sortOrder !== undefined) updates.sortOrder = sortOrder;
@@ -166,7 +170,7 @@ export async function registerRoutes(
   // ADD task to timeline
   app.post("/api/timelines/:id/tasks", async (req, res) => {
     try {
-      const { title, description, startDate, endDate, color, sortOrder } = req.body;
+      const { title, description, startDate, endDate, actualStartDate, actualEndDate, color, sortOrder } = req.body;
       if (!title || !startDate || !endDate) {
         return res.status(400).json({ message: "Title, start date, and end date are required" });
       }
@@ -179,6 +183,8 @@ export async function registerRoutes(
         description: description || null,
         startDate,
         endDate,
+        actualStartDate: actualStartDate || null,
+        actualEndDate: actualEndDate || null,
         color: color || null,
         percentComplete: clampedPercent,
         sortOrder: sortOrder ?? 0,
@@ -192,12 +198,14 @@ export async function registerRoutes(
   // UPDATE task
   app.patch("/api/tasks/:id", async (req, res) => {
     try {
-      const { title, description, startDate, endDate, color, percentComplete, sortOrder } = req.body;
+      const { title, description, startDate, endDate, actualStartDate, actualEndDate, color, percentComplete, sortOrder } = req.body;
       const updates: any = {};
       if (title !== undefined) updates.title = title;
       if (description !== undefined) updates.description = description;
       if (startDate !== undefined) updates.startDate = startDate;
       if (endDate !== undefined) updates.endDate = endDate;
+      if (actualStartDate !== undefined) updates.actualStartDate = actualStartDate;
+      if (actualEndDate !== undefined) updates.actualEndDate = actualEndDate;
       if (color !== undefined) updates.color = color;
       if (percentComplete !== undefined) updates.percentComplete = Math.max(0, Math.min(100, parseInt(percentComplete) || 0));
       if (sortOrder !== undefined) updates.sortOrder = sortOrder;

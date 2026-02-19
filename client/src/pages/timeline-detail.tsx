@@ -84,7 +84,7 @@ export default function TimelineDetail() {
   });
 
   const addMilestoneMutation = useMutation({
-    mutationFn: async (data: { title: string; date: string; description?: string }) => {
+    mutationFn: async (data: { title: string; date: string; actualDate?: string; description?: string }) => {
       await apiRequest("POST", `/api/timelines/${id}/milestones`, {
         ...data,
         sortOrder: (timeline?.milestones.length || 0),
@@ -97,7 +97,7 @@ export default function TimelineDetail() {
   });
 
   const updateMilestoneMutation = useMutation({
-    mutationFn: async ({ milestoneId, data }: { milestoneId: string; data: { title?: string; date?: string; description?: string | null } }) => {
+    mutationFn: async ({ milestoneId, data }: { milestoneId: string; data: { title?: string; date?: string; actualDate?: string | null; description?: string | null } }) => {
       await apiRequest("PATCH", `/api/milestones/${milestoneId}`, data);
     },
     onSuccess: () => {
@@ -117,7 +117,7 @@ export default function TimelineDetail() {
   });
 
   const addTaskMutation = useMutation({
-    mutationFn: async (data: { title: string; startDate: string; endDate: string; description?: string; percentComplete?: number }) => {
+    mutationFn: async (data: { title: string; startDate: string; endDate: string; actualStartDate?: string; actualEndDate?: string; description?: string; percentComplete?: number }) => {
       await apiRequest("POST", `/api/timelines/${id}/tasks`, {
         ...data,
         sortOrder: (timeline?.tasks.length || 0),
@@ -130,7 +130,7 @@ export default function TimelineDetail() {
   });
 
   const updateTaskMutation = useMutation({
-    mutationFn: async ({ taskId, data }: { taskId: string; data: { title?: string; startDate?: string; endDate?: string; description?: string | null; percentComplete?: number } }) => {
+    mutationFn: async ({ taskId, data }: { taskId: string; data: { title?: string; startDate?: string; endDate?: string; actualStartDate?: string | null; actualEndDate?: string | null; description?: string | null; percentComplete?: number } }) => {
       await apiRequest("PATCH", `/api/tasks/${taskId}`, data);
     },
     onSuccess: () => {
@@ -161,31 +161,38 @@ export default function TimelineDetail() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newDate, setNewDate] = useState("");
+  const [newActualDate, setNewActualDate] = useState("");
   const [newDesc, setNewDesc] = useState("");
 
   const [showAddTaskForm, setShowAddTaskForm] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskStart, setNewTaskStart] = useState("");
   const [newTaskEnd, setNewTaskEnd] = useState("");
+  const [newTaskActualStart, setNewTaskActualStart] = useState("");
+  const [newTaskActualEnd, setNewTaskActualEnd] = useState("");
   const [newTaskDesc, setNewTaskDesc] = useState("");
   const [newTaskPercent, setNewTaskPercent] = useState(0);
 
   const [editingMilestoneId, setEditingMilestoneId] = useState<string | null>(null);
   const [editMTitle, setEditMTitle] = useState("");
   const [editMDate, setEditMDate] = useState("");
+  const [editMActualDate, setEditMActualDate] = useState("");
   const [editMDesc, setEditMDesc] = useState("");
 
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editTTitle, setEditTTitle] = useState("");
   const [editTStart, setEditTStart] = useState("");
   const [editTEnd, setEditTEnd] = useState("");
+  const [editTActualStart, setEditTActualStart] = useState("");
+  const [editTActualEnd, setEditTActualEnd] = useState("");
   const [editTDesc, setEditTDesc] = useState("");
   const [editTPercent, setEditTPercent] = useState(0);
 
-  const startEditingMilestone = (m: { id: string; title: string; date: string; description: string | null }) => {
+  const startEditingMilestone = (m: { id: string; title: string; date: string; actualDate: string | null; description: string | null }) => {
     setEditingMilestoneId(m.id);
     setEditMTitle(m.title);
     setEditMDate(m.date);
+    setEditMActualDate(m.actualDate || "");
     setEditMDesc(m.description || "");
   };
 
@@ -197,6 +204,7 @@ export default function TimelineDetail() {
         data: {
           title: editMTitle.trim(),
           date: editMDate.trim(),
+          actualDate: editMActualDate.trim() || null,
           description: editMDesc.trim() || null,
         },
       },
@@ -212,11 +220,13 @@ export default function TimelineDetail() {
     setEditingMilestoneId(null);
   };
 
-  const startEditingTask = (t: { id: string; title: string; startDate: string; endDate: string; description: string | null; percentComplete: number }) => {
+  const startEditingTask = (t: { id: string; title: string; startDate: string; endDate: string; actualStartDate: string | null; actualEndDate: string | null; description: string | null; percentComplete: number }) => {
     setEditingTaskId(t.id);
     setEditTTitle(t.title);
     setEditTStart(t.startDate);
     setEditTEnd(t.endDate);
+    setEditTActualStart(t.actualStartDate || "");
+    setEditTActualEnd(t.actualEndDate || "");
     setEditTDesc(t.description || "");
     setEditTPercent(t.percentComplete ?? 0);
   };
@@ -230,6 +240,8 @@ export default function TimelineDetail() {
           title: editTTitle.trim(),
           startDate: editTStart.trim(),
           endDate: editTEnd.trim(),
+          actualStartDate: editTActualStart.trim() || null,
+          actualEndDate: editTActualEnd.trim() || null,
           description: editTDesc.trim() || null,
           percentComplete: editTPercent,
         },
@@ -249,11 +261,12 @@ export default function TimelineDetail() {
   const handleAddMilestone = () => {
     if (!newTitle.trim() || !newDate.trim()) return;
     addMilestoneMutation.mutate(
-      { title: newTitle, date: newDate, description: newDesc || undefined },
+      { title: newTitle, date: newDate, actualDate: newActualDate || undefined, description: newDesc || undefined },
       {
         onSuccess: () => {
           setNewTitle("");
           setNewDate("");
+          setNewActualDate("");
           setNewDesc("");
           setShowAddForm(false);
         },
@@ -264,12 +277,22 @@ export default function TimelineDetail() {
   const handleAddTask = () => {
     if (!newTaskTitle.trim() || !newTaskStart.trim() || !newTaskEnd.trim()) return;
     addTaskMutation.mutate(
-      { title: newTaskTitle, startDate: newTaskStart, endDate: newTaskEnd, description: newTaskDesc || undefined, percentComplete: newTaskPercent },
+      {
+        title: newTaskTitle,
+        startDate: newTaskStart,
+        endDate: newTaskEnd,
+        actualStartDate: newTaskActualStart || undefined,
+        actualEndDate: newTaskActualEnd || undefined,
+        description: newTaskDesc || undefined,
+        percentComplete: newTaskPercent,
+      },
       {
         onSuccess: () => {
           setNewTaskTitle("");
           setNewTaskStart("");
           setNewTaskEnd("");
+          setNewTaskActualStart("");
+          setNewTaskActualEnd("");
           setNewTaskDesc("");
           setNewTaskPercent(0);
           setShowAddTaskForm(false);
@@ -619,12 +642,21 @@ export default function TimelineDetail() {
                 />
               </div>
               <div className="w-36">
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Date</label>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Planned Date</label>
                 <Input
                   value={newDate}
                   onChange={(e) => setNewDate(e.target.value)}
                   placeholder="e.g. Mar 2025"
                   data-testid="input-new-milestone-date"
+                />
+              </div>
+              <div className="w-36">
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Actual Date</label>
+                <Input
+                  value={newActualDate}
+                  onChange={(e) => setNewActualDate(e.target.value)}
+                  placeholder="Optional"
+                  data-testid="input-new-milestone-actual-date"
                 />
               </div>
               <div className="flex-1 min-w-[160px]">
@@ -661,7 +693,7 @@ export default function TimelineDetail() {
                 />
               </div>
               <div className="w-36">
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Start Date</label>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Planned Start</label>
                 <Input
                   value={newTaskStart}
                   onChange={(e) => setNewTaskStart(e.target.value)}
@@ -670,12 +702,30 @@ export default function TimelineDetail() {
                 />
               </div>
               <div className="w-36">
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">End Date</label>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Planned End</label>
                 <Input
                   value={newTaskEnd}
                   onChange={(e) => setNewTaskEnd(e.target.value)}
                   placeholder="e.g. Mar 2025"
                   data-testid="input-new-task-end"
+                />
+              </div>
+              <div className="w-36">
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Actual Start</label>
+                <Input
+                  value={newTaskActualStart}
+                  onChange={(e) => setNewTaskActualStart(e.target.value)}
+                  placeholder="Optional"
+                  data-testid="input-new-task-actual-start"
+                />
+              </div>
+              <div className="w-36">
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Actual End</label>
+                <Input
+                  value={newTaskActualEnd}
+                  onChange={(e) => setNewTaskActualEnd(e.target.value)}
+                  placeholder="Optional"
+                  data-testid="input-new-task-actual-end"
                 />
               </div>
               <div className="flex-1 min-w-[160px]">
@@ -770,8 +820,16 @@ export default function TimelineDetail() {
                           <Input
                             value={editMDate}
                             onChange={(e) => setEditMDate(e.target.value)}
-                            placeholder="Date"
+                            placeholder="Planned date"
                             data-testid={`input-edit-milestone-date-${m.id}`}
+                          />
+                        </div>
+                        <div className="w-36">
+                          <Input
+                            value={editMActualDate}
+                            onChange={(e) => setEditMActualDate(e.target.value)}
+                            placeholder="Actual date"
+                            data-testid={`input-edit-milestone-actual-date-${m.id}`}
                           />
                         </div>
                       </div>
@@ -811,7 +869,10 @@ export default function TimelineDetail() {
                         />
                         <div className="min-w-0">
                           <p className="text-sm font-medium truncate" data-testid={`text-milestone-title-${m.id}`}>{m.title}</p>
-                          <p className="text-xs text-muted-foreground">{m.date}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Planned: {m.date}
+                            {m.actualDate && <span className="ml-2">Actual: {m.actualDate}</span>}
+                          </p>
                           {m.description && (
                             <p className="text-xs text-muted-foreground truncate max-w-md">{m.description}</p>
                           )}
@@ -891,7 +952,7 @@ export default function TimelineDetail() {
                           <Input
                             value={editTStart}
                             onChange={(e) => setEditTStart(e.target.value)}
-                            placeholder="Start date"
+                            placeholder="Planned start"
                             data-testid={`input-edit-task-start-${t.id}`}
                           />
                         </div>
@@ -899,8 +960,24 @@ export default function TimelineDetail() {
                           <Input
                             value={editTEnd}
                             onChange={(e) => setEditTEnd(e.target.value)}
-                            placeholder="End date"
+                            placeholder="Planned end"
                             data-testid={`input-edit-task-end-${t.id}`}
+                          />
+                        </div>
+                        <div className="w-36">
+                          <Input
+                            value={editTActualStart}
+                            onChange={(e) => setEditTActualStart(e.target.value)}
+                            placeholder="Actual start"
+                            data-testid={`input-edit-task-actual-start-${t.id}`}
+                          />
+                        </div>
+                        <div className="w-36">
+                          <Input
+                            value={editTActualEnd}
+                            onChange={(e) => setEditTActualEnd(e.target.value)}
+                            placeholder="Actual end"
+                            data-testid={`input-edit-task-actual-end-${t.id}`}
                           />
                         </div>
                       </div>
@@ -959,7 +1036,14 @@ export default function TimelineDetail() {
                             <p className="text-sm font-medium truncate" data-testid={`text-task-title-${t.id}`}>{t.title}</p>
                             <span className="text-xs text-muted-foreground" data-testid={`text-task-percent-${t.id}`}>{t.percentComplete}%</span>
                           </div>
-                          <p className="text-xs text-muted-foreground">{t.startDate} — {t.endDate}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Planned: {t.startDate} — {t.endDate}
+                          </p>
+                          {(t.actualStartDate || t.actualEndDate) && (
+                            <p className="text-xs text-muted-foreground">
+                              Actual: {t.actualStartDate || "—"} — {t.actualEndDate || "—"}
+                            </p>
+                          )}
                           {t.description && (
                             <p className="text-xs text-muted-foreground truncate max-w-md">{t.description}</p>
                           )}

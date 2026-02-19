@@ -65,6 +65,7 @@ export function TimelineView({ milestones, tasks, timelineColor, showTasks = tru
         {sorted.map((milestone, index) => {
           const isLeft = index % 2 === 0;
           const dotColor = milestone.color || timelineColor;
+          const hasActual = !!milestone.actualDate;
           return (
             <div key={`m-${milestone.id}`} className="relative" data-testid={`milestone-${milestone.id}`}>
               {index < sorted.length - 1 && (
@@ -89,9 +90,16 @@ export function TimelineView({ milestones, tasks, timelineColor, showTasks = tru
                       isLeft ? "mr-0 ml-auto" : "ml-0 mr-auto"
                     )}
                   >
-                    <p className="text-xs font-medium text-muted-foreground mb-1">
-                      {milestone.date}
-                    </p>
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <p className="text-xs font-medium text-muted-foreground">
+                        Planned: {milestone.date}
+                      </p>
+                      {hasActual && (
+                        <p className="text-xs font-medium" style={{ color: dotColor }}>
+                          Actual: {milestone.actualDate}
+                        </p>
+                      )}
+                    </div>
                     <h3 className="font-semibold text-sm mb-1">{milestone.title}</h3>
                     {milestone.description && (
                       <p className="text-xs text-muted-foreground leading-relaxed">
@@ -101,10 +109,25 @@ export function TimelineView({ milestones, tasks, timelineColor, showTasks = tru
                   </div>
                 </div>
                 <div className="relative flex items-center justify-center shrink-0 w-4">
-                  <div
-                    className="w-3.5 h-3.5 rounded-full ring-4 ring-background z-10"
-                    style={{ backgroundColor: dotColor }}
-                  />
+                  {hasActual ? (
+                    <>
+                      <div
+                        className="w-3.5 h-3.5 rounded-full ring-4 ring-background z-10 border-2"
+                        style={{ borderColor: dotColor, backgroundColor: "transparent" }}
+                        title={`Planned: ${milestone.date}`}
+                      />
+                      <div
+                        className="absolute w-2.5 h-2.5 rounded-full z-20"
+                        style={{ backgroundColor: dotColor }}
+                        title={`Actual: ${milestone.actualDate}`}
+                      />
+                    </>
+                  ) : (
+                    <div
+                      className="w-3.5 h-3.5 rounded-full ring-4 ring-background z-10"
+                      style={{ backgroundColor: dotColor }}
+                    />
+                  )}
                 </div>
                 <div className="flex-1" />
               </div>
@@ -134,10 +157,15 @@ function TaskBarsSection({
   timelineColor: string;
 }) {
   const allDateNums: number[] = [];
-  milestones.forEach((m) => allDateNums.push(parseDateToNum(m.date)));
+  milestones.forEach((m) => {
+    allDateNums.push(parseDateToNum(m.date));
+    if (m.actualDate) allDateNums.push(parseDateToNum(m.actualDate));
+  });
   tasks.forEach((t) => {
     allDateNums.push(parseDateToNum(t.startDate));
     allDateNums.push(parseDateToNum(t.endDate));
+    if (t.actualStartDate) allDateNums.push(parseDateToNum(t.actualStartDate));
+    if (t.actualEndDate) allDateNums.push(parseDateToNum(t.actualEndDate));
   });
   const minDate = Math.min(...allDateNums);
   const maxDate = Math.max(...allDateNums);
@@ -201,13 +229,23 @@ function TaskBarsSection({
           const endPct = pct(task.endDate);
           const barWidth = Math.max(endPct - startPct, 2);
 
+          const hasActual = !!(task.actualStartDate && task.actualEndDate);
+          const actualStartPct = task.actualStartDate ? pct(task.actualStartDate) : 0;
+          const actualEndPct = task.actualEndDate ? pct(task.actualEndDate) : 0;
+          const actualBarWidth = hasActual ? Math.max(actualEndPct - actualStartPct, 2) : 0;
+
           return (
             <div key={`bar-${task.id}`} className="relative" data-testid={`task-bar-${task.id}`}>
-              <div className="flex items-center gap-3 mb-1">
+              <div className="flex items-center gap-3 mb-1 flex-wrap">
                 <span className="text-xs font-semibold truncate max-w-[200px]">{task.title}</span>
                 <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                  {task.startDate} — {task.endDate}
+                  Planned: {task.startDate} — {task.endDate}
                 </span>
+                {hasActual && (
+                  <span className="text-[10px] whitespace-nowrap" style={{ color: barColor }}>
+                    Actual: {task.actualStartDate} — {task.actualEndDate}
+                  </span>
+                )}
               </div>
               <div className="relative h-7 rounded-md bg-muted/40">
                 {milestones.map((m) => {
@@ -231,33 +269,81 @@ function TaskBarsSection({
                   style={{
                     left: `${startPct}%`,
                     width: `${barWidth}%`,
-                    backgroundColor: `${barColor}20`,
-                    border: `1.5px solid ${barColor}60`,
+                    backgroundColor: `${barColor}10`,
+                    border: `1.5px dashed ${barColor}40`,
                   }}
+                  data-testid={`task-planned-bar-${task.id}`}
                 >
                   <div
-                    className="absolute left-0 top-0 bottom-0 rounded-l-md transition-all"
-                    style={{
-                      backgroundColor: `${barColor}40`,
-                      width: `${task.percentComplete}%`,
-                    }}
-                    data-testid={`task-fill-${task.id}`}
-                  />
-                  <div
                     className="absolute left-0 top-0 bottom-0 w-1 rounded-l-md"
-                    style={{ backgroundColor: barColor }}
+                    style={{ backgroundColor: `${barColor}60` }}
                   />
-                  <span className="text-[10px] text-muted-foreground truncate pl-2 relative z-10">
-                    {task.percentComplete > 0 ? `${task.percentComplete}%` : ""}
-                    {task.percentComplete > 0 && task.description ? " \u00B7 " : ""}
-                    {task.description || ""}
-                  </span>
+                  {!hasActual && (
+                    <>
+                      <div
+                        className="absolute left-0 top-0 bottom-0 rounded-l-md transition-all"
+                        style={{
+                          backgroundColor: `${barColor}40`,
+                          width: `${task.percentComplete}%`,
+                        }}
+                        data-testid={`task-fill-${task.id}`}
+                      />
+                      <span className="text-[10px] text-muted-foreground truncate pl-2 relative z-10">
+                        {task.percentComplete > 0 ? `${task.percentComplete}%` : ""}
+                        {task.percentComplete > 0 && task.description ? " \u00B7 " : ""}
+                        {task.description || ""}
+                      </span>
+                    </>
+                  )}
                 </div>
+                {hasActual && (
+                  <div
+                    className="absolute top-0 bottom-0 rounded-md flex items-center px-2.5 overflow-hidden"
+                    style={{
+                      left: `${actualStartPct}%`,
+                      width: `${actualBarWidth}%`,
+                      backgroundColor: `${barColor}25`,
+                      border: `1.5px solid ${barColor}70`,
+                    }}
+                    data-testid={`task-actual-bar-${task.id}`}
+                  >
+                    <div
+                      className="absolute left-0 top-0 bottom-0 rounded-l-md transition-all"
+                      style={{
+                        backgroundColor: `${barColor}40`,
+                        width: `${task.percentComplete}%`,
+                      }}
+                      data-testid={`task-fill-${task.id}`}
+                    />
+                    <div
+                      className="absolute left-0 top-0 bottom-0 w-1 rounded-l-md"
+                      style={{ backgroundColor: barColor }}
+                    />
+                    <span className="text-[10px] text-muted-foreground truncate pl-2 relative z-10">
+                      {task.percentComplete > 0 ? `${task.percentComplete}%` : ""}
+                      {task.percentComplete > 0 && task.description ? " \u00B7 " : ""}
+                      {task.description || ""}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           );
         })}
       </div>
+
+      {tasks.some((t) => t.actualStartDate || t.actualEndDate) && (
+        <div className="flex items-center gap-4 mt-4 px-1">
+          <div className="flex items-center gap-1.5">
+            <div className="w-6 h-2 rounded-sm border border-dashed" style={{ borderColor: `${timelineColor}60`, backgroundColor: `${timelineColor}10` }} />
+            <span className="text-[10px] text-muted-foreground">Planned</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-6 h-2 rounded-sm" style={{ border: `1.5px solid ${timelineColor}70`, backgroundColor: `${timelineColor}25` }} />
+            <span className="text-[10px] text-muted-foreground">Actual</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -278,10 +364,15 @@ export function TimelineViewHorizontal({ milestones, tasks, timelineColor, showT
   }
 
   const allDateNums: number[] = [];
-  sorted.forEach((m) => allDateNums.push(parseDateToNum(m.date)));
+  sorted.forEach((m) => {
+    allDateNums.push(parseDateToNum(m.date));
+    if (m.actualDate) allDateNums.push(parseDateToNum(m.actualDate));
+  });
   sortedTasks.forEach((t) => {
     allDateNums.push(parseDateToNum(t.startDate));
     allDateNums.push(parseDateToNum(t.endDate));
+    if (t.actualStartDate) allDateNums.push(parseDateToNum(t.actualStartDate));
+    if (t.actualEndDate) allDateNums.push(parseDateToNum(t.actualEndDate));
   });
   const minDate = Math.min(...allDateNums);
   const maxDate = Math.max(...allDateNums);
@@ -292,8 +383,6 @@ export function TimelineViewHorizontal({ milestones, tasks, timelineColor, showT
     return ((num - minDate) / range) * 100;
   }
 
-  const PAD = 4;
-
   return (
     <div className="relative overflow-x-auto py-8 px-4">
       <div className="min-w-[600px]">
@@ -303,6 +392,7 @@ export function TimelineViewHorizontal({ milestones, tasks, timelineColor, showT
               const left = pct(milestone.date);
               const isAbove = index % 2 === 0;
               const dotColor = milestone.color || timelineColor;
+              const hasActual = !!milestone.actualDate;
               return (
                 <div
                   key={`m-${milestone.id}`}
@@ -316,25 +406,61 @@ export function TimelineViewHorizontal({ milestones, tasks, timelineColor, showT
                         <p className="text-[10px] font-medium text-muted-foreground">
                           {milestone.date}
                         </p>
+                        {hasActual && (
+                          <p className="text-[10px] font-medium" style={{ color: dotColor }}>
+                            Actual: {milestone.actualDate}
+                          </p>
+                        )}
                         <h3 className="font-semibold text-xs">{milestone.title}</h3>
                       </div>
-                      <div
-                        className="w-3 h-3 rounded-full ring-4 ring-background z-10 shrink-0"
-                        style={{ backgroundColor: dotColor }}
-                      />
+                      {hasActual ? (
+                        <div className="relative">
+                          <div
+                            className="w-3 h-3 rounded-full ring-4 ring-background z-10 border-2"
+                            style={{ borderColor: dotColor, backgroundColor: "transparent" }}
+                          />
+                          <div
+                            className="absolute inset-0 m-auto w-2 h-2 rounded-full z-20"
+                            style={{ backgroundColor: dotColor }}
+                          />
+                        </div>
+                      ) : (
+                        <div
+                          className="w-3 h-3 rounded-full ring-4 ring-background z-10 shrink-0"
+                          style={{ backgroundColor: dotColor }}
+                        />
+                      )}
                       <div className="flex-1" />
                     </div>
                   ) : (
                     <div className="flex flex-col items-center h-full justify-center">
                       <div className="flex-1" />
-                      <div
-                        className="w-3 h-3 rounded-full ring-4 ring-background z-10 shrink-0"
-                        style={{ backgroundColor: dotColor }}
-                      />
+                      {hasActual ? (
+                        <div className="relative">
+                          <div
+                            className="w-3 h-3 rounded-full ring-4 ring-background z-10 border-2"
+                            style={{ borderColor: dotColor, backgroundColor: "transparent" }}
+                          />
+                          <div
+                            className="absolute inset-0 m-auto w-2 h-2 rounded-full z-20"
+                            style={{ backgroundColor: dotColor }}
+                          />
+                        </div>
+                      ) : (
+                        <div
+                          className="w-3 h-3 rounded-full ring-4 ring-background z-10 shrink-0"
+                          style={{ backgroundColor: dotColor }}
+                        />
+                      )}
                       <div className="text-center max-w-[140px] mt-2">
                         <p className="text-[10px] font-medium text-muted-foreground">
                           {milestone.date}
                         </p>
+                        {hasActual && (
+                          <p className="text-[10px] font-medium" style={{ color: dotColor }}>
+                            Actual: {milestone.actualDate}
+                          </p>
+                        )}
                         <h3 className="font-semibold text-xs">{milestone.title}</h3>
                       </div>
                     </div>
@@ -361,13 +487,23 @@ export function TimelineViewHorizontal({ milestones, tasks, timelineColor, showT
                 const endPct = pct(task.endDate);
                 const barWidth = Math.max(endPct - startPct, 2);
 
+                const hasActual = !!(task.actualStartDate && task.actualEndDate);
+                const actualStartPct = task.actualStartDate ? pct(task.actualStartDate) : 0;
+                const actualEndPct = task.actualEndDate ? pct(task.actualEndDate) : 0;
+                const actualBarWidth = hasActual ? Math.max(actualEndPct - actualStartPct, 2) : 0;
+
                 return (
                   <div key={`bar-${task.id}`} data-testid={`task-bar-h-${task.id}`}>
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <span className="text-xs font-semibold truncate max-w-[200px]">{task.title}</span>
                       <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                        {task.startDate} — {task.endDate}
+                        Planned: {task.startDate} — {task.endDate}
                       </span>
+                      {hasActual && (
+                        <span className="text-[10px] whitespace-nowrap" style={{ color: barColor }}>
+                          Actual: {task.actualStartDate} — {task.actualEndDate}
+                        </span>
+                      )}
                     </div>
                     <div className="relative h-6 rounded-md bg-muted/40">
                       {sorted.map((m) => {
@@ -388,31 +524,77 @@ export function TimelineViewHorizontal({ milestones, tasks, timelineColor, showT
                         style={{
                           left: `${startPct}%`,
                           width: `${barWidth}%`,
-                          backgroundColor: `${barColor}20`,
-                          border: `1.5px solid ${barColor}60`,
+                          backgroundColor: `${barColor}10`,
+                          border: `1.5px dashed ${barColor}40`,
                         }}
+                        data-testid={`task-planned-bar-h-${task.id}`}
                       >
                         <div
-                          className="absolute left-0 top-0 bottom-0 rounded-l-md transition-all"
-                          style={{
-                            backgroundColor: `${barColor}40`,
-                            width: `${task.percentComplete}%`,
-                          }}
-                          data-testid={`task-fill-h-${task.id}`}
-                        />
-                        <div
                           className="absolute left-0 top-0 bottom-0 w-1 rounded-l-md"
-                          style={{ backgroundColor: barColor }}
+                          style={{ backgroundColor: `${barColor}60` }}
                         />
-                        <span className="text-[10px] text-muted-foreground truncate pl-2 relative z-10">
-                          {task.percentComplete > 0 ? `${task.percentComplete}%` : ""}
-                        </span>
+                        {!hasActual && (
+                          <>
+                            <div
+                              className="absolute left-0 top-0 bottom-0 rounded-l-md transition-all"
+                              style={{
+                                backgroundColor: `${barColor}40`,
+                                width: `${task.percentComplete}%`,
+                              }}
+                              data-testid={`task-fill-h-${task.id}`}
+                            />
+                            <span className="text-[10px] text-muted-foreground truncate pl-2 relative z-10">
+                              {task.percentComplete > 0 ? `${task.percentComplete}%` : ""}
+                            </span>
+                          </>
+                        )}
                       </div>
+                      {hasActual && (
+                        <div
+                          className="absolute top-0 bottom-0 rounded-md flex items-center px-2 overflow-hidden"
+                          style={{
+                            left: `${actualStartPct}%`,
+                            width: `${actualBarWidth}%`,
+                            backgroundColor: `${barColor}25`,
+                            border: `1.5px solid ${barColor}70`,
+                          }}
+                          data-testid={`task-actual-bar-h-${task.id}`}
+                        >
+                          <div
+                            className="absolute left-0 top-0 bottom-0 rounded-l-md transition-all"
+                            style={{
+                              backgroundColor: `${barColor}40`,
+                              width: `${task.percentComplete}%`,
+                            }}
+                            data-testid={`task-fill-h-${task.id}`}
+                          />
+                          <div
+                            className="absolute left-0 top-0 bottom-0 w-1 rounded-l-md"
+                            style={{ backgroundColor: barColor }}
+                          />
+                          <span className="text-[10px] text-muted-foreground truncate pl-2 relative z-10">
+                            {task.percentComplete > 0 ? `${task.percentComplete}%` : ""}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
               })}
             </div>
+
+            {sortedTasks.some((t) => t.actualStartDate || t.actualEndDate) && (
+              <div className="flex items-center gap-4 mt-4">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-6 h-2 rounded-sm border border-dashed" style={{ borderColor: `${timelineColor}60`, backgroundColor: `${timelineColor}10` }} />
+                  <span className="text-[10px] text-muted-foreground">Planned</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-6 h-2 rounded-sm" style={{ border: `1.5px solid ${timelineColor}70`, backgroundColor: `${timelineColor}25` }} />
+                  <span className="text-[10px] text-muted-foreground">Actual</span>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

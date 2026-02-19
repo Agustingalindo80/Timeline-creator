@@ -40,12 +40,16 @@ A visual timeline creation tool that supports two input methods:
 
 ## Database
 - timelines: id, title, description, color
-- milestones: id, timelineId, title, description, date, color, icon, sortOrder
-- tasks: id, timelineId, title, description, startDate, endDate, color, sortOrder
+- milestones: id, timelineId, title, description, date, actualDate, color, icon, sortOrder
+- tasks: id, timelineId, title, description, startDate, endDate, actualStartDate, actualEndDate, percentComplete, color, sortOrder
 
 ## Features
 - Milestones: point-in-time events shown as dots on the timeline
-- Tasks: duration-based items shown as solid bars on the timeline
+- Tasks: duration-based items shown as horizontal bars in Gantt section below milestones
+- Planned vs Actual: milestones have optional actualDate; tasks have optional actualStartDate/actualEndDate
+  - Visual: planned bars shown as dashed outline, actual bars as solid; milestones show ring (planned) + filled dot (actual)
+  - Legend shown when any actual dates are present
+- Progress tracking: tasks have percentComplete (0-100) shown as fill on bars
 - Filter toggle: "All" shows milestones + tasks, "Milestones Only" hides tasks for clean roadmap exports
 - Export: PNG and PDF downloads via html2canvas + jspdf
 - Themes: 12 named color themes for timelines
