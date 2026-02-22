@@ -323,7 +323,7 @@ export default function Admin() {
   return (
     <div className="min-h-screen bg-background">
       <Helmet>
-        <title>Admin Console | Timeline Studio</title>
+        <title>Admin Console | Project High Level Planning</title>
       </Helmet>
       <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-3">
@@ -368,7 +368,7 @@ export default function Admin() {
                   <div>
                     <h3 className="text-sm font-medium" data-testid="text-risk-register-label">Risk Register</h3>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Enable the risk register feature on all timelines. When enabled, each timeline will have a Risk Register tab for tracking project risks, their probability, impact, and mitigation strategies.
+                      Enable the risk register feature on all projects. When enabled, each project will have a Risk Register tab for tracking project risks, their probability, impact, and mitigation strategies.
                     </p>
                   </div>
                   <Switch

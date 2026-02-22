@@ -72,17 +72,17 @@ export default function Home() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/timelines"] });
-      toast({ title: "Timeline deleted" });
+      toast({ title: "Project deleted" });
     },
   });
 
   return (
     <div className="min-h-screen bg-background">
       <Helmet>
-        <title>Timeline Studio - Create Beautiful Timelines</title>
-        <meta name="description" content="Create visually appealing timelines from Excel spreadsheets or by manually adding milestones and stages." />
-        <meta property="og:title" content="Timeline Studio" />
-        <meta property="og:description" content="Create beautiful timelines from spreadsheets or manual input." />
+        <title>Project High Level Planning</title>
+        <meta name="description" content="Create visually appealing projects from Excel spreadsheets or by manually adding milestones and stages." />
+        <meta property="og:title" content="Project High Level Planning" />
+        <meta property="og:description" content="Create beautiful projects from spreadsheets or manual input." />
       </Helmet>
       <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
@@ -90,7 +90,7 @@ export default function Home() {
             <div className="w-9 h-9 rounded-md bg-primary flex items-center justify-center">
               <Clock className="w-5 h-5 text-primary-foreground" />
             </div>
-            <h1 className="text-xl font-semibold tracking-tight">Timeline Studio</h1>
+            <h1 className="text-xl font-semibold tracking-tight">Project High Level Planning</h1>
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -111,7 +111,7 @@ export default function Home() {
             </Button>
             <Button onClick={() => navigate("/create")} data-testid="button-create-timeline">
               <Plus className="w-4 h-4 mr-2" />
-              New Timeline
+              New Project
             </Button>
           </div>
         </div>
@@ -133,9 +133,9 @@ export default function Home() {
             <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-6">
               <Clock className="w-8 h-8 text-muted-foreground" />
             </div>
-            <h2 className="text-xl font-semibold mb-2">No timelines yet</h2>
+            <h2 className="text-xl font-semibold mb-2">No projects yet</h2>
             <p className="text-muted-foreground mb-6 max-w-md">
-              Create your first timeline by adding milestones manually or importing from an Excel spreadsheet.
+              Create your first project by adding milestones manually or importing from an Excel spreadsheet.
             </p>
             <div className="flex gap-3">
               <Button
@@ -202,7 +202,7 @@ export default function Home() {
                     );
                   })()}
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <span>View timeline</span>
+                    <span>View project</span>
                     <ArrowRight className="w-3 h-3" />
                   </div>
                 </Link>
@@ -220,7 +220,7 @@ export default function Home() {
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Delete timeline?</AlertDialogTitle>
+                      <AlertDialogTitle>Delete project?</AlertDialogTitle>
                       <AlertDialogDescription>
                         This will permanently delete "{timeline.title}" and all its milestones.
                       </AlertDialogDescription>

@@ -174,12 +174,12 @@ export default function CreateTimeline() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/timelines"] });
-      toast({ title: "Timeline created" });
+      toast({ title: "Project created" });
       navigate(`/timeline/${data.id}`);
     },
     onError: (err: any) => {
       toast({
-        title: "Error creating timeline",
+        title: "Error creating project",
         description: err.message,
         variant: "destructive",
       });
@@ -199,6 +199,7 @@ export default function CreateTimeline() {
       title: m.title,
       description: m.description || null,
       date: m.date,
+      actualDate: null,
       color: m.color || null,
       icon: null,
       sortOrder: i,
@@ -207,8 +208,8 @@ export default function CreateTimeline() {
   return (
     <div className="min-h-screen bg-background">
       <Helmet>
-        <title>Create Timeline | Timeline Studio</title>
-        <meta name="description" content="Create a new timeline by adding milestones manually or importing from an Excel spreadsheet." />
+        <title>Create Project | Project High Level Planning</title>
+        <meta name="description" content="Create a new project by adding milestones manually or importing from an Excel spreadsheet." />
       </Helmet>
       <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
@@ -221,14 +222,14 @@ export default function CreateTimeline() {
             >
               <ArrowLeft className="w-4 h-4" />
             </Button>
-            <h1 className="text-lg font-semibold">Create Timeline</h1>
+            <h1 className="text-lg font-semibold">Create Project</h1>
           </div>
           <Button
             onClick={() => createMutation.mutate()}
             disabled={!canSubmit || createMutation.isPending}
             data-testid="button-save-timeline"
           >
-            {createMutation.isPending ? "Saving..." : "Save Timeline"}
+            {createMutation.isPending ? "Saving..." : "Save Project"}
           </Button>
         </div>
       </header>
@@ -240,7 +241,7 @@ export default function CreateTimeline() {
             {/* Timeline info */}
             <Card className="p-5 space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="title">Timeline Title</Label>
+                <Label htmlFor="title">Project Title</Label>
                 <Input
                   id="title"
                   placeholder="e.g. Product Launch Roadmap"
@@ -253,7 +254,7 @@ export default function CreateTimeline() {
                 <Label htmlFor="description">Description (optional)</Label>
                 <Textarea
                   id="description"
-                  placeholder="Brief description of this timeline..."
+                  placeholder="Brief description of this project..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   className="resize-none"
@@ -412,6 +413,7 @@ export default function CreateTimeline() {
                 {previewMilestones.length > 0 ? (
                   <TimelineView
                     milestones={previewMilestones}
+                    tasks={[]}
                     timelineColor={color}
                   />
                 ) : (

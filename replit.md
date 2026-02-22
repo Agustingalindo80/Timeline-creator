@@ -1,7 +1,7 @@
-# Timeline Studio
+# Project High Level Planning
 
 ## Overview
-A visual timeline creation tool that supports two input methods:
+A visual project planning tool that supports two input methods:
 1. **Manual creation** - Add stages/milestones one by one with title, date, and description
 2. **Excel import** - Upload .xlsx, .xls, or .csv files to bulk-import milestones
 

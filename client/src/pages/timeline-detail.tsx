@@ -94,7 +94,7 @@ export default function TimelineDetail() {
       queryClient.invalidateQueries({ queryKey: ["/api/timelines", id] });
       queryClient.invalidateQueries({ queryKey: ["/api/timelines"] });
       setEditing(false);
-      toast({ title: "Timeline updated" });
+      toast({ title: "Project updated" });
     },
   });
 
@@ -440,7 +440,7 @@ export default function TimelineDetail() {
 
         if (format === "png") {
           const link = document.createElement("a");
-          link.download = `${timeline.title.replace(/[^a-zA-Z0-9]/g, "_")}_timeline.png`;
+          link.download = `${timeline.title.replace(/[^a-zA-Z0-9]/g, "_")}_project.png`;
           link.href = canvas.toDataURL("image/png");
           link.click();
           toast({ title: "PNG downloaded" });
@@ -456,7 +456,7 @@ export default function TimelineDetail() {
             format: [imgWidth, imgHeight],
           });
           pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
-          pdf.save(`${timeline.title.replace(/[^a-zA-Z0-9]/g, "_")}_timeline.pdf`);
+          pdf.save(`${timeline.title.replace(/[^a-zA-Z0-9]/g, "_")}_project.pdf`);
           toast({ title: "PDF downloaded" });
         }
       } catch (err: any) {
@@ -492,7 +492,7 @@ export default function TimelineDetail() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-lg font-semibold mb-2">Timeline not found</h2>
+          <h2 className="text-lg font-semibold mb-2">Project not found</h2>
           <Button variant="outline" onClick={() => navigate("/")}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Home
@@ -729,7 +729,7 @@ export default function TimelineDetail() {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Delete task?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will permanently remove "{t.title}" from this timeline.
+                    This will permanently remove "{t.title}" from this project.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -752,9 +752,9 @@ export default function TimelineDetail() {
   return (
     <div className="min-h-screen bg-background">
       <Helmet>
-        <title>{timeline.title} | Timeline Studio</title>
-        <meta name="description" content={timeline.description || `View the ${timeline.title} timeline with ${timeline.milestones.length} milestones.`} />
-        <meta property="og:title" content={`${timeline.title} | Timeline Studio`} />
+        <title>{timeline.title} | Project High Level Planning</title>
+        <meta name="description" content={timeline.description || `View the ${timeline.title} project with ${timeline.milestones.length} milestones.`} />
+        <meta property="og:title" content={`${timeline.title} | Project High Level Planning`} />
       </Helmet>
       <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4 flex-wrap">

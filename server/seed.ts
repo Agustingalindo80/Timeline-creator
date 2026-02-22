@@ -44,7 +44,7 @@ export async function seedDatabase() {
 
   const t3 = await storage.createTimeline({
     title: "Wedding Planning",
-    description: "Checklist and timeline for the big day",
+    description: "Checklist and plan for the big day",
     color: "#db2777",
   });
 
