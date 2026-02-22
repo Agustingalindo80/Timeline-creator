@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -494,6 +495,249 @@ export default function TimelineDetail() {
 
   const showTasks = filterMode === "all";
 
+  const renderTaskCard = (t: typeof timeline.tasks[number], tl: typeof timeline) => (
+    <Card
+      key={t.id}
+      className="p-3"
+      data-testid={`manage-task-${t.id}`}
+    >
+      {editingTaskId === t.id ? (
+        <div className="space-y-2">
+          <div className="flex gap-2 flex-wrap">
+            <div className="flex-1 min-w-[140px]">
+              <Input
+                value={editTTitle}
+                onChange={(e) => setEditTTitle(e.target.value)}
+                placeholder="Title"
+                data-testid={`input-edit-task-title-${t.id}`}
+              />
+            </div>
+            <div className="w-36">
+              <Input
+                value={editTStart}
+                onChange={(e) => setEditTStart(e.target.value)}
+                placeholder="Planned start"
+                data-testid={`input-edit-task-start-${t.id}`}
+              />
+            </div>
+            <div className="w-36">
+              <Input
+                value={editTEnd}
+                onChange={(e) => setEditTEnd(e.target.value)}
+                placeholder="Planned end"
+                data-testid={`input-edit-task-end-${t.id}`}
+              />
+            </div>
+            <div className="w-36">
+              <Input
+                value={editTActualStart}
+                onChange={(e) => setEditTActualStart(e.target.value)}
+                placeholder="Actual start"
+                data-testid={`input-edit-task-actual-start-${t.id}`}
+              />
+            </div>
+            <div className="w-36">
+              <Input
+                value={editTActualEnd}
+                onChange={(e) => setEditTActualEnd(e.target.value)}
+                placeholder="Actual end"
+                data-testid={`input-edit-task-actual-end-${t.id}`}
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex-1 min-w-[140px]">
+              <Input
+                value={editTDesc}
+                onChange={(e) => setEditTDesc(e.target.value)}
+                placeholder="Description (optional)"
+                data-testid={`input-edit-task-desc-${t.id}`}
+              />
+            </div>
+            <div className="flex items-center gap-2 w-44">
+              <span className="text-xs text-muted-foreground whitespace-nowrap">% Done</span>
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                value={editTPercent}
+                onChange={(e) => setEditTPercent(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
+                className="w-20"
+                data-testid={`input-edit-task-percent-${t.id}`}
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="w-36">
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Status</label>
+              <select
+                value={editTStatus}
+                onChange={(e) => setEditTStatus(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                data-testid={`select-edit-task-status-${t.id}`}
+              >
+                <option value="not_started">Not Started</option>
+                <option value="in_progress">In Progress</option>
+                <option value="complete">Complete</option>
+              </select>
+            </div>
+            <div className="w-32">
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Health</label>
+              <select
+                value={editTHealth}
+                onChange={(e) => setEditTHealth(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                data-testid={`select-edit-task-health-${t.id}`}
+              >
+                <option value="green">Green</option>
+                <option value="amber">Amber</option>
+                <option value="red">Red</option>
+              </select>
+            </div>
+            <div className="w-36">
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Type</label>
+              <select
+                value={editTItemType}
+                onChange={(e) => {
+                  setEditTItemType(e.target.value);
+                  if (e.target.value === "phase") setEditTParentId("");
+                }}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                data-testid={`select-edit-task-type-${t.id}`}
+              >
+                <option value="workstream">Workstream</option>
+                <option value="phase">Phase</option>
+              </select>
+            </div>
+            {editTItemType === "workstream" && tl.tasks.filter((pt) => pt.itemType === "phase" && pt.id !== t.id).length > 0 && (
+              <div className="w-44">
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Parent Phase</label>
+                <select
+                  value={editTParentId}
+                  onChange={(e) => setEditTParentId(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  data-testid={`select-edit-task-parent-phase-${t.id}`}
+                >
+                  <option value="">None</option>
+                  {tl.tasks
+                    .filter((pt) => pt.itemType === "phase" && pt.id !== t.id)
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>{p.title}</option>
+                    ))}
+                </select>
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-2 justify-end">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={cancelTaskEdit}
+              data-testid={`button-cancel-edit-task-${t.id}`}
+            >
+              <X className="w-3.5 h-3.5 mr-1" />
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={saveTaskEdit}
+              disabled={!editTTitle.trim() || !editTStart.trim() || !editTEnd.trim() || updateTaskMutation.isPending}
+              data-testid={`button-save-edit-task-${t.id}`}
+            >
+              <Check className="w-3.5 h-3.5 mr-1" />
+              {updateTaskMutation.isPending ? "Saving..." : "Save"}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div
+              className="w-4 h-1.5 rounded-sm shrink-0"
+              style={{ backgroundColor: t.color || tl.color }}
+            />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="text-sm font-medium truncate" data-testid={`text-task-title-${t.id}`}>{t.title}</p>
+                <span className="text-xs text-muted-foreground" data-testid={`text-task-percent-${t.id}`}>{t.percentComplete}%</span>
+                {t.status === "in_progress" && <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">In Progress</Badge>}
+                {t.status === "complete" && <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">Complete</Badge>}
+                {t.status === "not_started" && <Badge variant="secondary" className="text-xs">Not Started</Badge>}
+                {t.health === "amber" && <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0" title="Amber" />}
+                {t.health === "red" && <span className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0" title="Red" />}
+                {t.health === "green" && <span className="w-2.5 h-2.5 rounded-full bg-green-500 shrink-0" title="Green" />}
+                {t.itemType === "phase" && <Badge variant="outline" className="text-xs">Phase</Badge>}
+                {t.parentTaskId && (() => {
+                  const parent = tl.tasks.find((pt) => pt.id === t.parentTaskId);
+                  return parent ? <Badge variant="outline" className="text-xs text-muted-foreground">↳ {parent.title}</Badge> : null;
+                })()}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Planned: {t.startDate} — {t.endDate}
+              </p>
+              {(t.actualStartDate || t.actualEndDate) && (
+                <p className="text-xs text-muted-foreground">
+                  Actual: {t.actualStartDate || "—"} — {t.actualEndDate || "—"}
+                </p>
+              )}
+              {t.description && (
+                <p className="text-xs text-muted-foreground truncate max-w-md">{t.description}</p>
+              )}
+              <div className="mt-1 h-1.5 rounded-full bg-muted overflow-hidden w-full max-w-xs">
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{
+                    width: `${t.percentComplete}%`,
+                    backgroundColor: t.color || tl.color,
+                  }}
+                  data-testid={`bar-task-progress-${t.id}`}
+                />
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-1">
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => startEditingTask(t)}
+              data-testid={`button-edit-task-${t.id}`}
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  data-testid={`button-delete-task-${t.id}`}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete task?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently remove "{t.title}" from this timeline.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => deleteTaskMutation.mutate(t.id)}
+                    data-testid={`button-confirm-delete-task-${t.id}`}
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+
   return (
     <div className="min-h-screen bg-background">
       <Helmet>
@@ -893,394 +1137,188 @@ export default function TimelineDetail() {
           )}
         </div>
 
-        {/* Milestone management list */}
-        {timeline.milestones.length > 0 && (
-          <div className="mt-8 space-y-2">
-            <h3 className="text-sm font-medium text-muted-foreground mb-3">
-              Manage Milestones
-            </h3>
-            {[...timeline.milestones]
-              .sort((a, b) => a.sortOrder - b.sortOrder)
-              .map((m) => (
-                <Card
-                  key={m.id}
-                  className="p-3"
-                  data-testid={`manage-milestone-${m.id}`}
-                >
-                  {editingMilestoneId === m.id ? (
-                    <div className="space-y-2">
-                      <div className="flex gap-2 flex-wrap">
-                        <div className="flex-1 min-w-[140px]">
-                          <Input
-                            value={editMTitle}
-                            onChange={(e) => setEditMTitle(e.target.value)}
-                            placeholder="Title"
-                            data-testid={`input-edit-milestone-title-${m.id}`}
-                          />
-                        </div>
-                        <div className="w-36">
-                          <Input
-                            value={editMDate}
-                            onChange={(e) => setEditMDate(e.target.value)}
-                            placeholder="Planned date"
-                            data-testid={`input-edit-milestone-date-${m.id}`}
-                          />
-                        </div>
-                        <div className="w-36">
-                          <Input
-                            value={editMActualDate}
-                            onChange={(e) => setEditMActualDate(e.target.value)}
-                            placeholder="Actual date"
-                            data-testid={`input-edit-milestone-actual-date-${m.id}`}
-                          />
-                        </div>
-                      </div>
-                      <Input
-                        value={editMDesc}
-                        onChange={(e) => setEditMDesc(e.target.value)}
-                        placeholder="Description (optional)"
-                        data-testid={`input-edit-milestone-desc-${m.id}`}
-                      />
-                      <div className="flex items-center gap-2 justify-end">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={cancelMilestoneEdit}
-                          data-testid={`button-cancel-edit-milestone-${m.id}`}
-                        >
-                          <X className="w-3.5 h-3.5 mr-1" />
-                          Cancel
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={saveMilestoneEdit}
-                          disabled={!editMTitle.trim() || !editMDate.trim() || updateMilestoneMutation.isPending}
-                          data-testid={`button-save-edit-milestone-${m.id}`}
-                        >
-                          <Check className="w-3.5 h-3.5 mr-1" />
-                          {updateMilestoneMutation.isPending ? "Saving..." : "Save"}
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div
-                          className="w-2 h-2 rounded-full shrink-0"
-                          style={{ backgroundColor: m.color || timeline.color }}
-                        />
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium truncate" data-testid={`text-milestone-title-${m.id}`}>{m.title}</p>
-                          <p className="text-xs text-muted-foreground">
-                            Planned: {m.date}
-                            {m.actualDate && <span className="ml-2">Actual: {m.actualDate}</span>}
-                          </p>
-                          {m.description && (
-                            <p className="text-xs text-muted-foreground truncate max-w-md">{m.description}</p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => startEditingMilestone(m)}
-                          data-testid={`button-edit-milestone-${m.id}`}
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              data-testid={`button-delete-milestone-${m.id}`}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete milestone?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This will permanently remove "{m.title}" from this timeline.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => deleteMilestoneMutation.mutate(m.id)}
-                                data-testid={`button-confirm-delete-milestone-${m.id}`}
-                              >
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </div>
-                  )}
-                </Card>
-              ))}
-          </div>
-        )}
+        <Tabs defaultValue="milestones" className="mt-8" data-testid="manage-tabs">
+          <TabsList className="mb-4">
+            <TabsTrigger value="milestones" data-testid="tab-milestones">
+              Milestones ({timeline.milestones.length})
+            </TabsTrigger>
+            <TabsTrigger value="phases" data-testid="tab-phases">
+              Phases ({timeline.tasks.filter((t) => t.itemType === "phase").length})
+            </TabsTrigger>
+            <TabsTrigger value="workstreams" data-testid="tab-workstreams">
+              Workstreams ({timeline.tasks.filter((t) => t.itemType === "workstream").length})
+            </TabsTrigger>
+            {settings?.riskRegisterEnabled && (
+              <TabsTrigger value="risks" data-testid="tab-risks">
+                Risks
+              </TabsTrigger>
+            )}
+          </TabsList>
 
-        {/* Task management list */}
-        {timeline.tasks.length > 0 && (
-          <div className="mt-8 space-y-2">
-            <h3 className="text-sm font-medium text-muted-foreground mb-3">
-              Manage Tasks
-            </h3>
-            {[...timeline.tasks]
-              .sort((a, b) => a.sortOrder - b.sortOrder)
-              .map((t) => (
-                <Card
-                  key={t.id}
-                  className="p-3"
-                  data-testid={`manage-task-${t.id}`}
-                >
-                  {editingTaskId === t.id ? (
-                    <div className="space-y-2">
-                      <div className="flex gap-2 flex-wrap">
-                        <div className="flex-1 min-w-[140px]">
+          <TabsContent value="milestones">
+            <div className="space-y-2">
+              {timeline.milestones.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">No milestones yet. Click "Add" to create one.</p>
+              ) : (
+                [...timeline.milestones]
+                  .sort((a, b) => a.sortOrder - b.sortOrder)
+                  .map((m) => (
+                    <Card
+                      key={m.id}
+                      className="p-3"
+                      data-testid={`manage-milestone-${m.id}`}
+                    >
+                      {editingMilestoneId === m.id ? (
+                        <div className="space-y-2">
+                          <div className="flex gap-2 flex-wrap">
+                            <div className="flex-1 min-w-[140px]">
+                              <Input
+                                value={editMTitle}
+                                onChange={(e) => setEditMTitle(e.target.value)}
+                                placeholder="Title"
+                                data-testid={`input-edit-milestone-title-${m.id}`}
+                              />
+                            </div>
+                            <div className="w-36">
+                              <Input
+                                value={editMDate}
+                                onChange={(e) => setEditMDate(e.target.value)}
+                                placeholder="Planned date"
+                                data-testid={`input-edit-milestone-date-${m.id}`}
+                              />
+                            </div>
+                            <div className="w-36">
+                              <Input
+                                value={editMActualDate}
+                                onChange={(e) => setEditMActualDate(e.target.value)}
+                                placeholder="Actual date"
+                                data-testid={`input-edit-milestone-actual-date-${m.id}`}
+                              />
+                            </div>
+                          </div>
                           <Input
-                            value={editTTitle}
-                            onChange={(e) => setEditTTitle(e.target.value)}
-                            placeholder="Title"
-                            data-testid={`input-edit-task-title-${t.id}`}
-                          />
-                        </div>
-                        <div className="w-36">
-                          <Input
-                            value={editTStart}
-                            onChange={(e) => setEditTStart(e.target.value)}
-                            placeholder="Planned start"
-                            data-testid={`input-edit-task-start-${t.id}`}
-                          />
-                        </div>
-                        <div className="w-36">
-                          <Input
-                            value={editTEnd}
-                            onChange={(e) => setEditTEnd(e.target.value)}
-                            placeholder="Planned end"
-                            data-testid={`input-edit-task-end-${t.id}`}
-                          />
-                        </div>
-                        <div className="w-36">
-                          <Input
-                            value={editTActualStart}
-                            onChange={(e) => setEditTActualStart(e.target.value)}
-                            placeholder="Actual start"
-                            data-testid={`input-edit-task-actual-start-${t.id}`}
-                          />
-                        </div>
-                        <div className="w-36">
-                          <Input
-                            value={editTActualEnd}
-                            onChange={(e) => setEditTActualEnd(e.target.value)}
-                            placeholder="Actual end"
-                            data-testid={`input-edit-task-actual-end-${t.id}`}
-                          />
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <div className="flex-1 min-w-[140px]">
-                          <Input
-                            value={editTDesc}
-                            onChange={(e) => setEditTDesc(e.target.value)}
+                            value={editMDesc}
+                            onChange={(e) => setEditMDesc(e.target.value)}
                             placeholder="Description (optional)"
-                            data-testid={`input-edit-task-desc-${t.id}`}
+                            data-testid={`input-edit-milestone-desc-${m.id}`}
                           />
-                        </div>
-                        <div className="flex items-center gap-2 w-44">
-                          <span className="text-xs text-muted-foreground whitespace-nowrap">% Done</span>
-                          <Input
-                            type="number"
-                            min={0}
-                            max={100}
-                            value={editTPercent}
-                            onChange={(e) => setEditTPercent(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
-                            className="w-20"
-                            data-testid={`input-edit-task-percent-${t.id}`}
-                          />
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <div className="w-36">
-                          <label className="text-xs font-medium text-muted-foreground mb-1 block">Status</label>
-                          <select
-                            value={editTStatus}
-                            onChange={(e) => setEditTStatus(e.target.value)}
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                            data-testid={`select-edit-task-status-${t.id}`}
-                          >
-                            <option value="not_started">Not Started</option>
-                            <option value="in_progress">In Progress</option>
-                            <option value="complete">Complete</option>
-                          </select>
-                        </div>
-                        <div className="w-32">
-                          <label className="text-xs font-medium text-muted-foreground mb-1 block">Health</label>
-                          <select
-                            value={editTHealth}
-                            onChange={(e) => setEditTHealth(e.target.value)}
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                            data-testid={`select-edit-task-health-${t.id}`}
-                          >
-                            <option value="green">Green</option>
-                            <option value="amber">Amber</option>
-                            <option value="red">Red</option>
-                          </select>
-                        </div>
-                        <div className="w-36">
-                          <label className="text-xs font-medium text-muted-foreground mb-1 block">Type</label>
-                          <select
-                            value={editTItemType}
-                            onChange={(e) => {
-                              setEditTItemType(e.target.value);
-                              if (e.target.value === "phase") setEditTParentId("");
-                            }}
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                            data-testid={`select-edit-task-type-${t.id}`}
-                          >
-                            <option value="workstream">Workstream</option>
-                            <option value="phase">Phase</option>
-                          </select>
-                        </div>
-                        {editTItemType === "workstream" && timeline.tasks.filter((pt) => pt.itemType === "phase" && pt.id !== t.id).length > 0 && (
-                          <div className="w-44">
-                            <label className="text-xs font-medium text-muted-foreground mb-1 block">Parent Phase</label>
-                            <select
-                              value={editTParentId}
-                              onChange={(e) => setEditTParentId(e.target.value)}
-                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                              data-testid={`select-edit-task-parent-phase-${t.id}`}
+                          <div className="flex items-center gap-2 justify-end">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={cancelMilestoneEdit}
+                              data-testid={`button-cancel-edit-milestone-${m.id}`}
                             >
-                              <option value="">None</option>
-                              {timeline.tasks
-                                .filter((pt) => pt.itemType === "phase" && pt.id !== t.id)
-                                .map((p) => (
-                                  <option key={p.id} value={p.id}>{p.title}</option>
-                                ))}
-                            </select>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 justify-end">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={cancelTaskEdit}
-                          data-testid={`button-cancel-edit-task-${t.id}`}
-                        >
-                          <X className="w-3.5 h-3.5 mr-1" />
-                          Cancel
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={saveTaskEdit}
-                          disabled={!editTTitle.trim() || !editTStart.trim() || !editTEnd.trim() || updateTaskMutation.isPending}
-                          data-testid={`button-save-edit-task-${t.id}`}
-                        >
-                          <Check className="w-3.5 h-3.5 mr-1" />
-                          {updateTaskMutation.isPending ? "Saving..." : "Save"}
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div
-                          className="w-4 h-1.5 rounded-sm shrink-0"
-                          style={{ backgroundColor: t.color || timeline.color }}
-                        />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="text-sm font-medium truncate" data-testid={`text-task-title-${t.id}`}>{t.title}</p>
-                            <span className="text-xs text-muted-foreground" data-testid={`text-task-percent-${t.id}`}>{t.percentComplete}%</span>
-                            {t.status === "in_progress" && <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">In Progress</Badge>}
-                            {t.status === "complete" && <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">Complete</Badge>}
-                            {t.status === "not_started" && <Badge variant="secondary" className="text-xs">Not Started</Badge>}
-                            {t.health === "amber" && <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0" title="Amber" />}
-                            {t.health === "red" && <span className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0" title="Red" />}
-                            {t.health === "green" && <span className="w-2.5 h-2.5 rounded-full bg-green-500 shrink-0" title="Green" />}
-                            {t.itemType === "phase" && <Badge variant="outline" className="text-xs">Phase</Badge>}
-                            {t.parentTaskId && (() => {
-                              const parent = timeline.tasks.find((pt) => pt.id === t.parentTaskId);
-                              return parent ? <Badge variant="outline" className="text-xs text-muted-foreground">↳ {parent.title}</Badge> : null;
-                            })()}
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            Planned: {t.startDate} — {t.endDate}
-                          </p>
-                          {(t.actualStartDate || t.actualEndDate) && (
-                            <p className="text-xs text-muted-foreground">
-                              Actual: {t.actualStartDate || "—"} — {t.actualEndDate || "—"}
-                            </p>
-                          )}
-                          {t.description && (
-                            <p className="text-xs text-muted-foreground truncate max-w-md">{t.description}</p>
-                          )}
-                          <div className="mt-1 h-1.5 rounded-full bg-muted overflow-hidden w-full max-w-xs">
-                            <div
-                              className="h-full rounded-full transition-all"
-                              style={{
-                                width: `${t.percentComplete}%`,
-                                backgroundColor: t.color || timeline.color,
-                              }}
-                              data-testid={`bar-task-progress-${t.id}`}
-                            />
+                              <X className="w-3.5 h-3.5 mr-1" />
+                              Cancel
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={saveMilestoneEdit}
+                              disabled={!editMTitle.trim() || !editMDate.trim() || updateMilestoneMutation.isPending}
+                              data-testid={`button-save-edit-milestone-${m.id}`}
+                            >
+                              <Check className="w-3.5 h-3.5 mr-1" />
+                              {updateMilestoneMutation.isPending ? "Saving..." : "Save"}
+                            </Button>
                           </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => startEditingTask(t)}
-                          data-testid={`button-edit-task-${t.id}`}
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
+                      ) : (
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div
+                              className="w-2 h-2 rounded-full shrink-0"
+                              style={{ backgroundColor: m.color || timeline.color }}
+                            />
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium truncate" data-testid={`text-milestone-title-${m.id}`}>{m.title}</p>
+                              <p className="text-xs text-muted-foreground">
+                                Planned: {m.date}
+                                {m.actualDate && <span className="ml-2">Actual: {m.actualDate}</span>}
+                              </p>
+                              {m.description && (
+                                <p className="text-xs text-muted-foreground truncate max-w-md">{m.description}</p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
                             <Button
                               size="icon"
                               variant="ghost"
-                              data-testid={`button-delete-task-${t.id}`}
+                              onClick={() => startEditingMilestone(m)}
+                              data-testid={`button-edit-milestone-${m.id}`}
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
+                              <Edit3 className="w-3.5 h-3.5" />
                             </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete task?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This will permanently remove "{t.title}" from this timeline.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => deleteTaskMutation.mutate(t.id)}
-                                data-testid={`button-confirm-delete-task-${t.id}`}
-                              >
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </div>
-                  )}
-                </Card>
-              ))}
-          </div>
-        )}
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  data-testid={`button-delete-milestone-${m.id}`}
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete milestone?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This will permanently remove "{m.title}" from this timeline.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => deleteMilestoneMutation.mutate(m.id)}
+                                    data-testid={`button-confirm-delete-milestone-${m.id}`}
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </div>
+                      )}
+                    </Card>
+                  ))
+              )}
+            </div>
+          </TabsContent>
 
-        {settings?.riskRegisterEnabled && (
-          <RiskRegister timelineId={timeline.id} />
-        )}
+          <TabsContent value="phases">
+            <div className="space-y-2">
+              {timeline.tasks.filter((t) => t.itemType === "phase").length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">No phases yet. Click "Add" &rarr; "Add Task" and set type to Phase.</p>
+              ) : (
+                [...timeline.tasks]
+                  .filter((t) => t.itemType === "phase")
+                  .sort((a, b) => a.sortOrder - b.sortOrder)
+                  .map((t) => renderTaskCard(t, timeline))
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="workstreams">
+            <div className="space-y-2">
+              {timeline.tasks.filter((t) => t.itemType === "workstream").length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">No workstreams yet. Click "Add" &rarr; "Add Task" to create one.</p>
+              ) : (
+                [...timeline.tasks]
+                  .filter((t) => t.itemType === "workstream")
+                  .sort((a, b) => a.sortOrder - b.sortOrder)
+                  .map((t) => renderTaskCard(t, timeline))
+              )}
+            </div>
+          </TabsContent>
+
+          {settings?.riskRegisterEnabled && (
+            <TabsContent value="risks">
+              <RiskRegister timelineId={timeline.id} />
+            </TabsContent>
+          )}
+        </Tabs>
       </main>
     </div>
   );
