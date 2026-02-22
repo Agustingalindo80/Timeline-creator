@@ -230,64 +230,112 @@ function TaskBarsSection({
         </div>
       </div>
 
-      <div className="space-y-2.5 mx-2">
-        {tasks.map((task) => {
-          const barColor = task.color || timelineColor;
-          const startPct = pct(task.startDate);
-          const endPct = pct(task.endDate);
-          const barWidth = Math.max(endPct - startPct, 2);
+      <div className="space-y-1 mx-2">
+        {(() => {
+          const phases = tasks.filter((t) => t.itemType === "phase");
+          const childWorkstreams = tasks.filter((t) => t.itemType === "workstream" && t.parentTaskId);
+          const orphanWorkstreams = tasks.filter((t) => t.itemType === "workstream" && !t.parentTaskId);
+          const orderedTasks: { task: Task; isChild: boolean }[] = [];
+          phases.forEach((phase) => {
+            orderedTasks.push({ task: phase, isChild: false });
+            childWorkstreams
+              .filter((ws) => ws.parentTaskId === phase.id)
+              .sort((a, b) => a.sortOrder - b.sortOrder)
+              .forEach((ws) => orderedTasks.push({ task: ws, isChild: true }));
+          });
+          orphanWorkstreams.sort((a, b) => a.sortOrder - b.sortOrder).forEach((ws) => orderedTasks.push({ task: ws, isChild: false }));
 
-          const hasActual = !!(task.actualStartDate && task.actualEndDate);
-          const actualStartPct = task.actualStartDate ? pct(task.actualStartDate) : 0;
-          const actualEndPct = task.actualEndDate ? pct(task.actualEndDate) : 0;
-          const actualBarWidth = hasActual ? Math.max(actualEndPct - actualStartPct, 2) : 0;
+          return orderedTasks.map(({ task, isChild }) => {
+            const barColor = task.color || timelineColor;
+            const startPct = pct(task.startDate);
+            const endPct = pct(task.endDate);
+            const barWidth = Math.max(endPct - startPct, 2);
+            const isPhase = task.itemType === "phase";
 
-          return (
-            <div key={`bar-${task.id}`} className="relative" data-testid={`task-bar-${task.id}`}>
-              <div className="flex items-center gap-3 mb-1 flex-wrap">
-                <span className="text-xs font-semibold truncate max-w-[200px]">{task.title}</span>
-                <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                  Planned: {task.startDate} — {task.endDate}
-                </span>
-                {hasActual && (
-                  <span className="text-[10px] whitespace-nowrap" style={{ color: barColor }}>
-                    Actual: {task.actualStartDate} — {task.actualEndDate}
+            const hasActual = !!(task.actualStartDate && task.actualEndDate);
+            const actualStartPct = task.actualStartDate ? pct(task.actualStartDate) : 0;
+            const actualEndPct = task.actualEndDate ? pct(task.actualEndDate) : 0;
+            const actualBarWidth = hasActual ? Math.max(actualEndPct - actualStartPct, 2) : 0;
+
+            return (
+              <div
+                key={`bar-${task.id}`}
+                className={cn("relative", isChild && "ml-6")}
+                data-testid={`task-bar-${task.id}`}
+              >
+                <div className="flex items-center gap-3 mb-1 flex-wrap">
+                  {isChild && <span className="text-[10px] text-muted-foreground">↳</span>}
+                  <span className={cn("text-xs truncate max-w-[200px]", isPhase ? "font-bold uppercase tracking-wide" : "font-semibold")}>{task.title}</span>
+                  {isPhase && <span className="text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">Phase</span>}
+                  <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                    Planned: {task.startDate} — {task.endDate}
                   </span>
-                )}
-              </div>
-              <div className="relative h-7 rounded-md bg-muted/40">
-                {milestones.map((m) => {
-                  const mPct = pct(m.date);
-                  if (mPct >= startPct && mPct <= startPct + barWidth) {
-                    return (
-                      <div
-                        key={`guide-${m.id}`}
-                        className="absolute top-0 bottom-0 w-px z-10"
-                        style={{
-                          left: `${mPct}%`,
-                          backgroundColor: `${m.color || timelineColor}50`,
-                        }}
-                      />
-                    );
-                  }
-                  return null;
-                })}
-                <div
-                  className="absolute top-0 bottom-0 rounded-md flex items-center px-2.5 overflow-hidden"
-                  style={{
-                    left: `${startPct}%`,
-                    width: `${barWidth}%`,
-                    backgroundColor: `${barColor}10`,
-                    border: `1.5px dashed ${barColor}40`,
-                  }}
-                  data-testid={`task-planned-bar-${task.id}`}
-                >
+                  {hasActual && (
+                    <span className="text-[10px] whitespace-nowrap" style={{ color: barColor }}>
+                      Actual: {task.actualStartDate} — {task.actualEndDate}
+                    </span>
+                  )}
+                </div>
+                <div className={cn("relative rounded-md bg-muted/40", isPhase ? "h-5" : "h-7")}>
+                  {milestones.map((m) => {
+                    const mPct = pct(m.date);
+                    if (mPct >= startPct && mPct <= startPct + barWidth) {
+                      return (
+                        <div
+                          key={`guide-${m.id}`}
+                          className="absolute top-0 bottom-0 w-px z-10"
+                          style={{
+                            left: `${mPct}%`,
+                            backgroundColor: `${m.color || timelineColor}50`,
+                          }}
+                        />
+                      );
+                    }
+                    return null;
+                  })}
                   <div
-                    className="absolute left-0 top-0 bottom-0 w-1 rounded-l-md"
-                    style={{ backgroundColor: `${barColor}60` }}
-                  />
-                  {!hasActual && (
-                    <>
+                    className={cn("absolute top-0 bottom-0 rounded-md flex items-center overflow-hidden", isPhase ? "px-2" : "px-2.5")}
+                    style={{
+                      left: `${startPct}%`,
+                      width: `${barWidth}%`,
+                      backgroundColor: isPhase ? `${barColor}18` : `${barColor}10`,
+                      border: isPhase ? `2px solid ${barColor}50` : `1.5px dashed ${barColor}40`,
+                    }}
+                    data-testid={`task-planned-bar-${task.id}`}
+                  >
+                    <div
+                      className="absolute left-0 top-0 bottom-0 w-1 rounded-l-md"
+                      style={{ backgroundColor: isPhase ? barColor : `${barColor}60` }}
+                    />
+                    {!hasActual && (
+                      <>
+                        <div
+                          className="absolute left-0 top-0 bottom-0 rounded-l-md transition-all"
+                          style={{
+                            backgroundColor: `${barColor}40`,
+                            width: `${task.percentComplete}%`,
+                          }}
+                          data-testid={`task-fill-${task.id}`}
+                        />
+                        <span className="text-[10px] text-muted-foreground truncate pl-2 relative z-10">
+                          {task.percentComplete > 0 ? `${task.percentComplete}%` : ""}
+                          {task.percentComplete > 0 && task.description ? " \u00B7 " : ""}
+                          {!isPhase && (task.description || "")}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                  {hasActual && (
+                    <div
+                      className={cn("absolute top-0 bottom-0 rounded-md flex items-center overflow-hidden", isPhase ? "px-2" : "px-2.5")}
+                      style={{
+                        left: `${actualStartPct}%`,
+                        width: `${actualBarWidth}%`,
+                        backgroundColor: `${barColor}25`,
+                        border: `1.5px solid ${barColor}70`,
+                      }}
+                      data-testid={`task-actual-bar-${task.id}`}
+                    >
                       <div
                         className="absolute left-0 top-0 bottom-0 rounded-l-md transition-all"
                         style={{
@@ -296,48 +344,22 @@ function TaskBarsSection({
                         }}
                         data-testid={`task-fill-${task.id}`}
                       />
+                      <div
+                        className="absolute left-0 top-0 bottom-0 w-1 rounded-l-md"
+                        style={{ backgroundColor: barColor }}
+                      />
                       <span className="text-[10px] text-muted-foreground truncate pl-2 relative z-10">
                         {task.percentComplete > 0 ? `${task.percentComplete}%` : ""}
                         {task.percentComplete > 0 && task.description ? " \u00B7 " : ""}
-                        {task.description || ""}
+                        {!isPhase && (task.description || "")}
                       </span>
-                    </>
+                    </div>
                   )}
                 </div>
-                {hasActual && (
-                  <div
-                    className="absolute top-0 bottom-0 rounded-md flex items-center px-2.5 overflow-hidden"
-                    style={{
-                      left: `${actualStartPct}%`,
-                      width: `${actualBarWidth}%`,
-                      backgroundColor: `${barColor}25`,
-                      border: `1.5px solid ${barColor}70`,
-                    }}
-                    data-testid={`task-actual-bar-${task.id}`}
-                  >
-                    <div
-                      className="absolute left-0 top-0 bottom-0 rounded-l-md transition-all"
-                      style={{
-                        backgroundColor: `${barColor}40`,
-                        width: `${task.percentComplete}%`,
-                      }}
-                      data-testid={`task-fill-${task.id}`}
-                    />
-                    <div
-                      className="absolute left-0 top-0 bottom-0 w-1 rounded-l-md"
-                      style={{ backgroundColor: barColor }}
-                    />
-                    <span className="text-[10px] text-muted-foreground truncate pl-2 relative z-10">
-                      {task.percentComplete > 0 ? `${task.percentComplete}%` : ""}
-                      {task.percentComplete > 0 && task.description ? " \u00B7 " : ""}
-                      {task.description || ""}
-                    </span>
-                  </div>
-                )}
               </div>
-            </div>
-          );
-        })}
+            );
+          });
+        })()}
       </div>
 
       {tasks.some((t) => t.actualStartDate || t.actualEndDate) && (
@@ -488,61 +510,103 @@ export function TimelineViewHorizontal({ milestones, tasks, timelineColor, showT
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
               Tasks
             </p>
-            <div className="space-y-2.5">
-              {sortedTasks.map((task) => {
-                const barColor = task.color || timelineColor;
-                const startPct = pct(task.startDate);
-                const endPct = pct(task.endDate);
-                const barWidth = Math.max(endPct - startPct, 2);
+            <div className="space-y-1">
+              {(() => {
+                const phases = sortedTasks.filter((t) => t.itemType === "phase");
+                const childWorkstreams = sortedTasks.filter((t) => t.itemType === "workstream" && t.parentTaskId);
+                const orphanWorkstreams = sortedTasks.filter((t) => t.itemType === "workstream" && !t.parentTaskId);
+                const orderedTasks: { task: Task; isChild: boolean }[] = [];
+                phases.forEach((phase) => {
+                  orderedTasks.push({ task: phase, isChild: false });
+                  childWorkstreams
+                    .filter((ws) => ws.parentTaskId === phase.id)
+                    .sort((a, b) => a.sortOrder - b.sortOrder)
+                    .forEach((ws) => orderedTasks.push({ task: ws, isChild: true }));
+                });
+                orphanWorkstreams.sort((a, b) => a.sortOrder - b.sortOrder).forEach((ws) => orderedTasks.push({ task: ws, isChild: false }));
 
-                const hasActual = !!(task.actualStartDate && task.actualEndDate);
-                const actualStartPct = task.actualStartDate ? pct(task.actualStartDate) : 0;
-                const actualEndPct = task.actualEndDate ? pct(task.actualEndDate) : 0;
-                const actualBarWidth = hasActual ? Math.max(actualEndPct - actualStartPct, 2) : 0;
+                return orderedTasks.map(({ task, isChild }) => {
+                  const barColor = task.color || timelineColor;
+                  const startPct = pct(task.startDate);
+                  const endPct = pct(task.endDate);
+                  const barWidth = Math.max(endPct - startPct, 2);
+                  const isPhase = task.itemType === "phase";
 
-                return (
-                  <div key={`bar-${task.id}`} data-testid={`task-bar-h-${task.id}`}>
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <span className="text-xs font-semibold truncate max-w-[200px]">{task.title}</span>
-                      <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                        Planned: {task.startDate} — {task.endDate}
-                      </span>
-                      {hasActual && (
-                        <span className="text-[10px] whitespace-nowrap" style={{ color: barColor }}>
-                          Actual: {task.actualStartDate} — {task.actualEndDate}
+                  const hasActual = !!(task.actualStartDate && task.actualEndDate);
+                  const actualStartPct = task.actualStartDate ? pct(task.actualStartDate) : 0;
+                  const actualEndPct = task.actualEndDate ? pct(task.actualEndDate) : 0;
+                  const actualBarWidth = hasActual ? Math.max(actualEndPct - actualStartPct, 2) : 0;
+
+                  return (
+                    <div key={`bar-${task.id}`} className={cn(isChild ? "ml-6" : "")} data-testid={`task-bar-h-${task.id}`}>
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        {isChild && <span className="text-[10px] text-muted-foreground">↳</span>}
+                        <span className={cn("text-xs truncate max-w-[200px]", isPhase ? "font-bold uppercase tracking-wide" : "font-semibold")}>{task.title}</span>
+                        {isPhase && <span className="text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">Phase</span>}
+                        <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                          Planned: {task.startDate} — {task.endDate}
                         </span>
-                      )}
-                    </div>
-                    <div className="relative h-6 rounded-md bg-muted/40">
-                      {sorted.map((m) => {
-                        const mPct = pct(m.date);
-                        return (
-                          <div
-                            key={`guide-h-${m.id}`}
-                            className="absolute top-0 bottom-0 w-px z-10"
-                            style={{
-                              left: `${mPct}%`,
-                              backgroundColor: `${m.color || timelineColor}30`,
-                            }}
-                          />
-                        );
-                      })}
-                      <div
-                        className="absolute top-0 bottom-0 rounded-md flex items-center px-2 overflow-hidden"
-                        style={{
-                          left: `${startPct}%`,
-                          width: `${barWidth}%`,
-                          backgroundColor: `${barColor}10`,
-                          border: `1.5px dashed ${barColor}40`,
-                        }}
-                        data-testid={`task-planned-bar-h-${task.id}`}
-                      >
+                        {hasActual && (
+                          <span className="text-[10px] whitespace-nowrap" style={{ color: barColor }}>
+                            Actual: {task.actualStartDate} — {task.actualEndDate}
+                          </span>
+                        )}
+                      </div>
+                      <div className={cn("relative rounded-md bg-muted/40", isPhase ? "h-4" : "h-6")}>
+                        {sorted.map((m) => {
+                          const mPct = pct(m.date);
+                          return (
+                            <div
+                              key={`guide-h-${m.id}`}
+                              className="absolute top-0 bottom-0 w-px z-10"
+                              style={{
+                                left: `${mPct}%`,
+                                backgroundColor: `${m.color || timelineColor}30`,
+                              }}
+                            />
+                          );
+                        })}
                         <div
-                          className="absolute left-0 top-0 bottom-0 w-1 rounded-l-md"
-                          style={{ backgroundColor: `${barColor}60` }}
-                        />
-                        {!hasActual && (
-                          <>
+                          className="absolute top-0 bottom-0 rounded-md flex items-center px-2 overflow-hidden"
+                          style={{
+                            left: `${startPct}%`,
+                            width: `${barWidth}%`,
+                            backgroundColor: isPhase ? `${barColor}18` : `${barColor}10`,
+                            border: isPhase ? `2px solid ${barColor}50` : `1.5px dashed ${barColor}40`,
+                          }}
+                          data-testid={`task-planned-bar-h-${task.id}`}
+                        >
+                          <div
+                            className="absolute left-0 top-0 bottom-0 w-1 rounded-l-md"
+                            style={{ backgroundColor: isPhase ? barColor : `${barColor}60` }}
+                          />
+                          {!hasActual && (
+                            <>
+                              <div
+                                className="absolute left-0 top-0 bottom-0 rounded-l-md transition-all"
+                                style={{
+                                  backgroundColor: `${barColor}40`,
+                                  width: `${task.percentComplete}%`,
+                                }}
+                                data-testid={`task-fill-h-${task.id}`}
+                              />
+                              <span className="text-[10px] text-muted-foreground truncate pl-2 relative z-10">
+                                {task.percentComplete > 0 ? `${task.percentComplete}%` : ""}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                        {hasActual && (
+                          <div
+                            className="absolute top-0 bottom-0 rounded-md flex items-center px-2 overflow-hidden"
+                            style={{
+                              left: `${actualStartPct}%`,
+                              width: `${actualBarWidth}%`,
+                              backgroundColor: `${barColor}25`,
+                              border: `1.5px solid ${barColor}70`,
+                            }}
+                            data-testid={`task-actual-bar-h-${task.id}`}
+                          >
                             <div
                               className="absolute left-0 top-0 bottom-0 rounded-l-md transition-all"
                               style={{
@@ -551,44 +615,20 @@ export function TimelineViewHorizontal({ milestones, tasks, timelineColor, showT
                               }}
                               data-testid={`task-fill-h-${task.id}`}
                             />
+                            <div
+                              className="absolute left-0 top-0 bottom-0 w-1 rounded-l-md"
+                              style={{ backgroundColor: barColor }}
+                            />
                             <span className="text-[10px] text-muted-foreground truncate pl-2 relative z-10">
                               {task.percentComplete > 0 ? `${task.percentComplete}%` : ""}
                             </span>
-                          </>
+                          </div>
                         )}
                       </div>
-                      {hasActual && (
-                        <div
-                          className="absolute top-0 bottom-0 rounded-md flex items-center px-2 overflow-hidden"
-                          style={{
-                            left: `${actualStartPct}%`,
-                            width: `${actualBarWidth}%`,
-                            backgroundColor: `${barColor}25`,
-                            border: `1.5px solid ${barColor}70`,
-                          }}
-                          data-testid={`task-actual-bar-h-${task.id}`}
-                        >
-                          <div
-                            className="absolute left-0 top-0 bottom-0 rounded-l-md transition-all"
-                            style={{
-                              backgroundColor: `${barColor}40`,
-                              width: `${task.percentComplete}%`,
-                            }}
-                            data-testid={`task-fill-h-${task.id}`}
-                          />
-                          <div
-                            className="absolute left-0 top-0 bottom-0 w-1 rounded-l-md"
-                            style={{ backgroundColor: barColor }}
-                          />
-                          <span className="text-[10px] text-muted-foreground truncate pl-2 relative z-10">
-                            {task.percentComplete > 0 ? `${task.percentComplete}%` : ""}
-                          </span>
-                        </div>
-                      )}
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                });
+              })()}
             </div>
 
             {sortedTasks.some((t) => t.actualStartDate || t.actualEndDate) && (

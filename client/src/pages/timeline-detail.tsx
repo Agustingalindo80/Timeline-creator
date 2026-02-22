@@ -132,6 +132,11 @@ export default function TimelineDetail() {
       queryClient.invalidateQueries({ queryKey: ["/api/timelines", id] });
       toast({ title: "Task added" });
     },
+    onError: (error: any) => {
+      let msg = error.message || "Failed to add task";
+      try { const parsed = JSON.parse(msg.replace(/^\d+:\s*/, "")); msg = parsed.message || msg; } catch {}
+      toast({ title: "Error", description: msg, variant: "destructive" });
+    },
   });
 
   const updateTaskMutation = useMutation({
@@ -141,6 +146,11 @@ export default function TimelineDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/timelines", id] });
       toast({ title: "Task updated" });
+    },
+    onError: (error: any) => {
+      let msg = error.message || "Failed to update task";
+      try { const parsed = JSON.parse(msg.replace(/^\d+:\s*/, "")); msg = parsed.message || msg; } catch {}
+      toast({ title: "Error", description: msg, variant: "destructive" });
     },
   });
 

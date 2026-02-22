@@ -27,6 +27,7 @@ export interface IStorage {
   createMilestone(data: InsertMilestone): Promise<Milestone>;
   updateMilestone(id: string, data: Partial<InsertMilestone>): Promise<Milestone | undefined>;
   deleteMilestone(id: string): Promise<void>;
+  getTask(id: string): Promise<Task | undefined>;
   createTask(data: InsertTask): Promise<Task>;
   updateTask(id: string, data: Partial<InsertTask>): Promise<Task | undefined>;
   deleteTask(id: string): Promise<void>;
@@ -113,6 +114,11 @@ export class DatabaseStorage implements IStorage {
 
   async deleteMilestone(id: string): Promise<void> {
     await db.delete(milestones).where(eq(milestones.id, id));
+  }
+
+  async getTask(id: string): Promise<Task | undefined> {
+    const [task] = await db.select().from(tasks).where(eq(tasks.id, id));
+    return task;
   }
 
   async createTask(data: InsertTask): Promise<Task> {

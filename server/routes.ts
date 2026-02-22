@@ -7,6 +7,27 @@ import { storage } from "./storage";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
+const MONTHS: Record<string, number> = {
+  jan: 0, january: 0, feb: 1, february: 1, mar: 2, march: 2,
+  apr: 3, april: 3, may: 4, jun: 5, june: 5, jul: 6, july: 6,
+  aug: 7, august: 7, sep: 8, september: 8, oct: 9, october: 9,
+  nov: 10, november: 10, dec: 11, december: 11,
+};
+
+function parseDateToNum(dateStr: string): number {
+  const s = dateStr.trim().toLowerCase();
+  const yearOnly = s.match(/^(\d{4})$/);
+  if (yearOnly) return parseInt(yearOnly[1]) * 12;
+  for (const [name, idx] of Object.entries(MONTHS)) {
+    if (s.includes(name)) {
+      const yearMatch = s.match(/(\d{4})/);
+      const year = yearMatch ? parseInt(yearMatch[1]) : 2000;
+      return year * 12 + idx;
+    }
+  }
+  return 999999;
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -175,6 +196,19 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Title, start date, and end date are required" });
       }
 
+      if (parentTaskId && (itemType || "workstream") === "workstream") {
+        const parentPhase = await storage.getTask(parentTaskId);
+        if (parentPhase) {
+          const phaseStart = parseDateToNum(parentPhase.startDate);
+          const phaseEnd = parseDateToNum(parentPhase.endDate);
+          const wsStart = parseDateToNum(startDate);
+          const wsEnd = parseDateToNum(endDate);
+          if (wsStart < phaseStart || wsEnd > phaseEnd) {
+            return res.status(400).json({ message: `Workstream dates must fall within the parent Phase date range (${parentPhase.startDate} — ${parentPhase.endDate})` });
+          }
+        }
+      }
+
       const { percentComplete } = req.body;
       const clampedPercent = Math.max(0, Math.min(100, parseInt(percentComplete) || 0));
       const task = await storage.createTask({
@@ -217,6 +251,24 @@ export async function registerRoutes(
       if (health !== undefined) updates.health = health;
       if (itemType !== undefined) updates.itemType = itemType;
       if (parentTaskId !== undefined) updates.parentTaskId = parentTaskId;
+
+      const currentTask = await storage.getTask(req.params.id);
+      if (currentTask) {
+        const resolvedParentId = parentTaskId !== undefined ? parentTaskId : currentTask.parentTaskId;
+        const resolvedType = itemType !== undefined ? itemType : currentTask.itemType;
+        if (resolvedParentId && resolvedType === "workstream") {
+          const parentPhase = await storage.getTask(resolvedParentId);
+          if (parentPhase) {
+            const wsStart = parseDateToNum(startDate !== undefined ? startDate : currentTask.startDate);
+            const wsEnd = parseDateToNum(endDate !== undefined ? endDate : currentTask.endDate);
+            const phaseStart = parseDateToNum(parentPhase.startDate);
+            const phaseEnd = parseDateToNum(parentPhase.endDate);
+            if (wsStart < phaseStart || wsEnd > phaseEnd) {
+              return res.status(400).json({ message: `Workstream dates must fall within the parent Phase date range (${parentPhase.startDate} — ${parentPhase.endDate})` });
+            }
+          }
+        }
+      }
 
       const task = await storage.updateTask(req.params.id, updates);
       if (!task) return res.status(404).json({ message: "Task not found" });
