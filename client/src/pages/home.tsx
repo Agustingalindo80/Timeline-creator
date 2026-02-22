@@ -1,7 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { Helmet } from "react-helmet-async";
-import { Plus, Clock, FileSpreadsheet, Trash2, ArrowRight } from "lucide-react";
+import { Plus, Clock, FileSpreadsheet, Trash2, ArrowRight, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,8 +18,45 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { TimelineWithMilestones } from "@shared/schema";
+import type { TimelineWithMilestones, Task } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
+
+const MONTHS: Record<string, number> = {
+  january: 0, february: 1, march: 2, april: 3, may: 4, june: 5,
+  july: 6, august: 7, september: 8, october: 9, november: 10, december: 11,
+  jan: 0, feb: 1, mar: 2, apr: 3, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
+};
+
+function dateToMonths(dateStr: string): number {
+  const s = dateStr.trim().toLowerCase();
+  const isoMatch = s.match(/^(\d{4})-(\d{2})(?:-\d{2})?$/);
+  if (isoMatch) return parseInt(isoMatch[1]) * 12 + (parseInt(isoMatch[2]) - 1);
+  const yearOnly = s.match(/^(\d{4})$/);
+  if (yearOnly) return parseInt(yearOnly[1]) * 12;
+  for (const [name, idx] of Object.entries(MONTHS)) {
+    if (s.includes(name)) {
+      const yearMatch = s.match(/(\d{4})/);
+      const year = yearMatch ? parseInt(yearMatch[1]) : 2000;
+      return year * 12 + idx;
+    }
+  }
+  return 0;
+}
+
+function getWeightedCompletion(tasks: Task[]): number | null {
+  if (tasks.length === 0) return null;
+  let totalWeight = 0;
+  let weightedSum = 0;
+  for (const task of tasks) {
+    const start = dateToMonths(task.startDate);
+    const end = dateToMonths(task.endDate);
+    const duration = Math.max(end - start, 1);
+    totalWeight += duration;
+    weightedSum += duration * (task.percentComplete ?? 0);
+  }
+  if (totalWeight === 0) return null;
+  return Math.round(weightedSum / totalWeight);
+}
 
 export default function Home() {
   const [, navigate] = useLocation();
@@ -121,9 +158,16 @@ export default function Home() {
                       className="w-3 h-3 rounded-full mt-1.5 shrink-0"
                       style={{ backgroundColor: timeline.color }}
                     />
-                    <Badge variant="secondary" className="text-xs shrink-0">
-                      {timeline.milestones.length} milestone{timeline.milestones.length !== 1 ? "s" : ""}
-                    </Badge>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <Badge variant="secondary" className="text-xs" data-testid={`badge-milestones-${timeline.id}`}>
+                        {timeline.milestones.length} milestone{timeline.milestones.length !== 1 ? "s" : ""}
+                      </Badge>
+                      {timeline.tasks.length > 0 && (
+                        <Badge variant="secondary" className="text-xs" data-testid={`badge-tasks-${timeline.id}`}>
+                          {timeline.tasks.length} task{timeline.tasks.length !== 1 ? "s" : ""}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                   <h3 className="font-semibold text-base mb-1 line-clamp-1">{timeline.title}</h3>
                   {timeline.description && (
@@ -131,6 +175,24 @@ export default function Home() {
                       {timeline.description}
                     </p>
                   )}
+                  {(() => {
+                    const pct = getWeightedCompletion(timeline.tasks);
+                    if (pct === null) return null;
+                    return (
+                      <div className="mb-3" data-testid={`completion-${timeline.id}`}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" />
+                            Completion
+                          </span>
+                          <span className="text-xs font-medium">{pct}%</span>
+                        </div>
+                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+                          <div className="h-full bg-primary transition-all rounded-full" style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })()}
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <span>View timeline</span>
                     <ArrowRight className="w-3 h-3" />

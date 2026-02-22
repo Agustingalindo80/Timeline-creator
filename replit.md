@@ -53,3 +53,5 @@ A visual timeline creation tool that supports two input methods:
 - Filter toggle: "All" shows milestones + tasks, "Milestones Only" hides tasks for clean roadmap exports
 - Export: PNG and PDF downloads via html2canvas + jspdf
 - Themes: 12 named color themes for timelines
+- Dashboard cards: show milestone count, task count, and overall weighted completion %
+  - Completion = weighted average of task percentComplete, weighted by task duration (months)
