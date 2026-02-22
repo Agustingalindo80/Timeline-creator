@@ -9,6 +9,7 @@ import { HelmetProvider } from "react-helmet-async";
 import Home from "@/pages/home";
 import CreateTimeline from "@/pages/create-timeline";
 import TimelineDetail from "@/pages/timeline-detail";
+import Admin from "@/pages/admin";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -17,6 +18,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/create" component={CreateTimeline} />
       <Route path="/timeline/:id" component={TimelineDetail} />
+      <Route path="/admin" component={Admin} />
       <Route component={NotFound} />
     </Switch>
   );

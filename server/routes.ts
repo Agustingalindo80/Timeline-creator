@@ -170,7 +170,7 @@ export async function registerRoutes(
   // ADD task to timeline
   app.post("/api/timelines/:id/tasks", async (req, res) => {
     try {
-      const { title, description, startDate, endDate, actualStartDate, actualEndDate, color, sortOrder } = req.body;
+      const { title, description, startDate, endDate, actualStartDate, actualEndDate, color, sortOrder, status, health, itemType, parentTaskId } = req.body;
       if (!title || !startDate || !endDate) {
         return res.status(400).json({ message: "Title, start date, and end date are required" });
       }
@@ -188,6 +188,10 @@ export async function registerRoutes(
         color: color || null,
         percentComplete: clampedPercent,
         sortOrder: sortOrder ?? 0,
+        status: status || "not_started",
+        health: health || "green",
+        itemType: itemType || "workstream",
+        parentTaskId: parentTaskId || null,
       });
       res.status(201).json(task);
     } catch (err: any) {
@@ -198,7 +202,7 @@ export async function registerRoutes(
   // UPDATE task
   app.patch("/api/tasks/:id", async (req, res) => {
     try {
-      const { title, description, startDate, endDate, actualStartDate, actualEndDate, color, percentComplete, sortOrder } = req.body;
+      const { title, description, startDate, endDate, actualStartDate, actualEndDate, color, percentComplete, sortOrder, status, health, itemType, parentTaskId } = req.body;
       const updates: any = {};
       if (title !== undefined) updates.title = title;
       if (description !== undefined) updates.description = description;
@@ -209,6 +213,10 @@ export async function registerRoutes(
       if (color !== undefined) updates.color = color;
       if (percentComplete !== undefined) updates.percentComplete = Math.max(0, Math.min(100, parseInt(percentComplete) || 0));
       if (sortOrder !== undefined) updates.sortOrder = sortOrder;
+      if (status !== undefined) updates.status = status;
+      if (health !== undefined) updates.health = health;
+      if (itemType !== undefined) updates.itemType = itemType;
+      if (parentTaskId !== undefined) updates.parentTaskId = parentTaskId;
 
       const task = await storage.updateTask(req.params.id, updates);
       if (!task) return res.status(404).json({ message: "Task not found" });
@@ -223,6 +231,103 @@ export async function registerRoutes(
     try {
       await storage.deleteTask(req.params.id);
       res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // GET risks for timeline
+  app.get("/api/timelines/:id/risks", async (req, res) => {
+    try {
+      const risks = await storage.getRisks(req.params.id);
+      res.json(risks);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ADD risk to timeline
+  app.post("/api/timelines/:id/risks", async (req, res) => {
+    try {
+      const { title, description, category, owner, probability, impact, mitigation, contingency, status, dueDate, sortOrder } = req.body;
+      if (!title) {
+        return res.status(400).json({ message: "Title is required" });
+      }
+
+      const risk = await storage.createRisk({
+        timelineId: req.params.id,
+        title,
+        description: description || null,
+        category: category || null,
+        owner: owner || null,
+        probability: probability || "medium",
+        impact: impact || "medium",
+        mitigation: mitigation || null,
+        contingency: contingency || null,
+        status: status || "open",
+        dueDate: dueDate || null,
+        sortOrder: sortOrder ?? 0,
+      });
+      res.status(201).json(risk);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // UPDATE risk
+  app.patch("/api/risks/:id", async (req, res) => {
+    try {
+      const { title, description, category, owner, probability, impact, mitigation, contingency, status, dueDate, sortOrder } = req.body;
+      const updates: any = {};
+      if (title !== undefined) updates.title = title;
+      if (description !== undefined) updates.description = description;
+      if (category !== undefined) updates.category = category;
+      if (owner !== undefined) updates.owner = owner;
+      if (probability !== undefined) updates.probability = probability;
+      if (impact !== undefined) updates.impact = impact;
+      if (mitigation !== undefined) updates.mitigation = mitigation;
+      if (contingency !== undefined) updates.contingency = contingency;
+      if (status !== undefined) updates.status = status;
+      if (dueDate !== undefined) updates.dueDate = dueDate;
+      if (sortOrder !== undefined) updates.sortOrder = sortOrder;
+
+      const risk = await storage.updateRisk(req.params.id, updates);
+      if (!risk) return res.status(404).json({ message: "Risk not found" });
+      res.json(risk);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // DELETE risk
+  app.delete("/api/risks/:id", async (req, res) => {
+    try {
+      await storage.deleteRisk(req.params.id);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // GET app settings
+  app.get("/api/settings", async (_req, res) => {
+    try {
+      const settings = await storage.getSettings();
+      res.json(settings);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // UPDATE app settings
+  app.patch("/api/settings", async (req, res) => {
+    try {
+      const { riskRegisterEnabled } = req.body;
+      const updates: any = {};
+      if (riskRegisterEnabled !== undefined) updates.riskRegisterEnabled = riskRegisterEnabled;
+
+      const settings = await storage.updateSettings(updates);
+      res.json(settings);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
     }

@@ -45,7 +45,8 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { TimelineView, TimelineViewHorizontal } from "@/components/timeline-view";
 import { ThemePicker } from "@/components/theme-picker";
-import type { TimelineWithMilestones } from "@shared/schema";
+import { RiskRegister } from "@/components/risk-register";
+import type { TimelineWithMilestones, AppSettings } from "@shared/schema";
 
 type ViewMode = "vertical" | "horizontal";
 type FilterMode = "all" | "milestones";
@@ -65,6 +66,10 @@ export default function TimelineDetail() {
 
   const { data: timeline, isLoading } = useQuery<TimelineWithMilestones>({
     queryKey: ["/api/timelines", id],
+  });
+
+  const { data: settings } = useQuery<AppSettings>({
+    queryKey: ["/api/settings"],
   });
 
   const updateMutation = useMutation({
@@ -117,7 +122,7 @@ export default function TimelineDetail() {
   });
 
   const addTaskMutation = useMutation({
-    mutationFn: async (data: { title: string; startDate: string; endDate: string; actualStartDate?: string; actualEndDate?: string; description?: string; percentComplete?: number }) => {
+    mutationFn: async (data: { title: string; startDate: string; endDate: string; actualStartDate?: string; actualEndDate?: string; description?: string; percentComplete?: number; status?: string; health?: string; itemType?: string; parentTaskId?: string }) => {
       await apiRequest("POST", `/api/timelines/${id}/tasks`, {
         ...data,
         sortOrder: (timeline?.tasks.length || 0),
@@ -130,7 +135,7 @@ export default function TimelineDetail() {
   });
 
   const updateTaskMutation = useMutation({
-    mutationFn: async ({ taskId, data }: { taskId: string; data: { title?: string; startDate?: string; endDate?: string; actualStartDate?: string | null; actualEndDate?: string | null; description?: string | null; percentComplete?: number } }) => {
+    mutationFn: async ({ taskId, data }: { taskId: string; data: { title?: string; startDate?: string; endDate?: string; actualStartDate?: string | null; actualEndDate?: string | null; description?: string | null; percentComplete?: number; status?: string; health?: string; itemType?: string; parentTaskId?: string | null } }) => {
       await apiRequest("PATCH", `/api/tasks/${taskId}`, data);
     },
     onSuccess: () => {
@@ -188,6 +193,16 @@ export default function TimelineDetail() {
   const [editTDesc, setEditTDesc] = useState("");
   const [editTPercent, setEditTPercent] = useState(0);
 
+  const [newTaskStatus, setNewTaskStatus] = useState("not_started");
+  const [newTaskHealth, setNewTaskHealth] = useState("green");
+  const [newTaskItemType, setNewTaskItemType] = useState("workstream");
+  const [newTaskParentId, setNewTaskParentId] = useState("");
+
+  const [editTStatus, setEditTStatus] = useState("not_started");
+  const [editTHealth, setEditTHealth] = useState("green");
+  const [editTItemType, setEditTItemType] = useState("workstream");
+  const [editTParentId, setEditTParentId] = useState("");
+
   const startEditingMilestone = (m: { id: string; title: string; date: string; actualDate: string | null; description: string | null }) => {
     setEditingMilestoneId(m.id);
     setEditMTitle(m.title);
@@ -220,7 +235,7 @@ export default function TimelineDetail() {
     setEditingMilestoneId(null);
   };
 
-  const startEditingTask = (t: { id: string; title: string; startDate: string; endDate: string; actualStartDate: string | null; actualEndDate: string | null; description: string | null; percentComplete: number }) => {
+  const startEditingTask = (t: { id: string; title: string; startDate: string; endDate: string; actualStartDate: string | null; actualEndDate: string | null; description: string | null; percentComplete: number; status: string; health: string; itemType: string; parentTaskId: string | null }) => {
     setEditingTaskId(t.id);
     setEditTTitle(t.title);
     setEditTStart(t.startDate);
@@ -229,6 +244,10 @@ export default function TimelineDetail() {
     setEditTActualEnd(t.actualEndDate || "");
     setEditTDesc(t.description || "");
     setEditTPercent(t.percentComplete ?? 0);
+    setEditTStatus(t.status || "not_started");
+    setEditTHealth(t.health || "green");
+    setEditTItemType(t.itemType || "workstream");
+    setEditTParentId(t.parentTaskId || "");
   };
 
   const saveTaskEdit = () => {
@@ -244,6 +263,10 @@ export default function TimelineDetail() {
           actualEndDate: editTActualEnd.trim() || null,
           description: editTDesc.trim() || null,
           percentComplete: editTPercent,
+          status: editTStatus,
+          health: editTHealth,
+          itemType: editTItemType,
+          parentTaskId: editTParentId || null,
         },
       },
       {
@@ -285,6 +308,10 @@ export default function TimelineDetail() {
         actualEndDate: newTaskActualEnd || undefined,
         description: newTaskDesc || undefined,
         percentComplete: newTaskPercent,
+        status: newTaskStatus,
+        health: newTaskHealth,
+        itemType: newTaskItemType,
+        parentTaskId: newTaskParentId || undefined,
       },
       {
         onSuccess: () => {
@@ -295,6 +322,10 @@ export default function TimelineDetail() {
           setNewTaskActualEnd("");
           setNewTaskDesc("");
           setNewTaskPercent(0);
+          setNewTaskStatus("not_started");
+          setNewTaskHealth("green");
+          setNewTaskItemType("workstream");
+          setNewTaskParentId("");
           setShowAddTaskForm(false);
         },
       }
@@ -750,6 +781,44 @@ export default function TimelineDetail() {
                   data-testid="input-new-task-percent"
                 />
               </div>
+              <div className="w-36">
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Status</label>
+                <select
+                  value={newTaskStatus}
+                  onChange={(e) => setNewTaskStatus(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  data-testid="select-new-task-status"
+                >
+                  <option value="not_started">Not Started</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="complete">Complete</option>
+                </select>
+              </div>
+              <div className="w-32">
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Health</label>
+                <select
+                  value={newTaskHealth}
+                  onChange={(e) => setNewTaskHealth(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  data-testid="select-new-task-health"
+                >
+                  <option value="green">Green</option>
+                  <option value="amber">Amber</option>
+                  <option value="red">Red</option>
+                </select>
+              </div>
+              <div className="w-36">
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Type</label>
+                <select
+                  value={newTaskItemType}
+                  onChange={(e) => setNewTaskItemType(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  data-testid="select-new-task-type"
+                >
+                  <option value="workstream">Workstream</option>
+                  <option value="phase">Phase</option>
+                </select>
+              </div>
               <Button
                 onClick={handleAddTask}
                 disabled={!newTaskTitle.trim() || !newTaskStart.trim() || !newTaskEnd.trim() || addTaskMutation.isPending}
@@ -1005,6 +1074,46 @@ export default function TimelineDetail() {
                           />
                         </div>
                       </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <div className="w-36">
+                          <label className="text-xs font-medium text-muted-foreground mb-1 block">Status</label>
+                          <select
+                            value={editTStatus}
+                            onChange={(e) => setEditTStatus(e.target.value)}
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                            data-testid={`select-edit-task-status-${t.id}`}
+                          >
+                            <option value="not_started">Not Started</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="complete">Complete</option>
+                          </select>
+                        </div>
+                        <div className="w-32">
+                          <label className="text-xs font-medium text-muted-foreground mb-1 block">Health</label>
+                          <select
+                            value={editTHealth}
+                            onChange={(e) => setEditTHealth(e.target.value)}
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                            data-testid={`select-edit-task-health-${t.id}`}
+                          >
+                            <option value="green">Green</option>
+                            <option value="amber">Amber</option>
+                            <option value="red">Red</option>
+                          </select>
+                        </div>
+                        <div className="w-36">
+                          <label className="text-xs font-medium text-muted-foreground mb-1 block">Type</label>
+                          <select
+                            value={editTItemType}
+                            onChange={(e) => setEditTItemType(e.target.value)}
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                            data-testid={`select-edit-task-type-${t.id}`}
+                          >
+                            <option value="workstream">Workstream</option>
+                            <option value="phase">Phase</option>
+                          </select>
+                        </div>
+                      </div>
                       <div className="flex items-center gap-2 justify-end">
                         <Button
                           size="sm"
@@ -1037,6 +1146,13 @@ export default function TimelineDetail() {
                           <div className="flex items-center gap-2 flex-wrap">
                             <p className="text-sm font-medium truncate" data-testid={`text-task-title-${t.id}`}>{t.title}</p>
                             <span className="text-xs text-muted-foreground" data-testid={`text-task-percent-${t.id}`}>{t.percentComplete}%</span>
+                            {t.status === "in_progress" && <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">In Progress</Badge>}
+                            {t.status === "complete" && <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">Complete</Badge>}
+                            {t.status === "not_started" && <Badge variant="secondary" className="text-xs">Not Started</Badge>}
+                            {t.health === "amber" && <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0" title="Amber" />}
+                            {t.health === "red" && <span className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0" title="Red" />}
+                            {t.health === "green" && <span className="w-2.5 h-2.5 rounded-full bg-green-500 shrink-0" title="Green" />}
+                            {t.itemType === "phase" && <Badge variant="outline" className="text-xs">Phase</Badge>}
                           </div>
                           <p className="text-xs text-muted-foreground">
                             Planned: {t.startDate} — {t.endDate}
@@ -1104,6 +1220,10 @@ export default function TimelineDetail() {
                 </Card>
               ))}
           </div>
+        )}
+
+        {settings?.riskRegisterEnabled && (
+          <RiskRegister timelineId={timeline.id} />
         )}
       </main>
     </div>

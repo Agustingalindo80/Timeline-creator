@@ -1,7 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { Helmet } from "react-helmet-async";
-import { Plus, Clock, FileSpreadsheet, Trash2, ArrowRight, CheckCircle2 } from "lucide-react";
+import { Plus, Clock, FileSpreadsheet, Trash2, ArrowRight, CheckCircle2, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -93,6 +93,14 @@ export default function Home() {
             <h1 className="text-xl font-semibold tracking-tight">Timeline Studio</h1>
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => navigate("/admin")}
+              data-testid="button-admin"
+            >
+              <Settings className="w-4 h-4" />
+            </Button>
             <Button
               variant="outline"
               onClick={() => navigate("/create?mode=upload")}

@@ -16,9 +16,11 @@ A visual timeline creation tool that supports two input methods:
 - `client/src/pages/home.tsx` - Home page listing all timelines
 - `client/src/pages/create-timeline.tsx` - Create timeline with manual entry or Excel import
 - `client/src/pages/timeline-detail.tsx` - View timeline with vertical/horizontal views, manage milestones
+- `client/src/pages/admin.tsx` - Admin console with feature toggles
 - `client/src/components/timeline-view.tsx` - Timeline visualization components (vertical + horizontal)
+- `client/src/components/risk-register.tsx` - Risk register component for timeline risk tracking
 - `client/src/components/theme-provider.tsx` - Dark/light mode provider
-- `server/routes.ts` - API routes for timelines, milestones, and Excel parsing
+- `server/routes.ts` - API routes for timelines, milestones, risks, settings, and Excel parsing
 - `server/storage.ts` - Database storage layer using Drizzle
 - `server/db.ts` - Database connection
 - `server/seed.ts` - Seed data for demo timelines
@@ -36,16 +38,28 @@ A visual timeline creation tool that supports two input methods:
 - POST /api/timelines/:id/tasks - Add task
 - PATCH /api/tasks/:id - Update task
 - DELETE /api/tasks/:id - Delete task
+- GET /api/timelines/:id/risks - Get risks for timeline
+- POST /api/timelines/:id/risks - Add risk
+- PATCH /api/risks/:id - Update risk
+- DELETE /api/risks/:id - Delete risk
+- GET /api/settings - Get app settings
+- PATCH /api/settings - Update app settings
 - POST /api/parse-excel - Parse Excel/CSV file (multipart form)
 
 ## Database
 - timelines: id, title, description, color
 - milestones: id, timelineId, title, description, date, actualDate, color, icon, sortOrder
-- tasks: id, timelineId, title, description, startDate, endDate, actualStartDate, actualEndDate, percentComplete, color, sortOrder
+- tasks: id, timelineId, title, description, startDate, endDate, actualStartDate, actualEndDate, percentComplete, color, sortOrder, status, health, itemType, parentTaskId
+- risks: id, timelineId, title, description, category, owner, probability, impact, mitigation, contingency, status, dueDate, sortOrder
+- app_settings: id, riskRegisterEnabled
 
 ## Features
 - Milestones: point-in-time events shown as dots on the timeline
 - Tasks: duration-based items shown as horizontal bars in Gantt section below milestones
+  - Status: Not Started, In Progress, Complete
+  - Health: Green, Amber, Red (traffic light indicators)
+  - Item Type: Workstream (current task) or Phase (parent of workstream)
+  - parentTaskId: optional link to a Phase task for hierarchy
 - Planned vs Actual: milestones have optional actualDate; tasks have optional actualStartDate/actualEndDate
   - Visual: planned bars shown as dashed outline, actual bars as solid; milestones show ring (planned) + filled dot (actual)
   - Legend shown when any actual dates are present
@@ -55,3 +69,9 @@ A visual timeline creation tool that supports two input methods:
 - Themes: 12 named color themes for timelines
 - Dashboard cards: show milestone count, task count, and overall weighted completion %
   - Completion = weighted average of task percentComplete, weighted by task duration (months)
+- Risk Register: optional feature (toggled in Admin Console)
+  - Fields: title, description, category, owner, probability (Low/Medium/High/Very High), impact, mitigation, contingency, status (Open/Mitigated/Closed/Accepted), dueDate
+  - Risk score = probability × impact (1-16 scale)
+  - Expandable cards with edit/delete
+- Admin Console: /admin page with feature toggles
+  - Risk Register toggle (on/off)

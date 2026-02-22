@@ -4,12 +4,17 @@ import {
   timelines,
   milestones,
   tasks,
+  risks,
+  appSettings,
   type Timeline,
   type InsertTimeline,
   type Milestone,
   type InsertMilestone,
   type Task,
   type InsertTask,
+  type Risk,
+  type InsertRisk,
+  type AppSettings,
   type TimelineWithMilestones,
 } from "@shared/schema";
 
@@ -25,6 +30,12 @@ export interface IStorage {
   createTask(data: InsertTask): Promise<Task>;
   updateTask(id: string, data: Partial<InsertTask>): Promise<Task | undefined>;
   deleteTask(id: string): Promise<void>;
+  getRisks(timelineId: string): Promise<Risk[]>;
+  createRisk(data: InsertRisk): Promise<Risk>;
+  updateRisk(id: string, data: Partial<InsertRisk>): Promise<Risk | undefined>;
+  deleteRisk(id: string): Promise<void>;
+  getSettings(): Promise<AppSettings>;
+  updateSettings(data: Partial<Omit<AppSettings, "id">>): Promise<AppSettings>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -80,6 +91,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteTimeline(id: string): Promise<void> {
+    await db.delete(risks).where(eq(risks.timelineId, id));
     await db.delete(tasks).where(eq(tasks.timelineId, id));
     await db.delete(milestones).where(eq(milestones.timelineId, id));
     await db.delete(timelines).where(eq(timelines.id, id));
@@ -119,6 +131,51 @@ export class DatabaseStorage implements IStorage {
 
   async deleteTask(id: string): Promise<void> {
     await db.delete(tasks).where(eq(tasks.id, id));
+  }
+
+  async getRisks(timelineId: string): Promise<Risk[]> {
+    return db
+      .select()
+      .from(risks)
+      .where(eq(risks.timelineId, timelineId));
+  }
+
+  async createRisk(data: InsertRisk): Promise<Risk> {
+    const [risk] = await db.insert(risks).values(data).returning();
+    return risk;
+  }
+
+  async updateRisk(id: string, data: Partial<InsertRisk>): Promise<Risk | undefined> {
+    const [risk] = await db
+      .update(risks)
+      .set(data)
+      .where(eq(risks.id, id))
+      .returning();
+    return risk;
+  }
+
+  async deleteRisk(id: string): Promise<void> {
+    await db.delete(risks).where(eq(risks.id, id));
+  }
+
+  async getSettings(): Promise<AppSettings> {
+    const [settings] = await db.select().from(appSettings);
+    if (settings) return settings;
+    const [created] = await db
+      .insert(appSettings)
+      .values({ id: "app", riskRegisterEnabled: false })
+      .returning();
+    return created;
+  }
+
+  async updateSettings(data: Partial<Omit<AppSettings, "id">>): Promise<AppSettings> {
+    await this.getSettings();
+    const [updated] = await db
+      .update(appSettings)
+      .set(data)
+      .where(eq(appSettings.id, "app"))
+      .returning();
+    return updated;
   }
 }
 
