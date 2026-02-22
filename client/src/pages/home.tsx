@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { TimelineWithMilestones, Task, AppSettings } from "@shared/schema";
-import { DEFAULT_TASK_HEALTH, DEFAULT_PROJECT_TYPES, DEFAULT_ENGAGEMENT_MODELS } from "@shared/schema";
+import { DEFAULT_TASK_HEALTH, DEFAULT_PROJECT_TYPES, DEFAULT_ENGAGEMENT_MODELS, DEFAULT_CLIENTS } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 
 const MONTHS: Record<string, number> = {
@@ -91,6 +91,7 @@ export default function Home() {
   const healthOptions = settings?.taskHealthOptions || DEFAULT_TASK_HEALTH;
   const projectTypeOptions = settings?.projectTypes || DEFAULT_PROJECT_TYPES;
   const engagementModelOptions = settings?.engagementModels || DEFAULT_ENGAGEMENT_MODELS;
+  const clientOptions = settings?.clients || DEFAULT_CLIENTS;
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -195,6 +196,11 @@ export default function Home() {
                         {timeline.engagementModel && (
                           <Badge variant="outline" className="text-xs" data-testid={`badge-engagement-model-${timeline.id}`}>
                             {engagementModelOptions.find((o) => o.value === timeline.engagementModel)?.label || timeline.engagementModel}
+                          </Badge>
+                        )}
+                        {timeline.client && (
+                          <Badge variant="outline" className="text-xs" data-testid={`badge-client-${timeline.id}`}>
+                            {clientOptions.find((o) => o.value === timeline.client)?.label || timeline.client}
                           </Badge>
                         )}
                       </div>

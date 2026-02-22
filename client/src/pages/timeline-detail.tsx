@@ -54,6 +54,7 @@ import {
   DEFAULT_TASK_ITEM_TYPES,
   DEFAULT_PROJECT_TYPES,
   DEFAULT_ENGAGEMENT_MODELS,
+  DEFAULT_CLIENTS,
 } from "@shared/schema";
 
 type ViewMode = "vertical" | "horizontal";
@@ -85,6 +86,7 @@ export default function TimelineDetail() {
   const taskItemTypes = settings?.taskItemTypes || DEFAULT_TASK_ITEM_TYPES;
   const projectTypes = settings?.projectTypes || DEFAULT_PROJECT_TYPES;
   const engagementModels = settings?.engagementModels || DEFAULT_ENGAGEMENT_MODELS;
+  const clientOptions = settings?.clients || DEFAULT_CLIENTS;
 
   const updateMutation = useMutation({
     mutationFn: async () => {
@@ -968,6 +970,71 @@ export default function TimelineDetail() {
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Client</label>
+                <select
+                  className="text-xs border rounded px-2 py-1 bg-background"
+                  value={timeline.client || ""}
+                  onChange={async (e) => {
+                    await apiRequest("PATCH", `/api/timelines/${id}`, { client: e.target.value || null });
+                    queryClient.invalidateQueries({ queryKey: ["/api/timelines", id] });
+                    queryClient.invalidateQueries({ queryKey: ["/api/timelines"] });
+                  }}
+                  data-testid="select-client"
+                >
+                  <option value="">Not set</option>
+                  {clientOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Approved Budget</label>
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-muted-foreground">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    className="text-xs border rounded px-2 py-1 bg-background w-28"
+                    defaultValue={timeline.approvedBudget ?? ""}
+                    key={`budget-${timeline.approvedBudget}`}
+                    onBlur={async (e) => {
+                      const val = e.target.value ? e.target.value : null;
+                      if (val !== (timeline.approvedBudget ?? null)) {
+                        await apiRequest("PATCH", `/api/timelines/${id}`, { approvedBudget: val });
+                        queryClient.invalidateQueries({ queryKey: ["/api/timelines", id] });
+                        queryClient.invalidateQueries({ queryKey: ["/api/timelines"] });
+                      }
+                    }}
+                    data-testid="input-approved-budget"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Gross Margin</label>
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="100"
+                    className="text-xs border rounded px-2 py-1 bg-background w-20"
+                    defaultValue={timeline.grossMargin ?? ""}
+                    key={`margin-${timeline.grossMargin}`}
+                    onBlur={async (e) => {
+                      const val = e.target.value ? e.target.value : null;
+                      if (val !== (timeline.grossMargin ?? null)) {
+                        await apiRequest("PATCH", `/api/timelines/${id}`, { grossMargin: val });
+                        queryClient.invalidateQueries({ queryKey: ["/api/timelines", id] });
+                        queryClient.invalidateQueries({ queryKey: ["/api/timelines"] });
+                      }
+                    }}
+                    data-testid="input-gross-margin"
+                  />
+                  <span className="text-xs text-muted-foreground">%</span>
+                </div>
               </div>
             </div>
             <h4 className="text-xs font-medium text-muted-foreground mb-3">Health</h4>

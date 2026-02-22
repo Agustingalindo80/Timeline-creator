@@ -109,7 +109,7 @@ export async function registerRoutes(
   // UPDATE timeline
   app.patch("/api/timelines/:id", async (req, res) => {
     try {
-      const { title, description, color, healthOverall, scopeHealth, budgetHealth, teamHealth, projectType, engagementModel } = req.body;
+      const { title, description, color, healthOverall, scopeHealth, budgetHealth, teamHealth, projectType, engagementModel, client, approvedBudget, grossMargin } = req.body;
       const updates: any = {};
       if (title !== undefined) updates.title = title;
       if (description !== undefined) updates.description = description;
@@ -120,6 +120,9 @@ export async function registerRoutes(
       if (teamHealth !== undefined) updates.teamHealth = teamHealth;
       if (projectType !== undefined) updates.projectType = projectType;
       if (engagementModel !== undefined) updates.engagementModel = engagementModel;
+      if (client !== undefined) updates.client = client;
+      if (approvedBudget !== undefined) updates.approvedBudget = approvedBudget;
+      if (grossMargin !== undefined) updates.grossMargin = grossMargin;
 
       const timeline = await storage.updateTimeline(req.params.id, updates);
       if (!timeline) return res.status(404).json({ message: "Timeline not found" });
@@ -390,6 +393,7 @@ export async function registerRoutes(
         riskStatuses,
         projectTypes,
         engagementModels,
+        clients,
       } = req.body;
       const updates: any = {};
       if (riskRegisterEnabled !== undefined) updates.riskRegisterEnabled = riskRegisterEnabled;
@@ -401,6 +405,7 @@ export async function registerRoutes(
       if (riskStatuses !== undefined) updates.riskStatuses = riskStatuses;
       if (projectTypes !== undefined) updates.projectTypes = projectTypes;
       if (engagementModels !== undefined) updates.engagementModels = engagementModels;
+      if (clients !== undefined) updates.clients = clients;
 
       const settings = await storage.updateSettings(updates);
       res.json(settings);

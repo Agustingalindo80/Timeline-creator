@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, jsonb, numeric } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -50,6 +50,10 @@ export const DEFAULT_ENGAGEMENT_MODELS: FieldOption[] = [
   { value: "t_and_m", label: "T&M" },
   { value: "managed_capacity", label: "Managed Capacity" },
 ];
+export const DEFAULT_CLIENTS: FieldOption[] = [
+  { value: "client_a", label: "Client A" },
+  { value: "client_b", label: "Client B" },
+];
 
 export const timelines = pgTable("timelines", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -62,6 +66,9 @@ export const timelines = pgTable("timelines", {
   teamHealth: text("team_health").notNull().default("green"),
   projectType: text("project_type"),
   engagementModel: text("engagement_model"),
+  client: text("client"),
+  approvedBudget: numeric("approved_budget", { precision: 12, scale: 2 }),
+  grossMargin: numeric("gross_margin", { precision: 5, scale: 2 }),
 });
 
 export const milestones = pgTable("milestones", {
@@ -121,6 +128,7 @@ export const appSettings = pgTable("app_settings", {
   riskStatuses: jsonb("risk_statuses").$type<FieldOption[]>(),
   projectTypes: jsonb("project_types").$type<FieldOption[]>(),
   engagementModels: jsonb("engagement_models").$type<FieldOption[]>(),
+  clients: jsonb("clients").$type<FieldOption[]>(),
 });
 
 export const insertTimelineSchema = createInsertSchema(timelines).omit({ id: true });
