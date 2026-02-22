@@ -17,6 +17,8 @@ import {
   DEFAULT_RISK_PROBABILITIES,
   DEFAULT_RISK_IMPACTS,
   DEFAULT_RISK_STATUSES,
+  DEFAULT_PROJECT_TYPES,
+  DEFAULT_ENGAGEMENT_MODELS,
 } from "@shared/schema";
 
 interface FieldOptionEditorProps {
@@ -315,6 +317,22 @@ export default function Admin() {
       defaults: DEFAULT_RISK_STATUSES,
       current: settings?.riskStatuses || DEFAULT_RISK_STATUSES,
       testId: "risk-statuses",
+    },
+    {
+      title: "Project Type",
+      description: "Type classifications for projects (e.g., Billable, Non-Billable).",
+      key: "projectTypes",
+      defaults: DEFAULT_PROJECT_TYPES,
+      current: settings?.projectTypes || DEFAULT_PROJECT_TYPES,
+      testId: "project-types",
+    },
+    {
+      title: "Engagement Model",
+      description: "Engagement model options for projects (e.g., Fixed Bid, T&M, Managed Capacity).",
+      key: "engagementModels",
+      defaults: DEFAULT_ENGAGEMENT_MODELS,
+      current: settings?.engagementModels || DEFAULT_ENGAGEMENT_MODELS,
+      testId: "engagement-models",
     },
   ];
 

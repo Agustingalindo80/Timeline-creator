@@ -41,6 +41,15 @@ export const DEFAULT_RISK_STATUSES: FieldOption[] = [
   { value: "closed", label: "Closed" },
   { value: "accepted", label: "Accepted" },
 ];
+export const DEFAULT_PROJECT_TYPES: FieldOption[] = [
+  { value: "billable", label: "Billable" },
+  { value: "non_billable", label: "Non-Billable" },
+];
+export const DEFAULT_ENGAGEMENT_MODELS: FieldOption[] = [
+  { value: "fixed_bid", label: "Fixed Bid" },
+  { value: "t_and_m", label: "T&M" },
+  { value: "managed_capacity", label: "Managed Capacity" },
+];
 
 export const timelines = pgTable("timelines", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -51,6 +60,8 @@ export const timelines = pgTable("timelines", {
   scopeHealth: text("scope_health").notNull().default("green"),
   budgetHealth: text("budget_health").notNull().default("green"),
   teamHealth: text("team_health").notNull().default("green"),
+  projectType: text("project_type"),
+  engagementModel: text("engagement_model"),
 });
 
 export const milestones = pgTable("milestones", {
@@ -108,6 +119,8 @@ export const appSettings = pgTable("app_settings", {
   riskProbabilities: jsonb("risk_probabilities").$type<FieldOption[]>(),
   riskImpacts: jsonb("risk_impacts").$type<FieldOption[]>(),
   riskStatuses: jsonb("risk_statuses").$type<FieldOption[]>(),
+  projectTypes: jsonb("project_types").$type<FieldOption[]>(),
+  engagementModels: jsonb("engagement_models").$type<FieldOption[]>(),
 });
 
 export const insertTimelineSchema = createInsertSchema(timelines).omit({ id: true });

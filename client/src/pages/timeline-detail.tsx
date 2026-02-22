@@ -52,6 +52,8 @@ import {
   DEFAULT_TASK_STATUSES,
   DEFAULT_TASK_HEALTH,
   DEFAULT_TASK_ITEM_TYPES,
+  DEFAULT_PROJECT_TYPES,
+  DEFAULT_ENGAGEMENT_MODELS,
 } from "@shared/schema";
 
 type ViewMode = "vertical" | "horizontal";
@@ -81,6 +83,8 @@ export default function TimelineDetail() {
   const taskStatuses = settings?.taskStatuses || DEFAULT_TASK_STATUSES;
   const taskHealthOptions = settings?.taskHealthOptions || DEFAULT_TASK_HEALTH;
   const taskItemTypes = settings?.taskItemTypes || DEFAULT_TASK_ITEM_TYPES;
+  const projectTypes = settings?.projectTypes || DEFAULT_PROJECT_TYPES;
+  const engagementModels = settings?.engagementModels || DEFAULT_ENGAGEMENT_MODELS;
 
   const updateMutation = useMutation({
     mutationFn: async () => {
@@ -928,6 +932,44 @@ export default function TimelineDetail() {
 
         {!editing && (
           <Card className="p-4 mb-6">
+            <div className="flex items-center gap-6 flex-wrap mb-4">
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Project Type</label>
+                <select
+                  className="text-xs border rounded px-2 py-1 bg-background"
+                  value={timeline.projectType || ""}
+                  onChange={async (e) => {
+                    await apiRequest("PATCH", `/api/timelines/${id}`, { projectType: e.target.value || null });
+                    queryClient.invalidateQueries({ queryKey: ["/api/timelines", id] });
+                    queryClient.invalidateQueries({ queryKey: ["/api/timelines"] });
+                  }}
+                  data-testid="select-project-type"
+                >
+                  <option value="">Not set</option>
+                  {projectTypes.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Engagement Model</label>
+                <select
+                  className="text-xs border rounded px-2 py-1 bg-background"
+                  value={timeline.engagementModel || ""}
+                  onChange={async (e) => {
+                    await apiRequest("PATCH", `/api/timelines/${id}`, { engagementModel: e.target.value || null });
+                    queryClient.invalidateQueries({ queryKey: ["/api/timelines", id] });
+                    queryClient.invalidateQueries({ queryKey: ["/api/timelines"] });
+                  }}
+                  data-testid="select-engagement-model"
+                >
+                  <option value="">Not set</option>
+                  {engagementModels.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
             <h4 className="text-xs font-medium text-muted-foreground mb-3">Health</h4>
             <div className="flex items-center gap-6 flex-wrap">
               {([

@@ -57,13 +57,15 @@ A visual project planning tool that supports two input methods:
 - POST /api/parse-excel - Parse Excel/CSV file (multipart form)
 
 ## Database
-- timelines: id, title, description, color, healthOverall, scopeHealth, budgetHealth, teamHealth
+- timelines: id, title, description, color, healthOverall, scopeHealth, budgetHealth, teamHealth, projectType, engagementModel
 - milestones: id, timelineId, title, description, date, actualDate, color, icon, sortOrder
 - tasks: id, timelineId, title, description, startDate, endDate, actualStartDate, actualEndDate, percentComplete, color, sortOrder, status, health, itemType, parentTaskId
 - risks: id, timelineId, title, description, category, owner, probability, impact, mitigation, contingency, status, dueDate, sortOrder
-- app_settings: id, riskRegisterEnabled, taskStatuses, taskHealthOptions, taskItemTypes, riskProbabilities, riskImpacts, riskStatuses
+- app_settings: id, riskRegisterEnabled, taskStatuses, taskHealthOptions, taskItemTypes, riskProbabilities, riskImpacts, riskStatuses, projectTypes, engagementModels
 
 ## Features
+- Project Type: classification field (Billable / Non-Billable by default), editable on detail page, shown as badge on project list
+- Engagement Model: classification field (Fixed Bid / T&M / Managed Capacity by default), editable on detail page, shown as badge on project list
 - Project Health: 4 health fields per project (Overall, Scope, Budget, Team Composition)
   - Uses same options as Task Health (Green/Amber/Red by default)
   - Displayed as colored dots on project list cards
@@ -93,5 +95,6 @@ A visual project planning tool that supports two input methods:
   - Field Options: customizable dropdown values for all list-based fields
     - Task Status, Task Health, Task Item Type
     - Risk Probability, Risk Impact, Risk Status
+    - Project Type, Engagement Model
     - Each field supports add, remove, rename, reorder, and reset to defaults
     - Stored as JSONB in app_settings table; falls back to defaults when null
