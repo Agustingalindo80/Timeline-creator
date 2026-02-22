@@ -47,7 +47,12 @@ import { useToast } from "@/hooks/use-toast";
 import { TimelineView, TimelineViewHorizontal } from "@/components/timeline-view";
 import { ThemePicker } from "@/components/theme-picker";
 import { RiskRegister } from "@/components/risk-register";
-import type { TimelineWithMilestones, AppSettings } from "@shared/schema";
+import type { TimelineWithMilestones, AppSettings, FieldOption } from "@shared/schema";
+import {
+  DEFAULT_TASK_STATUSES,
+  DEFAULT_TASK_HEALTH,
+  DEFAULT_TASK_ITEM_TYPES,
+} from "@shared/schema";
 
 type ViewMode = "vertical" | "horizontal";
 type FilterMode = "all" | "milestones";
@@ -72,6 +77,10 @@ export default function TimelineDetail() {
   const { data: settings } = useQuery<AppSettings>({
     queryKey: ["/api/settings"],
   });
+
+  const taskStatuses = settings?.taskStatuses || DEFAULT_TASK_STATUSES;
+  const taskHealthOptions = settings?.taskHealthOptions || DEFAULT_TASK_HEALTH;
+  const taskItemTypes = settings?.taskItemTypes || DEFAULT_TASK_ITEM_TYPES;
 
   const updateMutation = useMutation({
     mutationFn: async () => {
@@ -576,9 +585,9 @@ export default function TimelineDetail() {
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 data-testid={`select-edit-task-status-${t.id}`}
               >
-                <option value="not_started">Not Started</option>
-                <option value="in_progress">In Progress</option>
-                <option value="complete">Complete</option>
+                {taskStatuses.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
               </select>
             </div>
             <div className="w-32">
@@ -589,9 +598,9 @@ export default function TimelineDetail() {
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 data-testid={`select-edit-task-health-${t.id}`}
               >
-                <option value="green">Green</option>
-                <option value="amber">Amber</option>
-                <option value="red">Red</option>
+                {taskHealthOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
               </select>
             </div>
             <div className="w-36">
@@ -605,8 +614,9 @@ export default function TimelineDetail() {
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 data-testid={`select-edit-task-type-${t.id}`}
               >
-                <option value="workstream">Workstream</option>
-                <option value="phase">Phase</option>
+                {taskItemTypes.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
               </select>
             </div>
             {editTItemType === "workstream" && tl.tasks.filter((pt) => pt.itemType === "phase" && pt.id !== t.id).length > 0 && (
@@ -660,13 +670,14 @@ export default function TimelineDetail() {
               <div className="flex items-center gap-2 flex-wrap">
                 <p className="text-sm font-medium truncate" data-testid={`text-task-title-${t.id}`}>{t.title}</p>
                 <span className="text-xs text-muted-foreground" data-testid={`text-task-percent-${t.id}`}>{t.percentComplete}%</span>
-                {t.status === "in_progress" && <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">In Progress</Badge>}
-                {t.status === "complete" && <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">Complete</Badge>}
-                {t.status === "not_started" && <Badge variant="secondary" className="text-xs">Not Started</Badge>}
-                {t.health === "amber" && <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0" title="Amber" />}
-                {t.health === "red" && <span className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0" title="Red" />}
-                {t.health === "green" && <span className="w-2.5 h-2.5 rounded-full bg-green-500 shrink-0" title="Green" />}
-                {t.itemType === "phase" && <Badge variant="outline" className="text-xs">Phase</Badge>}
+                <Badge variant="secondary" className={`text-xs ${
+                  t.status === "in_progress" ? "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300" :
+                  t.status === "complete" ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300" : ""
+                }`}>{taskStatuses.find((s) => s.value === t.status)?.label || t.status}</Badge>
+                <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                  t.health === "amber" ? "bg-amber-500" : t.health === "red" ? "bg-red-500" : "bg-green-500"
+                }`} title={taskHealthOptions.find((h) => h.value === t.health)?.label || t.health} />
+                {t.itemType === "phase" && <Badge variant="outline" className="text-xs">{taskItemTypes.find((it) => it.value === "phase")?.label || "Phase"}</Badge>}
                 {t.parentTaskId && (() => {
                   const parent = tl.tasks.find((pt) => pt.id === t.parentTaskId);
                   return parent ? <Badge variant="outline" className="text-xs text-muted-foreground">↳ {parent.title}</Badge> : null;
@@ -1043,9 +1054,9 @@ export default function TimelineDetail() {
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   data-testid="select-new-task-status"
                 >
-                  <option value="not_started">Not Started</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="complete">Complete</option>
+                  {taskStatuses.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
                 </select>
               </div>
               <div className="w-32">
@@ -1056,9 +1067,9 @@ export default function TimelineDetail() {
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   data-testid="select-new-task-health"
                 >
-                  <option value="green">Green</option>
-                  <option value="amber">Amber</option>
-                  <option value="red">Red</option>
+                  {taskHealthOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
                 </select>
               </div>
               <div className="w-36">
@@ -1072,8 +1083,9 @@ export default function TimelineDetail() {
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   data-testid="select-new-task-type"
                 >
-                  <option value="workstream">Workstream</option>
-                  <option value="phase">Phase</option>
+                  {taskItemTypes.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
                 </select>
               </div>
               {newTaskItemType === "workstream" && timeline.tasks.filter((t) => t.itemType === "phase").length > 0 && (

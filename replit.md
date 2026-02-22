@@ -73,5 +73,10 @@ A visual timeline creation tool that supports two input methods:
   - Fields: title, description, category, owner, probability (Low/Medium/High/Very High), impact, mitigation, contingency, status (Open/Mitigated/Closed/Accepted), dueDate
   - Risk score = probability × impact (1-16 scale)
   - Expandable cards with edit/delete
-- Admin Console: /admin page with feature toggles
+- Admin Console: /admin page with feature toggles and field option management
   - Risk Register toggle (on/off)
+  - Field Options: customizable dropdown values for all list-based fields
+    - Task Status, Task Health, Task Item Type
+    - Risk Probability, Risk Impact, Risk Status
+    - Each field supports add, remove, rename, reorder, and reset to defaults
+    - Stored as JSONB in app_settings table; falls back to defaults when null

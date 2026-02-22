@@ -374,9 +374,23 @@ export async function registerRoutes(
   // UPDATE app settings
   app.patch("/api/settings", async (req, res) => {
     try {
-      const { riskRegisterEnabled } = req.body;
+      const {
+        riskRegisterEnabled,
+        taskStatuses,
+        taskHealthOptions,
+        taskItemTypes,
+        riskProbabilities,
+        riskImpacts,
+        riskStatuses,
+      } = req.body;
       const updates: any = {};
       if (riskRegisterEnabled !== undefined) updates.riskRegisterEnabled = riskRegisterEnabled;
+      if (taskStatuses !== undefined) updates.taskStatuses = taskStatuses;
+      if (taskHealthOptions !== undefined) updates.taskHealthOptions = taskHealthOptions;
+      if (taskItemTypes !== undefined) updates.taskItemTypes = taskItemTypes;
+      if (riskProbabilities !== undefined) updates.riskProbabilities = riskProbabilities;
+      if (riskImpacts !== undefined) updates.riskImpacts = riskImpacts;
+      if (riskStatuses !== undefined) updates.riskStatuses = riskStatuses;
 
       const settings = await storage.updateSettings(updates);
       res.json(settings);

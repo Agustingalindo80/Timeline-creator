@@ -1,7 +1,46 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+
+export const fieldOptionSchema = z.object({
+  value: z.string(),
+  label: z.string(),
+});
+export type FieldOption = z.infer<typeof fieldOptionSchema>;
+
+export const DEFAULT_TASK_STATUSES: FieldOption[] = [
+  { value: "not_started", label: "Not Started" },
+  { value: "in_progress", label: "In Progress" },
+  { value: "complete", label: "Complete" },
+];
+export const DEFAULT_TASK_HEALTH: FieldOption[] = [
+  { value: "green", label: "Green" },
+  { value: "amber", label: "Amber" },
+  { value: "red", label: "Red" },
+];
+export const DEFAULT_TASK_ITEM_TYPES: FieldOption[] = [
+  { value: "workstream", label: "Workstream" },
+  { value: "phase", label: "Phase" },
+];
+export const DEFAULT_RISK_PROBABILITIES: FieldOption[] = [
+  { value: "low", label: "Low" },
+  { value: "medium", label: "Medium" },
+  { value: "high", label: "High" },
+  { value: "very_high", label: "Very High" },
+];
+export const DEFAULT_RISK_IMPACTS: FieldOption[] = [
+  { value: "low", label: "Low" },
+  { value: "medium", label: "Medium" },
+  { value: "high", label: "High" },
+  { value: "very_high", label: "Very High" },
+];
+export const DEFAULT_RISK_STATUSES: FieldOption[] = [
+  { value: "open", label: "Open" },
+  { value: "mitigated", label: "Mitigated" },
+  { value: "closed", label: "Closed" },
+  { value: "accepted", label: "Accepted" },
+];
 
 export const timelines = pgTable("timelines", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -59,19 +98,25 @@ export const risks = pgTable("risks", {
 export const appSettings = pgTable("app_settings", {
   id: varchar("id").primaryKey().default("app"),
   riskRegisterEnabled: boolean("risk_register_enabled").notNull().default(false),
+  taskStatuses: jsonb("task_statuses").$type<FieldOption[]>(),
+  taskHealthOptions: jsonb("task_health_options").$type<FieldOption[]>(),
+  taskItemTypes: jsonb("task_item_types").$type<FieldOption[]>(),
+  riskProbabilities: jsonb("risk_probabilities").$type<FieldOption[]>(),
+  riskImpacts: jsonb("risk_impacts").$type<FieldOption[]>(),
+  riskStatuses: jsonb("risk_statuses").$type<FieldOption[]>(),
 });
 
 export const insertTimelineSchema = createInsertSchema(timelines).omit({ id: true });
 export const insertMilestoneSchema = createInsertSchema(milestones).omit({ id: true });
 export const insertTaskSchema = createInsertSchema(tasks).omit({ id: true }).extend({
-  status: z.enum(["not_started", "in_progress", "complete"]).default("not_started"),
-  health: z.enum(["green", "amber", "red"]).default("green"),
-  itemType: z.enum(["workstream", "phase"]).default("workstream"),
+  status: z.string().default("not_started"),
+  health: z.string().default("green"),
+  itemType: z.string().default("workstream"),
 });
 export const insertRiskSchema = createInsertSchema(risks).omit({ id: true }).extend({
-  probability: z.enum(["low", "medium", "high", "very_high"]).default("medium"),
-  impact: z.enum(["low", "medium", "high", "very_high"]).default("medium"),
-  status: z.enum(["open", "mitigated", "closed", "accepted"]).default("open"),
+  probability: z.string().default("medium"),
+  impact: z.string().default("medium"),
+  status: z.string().default("open"),
 });
 
 export type InsertTimeline = z.infer<typeof insertTimelineSchema>;

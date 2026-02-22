@@ -27,28 +27,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { Risk } from "@shared/schema";
-
-const PROBABILITY_LABELS: Record<string, string> = {
-  low: "Low",
-  medium: "Medium",
-  high: "High",
-  very_high: "Very High",
-};
-
-const IMPACT_LABELS: Record<string, string> = {
-  low: "Low",
-  medium: "Medium",
-  high: "High",
-  very_high: "Very High",
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  open: "Open",
-  mitigated: "Mitigated",
-  closed: "Closed",
-  accepted: "Accepted",
-};
+import type { Risk, AppSettings, FieldOption } from "@shared/schema";
+import {
+  DEFAULT_RISK_PROBABILITIES,
+  DEFAULT_RISK_IMPACTS,
+  DEFAULT_RISK_STATUSES,
+} from "@shared/schema";
 
 const SCORE_MAP: Record<string, number> = {
   low: 1,
@@ -83,6 +67,16 @@ export function RiskRegister({ timelineId }: RiskRegisterProps) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [expandedRisk, setExpandedRisk] = useState<string | null>(null);
   const [editingRiskId, setEditingRiskId] = useState<string | null>(null);
+
+  const { data: settings } = useQuery<AppSettings>({
+    queryKey: ["/api/settings"],
+  });
+  const riskProbabilities = settings?.riskProbabilities || DEFAULT_RISK_PROBABILITIES;
+  const riskImpacts = settings?.riskImpacts || DEFAULT_RISK_IMPACTS;
+  const riskStatuses = settings?.riskStatuses || DEFAULT_RISK_STATUSES;
+  const probLabel = (v: string) => riskProbabilities.find((o) => o.value === v)?.label || v;
+  const impactLabel = (v: string) => riskImpacts.find((o) => o.value === v)?.label || v;
+  const statusLabel = (v: string) => riskStatuses.find((o) => o.value === v)?.label || v;
 
   const [newTitle, setNewTitle] = useState("");
   const [newDesc, setNewDesc] = useState("");
@@ -279,28 +273,25 @@ export function RiskRegister({ timelineId }: RiskRegisterProps) {
             <div className="w-36">
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Probability</label>
               <select value={newProbability} onChange={(e) => setNewProbability(e.target.value)} className={selectClass} data-testid="select-new-risk-probability">
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="very_high">Very High</option>
+                {riskProbabilities.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
               </select>
             </div>
             <div className="w-36">
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Impact</label>
               <select value={newImpact} onChange={(e) => setNewImpact(e.target.value)} className={selectClass} data-testid="select-new-risk-impact">
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="very_high">Very High</option>
+                {riskImpacts.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
               </select>
             </div>
             <div className="w-36">
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Status</label>
               <select value={newStatus} onChange={(e) => setNewStatus(e.target.value)} className={selectClass} data-testid="select-new-risk-status">
-                <option value="open">Open</option>
-                <option value="mitigated">Mitigated</option>
-                <option value="closed">Closed</option>
-                <option value="accepted">Accepted</option>
+                {riskStatuses.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
               </select>
             </div>
             <div className="w-36">
@@ -381,26 +372,23 @@ export function RiskRegister({ timelineId }: RiskRegisterProps) {
                 <div className="flex gap-2 flex-wrap">
                   <div className="w-36">
                     <select value={editProbability} onChange={(e) => setEditProbability(e.target.value)} className={selectClass}>
-                      <option value="low">Low</option>
-                      <option value="medium">Medium</option>
-                      <option value="high">High</option>
-                      <option value="very_high">Very High</option>
+                      {riskProbabilities.map((opt) => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
                     </select>
                   </div>
                   <div className="w-36">
                     <select value={editImpact} onChange={(e) => setEditImpact(e.target.value)} className={selectClass}>
-                      <option value="low">Low</option>
-                      <option value="medium">Medium</option>
-                      <option value="high">High</option>
-                      <option value="very_high">Very High</option>
+                      {riskImpacts.map((opt) => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
                     </select>
                   </div>
                   <div className="w-36">
                     <select value={editStatus} onChange={(e) => setEditStatus(e.target.value)} className={selectClass}>
-                      <option value="open">Open</option>
-                      <option value="mitigated">Mitigated</option>
-                      <option value="closed">Closed</option>
-                      <option value="accepted">Accepted</option>
+                      {riskStatuses.map((opt) => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
                     </select>
                   </div>
                   <div className="w-36">
@@ -434,7 +422,7 @@ export function RiskRegister({ timelineId }: RiskRegisterProps) {
                       Score: {score}
                     </Badge>
                     <Badge variant="secondary" className={`text-xs shrink-0 ${statusColor(r.status)}`}>
-                      {STATUS_LABELS[r.status] || r.status}
+                      {statusLabel(r.status)}
                     </Badge>
                     {r.category && <Badge variant="outline" className="text-xs shrink-0">{r.category}</Badge>}
                   </div>
@@ -465,8 +453,8 @@ export function RiskRegister({ timelineId }: RiskRegisterProps) {
                   <div className="mt-3 pl-6 space-y-2 text-xs text-muted-foreground">
                     {r.description && <p><span className="font-medium text-foreground">Description:</span> {r.description}</p>}
                     <div className="flex gap-4 flex-wrap">
-                      <p><span className="font-medium text-foreground">Probability:</span> {PROBABILITY_LABELS[r.probability] || r.probability}</p>
-                      <p><span className="font-medium text-foreground">Impact:</span> {IMPACT_LABELS[r.impact] || r.impact}</p>
+                      <p><span className="font-medium text-foreground">Probability:</span> {probLabel(r.probability)}</p>
+                      <p><span className="font-medium text-foreground">Impact:</span> {impactLabel(r.impact)}</p>
                       {r.owner && <p><span className="font-medium text-foreground">Owner:</span> {r.owner}</p>}
                       {r.dueDate && <p><span className="font-medium text-foreground">Due:</span> {r.dueDate}</p>}
                     </div>
