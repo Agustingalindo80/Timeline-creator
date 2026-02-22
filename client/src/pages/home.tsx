@@ -1,9 +1,8 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { Helmet } from "react-helmet-async";
-import { Plus, Clock, FileSpreadsheet, Trash2, ArrowRight, CheckCircle2, Settings } from "lucide-react";
+import { Plus, FileSpreadsheet, Trash2, CheckCircle2, FolderKanban } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -18,7 +17,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { TimelineWithMilestones, Task } from "@shared/schema";
+import type { TimelineWithMilestones, Task, AppSettings } from "@shared/schema";
+import { DEFAULT_TASK_HEALTH } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 
 const MONTHS: Record<string, number> = {
@@ -58,6 +58,24 @@ function getWeightedCompletion(tasks: Task[]): number | null {
   return Math.round(weightedSum / totalWeight);
 }
 
+const HEALTH_COLORS: Record<string, string> = {
+  green: "#22c55e",
+  amber: "#f59e0b",
+  red: "#ef4444",
+};
+
+function HealthDot({ value, label, options }: { value: string; label: string; options: { value: string; label: string }[] }) {
+  const opt = options.find((o) => o.value === value);
+  const displayLabel = opt?.label || value;
+  const color = HEALTH_COLORS[value] || "#94a3b8";
+  return (
+    <div className="flex items-center gap-1.5" title={`${label}: ${displayLabel}`}>
+      <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
+      <span className="text-xs text-muted-foreground">{label}</span>
+    </div>
+  );
+}
+
 export default function Home() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
@@ -65,6 +83,12 @@ export default function Home() {
   const { data: timelines, isLoading } = useQuery<TimelineWithMilestones[]>({
     queryKey: ["/api/timelines"],
   });
+
+  const { data: settings } = useQuery<AppSettings>({
+    queryKey: ["/api/settings"],
+  });
+
+  const healthOptions = settings?.taskHealthOptions || DEFAULT_TASK_HEALTH;
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -77,133 +101,113 @@ export default function Home() {
   });
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="p-6">
       <Helmet>
-        <title>Project High Level Planning</title>
-        <meta name="description" content="Create visually appealing projects from Excel spreadsheets or by manually adding milestones and stages." />
-        <meta property="og:title" content="Project High Level Planning" />
-        <meta property="og:description" content="Create beautiful projects from spreadsheets or manual input." />
+        <title>Projects | Project High Level Planning</title>
+        <meta name="description" content="Manage your projects with milestones, tasks, and health tracking." />
       </Helmet>
-      <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-md bg-primary flex items-center justify-center">
-              <Clock className="w-5 h-5 text-primary-foreground" />
+
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-xl font-semibold" data-testid="text-page-title">Projects</h1>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => navigate("/create?mode=upload")}
+            data-testid="button-import-excel"
+          >
+            <FileSpreadsheet className="w-4 h-4 mr-2" />
+            Import Excel
+          </Button>
+          <Button onClick={() => navigate("/create")} data-testid="button-create-timeline">
+            <Plus className="w-4 h-4 mr-2" />
+            New Project
+          </Button>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="border rounded-lg p-4">
+              <Skeleton className="h-5 w-1/3 mb-2" />
+              <Skeleton className="h-4 w-1/2" />
             </div>
-            <h1 className="text-xl font-semibold tracking-tight">Project High Level Planning</h1>
+          ))}
+        </div>
+      ) : !timelines || timelines.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-24 text-center">
+          <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-6">
+            <FolderKanban className="w-8 h-8 text-muted-foreground" />
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={() => navigate("/admin")}
-              data-testid="button-admin"
-            >
-              <Settings className="w-4 h-4" />
-            </Button>
+          <h2 className="text-xl font-semibold mb-2">No projects yet</h2>
+          <p className="text-muted-foreground mb-6 max-w-md">
+            Create your first project by adding milestones manually or importing from an Excel spreadsheet.
+          </p>
+          <div className="flex gap-3">
             <Button
               variant="outline"
               onClick={() => navigate("/create?mode=upload")}
-              data-testid="button-import-excel"
+              data-testid="button-empty-import"
             >
               <FileSpreadsheet className="w-4 h-4 mr-2" />
               Import Excel
             </Button>
-            <Button onClick={() => navigate("/create")} data-testid="button-create-timeline">
+            <Button onClick={() => navigate("/create")} data-testid="button-empty-create">
               <Plus className="w-4 h-4 mr-2" />
-              New Project
+              Create Manually
             </Button>
           </div>
         </div>
-      </header>
-
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
-        {isLoading ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {[1, 2, 3].map((i) => (
-              <Card key={i} className="p-5">
-                <Skeleton className="h-5 w-3/4 mb-3" />
-                <Skeleton className="h-4 w-full mb-2" />
-                <Skeleton className="h-4 w-1/2" />
-              </Card>
-            ))}
-          </div>
-        ) : !timelines || timelines.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-6">
-              <Clock className="w-8 h-8 text-muted-foreground" />
-            </div>
-            <h2 className="text-xl font-semibold mb-2">No projects yet</h2>
-            <p className="text-muted-foreground mb-6 max-w-md">
-              Create your first project by adding milestones manually or importing from an Excel spreadsheet.
-            </p>
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                onClick={() => navigate("/create?mode=upload")}
-                data-testid="button-empty-import"
-              >
-                <FileSpreadsheet className="w-4 h-4 mr-2" />
-                Import Excel
-              </Button>
-              <Button onClick={() => navigate("/create")} data-testid="button-empty-create">
-                <Plus className="w-4 h-4 mr-2" />
-                Create Manually
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {timelines.map((timeline) => (
-              <Card
+      ) : (
+        <div className="space-y-2">
+          {timelines.map((timeline) => {
+            const pct = getWeightedCompletion(timeline.tasks);
+            return (
+              <div
                 key={timeline.id}
-                className="group relative overflow-visible hover-elevate active-elevate-2 cursor-pointer"
+                className="group relative border rounded-lg overflow-visible hover-elevate active-elevate-2 cursor-pointer"
                 data-testid={`card-timeline-${timeline.id}`}
               >
-                <Link href={`/timeline/${timeline.id}`} className="block p-5">
-                  <div className="flex items-start justify-between gap-2 mb-3">
-                    <div
-                      className="w-3 h-3 rounded-full mt-1.5 shrink-0"
-                      style={{ backgroundColor: timeline.color }}
-                    />
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <Badge variant="secondary" className="text-xs" data-testid={`badge-milestones-${timeline.id}`}>
-                        {timeline.milestones.length} milestone{timeline.milestones.length !== 1 ? "s" : ""}
-                      </Badge>
-                      {timeline.tasks.length > 0 && (
-                        <Badge variant="secondary" className="text-xs" data-testid={`badge-tasks-${timeline.id}`}>
-                          {timeline.tasks.length} task{timeline.tasks.length !== 1 ? "s" : ""}
+                <Link href={`/timeline/${timeline.id}`} className="flex items-center gap-4 p-4">
+                  <div
+                    className="w-3 h-3 rounded-full shrink-0"
+                    style={{ backgroundColor: timeline.color }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 mb-1">
+                      <h3 className="font-semibold text-sm truncate">{timeline.title}</h3>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <Badge variant="secondary" className="text-xs" data-testid={`badge-milestones-${timeline.id}`}>
+                          {timeline.milestones.length} milestone{timeline.milestones.length !== 1 ? "s" : ""}
                         </Badge>
-                      )}
+                        {timeline.tasks.length > 0 && (
+                          <Badge variant="secondary" className="text-xs" data-testid={`badge-tasks-${timeline.id}`}>
+                            {timeline.tasks.length} task{timeline.tasks.length !== 1 ? "s" : ""}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
+                    {timeline.description && (
+                      <p className="text-xs text-muted-foreground truncate">{timeline.description}</p>
+                    )}
                   </div>
-                  <h3 className="font-semibold text-base mb-1 line-clamp-1">{timeline.title}</h3>
-                  {timeline.description && (
-                    <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-                      {timeline.description}
-                    </p>
-                  )}
-                  {(() => {
-                    const pct = getWeightedCompletion(timeline.tasks);
-                    if (pct === null) return null;
-                    return (
-                      <div className="mb-3" data-testid={`completion-${timeline.id}`}>
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs text-muted-foreground flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3" />
-                            Completion
-                          </span>
-                          <span className="text-xs font-medium">{pct}%</span>
-                        </div>
-                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+
+                  <div className="flex items-center gap-4 shrink-0">
+                    <div className="flex items-center gap-3">
+                      <HealthDot value={timeline.healthOverall} label="Overall" options={healthOptions} />
+                      <HealthDot value={timeline.scopeHealth} label="Scope" options={healthOptions} />
+                      <HealthDot value={timeline.budgetHealth} label="Budget" options={healthOptions} />
+                      <HealthDot value={timeline.teamHealth} label="Team" options={healthOptions} />
+                    </div>
+
+                    {pct !== null && (
+                      <div className="flex items-center gap-2 min-w-[80px]" data-testid={`completion-${timeline.id}`}>
+                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary">
                           <div className="h-full bg-primary transition-all rounded-full" style={{ width: `${pct}%` }} />
                         </div>
+                        <span className="text-xs font-medium w-8 text-right">{pct}%</span>
                       </div>
-                    );
-                  })()}
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <span>View project</span>
-                    <ArrowRight className="w-3 h-3" />
+                    )}
                   </div>
                 </Link>
                 <AlertDialog>
@@ -211,7 +215,7 @@ export default function Home() {
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute top-1/2 -translate-y-1/2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
                       onClick={(e) => e.stopPropagation()}
                       data-testid={`button-delete-${timeline.id}`}
                     >
@@ -236,11 +240,11 @@ export default function Home() {
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
-              </Card>
-            ))}
-          </div>
-        )}
-      </main>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

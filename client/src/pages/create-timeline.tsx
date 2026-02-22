@@ -217,7 +217,7 @@ export default function CreateTimeline() {
             <Button
               size="icon"
               variant="ghost"
-              onClick={() => navigate("/")}
+              onClick={() => navigate("/projects")}
               data-testid="button-back-home"
             >
               <ArrowLeft className="w-4 h-4" />

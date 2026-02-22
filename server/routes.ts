@@ -109,11 +109,15 @@ export async function registerRoutes(
   // UPDATE timeline
   app.patch("/api/timelines/:id", async (req, res) => {
     try {
-      const { title, description, color } = req.body;
+      const { title, description, color, healthOverall, scopeHealth, budgetHealth, teamHealth } = req.body;
       const updates: any = {};
       if (title !== undefined) updates.title = title;
       if (description !== undefined) updates.description = description;
       if (color !== undefined) updates.color = color;
+      if (healthOverall !== undefined) updates.healthOverall = healthOverall;
+      if (scopeHealth !== undefined) updates.scopeHealth = scopeHealth;
+      if (budgetHealth !== undefined) updates.budgetHealth = budgetHealth;
+      if (teamHealth !== undefined) updates.teamHealth = teamHealth;
 
       const timeline = await storage.updateTimeline(req.params.id, updates);
       if (!timeline) return res.status(404).json({ message: "Timeline not found" });

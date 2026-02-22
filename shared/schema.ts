@@ -47,6 +47,10 @@ export const timelines = pgTable("timelines", {
   title: text("title").notNull(),
   description: text("description"),
   color: text("color").notNull().default("#2563eb"),
+  healthOverall: text("health_overall").notNull().default("green"),
+  scopeHealth: text("scope_health").notNull().default("green"),
+  budgetHealth: text("budget_health").notNull().default("green"),
+  teamHealth: text("team_health").notNull().default("green"),
 });
 
 export const milestones = pgTable("milestones", {

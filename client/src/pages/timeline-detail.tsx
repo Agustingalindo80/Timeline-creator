@@ -762,7 +762,7 @@ export default function TimelineDetail() {
             <Button
               size="icon"
               variant="ghost"
-              onClick={() => navigate("/")}
+              onClick={() => navigate("/projects")}
               data-testid="button-back"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -924,6 +924,47 @@ export default function TimelineDetail() {
 
         {timeline.description && !editing && (
           <p className="text-sm text-muted-foreground mb-6">{timeline.description}</p>
+        )}
+
+        {!editing && (
+          <Card className="p-4 mb-6">
+            <h4 className="text-xs font-medium text-muted-foreground mb-3">Health</h4>
+            <div className="flex items-center gap-6 flex-wrap">
+              {([
+                { key: "healthOverall", label: "Overall" },
+                { key: "scopeHealth", label: "Scope" },
+                { key: "budgetHealth", label: "Budget" },
+                { key: "teamHealth", label: "Team Composition" },
+              ] as const).map(({ key, label }) => (
+                <div key={key} className="flex items-center gap-2">
+                  <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">{label}</label>
+                  <select
+                    className="text-xs border rounded px-2 py-1 bg-background"
+                    value={(timeline as any)[key] || "green"}
+                    onChange={async (e) => {
+                      await apiRequest("PATCH", `/api/timelines/${id}`, { [key]: e.target.value });
+                      queryClient.invalidateQueries({ queryKey: ["/api/timelines", id] });
+                      queryClient.invalidateQueries({ queryKey: ["/api/timelines"] });
+                    }}
+                    data-testid={`select-health-${key}`}
+                  >
+                    {taskHealthOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                  <div
+                    className="w-3 h-3 rounded-full"
+                    style={{
+                      backgroundColor:
+                        (timeline as any)[key] === "green" ? "#22c55e" :
+                        (timeline as any)[key] === "amber" ? "#f59e0b" :
+                        (timeline as any)[key] === "red" ? "#ef4444" : "#94a3b8"
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          </Card>
         )}
 
         {showAddForm && (

@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useLocation } from "wouter";
 import { Helmet } from "react-helmet-async";
-import { ArrowLeft, Settings, Shield, List, Plus, X, GripVertical, RotateCcw } from "lucide-react";
+import { Shield, List, Plus, X, GripVertical, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -248,7 +247,6 @@ function FieldOptionEditor({
 }
 
 export default function Admin() {
-  const [, navigate] = useLocation();
   const { toast } = useToast();
 
   const { data: settings, isLoading } = useQuery<AppSettings>({
@@ -321,30 +319,14 @@ export default function Admin() {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="p-6">
       <Helmet>
-        <title>Admin Console | Project High Level Planning</title>
+        <title>Settings | Project High Level Planning</title>
       </Helmet>
-      <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-3">
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={() => navigate("/")}
-            data-testid="button-admin-back"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </Button>
-          <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-md bg-primary flex items-center justify-center">
-              <Settings className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <h1 className="text-lg font-semibold">Admin Console</h1>
-          </div>
-        </div>
-      </header>
 
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+      <h1 className="text-xl font-semibold mb-6">Settings</h1>
+
+      <div className="max-w-3xl">
         <div className="mb-6">
           <h2 className="text-base font-semibold mb-1 flex items-center gap-2">
             <Shield className="w-4 h-4" />
@@ -410,7 +392,7 @@ export default function Admin() {
             </div>
           </>
         )}
-      </main>
+      </div>
     </div>
   );
 }
