@@ -811,7 +811,10 @@ export default function TimelineDetail() {
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">Type</label>
                 <select
                   value={newTaskItemType}
-                  onChange={(e) => setNewTaskItemType(e.target.value)}
+                  onChange={(e) => {
+                    setNewTaskItemType(e.target.value);
+                    if (e.target.value === "phase") setNewTaskParentId("");
+                  }}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   data-testid="select-new-task-type"
                 >
@@ -819,6 +822,24 @@ export default function TimelineDetail() {
                   <option value="phase">Phase</option>
                 </select>
               </div>
+              {newTaskItemType === "workstream" && timeline.tasks.filter((t) => t.itemType === "phase").length > 0 && (
+                <div className="w-44">
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Parent Phase</label>
+                  <select
+                    value={newTaskParentId}
+                    onChange={(e) => setNewTaskParentId(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    data-testid="select-new-task-parent-phase"
+                  >
+                    <option value="">None</option>
+                    {timeline.tasks
+                      .filter((t) => t.itemType === "phase")
+                      .map((p) => (
+                        <option key={p.id} value={p.id}>{p.title}</option>
+                      ))}
+                  </select>
+                </div>
+              )}
               <Button
                 onClick={handleAddTask}
                 disabled={!newTaskTitle.trim() || !newTaskStart.trim() || !newTaskEnd.trim() || addTaskMutation.isPending}
@@ -1105,7 +1126,10 @@ export default function TimelineDetail() {
                           <label className="text-xs font-medium text-muted-foreground mb-1 block">Type</label>
                           <select
                             value={editTItemType}
-                            onChange={(e) => setEditTItemType(e.target.value)}
+                            onChange={(e) => {
+                              setEditTItemType(e.target.value);
+                              if (e.target.value === "phase") setEditTParentId("");
+                            }}
                             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                             data-testid={`select-edit-task-type-${t.id}`}
                           >
@@ -1113,6 +1137,24 @@ export default function TimelineDetail() {
                             <option value="phase">Phase</option>
                           </select>
                         </div>
+                        {editTItemType === "workstream" && timeline.tasks.filter((pt) => pt.itemType === "phase" && pt.id !== t.id).length > 0 && (
+                          <div className="w-44">
+                            <label className="text-xs font-medium text-muted-foreground mb-1 block">Parent Phase</label>
+                            <select
+                              value={editTParentId}
+                              onChange={(e) => setEditTParentId(e.target.value)}
+                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                              data-testid={`select-edit-task-parent-phase-${t.id}`}
+                            >
+                              <option value="">None</option>
+                              {timeline.tasks
+                                .filter((pt) => pt.itemType === "phase" && pt.id !== t.id)
+                                .map((p) => (
+                                  <option key={p.id} value={p.id}>{p.title}</option>
+                                ))}
+                            </select>
+                          </div>
+                        )}
                       </div>
                       <div className="flex items-center gap-2 justify-end">
                         <Button
@@ -1153,6 +1195,10 @@ export default function TimelineDetail() {
                             {t.health === "red" && <span className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0" title="Red" />}
                             {t.health === "green" && <span className="w-2.5 h-2.5 rounded-full bg-green-500 shrink-0" title="Green" />}
                             {t.itemType === "phase" && <Badge variant="outline" className="text-xs">Phase</Badge>}
+                            {t.parentTaskId && (() => {
+                              const parent = timeline.tasks.find((pt) => pt.id === t.parentTaskId);
+                              return parent ? <Badge variant="outline" className="text-xs text-muted-foreground">↳ {parent.title}</Badge> : null;
+                            })()}
                           </div>
                           <p className="text-xs text-muted-foreground">
                             Planned: {t.startDate} — {t.endDate}
