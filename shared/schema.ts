@@ -20,7 +20,6 @@ export const milestones = pgTable("milestones", {
   color: text("color"),
   icon: text("icon"),
   sortOrder: integer("sort_order").notNull().default(0),
-  parentTaskId: varchar("parent_task_id"),
 });
 
 export const tasks = pgTable("tasks", {

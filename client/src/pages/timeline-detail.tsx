@@ -89,7 +89,7 @@ export default function TimelineDetail() {
   });
 
   const addMilestoneMutation = useMutation({
-    mutationFn: async (data: { title: string; date: string; actualDate?: string; description?: string; parentTaskId?: string }) => {
+    mutationFn: async (data: { title: string; date: string; actualDate?: string; description?: string }) => {
       await apiRequest("POST", `/api/timelines/${id}/milestones`, {
         ...data,
         sortOrder: (timeline?.milestones.length || 0),
@@ -102,7 +102,7 @@ export default function TimelineDetail() {
   });
 
   const updateMilestoneMutation = useMutation({
-    mutationFn: async ({ milestoneId, data }: { milestoneId: string; data: { title?: string; date?: string; actualDate?: string | null; description?: string | null; parentTaskId?: string | null } }) => {
+    mutationFn: async ({ milestoneId, data }: { milestoneId: string; data: { title?: string; date?: string; actualDate?: string | null; description?: string | null } }) => {
       await apiRequest("PATCH", `/api/milestones/${milestoneId}`, data);
     },
     onSuccess: () => {
@@ -168,7 +168,6 @@ export default function TimelineDetail() {
   const [newDate, setNewDate] = useState("");
   const [newActualDate, setNewActualDate] = useState("");
   const [newDesc, setNewDesc] = useState("");
-  const [newMParentTaskId, setNewMParentTaskId] = useState("");
 
   const [showAddTaskForm, setShowAddTaskForm] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
@@ -184,7 +183,6 @@ export default function TimelineDetail() {
   const [editMDate, setEditMDate] = useState("");
   const [editMActualDate, setEditMActualDate] = useState("");
   const [editMDesc, setEditMDesc] = useState("");
-  const [editMParentTaskId, setEditMParentTaskId] = useState("");
 
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editTTitle, setEditTTitle] = useState("");
@@ -205,13 +203,12 @@ export default function TimelineDetail() {
   const [editTItemType, setEditTItemType] = useState("workstream");
   const [editTParentId, setEditTParentId] = useState("");
 
-  const startEditingMilestone = (m: { id: string; title: string; date: string; actualDate: string | null; description: string | null; parentTaskId: string | null }) => {
+  const startEditingMilestone = (m: { id: string; title: string; date: string; actualDate: string | null; description: string | null }) => {
     setEditingMilestoneId(m.id);
     setEditMTitle(m.title);
     setEditMDate(m.date);
     setEditMActualDate(m.actualDate || "");
     setEditMDesc(m.description || "");
-    setEditMParentTaskId(m.parentTaskId || "");
   };
 
   const saveMilestoneEdit = () => {
@@ -224,7 +221,6 @@ export default function TimelineDetail() {
           date: editMDate.trim(),
           actualDate: editMActualDate.trim() || null,
           description: editMDesc.trim() || null,
-          parentTaskId: editMParentTaskId || null,
         },
       },
       {
@@ -288,14 +284,13 @@ export default function TimelineDetail() {
   const handleAddMilestone = () => {
     if (!newTitle.trim() || !newDate.trim()) return;
     addMilestoneMutation.mutate(
-      { title: newTitle, date: newDate, actualDate: newActualDate || undefined, description: newDesc || undefined, parentTaskId: newMParentTaskId || undefined },
+      { title: newTitle, date: newDate, actualDate: newActualDate || undefined, description: newDesc || undefined },
       {
         onSuccess: () => {
           setNewTitle("");
           setNewDate("");
           setNewActualDate("");
           setNewDesc("");
-          setNewMParentTaskId("");
           setShowAddForm(false);
         },
       }
@@ -456,8 +451,6 @@ export default function TimelineDetail() {
     },
     [timeline, toast]
   );
-
-  const phaseTasks = timeline?.tasks.filter((t) => t.itemType === "phase") || [];
 
   if (isLoading) {
     return (
@@ -708,20 +701,6 @@ export default function TimelineDetail() {
                   data-testid="input-new-milestone-desc"
                 />
               </div>
-              <div className="w-44">
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Parent Phase</label>
-                <select
-                  value={newMParentTaskId}
-                  onChange={(e) => setNewMParentTaskId(e.target.value)}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  data-testid="select-new-milestone-phase"
-                >
-                  <option value="">None</option>
-                  {phaseTasks.map((p) => (
-                    <option key={p.id} value={p.id}>{p.title}</option>
-                  ))}
-                </select>
-              </div>
               <Button
                 onClick={handleAddMilestone}
                 disabled={!newTitle.trim() || !newDate.trim() || addMilestoneMutation.isPending}
@@ -931,20 +910,6 @@ export default function TimelineDetail() {
                         placeholder="Description (optional)"
                         data-testid={`input-edit-milestone-desc-${m.id}`}
                       />
-                      <div className="w-48">
-                        <label className="text-xs font-medium text-muted-foreground mb-1 block">Parent Phase</label>
-                        <select
-                          value={editMParentTaskId}
-                          onChange={(e) => setEditMParentTaskId(e.target.value)}
-                          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                          data-testid={`select-edit-milestone-phase-${m.id}`}
-                        >
-                          <option value="">None</option>
-                          {phaseTasks.map((p) => (
-                            <option key={p.id} value={p.id}>{p.title}</option>
-                          ))}
-                        </select>
-                      </div>
                       <div className="flex items-center gap-2 justify-end">
                         <Button
                           size="sm"
@@ -979,11 +944,6 @@ export default function TimelineDetail() {
                             Planned: {m.date}
                             {m.actualDate && <span className="ml-2">Actual: {m.actualDate}</span>}
                           </p>
-                          {m.parentTaskId && (
-                            <span className="inline-flex items-center text-xs text-blue-600 dark:text-blue-400 mt-0.5">
-                              Phase: {timeline.tasks.find((t) => t.id === m.parentTaskId)?.title || "Unknown"}
-                            </span>
-                          )}
                           {m.description && (
                             <p className="text-xs text-muted-foreground truncate max-w-md">{m.description}</p>
                           )}
