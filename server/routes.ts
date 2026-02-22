@@ -115,7 +115,7 @@ export async function registerRoutes(
   // ADD milestone to timeline
   app.post("/api/timelines/:id/milestones", async (req, res) => {
     try {
-      const { title, description, date, actualDate, color, icon, sortOrder } = req.body;
+      const { title, description, date, actualDate, color, icon, sortOrder, parentTaskId } = req.body;
       if (!title || !date) {
         return res.status(400).json({ message: "Title and date are required" });
       }
@@ -129,6 +129,7 @@ export async function registerRoutes(
         color: color || null,
         icon: icon || null,
         sortOrder: sortOrder ?? 0,
+        parentTaskId: parentTaskId || null,
       });
       res.status(201).json(milestone);
     } catch (err: any) {
@@ -139,7 +140,7 @@ export async function registerRoutes(
   // UPDATE milestone
   app.patch("/api/milestones/:id", async (req, res) => {
     try {
-      const { title, description, date, actualDate, color, icon, sortOrder } = req.body;
+      const { title, description, date, actualDate, color, icon, sortOrder, parentTaskId } = req.body;
       const updates: any = {};
       if (title !== undefined) updates.title = title;
       if (description !== undefined) updates.description = description;
@@ -148,6 +149,7 @@ export async function registerRoutes(
       if (color !== undefined) updates.color = color;
       if (icon !== undefined) updates.icon = icon;
       if (sortOrder !== undefined) updates.sortOrder = sortOrder;
+      if (parentTaskId !== undefined) updates.parentTaskId = parentTaskId;
 
       const milestone = await storage.updateMilestone(req.params.id, updates);
       if (!milestone) return res.status(404).json({ message: "Milestone not found" });
