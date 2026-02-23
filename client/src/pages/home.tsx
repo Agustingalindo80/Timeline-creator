@@ -1,8 +1,8 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { Helmet } from "react-helmet-async";
-import { Plus, FileSpreadsheet, Trash2, FolderKanban, Search, Save, ExternalLink } from "lucide-react";
+import { Plus, FileSpreadsheet, Trash2, FolderKanban, Search, Save, ExternalLink, ArrowUpDown, ArrowUp, ArrowDown, X, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -77,12 +77,29 @@ interface RowEdits {
   teamHealth?: string;
 }
 
+type SortField = "title" | "client" | "projectType" | "engagementModel" | "approvedBudget" | "grossMargin" | "healthOverall" | "scopeHealth" | "budgetHealth" | "teamHealth" | "progress";
+type SortDir = "asc" | "desc";
+
+interface ColumnFilters {
+  client?: string;
+  projectType?: string;
+  engagementModel?: string;
+  healthOverall?: string;
+  scopeHealth?: string;
+  budgetHealth?: string;
+  teamHealth?: string;
+}
+
 export default function Home() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [edits, setEdits] = useState<Record<string, RowEdits>>({});
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [columnFilters, setColumnFilters] = useState<ColumnFilters>({});
+  const [showFilters, setShowFilters] = useState(false);
 
   const { data: timelines, isLoading } = useQuery<TimelineWithMilestones[]>({
     queryKey: ["/api/timelines"],
@@ -97,12 +114,94 @@ export default function Home() {
   const engagementModelOptions = settings?.engagementModels || DEFAULT_ENGAGEMENT_MODELS;
   const clientOptions = settings?.clients || DEFAULT_CLIENTS;
 
-  const filteredTimelines = timelines?.filter((t) => {
-    if (!searchQuery.trim()) return true;
-    const q = searchQuery.toLowerCase();
-    const clientLabel = t.client ? (clientOptions.find((o) => o.value === t.client)?.label || t.client).toLowerCase() : "";
-    return t.title.toLowerCase().includes(q) || clientLabel.includes(q);
-  });
+  const activeFilterCount = Object.values(columnFilters).filter(Boolean).length;
+
+  const processedTimelines = useMemo(() => {
+    if (!timelines) return [];
+
+    let result = timelines.filter((t) => {
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const clientLabel = t.client ? (clientOptions.find((o) => o.value === t.client)?.label || t.client).toLowerCase() : "";
+        if (!t.title.toLowerCase().includes(q) && !clientLabel.includes(q)) return false;
+      }
+
+      if (columnFilters.client && (t.client || "") !== columnFilters.client) return false;
+      if (columnFilters.projectType && (t.projectType || "") !== columnFilters.projectType) return false;
+      if (columnFilters.engagementModel && (t.engagementModel || "") !== columnFilters.engagementModel) return false;
+      if (columnFilters.healthOverall && (t.healthOverall || "green") !== columnFilters.healthOverall) return false;
+      if (columnFilters.scopeHealth && (t.scopeHealth || "green") !== columnFilters.scopeHealth) return false;
+      if (columnFilters.budgetHealth && (t.budgetHealth || "green") !== columnFilters.budgetHealth) return false;
+      if (columnFilters.teamHealth && (t.teamHealth || "green") !== columnFilters.teamHealth) return false;
+
+      return true;
+    });
+
+    if (sortField) {
+      result = [...result].sort((a, b) => {
+        let aVal: string | number | null = null;
+        let bVal: string | number | null = null;
+
+        switch (sortField) {
+          case "title":
+            aVal = a.title.toLowerCase();
+            bVal = b.title.toLowerCase();
+            break;
+          case "client": {
+            const aLabel = a.client ? (clientOptions.find((o) => o.value === a.client)?.label || a.client) : "";
+            const bLabel = b.client ? (clientOptions.find((o) => o.value === b.client)?.label || b.client) : "";
+            aVal = aLabel.toLowerCase();
+            bVal = bLabel.toLowerCase();
+            break;
+          }
+          case "projectType": {
+            const aLabel = a.projectType ? (projectTypeOptions.find((o) => o.value === a.projectType)?.label || a.projectType) : "";
+            const bLabel = b.projectType ? (projectTypeOptions.find((o) => o.value === b.projectType)?.label || b.projectType) : "";
+            aVal = aLabel.toLowerCase();
+            bVal = bLabel.toLowerCase();
+            break;
+          }
+          case "engagementModel": {
+            const aLabel = a.engagementModel ? (engagementModelOptions.find((o) => o.value === a.engagementModel)?.label || a.engagementModel) : "";
+            const bLabel = b.engagementModel ? (engagementModelOptions.find((o) => o.value === b.engagementModel)?.label || b.engagementModel) : "";
+            aVal = aLabel.toLowerCase();
+            bVal = bLabel.toLowerCase();
+            break;
+          }
+          case "approvedBudget":
+            aVal = a.approvedBudget ? parseFloat(a.approvedBudget) : -1;
+            bVal = b.approvedBudget ? parseFloat(b.approvedBudget) : -1;
+            break;
+          case "grossMargin":
+            aVal = a.grossMargin ? parseFloat(a.grossMargin) : -1;
+            bVal = b.grossMargin ? parseFloat(b.grossMargin) : -1;
+            break;
+          case "healthOverall":
+          case "scopeHealth":
+          case "budgetHealth":
+          case "teamHealth": {
+            const order: Record<string, number> = { green: 0, amber: 1, red: 2 };
+            const aHealth = (a as any)[sortField] || "green";
+            const bHealth = (b as any)[sortField] || "green";
+            aVal = order[aHealth] ?? 99;
+            bVal = order[bHealth] ?? 99;
+            break;
+          }
+          case "progress":
+            aVal = getWeightedCompletion(a.tasks) ?? -1;
+            bVal = getWeightedCompletion(b.tasks) ?? -1;
+            break;
+        }
+
+        if (aVal === null || bVal === null) return 0;
+        if (aVal < bVal) return sortDir === "asc" ? -1 : 1;
+        if (aVal > bVal) return sortDir === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return result;
+  }, [timelines, searchQuery, columnFilters, sortField, sortDir, clientOptions, projectTypeOptions, engagementModelOptions]);
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -189,8 +288,59 @@ export default function Home() {
     }
   }, [edits, hasEdits, saveRow]);
 
+  const toggleSort = useCallback((field: SortField) => {
+    if (sortField === field) {
+      if (sortDir === "asc") {
+        setSortDir("desc");
+      } else {
+        setSortField(null);
+        setSortDir("asc");
+      }
+    } else {
+      setSortField(field);
+      setSortDir("asc");
+    }
+  }, [sortField, sortDir]);
+
+  const setFilter = useCallback((field: keyof ColumnFilters, value: string) => {
+    setColumnFilters((prev) => {
+      if (!value) {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      }
+      return { ...prev, [field]: value };
+    });
+  }, []);
+
+  const clearAllFilters = useCallback(() => {
+    setColumnFilters({});
+    setSearchQuery("");
+  }, []);
+
   const selectClass = "h-7 text-xs border rounded px-1.5 py-0 bg-background w-full appearance-none cursor-pointer";
   const inputClass = "h-7 text-xs border rounded px-1.5 py-0 bg-background w-full";
+  const filterSelectClass = "h-6 text-[10px] border rounded px-1 py-0 bg-background w-full appearance-none cursor-pointer text-muted-foreground";
+
+  const SortHeader = ({ field, label, align = "left" }: { field: SortField; label: string; align?: "left" | "center" }) => {
+    const active = sortField === field;
+    return (
+      <th
+        className={`font-medium text-muted-foreground px-3 py-2 whitespace-nowrap cursor-pointer select-none hover:text-foreground transition-colors ${align === "center" ? "text-center" : "text-left"}`}
+        onClick={() => toggleSort(field)}
+        data-testid={`sort-${field}`}
+      >
+        <div className={`inline-flex items-center gap-1 ${align === "center" ? "justify-center" : ""}`}>
+          {label}
+          {active ? (
+            sortDir === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+          ) : (
+            <ArrowUpDown className="w-3 h-3 opacity-30" />
+          )}
+        </div>
+      </th>
+    );
+  };
 
   return (
     <div className="p-6">
@@ -225,15 +375,44 @@ export default function Home() {
       </div>
 
       {timelines && timelines.length > 0 && (
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by project name or client..."
-            className="pl-9 h-8 text-sm"
-            data-testid="input-search-projects"
-          />
+        <div className="flex items-center gap-2 mb-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by project name or client..."
+              className="pl-9 h-8 text-sm"
+              data-testid="input-search-projects"
+            />
+          </div>
+          <Button
+            variant={showFilters ? "secondary" : "outline"}
+            size="sm"
+            onClick={() => setShowFilters(!showFilters)}
+            className="h-8 shrink-0"
+            data-testid="button-toggle-filters"
+          >
+            <Filter className="w-3.5 h-3.5 mr-1.5" />
+            Filters
+            {activeFilterCount > 0 && (
+              <span className="ml-1.5 bg-primary text-primary-foreground rounded-full w-4 h-4 text-[10px] flex items-center justify-center">
+                {activeFilterCount}
+              </span>
+            )}
+          </Button>
+          {(activeFilterCount > 0 || searchQuery.trim()) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearAllFilters}
+              className="h-8 text-xs text-muted-foreground shrink-0"
+              data-testid="button-clear-filters"
+            >
+              <X className="w-3.5 h-3.5 mr-1" />
+              Clear all
+            </Button>
+          )}
         </div>
       )}
 
@@ -246,62 +425,163 @@ export default function Home() {
             </div>
           ))}
         </div>
-      ) : !filteredTimelines || filteredTimelines.length === 0 ? (
-        searchQuery.trim() ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center" data-testid="empty-search-results">
-            <Search className="w-10 h-10 text-muted-foreground mb-4" />
-            <h2 className="text-lg font-semibold mb-1">No matching projects</h2>
-            <p className="text-sm text-muted-foreground">
-              No projects match "{searchQuery}". Try a different search term.
-            </p>
+      ) : !timelines || timelines.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-24 text-center">
+          <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-6">
+            <FolderKanban className="w-8 h-8 text-muted-foreground" />
           </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-6">
-              <FolderKanban className="w-8 h-8 text-muted-foreground" />
-            </div>
-            <h2 className="text-xl font-semibold mb-2">No projects yet</h2>
-            <p className="text-muted-foreground mb-6 max-w-md">
-              Create your first project by adding milestones manually or importing from an Excel spreadsheet.
-            </p>
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                onClick={() => navigate("/create?mode=upload")}
-                data-testid="button-empty-import"
-              >
-                <FileSpreadsheet className="w-4 h-4 mr-2" />
-                Import Excel
-              </Button>
-              <Button onClick={() => navigate("/create")} data-testid="button-empty-create">
-                <Plus className="w-4 h-4 mr-2" />
-                Create Manually
-              </Button>
-            </div>
+          <h2 className="text-xl font-semibold mb-2">No projects yet</h2>
+          <p className="text-muted-foreground mb-6 max-w-md">
+            Create your first project by adding milestones manually or importing from an Excel spreadsheet.
+          </p>
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              onClick={() => navigate("/create?mode=upload")}
+              data-testid="button-empty-import"
+            >
+              <FileSpreadsheet className="w-4 h-4 mr-2" />
+              Import Excel
+            </Button>
+            <Button onClick={() => navigate("/create")} data-testid="button-empty-create">
+              <Plus className="w-4 h-4 mr-2" />
+              Create Manually
+            </Button>
           </div>
-        )
+        </div>
+      ) : processedTimelines.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center" data-testid="empty-search-results">
+          <Search className="w-10 h-10 text-muted-foreground mb-4" />
+          <h2 className="text-lg font-semibold mb-1">No matching projects</h2>
+          <p className="text-sm text-muted-foreground mb-3">
+            No projects match your current filters. Try adjusting your search or filters.
+          </p>
+          <Button variant="outline" size="sm" onClick={clearAllFilters} data-testid="button-clear-filters-empty">
+            Clear all filters
+          </Button>
+        </div>
       ) : (
         <div className="border rounded-lg overflow-hidden" data-testid="table-projects">
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
                 <tr className="bg-muted/50 border-b">
-                  <th className="text-left font-medium text-muted-foreground px-3 py-2 whitespace-nowrap min-w-[180px]">Project Name</th>
-                  <th className="text-left font-medium text-muted-foreground px-3 py-2 whitespace-nowrap min-w-[110px]">Client</th>
-                  <th className="text-left font-medium text-muted-foreground px-3 py-2 whitespace-nowrap min-w-[110px]">Project Type</th>
-                  <th className="text-left font-medium text-muted-foreground px-3 py-2 whitespace-nowrap min-w-[120px]">Engagement Model</th>
-                  <th className="text-left font-medium text-muted-foreground px-3 py-2 whitespace-nowrap min-w-[100px]">Budget</th>
-                  <th className="text-left font-medium text-muted-foreground px-3 py-2 whitespace-nowrap min-w-[80px]">Margin</th>
-                  <th className="text-center font-medium text-muted-foreground px-3 py-2 whitespace-nowrap">Overall</th>
-                  <th className="text-center font-medium text-muted-foreground px-3 py-2 whitespace-nowrap">Scope</th>
-                  <th className="text-center font-medium text-muted-foreground px-3 py-2 whitespace-nowrap">Budget</th>
-                  <th className="text-center font-medium text-muted-foreground px-3 py-2 whitespace-nowrap">Team</th>
-                  <th className="text-center font-medium text-muted-foreground px-3 py-2 whitespace-nowrap">Progress</th>
+                  <SortHeader field="title" label="Project Name" />
+                  <SortHeader field="client" label="Client" />
+                  <SortHeader field="projectType" label="Project Type" />
+                  <SortHeader field="engagementModel" label="Engagement Model" />
+                  <SortHeader field="approvedBudget" label="Budget" />
+                  <SortHeader field="grossMargin" label="Margin" />
+                  <SortHeader field="healthOverall" label="Overall" align="center" />
+                  <SortHeader field="scopeHealth" label="Scope" align="center" />
+                  <SortHeader field="budgetHealth" label="Budget" align="center" />
+                  <SortHeader field="teamHealth" label="Team" align="center" />
+                  <SortHeader field="progress" label="Progress" align="center" />
                   <th className="text-center font-medium text-muted-foreground px-3 py-2 whitespace-nowrap w-[80px]">Actions</th>
                 </tr>
+                {showFilters && (
+                  <tr className="bg-muted/30 border-b">
+                    <th className="px-3 py-1.5" />
+                    <th className="px-3 py-1.5">
+                      <select
+                        className={filterSelectClass}
+                        value={columnFilters.client || ""}
+                        onChange={(e) => setFilter("client", e.target.value)}
+                        data-testid="filter-client"
+                      >
+                        <option value="">All</option>
+                        {clientOptions.map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </th>
+                    <th className="px-3 py-1.5">
+                      <select
+                        className={filterSelectClass}
+                        value={columnFilters.projectType || ""}
+                        onChange={(e) => setFilter("projectType", e.target.value)}
+                        data-testid="filter-projectType"
+                      >
+                        <option value="">All</option>
+                        {projectTypeOptions.map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </th>
+                    <th className="px-3 py-1.5">
+                      <select
+                        className={filterSelectClass}
+                        value={columnFilters.engagementModel || ""}
+                        onChange={(e) => setFilter("engagementModel", e.target.value)}
+                        data-testid="filter-engagementModel"
+                      >
+                        <option value="">All</option>
+                        {engagementModelOptions.map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </th>
+                    <th className="px-3 py-1.5" />
+                    <th className="px-3 py-1.5" />
+                    <th className="px-3 py-1.5">
+                      <select
+                        className={filterSelectClass}
+                        value={columnFilters.healthOverall || ""}
+                        onChange={(e) => setFilter("healthOverall", e.target.value)}
+                        data-testid="filter-healthOverall"
+                      >
+                        <option value="">All</option>
+                        {healthOptions.map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </th>
+                    <th className="px-3 py-1.5">
+                      <select
+                        className={filterSelectClass}
+                        value={columnFilters.scopeHealth || ""}
+                        onChange={(e) => setFilter("scopeHealth", e.target.value)}
+                        data-testid="filter-scopeHealth"
+                      >
+                        <option value="">All</option>
+                        {healthOptions.map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </th>
+                    <th className="px-3 py-1.5">
+                      <select
+                        className={filterSelectClass}
+                        value={columnFilters.budgetHealth || ""}
+                        onChange={(e) => setFilter("budgetHealth", e.target.value)}
+                        data-testid="filter-budgetHealth"
+                      >
+                        <option value="">All</option>
+                        {healthOptions.map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </th>
+                    <th className="px-3 py-1.5">
+                      <select
+                        className={filterSelectClass}
+                        value={columnFilters.teamHealth || ""}
+                        onChange={(e) => setFilter("teamHealth", e.target.value)}
+                        data-testid="filter-teamHealth"
+                      >
+                        <option value="">All</option>
+                        {healthOptions.map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </th>
+                    <th className="px-3 py-1.5" />
+                    <th className="px-3 py-1.5" />
+                  </tr>
+                )}
               </thead>
               <tbody>
-                {filteredTimelines.map((timeline) => {
+                {processedTimelines.map((timeline) => {
                   const pct = getWeightedCompletion(timeline.tasks);
                   const dirty = hasEdits(timeline.id);
                   const saving = savingIds.has(timeline.id);
@@ -513,14 +793,14 @@ export default function Home() {
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Delete project?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  This will permanently delete "{timeline.title}" and all its milestones.
+                                  This will permanently delete "{timeline.title}" and all its milestones and tasks. This action cannot be undone.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                                 <AlertDialogAction
                                   onClick={() => deleteMutation.mutate(timeline.id)}
-                                  data-testid="button-confirm-delete"
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                 >
                                   Delete
                                 </AlertDialogAction>
