@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { Helmet } from "react-helmet-async";
-import { Plus, FileSpreadsheet, Trash2, CheckCircle2, FolderKanban, DollarSign, Percent } from "lucide-react";
+import { Plus, FileSpreadsheet, Trash2, CheckCircle2, FolderKanban, DollarSign, Percent, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -79,6 +81,7 @@ function HealthDot({ value, label, options }: { value: string; label: string; op
 export default function Home() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { data: timelines, isLoading } = useQuery<TimelineWithMilestones[]>({
     queryKey: ["/api/timelines"],
@@ -92,6 +95,13 @@ export default function Home() {
   const projectTypeOptions = settings?.projectTypes || DEFAULT_PROJECT_TYPES;
   const engagementModelOptions = settings?.engagementModels || DEFAULT_ENGAGEMENT_MODELS;
   const clientOptions = settings?.clients || DEFAULT_CLIENTS;
+
+  const filteredTimelines = timelines?.filter((t) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    const clientLabel = t.client ? (clientOptions.find((o) => o.value === t.client)?.label || t.client).toLowerCase() : "";
+    return t.title.toLowerCase().includes(q) || clientLabel.includes(q);
+  });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -128,6 +138,19 @@ export default function Home() {
         </div>
       </div>
 
+      {timelines && timelines.length > 0 && (
+        <div className="relative mb-4">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search by project name or client..."
+            className="pl-9"
+            data-testid="input-search-projects"
+          />
+        </div>
+      )}
+
       {isLoading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
@@ -137,33 +160,43 @@ export default function Home() {
             </div>
           ))}
         </div>
-      ) : !timelines || timelines.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-24 text-center">
-          <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-6">
-            <FolderKanban className="w-8 h-8 text-muted-foreground" />
+      ) : !filteredTimelines || filteredTimelines.length === 0 ? (
+        searchQuery.trim() ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center" data-testid="empty-search-results">
+            <Search className="w-10 h-10 text-muted-foreground mb-4" />
+            <h2 className="text-lg font-semibold mb-1">No matching projects</h2>
+            <p className="text-sm text-muted-foreground">
+              No projects match "{searchQuery}". Try a different search term.
+            </p>
           </div>
-          <h2 className="text-xl font-semibold mb-2">No projects yet</h2>
-          <p className="text-muted-foreground mb-6 max-w-md">
-            Create your first project by adding milestones manually or importing from an Excel spreadsheet.
-          </p>
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              onClick={() => navigate("/create?mode=upload")}
-              data-testid="button-empty-import"
-            >
-              <FileSpreadsheet className="w-4 h-4 mr-2" />
-              Import Excel
-            </Button>
-            <Button onClick={() => navigate("/create")} data-testid="button-empty-create">
-              <Plus className="w-4 h-4 mr-2" />
-              Create Manually
-            </Button>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-6">
+              <FolderKanban className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <h2 className="text-xl font-semibold mb-2">No projects yet</h2>
+            <p className="text-muted-foreground mb-6 max-w-md">
+              Create your first project by adding milestones manually or importing from an Excel spreadsheet.
+            </p>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => navigate("/create?mode=upload")}
+                data-testid="button-empty-import"
+              >
+                <FileSpreadsheet className="w-4 h-4 mr-2" />
+                Import Excel
+              </Button>
+              <Button onClick={() => navigate("/create")} data-testid="button-empty-create">
+                <Plus className="w-4 h-4 mr-2" />
+                Create Manually
+              </Button>
+            </div>
           </div>
-        </div>
+        )
       ) : (
         <div className="space-y-2">
-          {timelines.map((timeline) => {
+          {filteredTimelines.map((timeline) => {
             const pct = getWeightedCompletion(timeline.tasks);
             return (
               <div
