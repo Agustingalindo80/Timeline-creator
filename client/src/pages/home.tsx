@@ -1,7 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { Helmet } from "react-helmet-async";
-import { Plus, FileSpreadsheet, Trash2, CheckCircle2, FolderKanban } from "lucide-react";
+import { Plus, FileSpreadsheet, Trash2, CheckCircle2, FolderKanban, DollarSign, Percent } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -207,6 +207,22 @@ export default function Home() {
                     </div>
                     {timeline.description && (
                       <p className="text-xs text-muted-foreground truncate">{timeline.description}</p>
+                    )}
+                    {(timeline.approvedBudget != null || timeline.grossMargin != null) && (
+                      <div className="flex items-center gap-3 mt-1">
+                        {timeline.approvedBudget != null && (
+                          <span className="text-xs text-muted-foreground flex items-center gap-0.5" data-testid={`text-budget-${timeline.id}`}>
+                            <DollarSign className="w-3 h-3" />
+                            {Number(timeline.approvedBudget).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                          </span>
+                        )}
+                        {timeline.grossMargin != null && (
+                          <span className="text-xs text-muted-foreground flex items-center gap-0.5" data-testid={`text-margin-${timeline.id}`}>
+                            <Percent className="w-3 h-3" />
+                            {Number(timeline.grossMargin)}%
+                          </span>
+                        )}
+                      </div>
                     )}
                   </div>
 
