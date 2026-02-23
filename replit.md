@@ -45,7 +45,11 @@ A visual project planning tool that supports two input methods:
 - GET /api/clients/:id - Get single client with associated projects
 - POST /api/clients - Create client
 - PATCH /api/clients/:id - Update client
-- DELETE /api/clients/:id - Delete client (unlinks projects)
+- DELETE /api/clients/:id - Delete client (unlinks projects, deletes contacts)
+- GET /api/clients/:clientId/contacts - Get contacts for client
+- POST /api/clients/:clientId/contacts - Create contact
+- PATCH /api/contacts/:id - Update contact
+- DELETE /api/contacts/:id - Delete contact
 - GET /api/timelines - List all projects with milestones and tasks
 - GET /api/timelines/:id - Get single project
 - POST /api/timelines - Create project with milestones
@@ -67,6 +71,7 @@ A visual project planning tool that supports two input methods:
 
 ## Database
 - clients: id, name, industry, contactName, contactEmail, contactPhone, website, address, notes, status
+- contacts: id, clientId (FK to clients), firstName, lastName, email, phone, role, isLegalRepresentative
 - timelines: id, title, description, color, healthOverall, scopeHealth, budgetHealth, teamHealth, projectType, engagementModel, client (legacy), clientId (FK to clients), approvedBudget, grossMargin
 - milestones: id, timelineId, title, description, date, actualDate, color, icon, sortOrder
 - tasks: id, timelineId, title, description, startDate, endDate, actualStartDate, actualEndDate, percentComplete, color, sortOrder, status, health, itemType, parentTaskId

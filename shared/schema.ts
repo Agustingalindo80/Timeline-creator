@@ -68,6 +68,17 @@ export const clients = pgTable("clients", {
   status: text("status").notNull().default("active"),
 });
 
+export const contacts = pgTable("contacts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
+  email: text("email"),
+  phone: text("phone"),
+  role: text("role"),
+  isLegalRepresentative: boolean("is_legal_representative").notNull().default(false),
+});
+
 export const timelines = pgTable("timelines", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   title: text("title").notNull(),
@@ -146,6 +157,7 @@ export const appSettings = pgTable("app_settings", {
 });
 
 export const insertClientSchema = createInsertSchema(clients).omit({ id: true });
+export const insertContactSchema = createInsertSchema(contacts).omit({ id: true });
 export const insertTimelineSchema = createInsertSchema(timelines).omit({ id: true });
 export const insertMilestoneSchema = createInsertSchema(milestones).omit({ id: true });
 export const insertTaskSchema = createInsertSchema(tasks).omit({ id: true }).extend({
@@ -161,6 +173,8 @@ export const insertRiskSchema = createInsertSchema(risks).omit({ id: true }).ext
 
 export type InsertClient = z.infer<typeof insertClientSchema>;
 export type Client = typeof clients.$inferSelect;
+export type InsertContact = z.infer<typeof insertContactSchema>;
+export type Contact = typeof contacts.$inferSelect;
 export type InsertTimeline = z.infer<typeof insertTimelineSchema>;
 export type Timeline = typeof timelines.$inferSelect;
 export type InsertMilestone = z.infer<typeof insertMilestoneSchema>;
@@ -173,4 +187,4 @@ export type AppSettings = typeof appSettings.$inferSelect;
 
 export type TimelineWithMilestones = Timeline & { milestones: Milestone[]; tasks: Task[] };
 export type TimelineWithAll = TimelineWithMilestones & { risks: Risk[] };
-export type ClientWithProjects = Client & { projects: TimelineWithMilestones[] };
+export type ClientWithProjects = Client & { projects: TimelineWithMilestones[]; contacts: Contact[] };

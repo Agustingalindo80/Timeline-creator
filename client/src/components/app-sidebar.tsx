@@ -16,8 +16,8 @@ import { ThemeToggle } from "@/components/theme-toggle";
 
 const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Projects", url: "/projects", icon: FolderKanban },
   { title: "Clients", url: "/clients", icon: Building2 },
+  { title: "Projects", url: "/projects", icon: FolderKanban },
   { title: "Settings", url: "/admin", icon: Settings },
 ];
 

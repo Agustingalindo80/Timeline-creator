@@ -108,6 +108,66 @@ export async function registerRoutes(
     }
   });
 
+  // --- CONTACT ROUTES ---
+
+  app.get("/api/clients/:clientId/contacts", async (req, res) => {
+    try {
+      const contacts = await storage.getContacts(req.params.clientId);
+      res.json(contacts);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/clients/:clientId/contacts", async (req, res) => {
+    try {
+      const { firstName, lastName, email, phone, role, isLegalRepresentative } = req.body;
+      if (!firstName?.trim() || !lastName?.trim()) {
+        return res.status(400).json({ message: "First name and last name are required" });
+      }
+      const contact = await storage.createContact({
+        clientId: req.params.clientId,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email || null,
+        phone: phone || null,
+        role: role || null,
+        isLegalRepresentative: isLegalRepresentative ?? false,
+      });
+      res.status(201).json(contact);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/contacts/:id", async (req, res) => {
+    try {
+      const { firstName, lastName, email, phone, role, isLegalRepresentative } = req.body;
+      const updates: any = {};
+      if (firstName !== undefined) updates.firstName = firstName;
+      if (lastName !== undefined) updates.lastName = lastName;
+      if (email !== undefined) updates.email = email;
+      if (phone !== undefined) updates.phone = phone;
+      if (role !== undefined) updates.role = role;
+      if (isLegalRepresentative !== undefined) updates.isLegalRepresentative = isLegalRepresentative;
+
+      const contact = await storage.updateContact(req.params.id, updates);
+      if (!contact) return res.status(404).json({ message: "Contact not found" });
+      res.json(contact);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.delete("/api/contacts/:id", async (req, res) => {
+    try {
+      await storage.deleteContact(req.params.id);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // --- TIMELINE ROUTES ---
 
   // GET all timelines

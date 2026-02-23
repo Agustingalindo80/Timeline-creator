@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation, useParams } from "wouter";
 import { Helmet } from "react-helmet-async";
-import { ArrowLeft, Building2, Mail, Phone, Globe, MapPin, FileText, Save, FolderKanban, ExternalLink } from "lucide-react";
+import { ArrowLeft, Building2, Mail, Phone, Globe, MapPin, FileText, Save, FolderKanban, ExternalLink, Plus, Pencil, Trash2, Users, Shield } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,8 +10,10 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { ClientWithProjects, Task } from "@shared/schema";
+import type { ClientWithProjects, Task, Contact } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 
 const MONTHS: Record<string, number> = {
@@ -194,6 +196,9 @@ export default function ClientDetail() {
       <Tabs defaultValue="details" data-testid="client-tabs">
         <TabsList className="mb-4" data-testid="client-tabs-list">
           <TabsTrigger value="details" data-testid="tab-details">Details</TabsTrigger>
+          <TabsTrigger value="contacts" data-testid="tab-contacts">
+            Contacts ({client.contacts.length})
+          </TabsTrigger>
           <TabsTrigger value="projects" data-testid="tab-projects">
             Projects ({client.projects.length})
           </TabsTrigger>
@@ -303,6 +308,10 @@ export default function ClientDetail() {
           )}
         </TabsContent>
 
+        <TabsContent value="contacts">
+          <ContactsSection clientId={params.id!} contacts={client.contacts} />
+        </TabsContent>
+
         <TabsContent value="projects">
           {client.projects.length === 0 ? (
             <div className="text-center py-12" data-testid="empty-projects">
@@ -404,6 +413,256 @@ export default function ClientDetail() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+function ContactsSection({ clientId, contacts }: { clientId: string; contacts: Contact[] }) {
+  const { toast } = useToast();
+  const [showDialog, setShowDialog] = useState(false);
+  const [editingContact, setEditingContact] = useState<Contact | null>(null);
+  const [contactForm, setContactForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    role: "",
+    isLegalRepresentative: false,
+  });
+
+  const resetForm = () => {
+    setContactForm({ firstName: "", lastName: "", email: "", phone: "", role: "", isLegalRepresentative: false });
+    setEditingContact(null);
+  };
+
+  const openCreate = () => {
+    resetForm();
+    setShowDialog(true);
+  };
+
+  const openEdit = (contact: Contact) => {
+    setEditingContact(contact);
+    setContactForm({
+      firstName: contact.firstName,
+      lastName: contact.lastName,
+      email: contact.email || "",
+      phone: contact.phone || "",
+      role: contact.role || "",
+      isLegalRepresentative: contact.isLegalRepresentative,
+    });
+    setShowDialog(true);
+  };
+
+  const createMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("POST", `/api/clients/${clientId}/contacts`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/clients", clientId] });
+      toast({ title: "Contact added" });
+      setShowDialog(false);
+      resetForm();
+    },
+    onError: () => toast({ title: "Failed to add contact", variant: "destructive" }),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const res = await apiRequest("PATCH", `/api/contacts/${id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/clients", clientId] });
+      toast({ title: "Contact updated" });
+      setShowDialog(false);
+      resetForm();
+    },
+    onError: () => toast({ title: "Failed to update contact", variant: "destructive" }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/contacts/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/clients", clientId] });
+      toast({ title: "Contact deleted" });
+    },
+    onError: () => toast({ title: "Failed to delete contact", variant: "destructive" }),
+  });
+
+  const handleSave = () => {
+    const payload = {
+      firstName: contactForm.firstName.trim(),
+      lastName: contactForm.lastName.trim(),
+      email: contactForm.email || null,
+      phone: contactForm.phone || null,
+      role: contactForm.role || null,
+      isLegalRepresentative: contactForm.isLegalRepresentative,
+    };
+    if (editingContact) {
+      updateMutation.mutate({ id: editingContact.id, data: payload });
+    } else {
+      createMutation.mutate(payload);
+    }
+  };
+
+  const isPending = createMutation.isPending || updateMutation.isPending;
+
+  return (
+    <>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-sm text-muted-foreground">
+          {contacts.length === 0 ? "No contacts yet" : `${contacts.length} contact${contacts.length !== 1 ? "s" : ""}`}
+        </p>
+        <Button size="sm" onClick={openCreate} data-testid="button-add-contact">
+          <Plus className="w-4 h-4 mr-1" /> Add Contact
+        </Button>
+      </div>
+
+      {contacts.length === 0 ? (
+        <div className="text-center py-12" data-testid="empty-contacts">
+          <Users className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+          <h3 className="text-sm font-semibold mb-1">No contacts yet</h3>
+          <p className="text-xs text-muted-foreground">Add contacts associated with this client.</p>
+        </div>
+      ) : (
+        <div className="border rounded-lg overflow-hidden" data-testid="contacts-table">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="bg-muted/50 border-b">
+                <th className="text-left font-medium text-muted-foreground px-3 py-2">Name</th>
+                <th className="text-left font-medium text-muted-foreground px-3 py-2">Role</th>
+                <th className="text-left font-medium text-muted-foreground px-3 py-2">Email</th>
+                <th className="text-left font-medium text-muted-foreground px-3 py-2">Phone</th>
+                <th className="text-center font-medium text-muted-foreground px-3 py-2">Legal Rep</th>
+                <th className="text-center font-medium text-muted-foreground px-3 py-2 w-[80px]">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {contacts.map((contact) => (
+                <tr
+                  key={contact.id}
+                  className="border-b last:border-b-0 hover:bg-muted/30 transition-colors"
+                  data-testid={`row-contact-${contact.id}`}
+                >
+                  <td className="px-3 py-2 font-medium">
+                    {contact.firstName} {contact.lastName}
+                  </td>
+                  <td className="px-3 py-2 text-muted-foreground">{contact.role || "—"}</td>
+                  <td className="px-3 py-2 text-muted-foreground">{contact.email || "—"}</td>
+                  <td className="px-3 py-2 text-muted-foreground">{contact.phone || "—"}</td>
+                  <td className="px-3 py-2 text-center">
+                    {contact.isLegalRepresentative && (
+                      <Badge variant="outline" className="text-[10px] gap-1">
+                        <Shield className="w-3 h-3" /> Yes
+                      </Badge>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6"
+                        onClick={() => openEdit(contact)}
+                        data-testid={`button-edit-contact-${contact.id}`}
+                      >
+                        <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6 text-destructive hover:text-destructive"
+                        onClick={() => deleteMutation.mutate(contact.id)}
+                        data-testid={`button-delete-contact-${contact.id}`}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <Dialog open={showDialog} onOpenChange={(open) => { if (!open) { setShowDialog(false); resetForm(); } else setShowDialog(true); }}>
+        <DialogContent data-testid="contact-dialog">
+          <DialogHeader>
+            <DialogTitle>{editingContact ? "Edit Contact" : "Add Contact"}</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>First Name *</Label>
+              <Input
+                value={contactForm.firstName}
+                onChange={(e) => setContactForm({ ...contactForm, firstName: e.target.value })}
+                data-testid="input-contact-first-name"
+              />
+            </div>
+            <div>
+              <Label>Last Name *</Label>
+              <Input
+                value={contactForm.lastName}
+                onChange={(e) => setContactForm({ ...contactForm, lastName: e.target.value })}
+                data-testid="input-contact-last-name"
+              />
+            </div>
+            <div>
+              <Label>Email</Label>
+              <Input
+                type="email"
+                value={contactForm.email}
+                onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
+                data-testid="input-contact-email"
+              />
+            </div>
+            <div>
+              <Label>Phone</Label>
+              <Input
+                value={contactForm.phone}
+                onChange={(e) => setContactForm({ ...contactForm, phone: e.target.value })}
+                data-testid="input-contact-phone"
+              />
+            </div>
+            <div className="col-span-2">
+              <Label>Role</Label>
+              <Input
+                value={contactForm.role}
+                onChange={(e) => setContactForm({ ...contactForm, role: e.target.value })}
+                placeholder="e.g. VP of Engineering"
+                data-testid="input-contact-role"
+              />
+            </div>
+            <div className="col-span-2 flex items-center gap-2">
+              <Checkbox
+                id="isLegalRep"
+                checked={contactForm.isLegalRepresentative}
+                onCheckedChange={(checked) => setContactForm({ ...contactForm, isLegalRepresentative: checked === true })}
+                data-testid="checkbox-legal-rep"
+              />
+              <Label htmlFor="isLegalRep" className="cursor-pointer text-sm">
+                Legal Representative (authorized to sign SOWs)
+              </Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => { setShowDialog(false); resetForm(); }} data-testid="button-cancel-contact">
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={!contactForm.firstName.trim() || !contactForm.lastName.trim() || isPending}
+              data-testid="button-save-contact"
+            >
+              {isPending ? "Saving..." : editingContact ? "Save Changes" : "Add Contact"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

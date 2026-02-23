@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { db } from "./db";
 import {
   clients,
+  contacts,
   timelines,
   milestones,
   tasks,
@@ -9,6 +10,8 @@ import {
   appSettings,
   type Client,
   type InsertClient,
+  type Contact,
+  type InsertContact,
   type Timeline,
   type InsertTimeline,
   type Milestone,
@@ -29,6 +32,11 @@ export interface IStorage {
   createClient(data: InsertClient): Promise<Client>;
   updateClient(id: string, data: Partial<InsertClient>): Promise<Client | undefined>;
   deleteClient(id: string): Promise<void>;
+  getContacts(clientId: string): Promise<Contact[]>;
+  getContact(id: string): Promise<Contact | undefined>;
+  createContact(data: InsertContact): Promise<Contact>;
+  updateContact(id: string, data: Partial<InsertContact>): Promise<Contact | undefined>;
+  deleteContact(id: string): Promise<void>;
   getTimelines(): Promise<TimelineWithMilestones[]>;
   getTimeline(id: string): Promise<TimelineWithMilestones | undefined>;
   createTimeline(data: InsertTimeline): Promise<Timeline>;
@@ -66,6 +74,7 @@ export class DatabaseStorage implements IStorage {
     const allTimelines = await db.select().from(timelines).where(eq(timelines.clientId, id));
     const allMilestones = await db.select().from(milestones);
     const allTasks = await db.select().from(tasks);
+    const clientContacts = await db.select().from(contacts).where(eq(contacts.clientId, id));
 
     const projects = allTimelines.map((t) => ({
       ...t,
@@ -77,7 +86,7 @@ export class DatabaseStorage implements IStorage {
         .sort((a, b) => a.sortOrder - b.sortOrder),
     }));
 
-    return { ...client, projects };
+    return { ...client, projects, contacts: clientContacts };
   }
 
   async createClient(data: InsertClient): Promise<Client> {
@@ -96,7 +105,31 @@ export class DatabaseStorage implements IStorage {
 
   async deleteClient(id: string): Promise<void> {
     await db.update(timelines).set({ clientId: null }).where(eq(timelines.clientId, id));
+    await db.delete(contacts).where(eq(contacts.clientId, id));
     await db.delete(clients).where(eq(clients.id, id));
+  }
+
+  async getContacts(clientId: string): Promise<Contact[]> {
+    return db.select().from(contacts).where(eq(contacts.clientId, clientId));
+  }
+
+  async getContact(id: string): Promise<Contact | undefined> {
+    const [contact] = await db.select().from(contacts).where(eq(contacts.id, id));
+    return contact;
+  }
+
+  async createContact(data: InsertContact): Promise<Contact> {
+    const [contact] = await db.insert(contacts).values(data).returning();
+    return contact;
+  }
+
+  async updateContact(id: string, data: Partial<InsertContact>): Promise<Contact | undefined> {
+    const [contact] = await db.update(contacts).set(data).where(eq(contacts.id, id)).returning();
+    return contact;
+  }
+
+  async deleteContact(id: string): Promise<void> {
+    await db.delete(contacts).where(eq(contacts.id, id));
   }
 
   async getTimelines(): Promise<TimelineWithMilestones[]> {
