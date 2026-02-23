@@ -20,7 +20,6 @@ import {
   DEFAULT_RISK_STATUSES,
   DEFAULT_PROJECT_TYPES,
   DEFAULT_ENGAGEMENT_MODELS,
-  DEFAULT_CLIENTS,
 } from "@shared/schema";
 
 interface FieldOptionEditorProps {
@@ -320,14 +319,6 @@ export default function Admin() {
           defaults: DEFAULT_ENGAGEMENT_MODELS,
           current: settings?.engagementModels || DEFAULT_ENGAGEMENT_MODELS,
           testId: "engagement-models",
-        },
-        {
-          title: "Client",
-          description: "Client options for projects.",
-          key: "clients",
-          defaults: DEFAULT_CLIENTS,
-          current: settings?.clients || DEFAULT_CLIENTS,
-          testId: "clients",
         },
       ],
     },

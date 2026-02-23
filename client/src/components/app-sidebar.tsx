@@ -1,4 +1,4 @@
-import { LayoutDashboard, FolderKanban, Settings } from "lucide-react";
+import { LayoutDashboard, FolderKanban, Settings, Building2 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -17,6 +17,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Projects", url: "/projects", icon: FolderKanban },
+  { title: "Clients", url: "/clients", icon: Building2 },
   { title: "Settings", url: "/admin", icon: Settings },
 ];
 

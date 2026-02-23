@@ -47,14 +47,13 @@ import { useToast } from "@/hooks/use-toast";
 import { TimelineView, TimelineViewHorizontal } from "@/components/timeline-view";
 import { ThemePicker } from "@/components/theme-picker";
 import { RiskRegister } from "@/components/risk-register";
-import type { TimelineWithMilestones, AppSettings, FieldOption } from "@shared/schema";
+import type { TimelineWithMilestones, AppSettings, FieldOption, Client } from "@shared/schema";
 import {
   DEFAULT_TASK_STATUSES,
   DEFAULT_TASK_HEALTH,
   DEFAULT_TASK_ITEM_TYPES,
   DEFAULT_PROJECT_TYPES,
   DEFAULT_ENGAGEMENT_MODELS,
-  DEFAULT_CLIENTS,
 } from "@shared/schema";
 
 type ViewMode = "vertical" | "horizontal";
@@ -86,7 +85,9 @@ export default function TimelineDetail() {
   const taskItemTypes = settings?.taskItemTypes || DEFAULT_TASK_ITEM_TYPES;
   const projectTypes = settings?.projectTypes || DEFAULT_PROJECT_TYPES;
   const engagementModels = settings?.engagementModels || DEFAULT_ENGAGEMENT_MODELS;
-  const clientOptions = settings?.clients || DEFAULT_CLIENTS;
+  const { data: clientsList } = useQuery<Client[]>({
+    queryKey: ["/api/clients"],
+  });
 
   const updateMutation = useMutation({
     mutationFn: async () => {
@@ -975,17 +976,17 @@ export default function TimelineDetail() {
                 <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Client</label>
                 <select
                   className="text-xs border rounded px-2 py-1 bg-background"
-                  value={timeline.client || ""}
+                  value={timeline.clientId || ""}
                   onChange={async (e) => {
-                    await apiRequest("PATCH", `/api/timelines/${id}`, { client: e.target.value || null });
+                    await apiRequest("PATCH", `/api/timelines/${id}`, { clientId: e.target.value || null });
                     queryClient.invalidateQueries({ queryKey: ["/api/timelines", id] });
                     queryClient.invalidateQueries({ queryKey: ["/api/timelines"] });
                   }}
                   data-testid="select-client"
                 >
                   <option value="">Not set</option>
-                  {clientOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  {(clientsList || []).map((cl) => (
+                    <option key={cl.id} value={cl.id}>{cl.name}</option>
                   ))}
                 </select>
               </div>

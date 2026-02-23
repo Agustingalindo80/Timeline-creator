@@ -33,6 +33,83 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
 
+  // --- CLIENT ROUTES ---
+
+  app.get("/api/clients", async (_req, res) => {
+    try {
+      const clients = await storage.getClients();
+      res.json(clients);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/clients/:id", async (req, res) => {
+    try {
+      const client = await storage.getClientWithProjects(req.params.id);
+      if (!client) return res.status(404).json({ message: "Client not found" });
+      res.json(client);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/clients", async (req, res) => {
+    try {
+      const { name, industry, contactName, contactEmail, contactPhone, website, address, notes, status } = req.body;
+      if (!name || !name.trim()) {
+        return res.status(400).json({ message: "Client name is required" });
+      }
+      const client = await storage.createClient({
+        name: name.trim(),
+        industry: industry || null,
+        contactName: contactName || null,
+        contactEmail: contactEmail || null,
+        contactPhone: contactPhone || null,
+        website: website || null,
+        address: address || null,
+        notes: notes || null,
+        status: status || "active",
+      });
+      res.status(201).json(client);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/clients/:id", async (req, res) => {
+    try {
+      const { name, industry, contactName, contactEmail, contactPhone, website, address, notes, status } = req.body;
+      const updates: any = {};
+      if (name !== undefined) updates.name = name;
+      if (industry !== undefined) updates.industry = industry;
+      if (contactName !== undefined) updates.contactName = contactName;
+      if (contactEmail !== undefined) updates.contactEmail = contactEmail;
+      if (contactPhone !== undefined) updates.contactPhone = contactPhone;
+      if (website !== undefined) updates.website = website;
+      if (address !== undefined) updates.address = address;
+      if (notes !== undefined) updates.notes = notes;
+      if (status !== undefined) updates.status = status;
+
+      const client = await storage.updateClient(req.params.id, updates);
+      if (!client) return res.status(404).json({ message: "Client not found" });
+      res.json(client);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.delete("/api/clients/:id", async (req, res) => {
+    try {
+      await storage.deleteClient(req.params.id);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // --- TIMELINE ROUTES ---
+
   // GET all timelines
   app.get("/api/timelines", async (_req, res) => {
     try {
@@ -109,7 +186,7 @@ export async function registerRoutes(
   // UPDATE timeline
   app.patch("/api/timelines/:id", async (req, res) => {
     try {
-      const { title, description, color, healthOverall, scopeHealth, budgetHealth, teamHealth, projectType, engagementModel, client, approvedBudget, grossMargin } = req.body;
+      const { title, description, color, healthOverall, scopeHealth, budgetHealth, teamHealth, projectType, engagementModel, client, clientId, approvedBudget, grossMargin } = req.body;
       const updates: any = {};
       if (title !== undefined) updates.title = title;
       if (description !== undefined) updates.description = description;
@@ -121,6 +198,7 @@ export async function registerRoutes(
       if (projectType !== undefined) updates.projectType = projectType;
       if (engagementModel !== undefined) updates.engagementModel = engagementModel;
       if (client !== undefined) updates.client = client;
+      if (clientId !== undefined) updates.clientId = clientId;
       if (approvedBudget !== undefined) updates.approvedBudget = approvedBudget;
       if (grossMargin !== undefined) updates.grossMargin = grossMargin;
 

@@ -1,11 +1,14 @@
 import { eq } from "drizzle-orm";
 import { db } from "./db";
 import {
+  clients,
   timelines,
   milestones,
   tasks,
   risks,
   appSettings,
+  type Client,
+  type InsertClient,
   type Timeline,
   type InsertTimeline,
   type Milestone,
@@ -16,9 +19,16 @@ import {
   type InsertRisk,
   type AppSettings,
   type TimelineWithMilestones,
+  type ClientWithProjects,
 } from "@shared/schema";
 
 export interface IStorage {
+  getClients(): Promise<Client[]>;
+  getClient(id: string): Promise<Client | undefined>;
+  getClientWithProjects(id: string): Promise<ClientWithProjects | undefined>;
+  createClient(data: InsertClient): Promise<Client>;
+  updateClient(id: string, data: Partial<InsertClient>): Promise<Client | undefined>;
+  deleteClient(id: string): Promise<void>;
   getTimelines(): Promise<TimelineWithMilestones[]>;
   getTimeline(id: string): Promise<TimelineWithMilestones | undefined>;
   createTimeline(data: InsertTimeline): Promise<Timeline>;
@@ -40,6 +50,55 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  async getClients(): Promise<Client[]> {
+    return db.select().from(clients);
+  }
+
+  async getClient(id: string): Promise<Client | undefined> {
+    const [client] = await db.select().from(clients).where(eq(clients.id, id));
+    return client;
+  }
+
+  async getClientWithProjects(id: string): Promise<ClientWithProjects | undefined> {
+    const [client] = await db.select().from(clients).where(eq(clients.id, id));
+    if (!client) return undefined;
+
+    const allTimelines = await db.select().from(timelines).where(eq(timelines.clientId, id));
+    const allMilestones = await db.select().from(milestones);
+    const allTasks = await db.select().from(tasks);
+
+    const projects = allTimelines.map((t) => ({
+      ...t,
+      milestones: allMilestones
+        .filter((m) => m.timelineId === t.id)
+        .sort((a, b) => a.sortOrder - b.sortOrder),
+      tasks: allTasks
+        .filter((task) => task.timelineId === t.id)
+        .sort((a, b) => a.sortOrder - b.sortOrder),
+    }));
+
+    return { ...client, projects };
+  }
+
+  async createClient(data: InsertClient): Promise<Client> {
+    const [client] = await db.insert(clients).values(data).returning();
+    return client;
+  }
+
+  async updateClient(id: string, data: Partial<InsertClient>): Promise<Client | undefined> {
+    const [client] = await db
+      .update(clients)
+      .set(data)
+      .where(eq(clients.id, id))
+      .returning();
+    return client;
+  }
+
+  async deleteClient(id: string): Promise<void> {
+    await db.update(timelines).set({ clientId: null }).where(eq(timelines.clientId, id));
+    await db.delete(clients).where(eq(clients.id, id));
+  }
+
   async getTimelines(): Promise<TimelineWithMilestones[]> {
     const allTimelines = await db.select().from(timelines);
     const allMilestones = await db.select().from(milestones);

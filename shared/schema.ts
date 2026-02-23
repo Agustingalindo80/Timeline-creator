@@ -55,6 +55,19 @@ export const DEFAULT_CLIENTS: FieldOption[] = [
   { value: "client_b", label: "Client B" },
 ];
 
+export const clients = pgTable("clients", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  industry: text("industry"),
+  contactName: text("contact_name"),
+  contactEmail: text("contact_email"),
+  contactPhone: text("contact_phone"),
+  website: text("website"),
+  address: text("address"),
+  notes: text("notes"),
+  status: text("status").notNull().default("active"),
+});
+
 export const timelines = pgTable("timelines", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   title: text("title").notNull(),
@@ -67,6 +80,7 @@ export const timelines = pgTable("timelines", {
   projectType: text("project_type"),
   engagementModel: text("engagement_model"),
   client: text("client"),
+  clientId: varchar("client_id"),
   approvedBudget: numeric("approved_budget", { precision: 12, scale: 2 }),
   grossMargin: numeric("gross_margin", { precision: 5, scale: 2 }),
 });
@@ -131,6 +145,7 @@ export const appSettings = pgTable("app_settings", {
   clients: jsonb("clients").$type<FieldOption[]>(),
 });
 
+export const insertClientSchema = createInsertSchema(clients).omit({ id: true });
 export const insertTimelineSchema = createInsertSchema(timelines).omit({ id: true });
 export const insertMilestoneSchema = createInsertSchema(milestones).omit({ id: true });
 export const insertTaskSchema = createInsertSchema(tasks).omit({ id: true }).extend({
@@ -144,6 +159,8 @@ export const insertRiskSchema = createInsertSchema(risks).omit({ id: true }).ext
   status: z.string().default("open"),
 });
 
+export type InsertClient = z.infer<typeof insertClientSchema>;
+export type Client = typeof clients.$inferSelect;
 export type InsertTimeline = z.infer<typeof insertTimelineSchema>;
 export type Timeline = typeof timelines.$inferSelect;
 export type InsertMilestone = z.infer<typeof insertMilestoneSchema>;
@@ -156,3 +173,4 @@ export type AppSettings = typeof appSettings.$inferSelect;
 
 export type TimelineWithMilestones = Timeline & { milestones: Milestone[]; tasks: Task[] };
 export type TimelineWithAll = TimelineWithMilestones & { risks: Risk[] };
+export type ClientWithProjects = Client & { projects: TimelineWithMilestones[] };

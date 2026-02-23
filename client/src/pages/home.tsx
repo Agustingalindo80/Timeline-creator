@@ -18,8 +18,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { TimelineWithMilestones, Task, AppSettings } from "@shared/schema";
-import { DEFAULT_TASK_HEALTH, DEFAULT_PROJECT_TYPES, DEFAULT_ENGAGEMENT_MODELS, DEFAULT_CLIENTS } from "@shared/schema";
+import type { TimelineWithMilestones, Task, AppSettings, Client } from "@shared/schema";
+import { DEFAULT_TASK_HEALTH, DEFAULT_PROJECT_TYPES, DEFAULT_ENGAGEMENT_MODELS } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 
 const MONTHS: Record<string, number> = {
@@ -68,7 +68,7 @@ const HEALTH_COLORS: Record<string, string> = {
 interface RowEdits {
   projectType?: string | null;
   engagementModel?: string | null;
-  client?: string | null;
+  clientId?: string | null;
   approvedBudget?: string | null;
   grossMargin?: string | null;
   healthOverall?: string;
@@ -81,7 +81,7 @@ type SortField = "title" | "client" | "projectType" | "engagementModel" | "appro
 type SortDir = "asc" | "desc";
 
 interface ColumnFilters {
-  client?: string;
+  clientId?: string;
   projectType?: string;
   engagementModel?: string;
   healthOverall?: string;
@@ -109,10 +109,19 @@ export default function Home() {
     queryKey: ["/api/settings"],
   });
 
+  const { data: clientsList } = useQuery<Client[]>({
+    queryKey: ["/api/clients"],
+  });
+
   const healthOptions = settings?.taskHealthOptions || DEFAULT_TASK_HEALTH;
   const projectTypeOptions = settings?.projectTypes || DEFAULT_PROJECT_TYPES;
   const engagementModelOptions = settings?.engagementModels || DEFAULT_ENGAGEMENT_MODELS;
-  const clientOptions = settings?.clients || DEFAULT_CLIENTS;
+
+  const getClientName = useCallback((clientId: string | null | undefined): string => {
+    if (!clientId || !clientsList) return "";
+    const c = clientsList.find((cl) => cl.id === clientId);
+    return c ? c.name : "";
+  }, [clientsList]);
 
   const activeFilterCount = Object.values(columnFilters).filter(Boolean).length;
 
@@ -122,11 +131,11 @@ export default function Home() {
     let result = timelines.filter((t) => {
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        const clientLabel = t.client ? (clientOptions.find((o) => o.value === t.client)?.label || t.client).toLowerCase() : "";
-        if (!t.title.toLowerCase().includes(q) && !clientLabel.includes(q)) return false;
+        const clientName = getClientName(t.clientId).toLowerCase();
+        if (!t.title.toLowerCase().includes(q) && !clientName.includes(q)) return false;
       }
 
-      if (columnFilters.client && (t.client || "") !== columnFilters.client) return false;
+      if (columnFilters.clientId && (t.clientId || "") !== columnFilters.clientId) return false;
       if (columnFilters.projectType && (t.projectType || "") !== columnFilters.projectType) return false;
       if (columnFilters.engagementModel && (t.engagementModel || "") !== columnFilters.engagementModel) return false;
       if (columnFilters.healthOverall && (t.healthOverall || "green") !== columnFilters.healthOverall) return false;
@@ -148,10 +157,8 @@ export default function Home() {
             bVal = b.title.toLowerCase();
             break;
           case "client": {
-            const aLabel = a.client ? (clientOptions.find((o) => o.value === a.client)?.label || a.client) : "";
-            const bLabel = b.client ? (clientOptions.find((o) => o.value === b.client)?.label || b.client) : "";
-            aVal = aLabel.toLowerCase();
-            bVal = bLabel.toLowerCase();
+            aVal = getClientName(a.clientId).toLowerCase();
+            bVal = getClientName(b.clientId).toLowerCase();
             break;
           }
           case "projectType": {
@@ -201,7 +208,7 @@ export default function Home() {
     }
 
     return result;
-  }, [timelines, searchQuery, columnFilters, sortField, sortDir, clientOptions, projectTypeOptions, engagementModelOptions]);
+  }, [timelines, searchQuery, columnFilters, sortField, sortDir, getClientName, projectTypeOptions, engagementModelOptions]);
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -485,13 +492,13 @@ export default function Home() {
                     <th className="px-3 py-1.5">
                       <select
                         className={filterSelectClass}
-                        value={columnFilters.client || ""}
-                        onChange={(e) => setFilter("client", e.target.value)}
+                        value={columnFilters.clientId || ""}
+                        onChange={(e) => setFilter("clientId", e.target.value)}
                         data-testid="filter-client"
                       >
                         <option value="">All</option>
-                        {clientOptions.map((opt) => (
-                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        {(clientsList || []).map((cl) => (
+                          <option key={cl.id} value={cl.id}>{cl.name}</option>
                         ))}
                       </select>
                     </th>
@@ -614,13 +621,13 @@ export default function Home() {
                       <td className="px-3 py-1.5">
                         <select
                           className={selectClass}
-                          value={getVal(timeline, "client")}
-                          onChange={(e) => updateField(timeline.id, "client", e.target.value || null, timeline)}
+                          value={getVal(timeline, "clientId")}
+                          onChange={(e) => updateField(timeline.id, "clientId", e.target.value || null, timeline)}
                           data-testid={`select-client-${timeline.id}`}
                         >
                           <option value="">—</option>
-                          {clientOptions.map((opt) => (
-                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          {(clientsList || []).map((cl) => (
+                            <option key={cl.id} value={cl.id}>{cl.name}</option>
                           ))}
                         </select>
                       </td>
