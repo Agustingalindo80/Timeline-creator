@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { AppSettings, FieldOption } from "@shared/schema";
@@ -249,6 +250,21 @@ function FieldOptionEditor({
   );
 }
 
+interface FieldConfig {
+  title: string;
+  description: string;
+  key: string;
+  defaults: FieldOption[];
+  current: FieldOption[];
+  testId: string;
+}
+
+interface TabConfig {
+  value: string;
+  label: string;
+  fields: FieldConfig[];
+}
+
 export default function Admin() {
   const { toast } = useToast();
 
@@ -270,78 +286,102 @@ export default function Admin() {
     updateMutation.mutate({ [key]: options } as any);
   };
 
-  const fieldConfigs = [
+  const tabs: TabConfig[] = [
     {
-      title: "Task Status",
-      description: "Status options for tasks (e.g., Not Started, In Progress, Complete).",
-      key: "taskStatuses",
-      defaults: DEFAULT_TASK_STATUSES,
-      current: settings?.taskStatuses || DEFAULT_TASK_STATUSES,
-      testId: "task-statuses",
+      value: "global",
+      label: "Global",
+      fields: [
+        {
+          title: "Health",
+          description: "Health indicator options shared across projects and tasks (traffic light colors).",
+          key: "taskHealthOptions",
+          defaults: DEFAULT_TASK_HEALTH,
+          current: settings?.taskHealthOptions || DEFAULT_TASK_HEALTH,
+          testId: "task-health",
+        },
+      ],
     },
     {
-      title: "Task Health",
-      description: "Health indicator options for tasks (traffic light colors).",
-      key: "taskHealthOptions",
-      defaults: DEFAULT_TASK_HEALTH,
-      current: settings?.taskHealthOptions || DEFAULT_TASK_HEALTH,
-      testId: "task-health",
+      value: "projects",
+      label: "Projects",
+      fields: [
+        {
+          title: "Project Type",
+          description: "Type classifications for projects (e.g., Billable, Non-Billable).",
+          key: "projectTypes",
+          defaults: DEFAULT_PROJECT_TYPES,
+          current: settings?.projectTypes || DEFAULT_PROJECT_TYPES,
+          testId: "project-types",
+        },
+        {
+          title: "Engagement Model",
+          description: "Engagement model options for projects (e.g., Fixed Bid, T&M, Managed Capacity).",
+          key: "engagementModels",
+          defaults: DEFAULT_ENGAGEMENT_MODELS,
+          current: settings?.engagementModels || DEFAULT_ENGAGEMENT_MODELS,
+          testId: "engagement-models",
+        },
+        {
+          title: "Client",
+          description: "Client options for projects.",
+          key: "clients",
+          defaults: DEFAULT_CLIENTS,
+          current: settings?.clients || DEFAULT_CLIENTS,
+          testId: "clients",
+        },
+      ],
     },
     {
-      title: "Task Item Type",
-      description: "Type categories for tasks (e.g., Workstream, Phase).",
-      key: "taskItemTypes",
-      defaults: DEFAULT_TASK_ITEM_TYPES,
-      current: settings?.taskItemTypes || DEFAULT_TASK_ITEM_TYPES,
-      testId: "task-item-types",
+      value: "tasks",
+      label: "Tasks",
+      fields: [
+        {
+          title: "Task Status",
+          description: "Status options for tasks (e.g., Not Started, In Progress, Complete).",
+          key: "taskStatuses",
+          defaults: DEFAULT_TASK_STATUSES,
+          current: settings?.taskStatuses || DEFAULT_TASK_STATUSES,
+          testId: "task-statuses",
+        },
+        {
+          title: "Task Item Type",
+          description: "Type categories for tasks (e.g., Workstream, Phase).",
+          key: "taskItemTypes",
+          defaults: DEFAULT_TASK_ITEM_TYPES,
+          current: settings?.taskItemTypes || DEFAULT_TASK_ITEM_TYPES,
+          testId: "task-item-types",
+        },
+      ],
     },
     {
-      title: "Risk Probability",
-      description: "Probability levels for risks in the risk register.",
-      key: "riskProbabilities",
-      defaults: DEFAULT_RISK_PROBABILITIES,
-      current: settings?.riskProbabilities || DEFAULT_RISK_PROBABILITIES,
-      testId: "risk-probabilities",
-    },
-    {
-      title: "Risk Impact",
-      description: "Impact levels for risks in the risk register.",
-      key: "riskImpacts",
-      defaults: DEFAULT_RISK_IMPACTS,
-      current: settings?.riskImpacts || DEFAULT_RISK_IMPACTS,
-      testId: "risk-impacts",
-    },
-    {
-      title: "Risk Status",
-      description: "Status options for risks in the risk register.",
-      key: "riskStatuses",
-      defaults: DEFAULT_RISK_STATUSES,
-      current: settings?.riskStatuses || DEFAULT_RISK_STATUSES,
-      testId: "risk-statuses",
-    },
-    {
-      title: "Project Type",
-      description: "Type classifications for projects (e.g., Billable, Non-Billable).",
-      key: "projectTypes",
-      defaults: DEFAULT_PROJECT_TYPES,
-      current: settings?.projectTypes || DEFAULT_PROJECT_TYPES,
-      testId: "project-types",
-    },
-    {
-      title: "Engagement Model",
-      description: "Engagement model options for projects (e.g., Fixed Bid, T&M, Managed Capacity).",
-      key: "engagementModels",
-      defaults: DEFAULT_ENGAGEMENT_MODELS,
-      current: settings?.engagementModels || DEFAULT_ENGAGEMENT_MODELS,
-      testId: "engagement-models",
-    },
-    {
-      title: "Client",
-      description: "Client options for projects.",
-      key: "clients",
-      defaults: DEFAULT_CLIENTS,
-      current: settings?.clients || DEFAULT_CLIENTS,
-      testId: "clients",
+      value: "risks",
+      label: "Risks",
+      fields: [
+        {
+          title: "Risk Probability",
+          description: "Probability levels for risks in the risk register.",
+          key: "riskProbabilities",
+          defaults: DEFAULT_RISK_PROBABILITIES,
+          current: settings?.riskProbabilities || DEFAULT_RISK_PROBABILITIES,
+          testId: "risk-probabilities",
+        },
+        {
+          title: "Risk Impact",
+          description: "Impact levels for risks in the risk register.",
+          key: "riskImpacts",
+          defaults: DEFAULT_RISK_IMPACTS,
+          current: settings?.riskImpacts || DEFAULT_RISK_IMPACTS,
+          testId: "risk-impacts",
+        },
+        {
+          title: "Risk Status",
+          description: "Status options for risks in the risk register.",
+          key: "riskStatuses",
+          defaults: DEFAULT_RISK_STATUSES,
+          current: settings?.riskStatuses || DEFAULT_RISK_STATUSES,
+          testId: "risk-statuses",
+        },
+      ],
     },
   ];
 
@@ -398,25 +438,39 @@ export default function Admin() {
                 Field Options
               </h2>
               <p className="text-sm text-muted-foreground">
-                Customize the dropdown options available for task and risk fields. You can add, remove, rename, and reorder values.
+                Customize the dropdown options available across the application. Fields are organized by the record type they belong to.
               </p>
             </div>
 
-            <div className="space-y-4">
-              {fieldConfigs.map((config) => (
-                <FieldOptionEditor
-                  key={config.key}
-                  title={config.title}
-                  description={config.description}
-                  options={config.current}
-                  defaults={config.defaults}
-                  settingsKey={config.key}
-                  onSave={handleFieldSave}
-                  isPending={updateMutation.isPending}
-                  testIdPrefix={config.testId}
-                />
+            <Tabs defaultValue="global" data-testid="tabs-field-options">
+              <TabsList className="mb-4" data-testid="tabs-list-field-options">
+                {tabs.map((tab) => (
+                  <TabsTrigger key={tab.value} value={tab.value} data-testid={`tab-${tab.value}`}>
+                    {tab.label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+
+              {tabs.map((tab) => (
+                <TabsContent key={tab.value} value={tab.value} data-testid={`tab-content-${tab.value}`}>
+                  <div className="space-y-4">
+                    {tab.fields.map((config) => (
+                      <FieldOptionEditor
+                        key={config.key}
+                        title={config.title}
+                        description={config.description}
+                        options={config.current}
+                        defaults={config.defaults}
+                        settingsKey={config.key}
+                        onSave={handleFieldSave}
+                        isPending={updateMutation.isPending}
+                        testIdPrefix={config.testId}
+                      />
+                    ))}
+                  </div>
+                </TabsContent>
               ))}
-            </div>
+            </Tabs>
           </>
         )}
       </div>
