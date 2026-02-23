@@ -14,6 +14,7 @@ import TimelineDetail from "@/pages/timeline-detail";
 import Admin from "@/pages/admin";
 import Clients from "@/pages/clients";
 import ClientDetail from "@/pages/client-detail";
+import ContactsList from "@/pages/contacts";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -25,6 +26,7 @@ function Router() {
       <Route path="/timeline/:id" component={TimelineDetail} />
       <Route path="/clients" component={Clients} />
       <Route path="/clients/:id" component={ClientDetail} />
+      <Route path="/contacts" component={ContactsList} />
       <Route path="/admin" component={Admin} />
       <Route component={NotFound} />
     </Switch>

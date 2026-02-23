@@ -13,7 +13,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { ClientWithProjects, Task, Contact } from "@shared/schema";
+import type { ClientWithProjects, Task, Contact, AppSettings } from "@shared/schema";
+import { DEFAULT_CONTACT_ROLES } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 
 const MONTHS: Record<string, number> = {
@@ -72,6 +73,12 @@ export default function ClientDetail() {
       return res.json();
     },
   });
+
+  const { data: settings } = useQuery<AppSettings>({
+    queryKey: ["/api/settings"],
+  });
+
+  const roleOptions = settings?.contactRoles || DEFAULT_CONTACT_ROLES;
 
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
@@ -309,7 +316,7 @@ export default function ClientDetail() {
         </TabsContent>
 
         <TabsContent value="contacts">
-          <ContactsSection clientId={params.id!} contacts={client.contacts} />
+          <ContactsSection clientId={params.id!} contacts={client.contacts} roleOptions={roleOptions} />
         </TabsContent>
 
         <TabsContent value="projects">
@@ -416,7 +423,7 @@ export default function ClientDetail() {
   );
 }
 
-function ContactsSection({ clientId, contacts }: { clientId: string; contacts: Contact[] }) {
+function ContactsSection({ clientId, contacts, roleOptions }: { clientId: string; contacts: Contact[]; roleOptions: { value: string; label: string }[] }) {
   const { toast } = useToast();
   const [showDialog, setShowDialog] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
@@ -549,7 +556,7 @@ function ContactsSection({ clientId, contacts }: { clientId: string; contacts: C
                   <td className="px-3 py-2 font-medium">
                     {contact.firstName} {contact.lastName}
                   </td>
-                  <td className="px-3 py-2 text-muted-foreground">{contact.role || "—"}</td>
+                  <td className="px-3 py-2 text-muted-foreground">{contact.role ? (roleOptions.find((o) => o.value === contact.role)?.label || contact.role) : "—"}</td>
                   <td className="px-3 py-2 text-muted-foreground">{contact.email || "—"}</td>
                   <td className="px-3 py-2 text-muted-foreground">{contact.phone || "—"}</td>
                   <td className="px-3 py-2 text-center">
@@ -629,12 +636,17 @@ function ContactsSection({ clientId, contacts }: { clientId: string; contacts: C
             </div>
             <div className="col-span-2">
               <Label>Role</Label>
-              <Input
+              <select
+                className="h-9 text-sm border rounded px-2 bg-background w-full"
                 value={contactForm.role}
                 onChange={(e) => setContactForm({ ...contactForm, role: e.target.value })}
-                placeholder="e.g. VP of Engineering"
-                data-testid="input-contact-role"
-              />
+                data-testid="select-contact-role"
+              >
+                <option value="">Select role...</option>
+                {roleOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
             </div>
             <div className="col-span-2 flex items-center gap-2">
               <Checkbox

@@ -32,6 +32,7 @@ export interface IStorage {
   createClient(data: InsertClient): Promise<Client>;
   updateClient(id: string, data: Partial<InsertClient>): Promise<Client | undefined>;
   deleteClient(id: string): Promise<void>;
+  getAllContacts(): Promise<Contact[]>;
   getContacts(clientId: string): Promise<Contact[]>;
   getContact(id: string): Promise<Contact | undefined>;
   createContact(data: InsertContact): Promise<Contact>;
@@ -107,6 +108,10 @@ export class DatabaseStorage implements IStorage {
     await db.update(timelines).set({ clientId: null }).where(eq(timelines.clientId, id));
     await db.delete(contacts).where(eq(contacts.clientId, id));
     await db.delete(clients).where(eq(clients.id, id));
+  }
+
+  async getAllContacts(): Promise<Contact[]> {
+    return db.select().from(contacts);
   }
 
   async getContacts(clientId: string): Promise<Contact[]> {

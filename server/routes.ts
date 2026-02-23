@@ -110,6 +110,11 @@ export async function registerRoutes(
 
   // --- CONTACT ROUTES ---
 
+  app.get("/api/contacts", async (_req, res) => {
+    const allContacts = await storage.getAllContacts();
+    res.json(allContacts);
+  });
+
   app.get("/api/clients/:clientId/contacts", async (req, res) => {
     try {
       const contacts = await storage.getContacts(req.params.clientId);

@@ -20,6 +20,7 @@ import {
   DEFAULT_RISK_STATUSES,
   DEFAULT_PROJECT_TYPES,
   DEFAULT_ENGAGEMENT_MODELS,
+  DEFAULT_CONTACT_ROLES,
 } from "@shared/schema";
 
 interface FieldOptionEditorProps {
@@ -319,6 +320,20 @@ export default function Admin() {
           defaults: DEFAULT_ENGAGEMENT_MODELS,
           current: settings?.engagementModels || DEFAULT_ENGAGEMENT_MODELS,
           testId: "engagement-models",
+        },
+      ],
+    },
+    {
+      value: "contacts",
+      label: "Contacts",
+      fields: [
+        {
+          title: "Contact Role",
+          description: "Role options for contacts (e.g., Executive Sponsor, Project Manager).",
+          key: "contactRoles",
+          defaults: DEFAULT_CONTACT_ROLES,
+          current: settings?.contactRoles || DEFAULT_CONTACT_ROLES,
+          testId: "contact-roles",
         },
       ],
     },
