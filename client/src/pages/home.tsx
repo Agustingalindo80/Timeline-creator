@@ -204,78 +204,81 @@ export default function Home() {
                 className="group relative border rounded-lg overflow-visible hover-elevate active-elevate-2 cursor-pointer"
                 data-testid={`card-timeline-${timeline.id}`}
               >
-                <Link href={`/timeline/${timeline.id}`} className="flex items-center gap-4 p-4">
-                  <div
-                    className="w-3 h-3 rounded-full shrink-0"
-                    style={{ backgroundColor: timeline.color }}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-1">
-                      <h3 className="font-semibold text-sm truncate">{timeline.title}</h3>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <Badge variant="secondary" className="text-xs" data-testid={`badge-milestones-${timeline.id}`}>
-                          {timeline.milestones.length} milestone{timeline.milestones.length !== 1 ? "s" : ""}
-                        </Badge>
-                        {timeline.tasks.length > 0 && (
-                          <Badge variant="secondary" className="text-xs" data-testid={`badge-tasks-${timeline.id}`}>
-                            {timeline.tasks.length} task{timeline.tasks.length !== 1 ? "s" : ""}
+                <Link href={`/timeline/${timeline.id}`} className="block p-4">
+                  <div className="flex items-center gap-4">
+                    <div
+                      className="w-3 h-3 rounded-full shrink-0"
+                      style={{ backgroundColor: timeline.color }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3">
+                        <h3 className="font-semibold text-sm truncate">{timeline.title}</h3>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <Badge variant="secondary" className="text-xs" data-testid={`badge-milestones-${timeline.id}`}>
+                            {timeline.milestones.length} milestone{timeline.milestones.length !== 1 ? "s" : ""}
                           </Badge>
-                        )}
-                        {timeline.projectType && (
-                          <Badge variant="outline" className="text-xs" data-testid={`badge-project-type-${timeline.id}`}>
-                            {projectTypeOptions.find((o) => o.value === timeline.projectType)?.label || timeline.projectType}
-                          </Badge>
-                        )}
-                        {timeline.engagementModel && (
-                          <Badge variant="outline" className="text-xs" data-testid={`badge-engagement-model-${timeline.id}`}>
-                            {engagementModelOptions.find((o) => o.value === timeline.engagementModel)?.label || timeline.engagementModel}
-                          </Badge>
-                        )}
-                        {timeline.client && (
-                          <Badge variant="outline" className="text-xs" data-testid={`badge-client-${timeline.id}`}>
-                            {clientOptions.find((o) => o.value === timeline.client)?.label || timeline.client}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                    {timeline.description && (
-                      <p className="text-xs text-muted-foreground truncate">{timeline.description}</p>
-                    )}
-                    {(timeline.approvedBudget != null || timeline.grossMargin != null) && (
-                      <div className="flex items-center gap-3 mt-1">
-                        {timeline.approvedBudget != null && (
-                          <span className="text-xs text-muted-foreground flex items-center gap-0.5" data-testid={`text-budget-${timeline.id}`}>
-                            <DollarSign className="w-3 h-3" />
-                            {Number(timeline.approvedBudget).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
-                          </span>
-                        )}
-                        {timeline.grossMargin != null && (
-                          <span className="text-xs text-muted-foreground flex items-center gap-0.5" data-testid={`text-margin-${timeline.id}`}>
-                            <Percent className="w-3 h-3" />
-                            {Number(timeline.grossMargin)}%
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-4 shrink-0">
-                    <div className="flex items-center gap-3">
-                      <HealthDot value={timeline.healthOverall} label="Overall" options={healthOptions} />
-                      <HealthDot value={timeline.scopeHealth} label="Scope" options={healthOptions} />
-                      <HealthDot value={timeline.budgetHealth} label="Budget" options={healthOptions} />
-                      <HealthDot value={timeline.teamHealth} label="Team" options={healthOptions} />
-                    </div>
-
-                    {pct !== null && (
-                      <div className="flex items-center gap-2 min-w-[80px]" data-testid={`completion-${timeline.id}`}>
-                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary">
-                          <div className="h-full bg-primary transition-all rounded-full" style={{ width: `${pct}%` }} />
+                          {timeline.tasks.length > 0 && (
+                            <Badge variant="secondary" className="text-xs" data-testid={`badge-tasks-${timeline.id}`}>
+                              {timeline.tasks.length} task{timeline.tasks.length !== 1 ? "s" : ""}
+                            </Badge>
+                          )}
                         </div>
-                        <span className="text-xs font-medium w-8 text-right">{pct}%</span>
                       </div>
-                    )}
+                      {timeline.description && (
+                        <p className="text-xs text-muted-foreground truncate mt-0.5">{timeline.description}</p>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-4 shrink-0">
+                      <div className="flex items-center gap-3">
+                        <HealthDot value={timeline.healthOverall} label="Overall" options={healthOptions} />
+                        <HealthDot value={timeline.scopeHealth} label="Scope" options={healthOptions} />
+                        <HealthDot value={timeline.budgetHealth} label="Budget" options={healthOptions} />
+                        <HealthDot value={timeline.teamHealth} label="Team" options={healthOptions} />
+                      </div>
+
+                      {pct !== null && (
+                        <div className="flex items-center gap-2 min-w-[80px]" data-testid={`completion-${timeline.id}`}>
+                          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary">
+                            <div className="h-full bg-primary transition-all rounded-full" style={{ width: `${pct}%` }} />
+                          </div>
+                          <span className="text-xs font-medium w-8 text-right">{pct}%</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
+
+                  {(timeline.projectType || timeline.engagementModel || timeline.client || timeline.approvedBudget != null || timeline.grossMargin != null) && (
+                    <div className="flex items-center gap-2 flex-wrap mt-2 ml-7">
+                      {timeline.projectType && (
+                        <Badge variant="outline" className="text-xs" data-testid={`badge-project-type-${timeline.id}`}>
+                          {projectTypeOptions.find((o) => o.value === timeline.projectType)?.label || timeline.projectType}
+                        </Badge>
+                      )}
+                      {timeline.engagementModel && (
+                        <Badge variant="outline" className="text-xs" data-testid={`badge-engagement-model-${timeline.id}`}>
+                          {engagementModelOptions.find((o) => o.value === timeline.engagementModel)?.label || timeline.engagementModel}
+                        </Badge>
+                      )}
+                      {timeline.client && (
+                        <Badge variant="outline" className="text-xs" data-testid={`badge-client-${timeline.id}`}>
+                          {clientOptions.find((o) => o.value === timeline.client)?.label || timeline.client}
+                        </Badge>
+                      )}
+                      {timeline.approvedBudget != null && (
+                        <span className="text-xs text-muted-foreground flex items-center gap-0.5" data-testid={`text-budget-${timeline.id}`}>
+                          <DollarSign className="w-3 h-3" />
+                          {Number(timeline.approvedBudget).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                        </span>
+                      )}
+                      {timeline.grossMargin != null && (
+                        <span className="text-xs text-muted-foreground flex items-center gap-0.5" data-testid={`text-margin-${timeline.id}`}>
+                          {Number(timeline.grossMargin)}%
+                          <span className="text-muted-foreground/60">margin</span>
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </Link>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
