@@ -215,7 +215,8 @@ export default function Clients() {
         if (
           !c.name.toLowerCase().includes(q) &&
           !(c.industry || "").toLowerCase().includes(q) &&
-          !(c.contactName || "").toLowerCase().includes(q)
+          !(c.contactName || "").toLowerCase().includes(q) &&
+          !(c.contactEmail || "").toLowerCase().includes(q)
         ) return false;
       }
 
@@ -390,7 +391,7 @@ export default function Clients() {
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by name, industry, or contact..."
+              placeholder="Search by name, industry, contact, or email..."
               className="pl-9 h-8 text-sm"
               data-testid="input-search-clients"
             />
@@ -514,16 +515,17 @@ export default function Clients() {
                   return (
                     <tr
                       key={client.id}
-                      className={`border-b last:border-b-0 transition-colors ${dirty ? "bg-yellow-50 dark:bg-yellow-950/30" : "hover:bg-muted/30"}`}
+                      className={`border-b last:border-b-0 transition-colors ${dirty ? "bg-yellow-50 dark:bg-yellow-950" : "hover:bg-muted/30"}`}
                       data-testid={`row-client-${client.id}`}
                     >
                       <td className="px-3 py-2 min-w-[180px]">
                         <Link
                           href={`/clients/${client.id}`}
-                          className="font-medium text-xs hover:underline"
+                          className="font-medium text-xs hover:underline inline-flex items-center gap-1"
                           data-testid={`link-client-${client.id}`}
                         >
                           {client.name}
+                          <ExternalLink className="w-3 h-3" />
                         </Link>
                       </td>
                       <td className="px-3 py-2 min-w-[130px]">
@@ -579,16 +581,17 @@ export default function Clients() {
                       </td>
                       <td className="px-3 py-2">
                         <div className="flex items-center justify-center gap-1">
-                          <Link href={`/clients/${client.id}`}>
+                          {dirty && (
                             <Button
-                              size="icon"
                               variant="ghost"
-                              title="View client"
-                              data-testid={`button-open-client-${client.id}`}
+                              size="icon"
+                              onClick={() => saveRow(client.id)}
+                              disabled={savingIds.has(client.id)}
+                              data-testid={`button-save-row-${client.id}`}
                             >
-                              <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
+                              <Save className="w-3.5 h-3.5" />
                             </Button>
-                          </Link>
+                          )}
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button
