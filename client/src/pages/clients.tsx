@@ -29,18 +29,17 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { Client } from "@shared/schema";
+import type { Client, AppSettings } from "@shared/schema";
+import { DEFAULT_INDUSTRIES } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 
 interface RowEdits {
   industry?: string | null;
-  contactName?: string | null;
-  contactEmail?: string | null;
   contactPhone?: string | null;
   status?: string;
 }
 
-type SortField = "name" | "industry" | "contactName" | "contactEmail" | "contactPhone" | "status";
+type SortField = "name" | "industry" | "contactPhone" | "status";
 type SortDir = "asc" | "desc";
 
 interface ColumnFilters {
@@ -54,8 +53,6 @@ export default function Clients() {
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [newIndustry, setNewIndustry] = useState("");
-  const [newContactName, setNewContactName] = useState("");
-  const [newContactEmail, setNewContactEmail] = useState("");
   const [edits, setEdits] = useState<Record<string, RowEdits>>({});
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
   const [sortField, setSortField] = useState<SortField | null>(null);
@@ -67,8 +64,14 @@ export default function Clients() {
     queryKey: ["/api/clients"],
   });
 
+  const { data: settings } = useQuery<AppSettings>({
+    queryKey: ["/api/settings"],
+  });
+
+  const industryOptions = settings?.industries || DEFAULT_INDUSTRIES;
+
   const createMutation = useMutation({
-    mutationFn: async (data: { name: string; industry?: string; contactName?: string; contactEmail?: string }) => {
+    mutationFn: async (data: { name: string; industry?: string }) => {
       const res = await apiRequest("POST", "/api/clients", data);
       return res.json();
     },
@@ -78,8 +81,6 @@ export default function Clients() {
       setCreateOpen(false);
       setNewName("");
       setNewIndustry("");
-      setNewContactName("");
-      setNewContactEmail("");
     },
     onError: () => {
       toast({ title: "Failed to create client", variant: "destructive" });
@@ -97,13 +98,6 @@ export default function Clients() {
   });
 
   const activeFilterCount = Object.values(columnFilters).filter(Boolean).length;
-
-  const uniqueIndustries = useMemo(() => {
-    if (!clients) return [];
-    const set = new Set<string>();
-    clients.forEach((c) => { if (c.industry) set.add(c.industry); });
-    return Array.from(set).sort();
-  }, [clients]);
 
   const getOriginal = useCallback((client: Client, field: keyof RowEdits): string => {
     const raw = (client as any)[field];
@@ -206,6 +200,12 @@ export default function Clients() {
     setSearchQuery("");
   }, []);
 
+  const getIndustryLabel = useCallback((value: string | null | undefined): string => {
+    if (!value) return "";
+    const opt = industryOptions.find((o) => o.value === value);
+    return opt ? opt.label : value;
+  }, [industryOptions]);
+
   const processedClients = useMemo(() => {
     if (!clients) return [];
 
@@ -214,9 +214,7 @@ export default function Clients() {
         const q = searchQuery.toLowerCase();
         if (
           !c.name.toLowerCase().includes(q) &&
-          !(c.industry || "").toLowerCase().includes(q) &&
-          !(c.contactName || "").toLowerCase().includes(q) &&
-          !(c.contactEmail || "").toLowerCase().includes(q)
+          !getIndustryLabel(c.industry).toLowerCase().includes(q)
         ) return false;
       }
 
@@ -237,16 +235,8 @@ export default function Clients() {
             bVal = b.name.toLowerCase();
             break;
           case "industry":
-            aVal = (a.industry || "").toLowerCase();
-            bVal = (b.industry || "").toLowerCase();
-            break;
-          case "contactName":
-            aVal = (a.contactName || "").toLowerCase();
-            bVal = (b.contactName || "").toLowerCase();
-            break;
-          case "contactEmail":
-            aVal = (a.contactEmail || "").toLowerCase();
-            bVal = (b.contactEmail || "").toLowerCase();
+            aVal = getIndustryLabel(a.industry).toLowerCase();
+            bVal = getIndustryLabel(b.industry).toLowerCase();
             break;
           case "contactPhone":
             aVal = (a.contactPhone || "").toLowerCase();
@@ -265,7 +255,7 @@ export default function Clients() {
     }
 
     return result;
-  }, [clients, searchQuery, columnFilters, sortField, sortDir]);
+  }, [clients, searchQuery, columnFilters, sortField, sortDir, getIndustryLabel]);
 
   const inputClass = "h-7 text-xs border rounded px-1.5 py-0 bg-background w-full";
   const selectClass = "h-7 text-xs border rounded px-1.5 py-0 bg-background w-full appearance-none cursor-pointer";
@@ -332,34 +322,18 @@ export default function Clients() {
                 </div>
                 <div>
                   <Label htmlFor="client-industry">Industry</Label>
-                  <Input
+                  <select
                     id="client-industry"
+                    className="h-9 text-sm border rounded px-2 bg-background w-full"
                     value={newIndustry}
                     onChange={(e) => setNewIndustry(e.target.value)}
-                    placeholder="e.g. Technology, Healthcare"
-                    data-testid="input-client-industry"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="client-contact">Contact Name</Label>
-                  <Input
-                    id="client-contact"
-                    value={newContactName}
-                    onChange={(e) => setNewContactName(e.target.value)}
-                    placeholder="Primary contact"
-                    data-testid="input-client-contact-name"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="client-email">Contact Email</Label>
-                  <Input
-                    id="client-email"
-                    type="email"
-                    value={newContactEmail}
-                    onChange={(e) => setNewContactEmail(e.target.value)}
-                    placeholder="email@example.com"
-                    data-testid="input-client-contact-email"
-                  />
+                    data-testid="select-client-industry"
+                  >
+                    <option value="">Select industry...</option>
+                    {industryOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
               <DialogFooter>
@@ -369,8 +343,6 @@ export default function Clients() {
                     createMutation.mutate({
                       name: newName.trim(),
                       industry: newIndustry || undefined,
-                      contactName: newContactName || undefined,
-                      contactEmail: newContactEmail || undefined,
                     });
                   }}
                   disabled={!newName.trim() || createMutation.isPending}
@@ -391,7 +363,7 @@ export default function Clients() {
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by name, industry, contact, or email..."
+              placeholder="Search by name or industry..."
               className="pl-9 h-8 text-sm"
               data-testid="input-search-clients"
             />
@@ -468,8 +440,6 @@ export default function Clients() {
                 <tr className="bg-muted/50 border-b">
                   <SortHeader field="name" label="Name" />
                   <SortHeader field="industry" label="Industry" />
-                  <SortHeader field="contactName" label="Contact Name" />
-                  <SortHeader field="contactEmail" label="Contact Email" />
                   <SortHeader field="contactPhone" label="Phone" />
                   <SortHeader field="status" label="Status" align="center" />
                   <th className="text-center font-medium text-muted-foreground px-3 py-2 whitespace-nowrap w-[80px]">Actions</th>
@@ -485,13 +455,11 @@ export default function Clients() {
                         data-testid="filter-industry"
                       >
                         <option value="">All</option>
-                        {uniqueIndustries.map((ind) => (
-                          <option key={ind} value={ind}>{ind}</option>
+                        {industryOptions.map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
                       </select>
                     </th>
-                    <th className="px-3 py-1.5" />
-                    <th className="px-3 py-1.5" />
                     <th className="px-3 py-1.5" />
                     <th className="px-3 py-1.5">
                       <select
@@ -528,35 +496,18 @@ export default function Clients() {
                           <ExternalLink className="w-3 h-3" />
                         </Link>
                       </td>
-                      <td className="px-3 py-2 min-w-[130px]">
-                        <input
-                          type="text"
-                          className={inputClass}
+                      <td className="px-3 py-2 min-w-[150px]">
+                        <select
+                          className={selectClass}
                           value={getVal(client, "industry")}
                           onChange={(e) => updateField(client.id, "industry", e.target.value, client)}
-                          placeholder="Industry"
-                          data-testid={`input-industry-${client.id}`}
-                        />
-                      </td>
-                      <td className="px-3 py-2 min-w-[140px]">
-                        <input
-                          type="text"
-                          className={inputClass}
-                          value={getVal(client, "contactName")}
-                          onChange={(e) => updateField(client.id, "contactName", e.target.value, client)}
-                          placeholder="Contact name"
-                          data-testid={`input-contactName-${client.id}`}
-                        />
-                      </td>
-                      <td className="px-3 py-2 min-w-[180px]">
-                        <input
-                          type="text"
-                          className={inputClass}
-                          value={getVal(client, "contactEmail")}
-                          onChange={(e) => updateField(client.id, "contactEmail", e.target.value, client)}
-                          placeholder="Email"
-                          data-testid={`input-contactEmail-${client.id}`}
-                        />
+                          data-testid={`select-industry-${client.id}`}
+                        >
+                          <option value="">—</option>
+                          {industryOptions.map((opt) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
                       </td>
                       <td className="px-3 py-2 min-w-[130px]">
                         <input
@@ -583,13 +534,15 @@ export default function Clients() {
                         <div className="flex items-center justify-center gap-1">
                           {dirty && (
                             <Button
-                              variant="ghost"
                               size="icon"
+                              variant="ghost"
+                              className="h-6 w-6"
                               onClick={() => saveRow(client.id)}
                               disabled={savingIds.has(client.id)}
-                              data-testid={`button-save-row-${client.id}`}
+                              title="Save changes"
+                              data-testid={`button-save-${client.id}`}
                             >
-                              <Save className="w-3.5 h-3.5" />
+                              <Save className="w-3.5 h-3.5 text-primary" />
                             </Button>
                           )}
                           <AlertDialog>
@@ -597,6 +550,7 @@ export default function Clients() {
                               <Button
                                 size="icon"
                                 variant="ghost"
+                                className="h-6 w-6"
                                 title="Delete client"
                                 data-testid={`button-delete-client-${client.id}`}
                               >

@@ -54,6 +54,16 @@ export const DEFAULT_CLIENTS: FieldOption[] = [
   { value: "client_a", label: "Client A" },
   { value: "client_b", label: "Client B" },
 ];
+export const DEFAULT_INDUSTRIES: FieldOption[] = [
+  { value: "technology", label: "Technology" },
+  { value: "healthcare", label: "Healthcare" },
+  { value: "finance", label: "Finance" },
+  { value: "manufacturing", label: "Manufacturing" },
+  { value: "retail", label: "Retail" },
+  { value: "education", label: "Education" },
+  { value: "consulting", label: "Consulting" },
+  { value: "government", label: "Government" },
+];
 export const DEFAULT_CONTACT_ROLES: FieldOption[] = [
   { value: "executive_sponsor", label: "Executive Sponsor" },
   { value: "project_manager", label: "Project Manager" },
@@ -66,8 +76,6 @@ export const clients = pgTable("clients", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   industry: text("industry"),
-  contactName: text("contact_name"),
-  contactEmail: text("contact_email"),
   contactPhone: text("contact_phone"),
   website: text("website"),
   address: text("address"),
@@ -162,6 +170,7 @@ export const appSettings = pgTable("app_settings", {
   engagementModels: jsonb("engagement_models").$type<FieldOption[]>(),
   clients: jsonb("clients").$type<FieldOption[]>(),
   contactRoles: jsonb("contact_roles").$type<FieldOption[]>(),
+  industries: jsonb("industries").$type<FieldOption[]>(),
 });
 
 export const insertClientSchema = createInsertSchema(clients).omit({ id: true });

@@ -29,6 +29,7 @@ A visual project planning tool that supports two input methods:
 - `client/src/pages/timeline-detail.tsx` - View project with vertical/horizontal views, manage milestones
 - `client/src/pages/clients.tsx` - Clients list page
 - `client/src/pages/client-detail.tsx` - Client detail with demographics and projects tab
+- `client/src/pages/contacts.tsx` - Contacts list page with Excel-like table
 - `client/src/pages/admin.tsx` - Settings page with feature toggles
 - `client/src/components/timeline-view.tsx` - Timeline visualization components (vertical + horizontal)
 - `client/src/components/risk-register.tsx` - Risk register component for project risk tracking
@@ -46,6 +47,7 @@ A visual project planning tool that supports two input methods:
 - POST /api/clients - Create client
 - PATCH /api/clients/:id - Update client
 - DELETE /api/clients/:id - Delete client (unlinks projects, deletes contacts)
+- GET /api/contacts - List all contacts across all clients
 - GET /api/clients/:clientId/contacts - Get contacts for client
 - POST /api/clients/:clientId/contacts - Create contact
 - PATCH /api/contacts/:id - Update contact
@@ -70,7 +72,7 @@ A visual project planning tool that supports two input methods:
 - POST /api/parse-excel - Parse Excel/CSV file (multipart form)
 
 ## Database
-- clients: id, name, industry, contactName, contactEmail, contactPhone, website, address, notes, status
+- clients: id, name, industry, contactPhone, website, address, notes, status
 - contacts: id, clientId (FK to clients), firstName, lastName, email, phone, role, isLegalRepresentative
 - timelines: id, title, description, color, healthOverall, scopeHealth, budgetHealth, teamHealth, projectType, engagementModel, client (legacy), clientId (FK to clients), approvedBudget, grossMargin
 - milestones: id, timelineId, title, description, date, actualDate, color, icon, sortOrder
@@ -111,6 +113,8 @@ A visual project planning tool that supports two input methods:
 - Settings: /admin page with feature toggles and field option management
   - Risk Register toggle (on/off)
   - Field Options: customizable dropdown values for all list-based fields
+    - Industry (configurable list for clients)
+    - Contact Role (configurable list for contacts)
     - Task Status, Task Health, Task Item Type
     - Risk Probability, Risk Impact, Risk Status
     - Project Type, Engagement Model, Client

@@ -21,6 +21,7 @@ import {
   DEFAULT_PROJECT_TYPES,
   DEFAULT_ENGAGEMENT_MODELS,
   DEFAULT_CONTACT_ROLES,
+  DEFAULT_INDUSTRIES,
 } from "@shared/schema";
 
 interface FieldOptionEditorProps {
@@ -320,6 +321,20 @@ export default function Admin() {
           defaults: DEFAULT_ENGAGEMENT_MODELS,
           current: settings?.engagementModels || DEFAULT_ENGAGEMENT_MODELS,
           testId: "engagement-models",
+        },
+      ],
+    },
+    {
+      value: "clients_settings",
+      label: "Clients",
+      fields: [
+        {
+          title: "Industry",
+          description: "Industry options for clients (e.g., Technology, Healthcare, Finance).",
+          key: "industries",
+          defaults: DEFAULT_INDUSTRIES,
+          current: settings?.industries || DEFAULT_INDUSTRIES,
+          testId: "industries",
         },
       ],
     },

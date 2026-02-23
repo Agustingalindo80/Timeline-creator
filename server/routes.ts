@@ -56,15 +56,13 @@ export async function registerRoutes(
 
   app.post("/api/clients", async (req, res) => {
     try {
-      const { name, industry, contactName, contactEmail, contactPhone, website, address, notes, status } = req.body;
+      const { name, industry, contactPhone, website, address, notes, status } = req.body;
       if (!name || !name.trim()) {
         return res.status(400).json({ message: "Client name is required" });
       }
       const client = await storage.createClient({
         name: name.trim(),
         industry: industry || null,
-        contactName: contactName || null,
-        contactEmail: contactEmail || null,
         contactPhone: contactPhone || null,
         website: website || null,
         address: address || null,
@@ -79,12 +77,10 @@ export async function registerRoutes(
 
   app.patch("/api/clients/:id", async (req, res) => {
     try {
-      const { name, industry, contactName, contactEmail, contactPhone, website, address, notes, status } = req.body;
+      const { name, industry, contactPhone, website, address, notes, status } = req.body;
       const updates: any = {};
       if (name !== undefined) updates.name = name;
       if (industry !== undefined) updates.industry = industry;
-      if (contactName !== undefined) updates.contactName = contactName;
-      if (contactEmail !== undefined) updates.contactEmail = contactEmail;
       if (contactPhone !== undefined) updates.contactPhone = contactPhone;
       if (website !== undefined) updates.website = website;
       if (address !== undefined) updates.address = address;

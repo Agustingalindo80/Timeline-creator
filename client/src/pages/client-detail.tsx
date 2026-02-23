@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation, useParams } from "wouter";
 import { Helmet } from "react-helmet-async";
-import { ArrowLeft, Building2, Mail, Phone, Globe, MapPin, FileText, Save, FolderKanban, ExternalLink, Plus, Pencil, Trash2, Users, Shield } from "lucide-react";
+import { ArrowLeft, Building2, Phone, Globe, MapPin, Save, FolderKanban, ExternalLink, Plus, Pencil, Trash2, Users, Shield } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Checkbox } from "@/components/ui/checkbox";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { ClientWithProjects, Task, Contact, AppSettings } from "@shared/schema";
-import { DEFAULT_CONTACT_ROLES } from "@shared/schema";
+import { DEFAULT_CONTACT_ROLES, DEFAULT_INDUSTRIES } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 
 const MONTHS: Record<string, number> = {
@@ -79,13 +79,12 @@ export default function ClientDetail() {
   });
 
   const roleOptions = settings?.contactRoles || DEFAULT_CONTACT_ROLES;
+  const industryOptions = settings?.industries || DEFAULT_INDUSTRIES;
 
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
     name: "",
     industry: "",
-    contactName: "",
-    contactEmail: "",
     contactPhone: "",
     website: "",
     address: "",
@@ -98,8 +97,6 @@ export default function ClientDetail() {
     setForm({
       name: client.name,
       industry: client.industry || "",
-      contactName: client.contactName || "",
-      contactEmail: client.contactEmail || "",
       contactPhone: client.contactPhone || "",
       website: client.website || "",
       address: client.address || "",
@@ -129,8 +126,6 @@ export default function ClientDetail() {
     updateMutation.mutate({
       name: form.name.trim(),
       industry: form.industry || null,
-      contactName: form.contactName || null,
-      contactEmail: form.contactEmail || null,
       contactPhone: form.contactPhone || null,
       website: form.website || null,
       address: form.address || null,
@@ -224,29 +219,17 @@ export default function ClientDetail() {
               </div>
               <div>
                 <Label>Industry</Label>
-                <Input
+                <select
+                  className="h-9 text-sm border rounded px-2 bg-background w-full"
                   value={form.industry}
                   onChange={(e) => setForm({ ...form, industry: e.target.value })}
-                  placeholder="e.g. Technology"
                   data-testid="edit-client-industry"
-                />
-              </div>
-              <div>
-                <Label>Contact Name</Label>
-                <Input
-                  value={form.contactName}
-                  onChange={(e) => setForm({ ...form, contactName: e.target.value })}
-                  data-testid="edit-client-contact-name"
-                />
-              </div>
-              <div>
-                <Label>Contact Email</Label>
-                <Input
-                  type="email"
-                  value={form.contactEmail}
-                  onChange={(e) => setForm({ ...form, contactEmail: e.target.value })}
-                  data-testid="edit-client-contact-email"
-                />
+                >
+                  <option value="">Select industry...</option>
+                  {industryOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <Label>Phone</Label>
@@ -298,9 +281,7 @@ export default function ClientDetail() {
           ) : (
             <div className="space-y-4 max-w-2xl">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <InfoRow icon={Building2} label="Industry" value={client.industry} />
-                <InfoRow icon={FileText} label="Contact" value={client.contactName} />
-                <InfoRow icon={Mail} label="Email" value={client.contactEmail} />
+                <InfoRow icon={Building2} label="Industry" value={client.industry ? (industryOptions.find((o) => o.value === client.industry)?.label || client.industry) : null} />
                 <InfoRow icon={Phone} label="Phone" value={client.contactPhone} />
                 <InfoRow icon={Globe} label="Website" value={client.website} />
                 <InfoRow icon={MapPin} label="Address" value={client.address} />
