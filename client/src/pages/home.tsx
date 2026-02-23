@@ -1,11 +1,10 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { Helmet } from "react-helmet-async";
-import { Plus, FileSpreadsheet, Trash2, CheckCircle2, FolderKanban, DollarSign, Percent, Search } from "lucide-react";
+import { Plus, FileSpreadsheet, Trash2, FolderKanban, Search, Save, ExternalLink } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog,
@@ -66,22 +65,24 @@ const HEALTH_COLORS: Record<string, string> = {
   red: "#ef4444",
 };
 
-function HealthDot({ value, label, options }: { value: string; label: string; options: { value: string; label: string }[] }) {
-  const opt = options.find((o) => o.value === value);
-  const displayLabel = opt?.label || value;
-  const color = HEALTH_COLORS[value] || "#94a3b8";
-  return (
-    <div className="flex items-center gap-1.5" title={`${label}: ${displayLabel}`}>
-      <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
-      <span className="text-xs text-muted-foreground">{label}</span>
-    </div>
-  );
+interface RowEdits {
+  projectType?: string | null;
+  engagementModel?: string | null;
+  client?: string | null;
+  approvedBudget?: string | null;
+  grossMargin?: string | null;
+  healthOverall?: string;
+  scopeHealth?: string;
+  budgetHealth?: string;
+  teamHealth?: string;
 }
 
 export default function Home() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
+  const [edits, setEdits] = useState<Record<string, RowEdits>>({});
+  const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
 
   const { data: timelines, isLoading } = useQuery<TimelineWithMilestones[]>({
     queryKey: ["/api/timelines"],
@@ -113,6 +114,84 @@ export default function Home() {
     },
   });
 
+  const getOriginal = useCallback((timeline: TimelineWithMilestones, field: keyof RowEdits): string => {
+    const raw = (timeline as any)[field];
+    return raw != null ? String(raw) : "";
+  }, []);
+
+  const updateField = useCallback((id: string, field: keyof RowEdits, value: string | null, timeline: TimelineWithMilestones) => {
+    const original = getOriginal(timeline, field);
+    const newVal = value ?? "";
+    setEdits((prev) => {
+      const existing = { ...prev[id] };
+      if (newVal === original) {
+        delete existing[field];
+        if (Object.keys(existing).length === 0) {
+          const next = { ...prev };
+          delete next[id];
+          return next;
+        }
+        return { ...prev, [id]: existing };
+      }
+      return { ...prev, [id]: { ...existing, [field]: value } };
+    });
+  }, [getOriginal]);
+
+  const getVal = useCallback((timeline: TimelineWithMilestones, field: keyof RowEdits): string => {
+    const edit = edits[timeline.id];
+    if (edit && field in edit) return (edit[field] as string) ?? "";
+    return getOriginal(timeline, field);
+  }, [edits, getOriginal]);
+
+  const hasEdits = useCallback((id: string) => {
+    return edits[id] && Object.keys(edits[id]).length > 0;
+  }, [edits]);
+
+  const hasAnyEdits = Object.keys(edits).some((id) => hasEdits(id));
+  const isSaving = savingIds.size > 0;
+
+  const saveRow = useCallback(async (id: string) => {
+    const rowEdits = edits[id];
+    if (!rowEdits || Object.keys(rowEdits).length === 0) return;
+    setSavingIds((prev) => new Set(prev).add(id));
+    try {
+      const payload: Record<string, any> = {};
+      for (const [key, val] of Object.entries(rowEdits)) {
+        if (key === "approvedBudget" || key === "grossMargin") {
+          payload[key] = val && val !== "" ? parseFloat(val as string) : null;
+        } else {
+          payload[key] = val && val !== "" ? val : null;
+        }
+      }
+      await apiRequest("PATCH", `/api/timelines/${id}`, payload);
+      setEdits((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/timelines"] });
+      toast({ title: "Project updated" });
+    } catch {
+      toast({ title: "Failed to save", variant: "destructive" });
+    } finally {
+      setSavingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+  }, [edits, toast]);
+
+  const saveAll = useCallback(async () => {
+    const ids = Object.keys(edits).filter((id) => hasEdits(id));
+    for (const id of ids) {
+      await saveRow(id);
+    }
+  }, [edits, hasEdits, saveRow]);
+
+  const selectClass = "h-7 text-xs border rounded px-1.5 py-0 bg-background w-full appearance-none cursor-pointer";
+  const inputClass = "h-7 text-xs border rounded px-1.5 py-0 bg-background w-full";
+
   return (
     <div className="p-6">
       <Helmet>
@@ -120,18 +199,25 @@ export default function Home() {
         <meta name="description" content="Manage your projects with milestones, tasks, and health tracking." />
       </Helmet>
 
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-semibold" data-testid="text-page-title">Projects</h1>
         <div className="flex items-center gap-2">
+          {hasAnyEdits && (
+            <Button onClick={saveAll} size="sm" disabled={isSaving} data-testid="button-save-all">
+              <Save className="w-4 h-4 mr-2" />
+              {isSaving ? "Saving..." : "Save All Changes"}
+            </Button>
+          )}
           <Button
             variant="outline"
+            size="sm"
             onClick={() => navigate("/create?mode=upload")}
             data-testid="button-import-excel"
           >
             <FileSpreadsheet className="w-4 h-4 mr-2" />
             Import Excel
           </Button>
-          <Button onClick={() => navigate("/create")} data-testid="button-create-timeline">
+          <Button size="sm" onClick={() => navigate("/create")} data-testid="button-create-timeline">
             <Plus className="w-4 h-4 mr-2" />
             New Project
           </Button>
@@ -145,7 +231,7 @@ export default function Home() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by project name or client..."
-            className="pl-9"
+            className="pl-9 h-8 text-sm"
             data-testid="input-search-projects"
           />
         </div>
@@ -195,124 +281,260 @@ export default function Home() {
           </div>
         )
       ) : (
-        <div className="space-y-2">
-          {filteredTimelines.map((timeline) => {
-            const pct = getWeightedCompletion(timeline.tasks);
-            return (
-              <div
-                key={timeline.id}
-                className="group relative border rounded-lg overflow-visible hover-elevate active-elevate-2 cursor-pointer"
-                data-testid={`card-timeline-${timeline.id}`}
-              >
-                <Link href={`/timeline/${timeline.id}`} className="block p-4">
-                  <div className="flex items-center gap-4">
-                    <div
-                      className="w-3 h-3 rounded-full shrink-0"
-                      style={{ backgroundColor: timeline.color }}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3">
-                        <h3 className="font-semibold text-sm truncate">{timeline.title}</h3>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <Badge variant="secondary" className="text-xs" data-testid={`badge-milestones-${timeline.id}`}>
-                            {timeline.milestones.length} milestone{timeline.milestones.length !== 1 ? "s" : ""}
-                          </Badge>
-                          {timeline.tasks.length > 0 && (
-                            <Badge variant="secondary" className="text-xs" data-testid={`badge-tasks-${timeline.id}`}>
-                              {timeline.tasks.length} task{timeline.tasks.length !== 1 ? "s" : ""}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                      {timeline.description && (
-                        <p className="text-xs text-muted-foreground truncate mt-0.5">{timeline.description}</p>
-                      )}
-                    </div>
+        <div className="border rounded-lg overflow-hidden" data-testid="table-projects">
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-muted/50 border-b">
+                  <th className="text-left font-medium text-muted-foreground px-3 py-2 whitespace-nowrap min-w-[180px]">Project Name</th>
+                  <th className="text-left font-medium text-muted-foreground px-3 py-2 whitespace-nowrap min-w-[110px]">Client</th>
+                  <th className="text-left font-medium text-muted-foreground px-3 py-2 whitespace-nowrap min-w-[110px]">Project Type</th>
+                  <th className="text-left font-medium text-muted-foreground px-3 py-2 whitespace-nowrap min-w-[120px]">Engagement Model</th>
+                  <th className="text-left font-medium text-muted-foreground px-3 py-2 whitespace-nowrap min-w-[100px]">Budget</th>
+                  <th className="text-left font-medium text-muted-foreground px-3 py-2 whitespace-nowrap min-w-[80px]">Margin</th>
+                  <th className="text-center font-medium text-muted-foreground px-3 py-2 whitespace-nowrap">Overall</th>
+                  <th className="text-center font-medium text-muted-foreground px-3 py-2 whitespace-nowrap">Scope</th>
+                  <th className="text-center font-medium text-muted-foreground px-3 py-2 whitespace-nowrap">Budget</th>
+                  <th className="text-center font-medium text-muted-foreground px-3 py-2 whitespace-nowrap">Team</th>
+                  <th className="text-center font-medium text-muted-foreground px-3 py-2 whitespace-nowrap">Progress</th>
+                  <th className="text-center font-medium text-muted-foreground px-3 py-2 whitespace-nowrap w-[80px]">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredTimelines.map((timeline) => {
+                  const pct = getWeightedCompletion(timeline.tasks);
+                  const dirty = hasEdits(timeline.id);
+                  const saving = savingIds.has(timeline.id);
 
-                    <div className="flex items-center gap-4 shrink-0">
-                      <div className="flex items-center gap-3">
-                        <HealthDot value={timeline.healthOverall} label="Overall" options={healthOptions} />
-                        <HealthDot value={timeline.scopeHealth} label="Scope" options={healthOptions} />
-                        <HealthDot value={timeline.budgetHealth} label="Budget" options={healthOptions} />
-                        <HealthDot value={timeline.teamHealth} label="Team" options={healthOptions} />
-                      </div>
-
-                      {pct !== null && (
-                        <div className="flex items-center gap-2 min-w-[80px]" data-testid={`completion-${timeline.id}`}>
-                          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary">
-                            <div className="h-full bg-primary transition-all rounded-full" style={{ width: `${pct}%` }} />
-                          </div>
-                          <span className="text-xs font-medium w-8 text-right">{pct}%</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {(timeline.projectType || timeline.engagementModel || timeline.client || timeline.approvedBudget != null || timeline.grossMargin != null) && (
-                    <div className="flex items-center gap-2 flex-wrap mt-2 ml-7">
-                      {timeline.projectType && (
-                        <Badge variant="outline" className="text-xs" data-testid={`badge-project-type-${timeline.id}`}>
-                          {projectTypeOptions.find((o) => o.value === timeline.projectType)?.label || timeline.projectType}
-                        </Badge>
-                      )}
-                      {timeline.engagementModel && (
-                        <Badge variant="outline" className="text-xs" data-testid={`badge-engagement-model-${timeline.id}`}>
-                          {engagementModelOptions.find((o) => o.value === timeline.engagementModel)?.label || timeline.engagementModel}
-                        </Badge>
-                      )}
-                      {timeline.client && (
-                        <Badge variant="outline" className="text-xs" data-testid={`badge-client-${timeline.id}`}>
-                          {clientOptions.find((o) => o.value === timeline.client)?.label || timeline.client}
-                        </Badge>
-                      )}
-                      {timeline.approvedBudget != null && (
-                        <span className="text-xs text-muted-foreground flex items-center gap-0.5" data-testid={`text-budget-${timeline.id}`}>
-                          <DollarSign className="w-3 h-3" />
-                          {Number(timeline.approvedBudget).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
-                        </span>
-                      )}
-                      {timeline.grossMargin != null && (
-                        <span className="text-xs text-muted-foreground flex items-center gap-0.5" data-testid={`text-margin-${timeline.id}`}>
-                          {Number(timeline.grossMargin)}%
-                          <span className="text-muted-foreground/60">margin</span>
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </Link>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="absolute top-1/2 -translate-y-1/2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={(e) => e.stopPropagation()}
-                      data-testid={`button-delete-${timeline.id}`}
+                  return (
+                    <tr
+                      key={timeline.id}
+                      className={`border-b last:border-b-0 hover:bg-muted/30 transition-colors ${dirty ? "bg-yellow-50/50 dark:bg-yellow-900/10" : ""}`}
+                      data-testid={`row-timeline-${timeline.id}`}
                     >
-                      <Trash2 className="w-4 h-4 text-muted-foreground" />
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete project?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will permanently delete "{timeline.title}" and all its milestones.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => deleteMutation.mutate(timeline.id)}
-                        data-testid="button-confirm-delete"
-                      >
-                        Delete
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
-            );
-          })}
+                      <td className="px-3 py-1.5">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-2.5 h-2.5 rounded-full shrink-0"
+                            style={{ backgroundColor: timeline.color }}
+                          />
+                          <Link
+                            href={`/timeline/${timeline.id}`}
+                            className="font-medium text-xs hover:underline truncate max-w-[160px] block"
+                            data-testid={`link-project-${timeline.id}`}
+                          >
+                            {timeline.title}
+                          </Link>
+                          <span className="text-muted-foreground/60 shrink-0" title={`${timeline.milestones.length}m / ${timeline.tasks.length}t`}>
+                            {timeline.milestones.length}m {timeline.tasks.length > 0 && `· ${timeline.tasks.length}t`}
+                          </span>
+                        </div>
+                      </td>
+
+                      <td className="px-3 py-1.5">
+                        <select
+                          className={selectClass}
+                          value={getVal(timeline, "client")}
+                          onChange={(e) => updateField(timeline.id, "client", e.target.value || null, timeline)}
+                          data-testid={`select-client-${timeline.id}`}
+                        >
+                          <option value="">—</option>
+                          {clientOptions.map((opt) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                      </td>
+
+                      <td className="px-3 py-1.5">
+                        <select
+                          className={selectClass}
+                          value={getVal(timeline, "projectType")}
+                          onChange={(e) => updateField(timeline.id, "projectType", e.target.value || null, timeline)}
+                          data-testid={`select-project-type-${timeline.id}`}
+                        >
+                          <option value="">—</option>
+                          {projectTypeOptions.map((opt) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                      </td>
+
+                      <td className="px-3 py-1.5">
+                        <select
+                          className={selectClass}
+                          value={getVal(timeline, "engagementModel")}
+                          onChange={(e) => updateField(timeline.id, "engagementModel", e.target.value || null, timeline)}
+                          data-testid={`select-engagement-model-${timeline.id}`}
+                        >
+                          <option value="">—</option>
+                          {engagementModelOptions.map((opt) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                      </td>
+
+                      <td className="px-3 py-1.5">
+                        <div className="flex items-center gap-0.5">
+                          <span className="text-muted-foreground">$</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            className={inputClass}
+                            value={getVal(timeline, "approvedBudget")}
+                            onChange={(e) => updateField(timeline.id, "approvedBudget", e.target.value || null, timeline)}
+                            placeholder="—"
+                            data-testid={`input-budget-${timeline.id}`}
+                          />
+                        </div>
+                      </td>
+
+                      <td className="px-3 py-1.5">
+                        <div className="flex items-center gap-0.5">
+                          <input
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            max="100"
+                            className={inputClass}
+                            value={getVal(timeline, "grossMargin")}
+                            onChange={(e) => updateField(timeline.id, "grossMargin", e.target.value || null, timeline)}
+                            placeholder="—"
+                            data-testid={`input-margin-${timeline.id}`}
+                          />
+                          <span className="text-muted-foreground">%</span>
+                        </div>
+                      </td>
+
+                      <td className="px-3 py-1.5">
+                        <select
+                          className={selectClass}
+                          value={getVal(timeline, "healthOverall")}
+                          onChange={(e) => updateField(timeline.id, "healthOverall", e.target.value, timeline)}
+                          data-testid={`select-health-overall-${timeline.id}`}
+                        >
+                          {healthOptions.map((opt) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                      </td>
+
+                      <td className="px-3 py-1.5">
+                        <select
+                          className={selectClass}
+                          value={getVal(timeline, "scopeHealth")}
+                          onChange={(e) => updateField(timeline.id, "scopeHealth", e.target.value, timeline)}
+                          data-testid={`select-health-scope-${timeline.id}`}
+                        >
+                          {healthOptions.map((opt) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                      </td>
+
+                      <td className="px-3 py-1.5">
+                        <select
+                          className={selectClass}
+                          value={getVal(timeline, "budgetHealth")}
+                          onChange={(e) => updateField(timeline.id, "budgetHealth", e.target.value, timeline)}
+                          data-testid={`select-health-budget-${timeline.id}`}
+                        >
+                          {healthOptions.map((opt) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                      </td>
+
+                      <td className="px-3 py-1.5">
+                        <select
+                          className={selectClass}
+                          value={getVal(timeline, "teamHealth")}
+                          onChange={(e) => updateField(timeline.id, "teamHealth", e.target.value, timeline)}
+                          data-testid={`select-health-team-${timeline.id}`}
+                        >
+                          {healthOptions.map((opt) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                      </td>
+
+                      <td className="px-3 py-1.5">
+                        {pct !== null ? (
+                          <div className="flex items-center gap-1.5" data-testid={`completion-${timeline.id}`}>
+                            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary min-w-[40px]">
+                              <div className="h-full bg-primary transition-all rounded-full" style={{ width: `${pct}%` }} />
+                            </div>
+                            <span className="text-xs font-medium w-7 text-right">{pct}%</span>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground text-center block">—</span>
+                        )}
+                      </td>
+
+                      <td className="px-3 py-1.5">
+                        <div className="flex items-center justify-center gap-1">
+                          {dirty && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6"
+                              onClick={() => saveRow(timeline.id)}
+                              disabled={saving}
+                              title="Save changes"
+                              data-testid={`button-save-${timeline.id}`}
+                            >
+                              <Save className="w-3.5 h-3.5 text-primary" />
+                            </Button>
+                          )}
+                          <Link href={`/timeline/${timeline.id}`}>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6"
+                              title="Open project"
+                              data-testid={`button-open-${timeline.id}`}
+                            >
+                              <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
+                            </Button>
+                          </Link>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-6 w-6"
+                                title="Delete project"
+                                data-testid={`button-delete-${timeline.id}`}
+                              >
+                                <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete project?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will permanently delete "{timeline.title}" and all its milestones.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => deleteMutation.mutate(timeline.id)}
+                                  data-testid="button-confirm-delete"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
