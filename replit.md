@@ -96,7 +96,7 @@ A visual project planning tool that supports two input methods:
 ## Database
 - clients: id, name, industry, contactPhone, website, address, notes, status
 - contacts: id, clientId (FK to clients), firstName, lastName, email, phone, role, isLegalRepresentative
-- timelines: id, title, description, color, healthOverall, scopeHealth, budgetHealth, teamHealth, projectType, engagementModel, projectStatus, region, client (legacy), clientId (FK to clients), approvedBudget, totalRunningCost, grossMargin
+- timelines: id, title, description, color, healthOverall, scopeHealth, budgetHealth, teamHealth, projectType, engagementModel, projectStatus, region, client (legacy), clientId (FK to clients), approvedBudget, totalRunningCost, grossMargin, startDate, endDate
 - milestones: id, timelineId, title, description, date, actualDate, color, icon, sortOrder
 - tasks: id, timelineId, title, description, startDate, endDate, actualStartDate, actualEndDate, percentComplete, color, sortOrder, status, health, itemType, parentTaskId
 - risks: id, timelineId, title, description, category, owner, probability, impact, mitigation, contingency, status, dueDate, sortOrder

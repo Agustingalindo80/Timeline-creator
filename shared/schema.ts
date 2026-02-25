@@ -138,6 +138,8 @@ export const timelines = pgTable("timelines", {
   grossMargin: numeric("gross_margin", { precision: 5, scale: 2 }),
   projectStatus: text("project_status").notNull().default("not_started"),
   region: text("region"),
+  startDate: text("start_date"),
+  endDate: text("end_date"),
 });
 
 export const milestones = pgTable("milestones", {

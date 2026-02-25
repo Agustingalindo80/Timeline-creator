@@ -1130,6 +1130,42 @@ export default function TimelineDetail() {
                 </select>
               </div>
               <div className="flex items-center gap-2">
+                <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Start Date</label>
+                <input
+                  type="date"
+                  className="text-xs border rounded px-2 py-1 bg-background"
+                  defaultValue={timeline.startDate ?? ""}
+                  key={`start-${timeline.startDate}`}
+                  onBlur={async (e) => {
+                    const val = e.target.value || null;
+                    if (val !== (timeline.startDate ?? null)) {
+                      await apiRequest("PATCH", `/api/timelines/${id}`, { startDate: val });
+                      queryClient.invalidateQueries({ queryKey: ["/api/timelines", id] });
+                      queryClient.invalidateQueries({ queryKey: ["/api/timelines"] });
+                    }
+                  }}
+                  data-testid="input-project-start-date"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">End Date</label>
+                <input
+                  type="date"
+                  className="text-xs border rounded px-2 py-1 bg-background"
+                  defaultValue={timeline.endDate ?? ""}
+                  key={`end-${timeline.endDate}`}
+                  onBlur={async (e) => {
+                    const val = e.target.value || null;
+                    if (val !== (timeline.endDate ?? null)) {
+                      await apiRequest("PATCH", `/api/timelines/${id}`, { endDate: val });
+                      queryClient.invalidateQueries({ queryKey: ["/api/timelines", id] });
+                      queryClient.invalidateQueries({ queryKey: ["/api/timelines"] });
+                    }
+                  }}
+                  data-testid="input-project-end-date"
+                />
+              </div>
+              <div className="flex items-center gap-2">
                 <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Approved Budget</label>
                 <div className="flex items-center gap-1">
                   <span className="text-xs text-muted-foreground">$</span>

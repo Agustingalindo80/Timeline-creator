@@ -17,17 +17,27 @@ async function recalcTotalRunningCost(timelineId: string) {
   let totalCost = 0;
 
   const now = new Date();
+  const projectStart = timeline.startDate ? new Date(timeline.startDate) : null;
+  const projectEnd = timeline.endDate ? new Date(timeline.endDate) : null;
 
   for (const a of activeAllocs) {
     const member = a.teamMember;
-    const start = a.startDate ? new Date(a.startDate) : null;
-    const end = a.endDate ? new Date(a.endDate) : null;
+    let allocStart = a.startDate ? new Date(a.startDate) : projectStart;
+    let allocEnd = a.endDate ? new Date(a.endDate) : projectEnd;
 
-    if (!start || isNaN(start.getTime())) continue;
-    if (now < start) continue;
+    if (!allocStart || isNaN(allocStart.getTime())) continue;
 
-    const effectiveEnd = end && !isNaN(end.getTime()) && end < now ? end : now;
-    const diffMs = effectiveEnd.getTime() - start.getTime();
+    if (projectStart && !isNaN(projectStart.getTime()) && allocStart < projectStart) {
+      allocStart = projectStart;
+    }
+    if (projectEnd && !isNaN(projectEnd.getTime()) && allocEnd && allocEnd > projectEnd) {
+      allocEnd = projectEnd;
+    }
+
+    if (now < allocStart) continue;
+
+    const effectiveEnd = allocEnd && !isNaN(allocEnd.getTime()) && allocEnd < now ? allocEnd : now;
+    const diffMs = effectiveEnd.getTime() - allocStart.getTime();
     if (diffMs <= 0) continue;
 
     const diffDays = diffMs / (1000 * 60 * 60 * 24);
@@ -304,6 +314,7 @@ export async function registerRoutes(
         "title", "description", "color", "healthOverall", "scopeHealth", "budgetHealth",
         "teamHealth", "projectType", "engagementModel", "client", "clientId",
         "approvedBudget", "totalRunningCost", "grossMargin", "projectStatus", "region",
+        "startDate", "endDate",
       ];
       for (const field of timelineFields) {
         if (req.body[field] !== undefined) updates[field] = req.body[field];
@@ -325,7 +336,7 @@ export async function registerRoutes(
       const timeline = await storage.updateTimeline(req.params.id, updates);
       if (!timeline) return res.status(404).json({ message: "Timeline not found" });
 
-      if (updates.engagementModel !== undefined) {
+      if (updates.engagementModel !== undefined || updates.startDate !== undefined || updates.endDate !== undefined) {
         await recalcTotalRunningCost(req.params.id);
         const refreshed = await storage.getTimeline(req.params.id);
         if (refreshed) return res.json(refreshed);
