@@ -820,6 +820,16 @@ export async function registerRoutes(
     }
   });
 
+  // GET all allocations (with team member and project details)
+  app.get("/api/allocations", async (req, res) => {
+    try {
+      const allocs = await storage.getAllAllAllocations();
+      res.json(allocs);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // GET allocations for a team member
   app.get("/api/team-members/:id/allocations", async (req, res) => {
     try {

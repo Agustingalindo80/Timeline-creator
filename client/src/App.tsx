@@ -17,6 +17,7 @@ import ClientDetail from "@/pages/client-detail";
 import ContactsList from "@/pages/contacts";
 import TeamMembersList from "@/pages/team-members";
 import TeamMemberDetail from "@/pages/team-member-detail";
+import AllocationsPage from "@/pages/allocations";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -31,6 +32,7 @@ function Router() {
       <Route path="/contacts" component={ContactsList} />
       <Route path="/team-members/:id" component={TeamMemberDetail} />
       <Route path="/team-members" component={TeamMembersList} />
+      <Route path="/allocations" component={AllocationsPage} />
       <Route path="/admin" component={Admin} />
       <Route component={NotFound} />
     </Switch>

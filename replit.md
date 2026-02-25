@@ -13,11 +13,12 @@ A visual project planning tool that supports two input methods:
 - Routing: wouter
 
 ## App Navigation
-- Left sidebar (shadcn Sidebar) with: Dashboard, Clients, Contacts, Projects, Team Members, Settings
+- Left sidebar (shadcn Sidebar) with: Dashboard, Clients, Contacts, Projects, Team Members, Allocations, Settings
 - Dashboard: placeholder page at `/` (content TBD)
 - Projects: list view at `/projects` showing all projects with health indicators
 - Clients: list view at `/clients` showing all clients; detail view at `/clients/:id` with demographic info and projects tab
 - Team Members: list view at `/team-members` showing all members; detail view at `/team-members/:id` with allocations tab
+- Allocations: resource planning matrix at `/allocations` showing team members × weeks grid with weekly hours, project filter, date range navigation
 - Settings: admin console at `/admin` with feature toggles and field options
 - Theme toggle in sidebar footer
 
@@ -34,6 +35,7 @@ A visual project planning tool that supports two input methods:
 - `client/src/pages/team-members.tsx` - Team members list page
 - `client/src/pages/team-member-detail.tsx` - Team member detail with allocations tab
 - `client/src/pages/admin.tsx` - Settings page with feature toggles, team members, rate cards, field options
+- `client/src/pages/allocations.tsx` - Allocations resource planning matrix page
 - `client/src/components/timeline-view.tsx` - Timeline visualization components (vertical + horizontal)
 - `client/src/components/risk-register.tsx` - Risk register component for project risk tracking
 - `client/src/components/team-composition.tsx` - Team composition tab for project team member management
@@ -56,6 +58,7 @@ A visual project planning tool that supports two input methods:
 - POST /api/clients/:clientId/contacts - Create contact
 - PATCH /api/contacts/:id - Update contact
 - DELETE /api/contacts/:id - Delete contact
+- GET /api/allocations - List all allocations with team member and project details
 - GET /api/timelines - List all projects with milestones and tasks
 - GET /api/timelines/:id - Get single project
 - POST /api/timelines - Create project with milestones
