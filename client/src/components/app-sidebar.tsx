@@ -1,4 +1,4 @@
-import { LayoutDashboard, FolderKanban, Settings, Building2, Users } from "lucide-react";
+import { LayoutDashboard, FolderKanban, Settings, Building2, Users, UserCheck } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -19,6 +19,7 @@ const navItems = [
   { title: "Clients", url: "/clients", icon: Building2 },
   { title: "Contacts", url: "/contacts", icon: Users },
   { title: "Projects", url: "/projects", icon: FolderKanban },
+  { title: "Team Members", url: "/team-members", icon: UserCheck },
   { title: "Settings", url: "/admin", icon: Settings },
 ];
 

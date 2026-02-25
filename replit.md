@@ -13,10 +13,11 @@ A visual project planning tool that supports two input methods:
 - Routing: wouter
 
 ## App Navigation
-- Left sidebar (shadcn Sidebar) with: Dashboard, Projects, Clients, Settings
+- Left sidebar (shadcn Sidebar) with: Dashboard, Clients, Contacts, Projects, Team Members, Settings
 - Dashboard: placeholder page at `/` (content TBD)
 - Projects: list view at `/projects` showing all projects with health indicators
 - Clients: list view at `/clients` showing all clients; detail view at `/clients/:id` with demographic info and projects tab
+- Team Members: list view at `/team-members` showing all members; detail view at `/team-members/:id` with allocations tab
 - Settings: admin console at `/admin` with feature toggles and field options
 - Theme toggle in sidebar footer
 
@@ -30,6 +31,8 @@ A visual project planning tool that supports two input methods:
 - `client/src/pages/clients.tsx` - Clients list page
 - `client/src/pages/client-detail.tsx` - Client detail with demographics and projects tab
 - `client/src/pages/contacts.tsx` - Contacts list page with Excel-like table
+- `client/src/pages/team-members.tsx` - Team members list page
+- `client/src/pages/team-member-detail.tsx` - Team member detail with allocations tab
 - `client/src/pages/admin.tsx` - Settings page with feature toggles, team members, rate cards, field options
 - `client/src/components/timeline-view.tsx` - Timeline visualization components (vertical + horizontal)
 - `client/src/components/risk-register.tsx` - Risk register component for project risk tracking
@@ -69,6 +72,7 @@ A visual project planning tool that supports two input methods:
 - PATCH /api/risks/:id - Update risk
 - DELETE /api/risks/:id - Delete risk
 - GET /api/team-members - List all team members
+- GET /api/team-members/:id - Get single team member
 - POST /api/team-members - Create team member
 - PATCH /api/team-members/:id - Update team member
 - DELETE /api/team-members/:id - Delete team member (removes project assignments)

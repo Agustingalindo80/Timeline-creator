@@ -527,6 +527,16 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/team-members/:id", async (req, res) => {
+    try {
+      const member = await storage.getTeamMember(req.params.id);
+      if (!member) return res.status(404).json({ message: "Team member not found" });
+      res.json(member);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   app.post("/api/team-members", async (req, res) => {
     try {
       const { name, email, role, department, monthlyCost, hourlyCost } = req.body;
