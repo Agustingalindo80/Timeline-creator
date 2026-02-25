@@ -7,6 +7,29 @@ import { storage } from "./storage";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
+async function recalcApprovedBudget(timelineId: string) {
+  const timeline = await storage.getTimeline(timelineId);
+  if (!timeline) return;
+
+  const totalAmount = timeline.milestones
+    .filter(m => m.isFinancialObligation && m.amount)
+    .reduce((sum, m) => sum + (parseFloat(m.amount!) || 0), 0);
+
+  const budgetStr = totalAmount > 0 ? totalAmount.toFixed(2) : null;
+  const cost = parseFloat(timeline.totalRunningCost ?? "0") || 0;
+  let grossMargin: string | null = null;
+  if (totalAmount > 0 && cost > 0) {
+    grossMargin = (((totalAmount - cost) / totalAmount) * 100).toFixed(2);
+  } else if (totalAmount > 0) {
+    grossMargin = "100.00";
+  }
+
+  await storage.updateTimeline(timelineId, {
+    approvedBudget: budgetStr,
+    grossMargin,
+  });
+}
+
 async function recalcTotalRunningCost(timelineId: string) {
   const timeline = await storage.getTimeline(timelineId);
   if (!timeline) return;
@@ -365,7 +388,7 @@ export async function registerRoutes(
   // ADD milestone to timeline
   app.post("/api/timelines/:id/milestones", async (req, res) => {
     try {
-      const { title, description, date, actualDate, color, icon, sortOrder } = req.body;
+      const { title, description, date, actualDate, color, icon, sortOrder, isFinancialObligation, amount } = req.body;
       if (!title || !date) {
         return res.status(400).json({ message: "Title and date are required" });
       }
@@ -379,7 +402,12 @@ export async function registerRoutes(
         color: color || null,
         icon: icon || null,
         sortOrder: sortOrder ?? 0,
+        isFinancialObligation: isFinancialObligation ?? false,
+        amount: amount || null,
       });
+      if (isFinancialObligation && amount) {
+        await recalcApprovedBudget(req.params.id);
+      }
       res.status(201).json(milestone);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -389,7 +417,7 @@ export async function registerRoutes(
   // UPDATE milestone
   app.patch("/api/milestones/:id", async (req, res) => {
     try {
-      const { title, description, date, actualDate, color, icon, sortOrder } = req.body;
+      const { title, description, date, actualDate, color, icon, sortOrder, isFinancialObligation, amount } = req.body;
       const updates: any = {};
       if (title !== undefined) updates.title = title;
       if (description !== undefined) updates.description = description;
@@ -398,9 +426,15 @@ export async function registerRoutes(
       if (color !== undefined) updates.color = color;
       if (icon !== undefined) updates.icon = icon;
       if (sortOrder !== undefined) updates.sortOrder = sortOrder;
+      if (isFinancialObligation !== undefined) updates.isFinancialObligation = isFinancialObligation;
+      if (amount !== undefined) updates.amount = amount;
 
       const milestone = await storage.updateMilestone(req.params.id, updates);
       if (!milestone) return res.status(404).json({ message: "Milestone not found" });
+
+      if (isFinancialObligation !== undefined || amount !== undefined) {
+        await recalcApprovedBudget(milestone.timelineId);
+      }
       res.json(milestone);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -410,7 +444,14 @@ export async function registerRoutes(
   // DELETE milestone
   app.delete("/api/milestones/:id", async (req, res) => {
     try {
+      const { db } = await import("./db");
+      const { milestones: milestonesTable } = await import("@shared/schema");
+      const { eq } = await import("drizzle-orm");
+      const [existing] = await db.select({ timelineId: milestonesTable.timelineId, isFinancialObligation: milestonesTable.isFinancialObligation }).from(milestonesTable).where(eq(milestonesTable.id, req.params.id));
       await storage.deleteMilestone(req.params.id);
+      if (existing?.isFinancialObligation) {
+        await recalcApprovedBudget(existing.timelineId);
+      }
       res.json({ success: true });
     } catch (err: any) {
       res.status(500).json({ message: err.message });

@@ -152,6 +152,8 @@ export const milestones = pgTable("milestones", {
   color: text("color"),
   icon: text("icon"),
   sortOrder: integer("sort_order").notNull().default(0),
+  isFinancialObligation: boolean("is_financial_obligation").notNull().default(false),
+  amount: numeric("amount", { precision: 12, scale: 2 }),
 });
 
 export const tasks = pgTable("tasks", {

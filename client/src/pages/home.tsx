@@ -744,19 +744,13 @@ export default function Home() {
                       </td>
 
                       <td className="px-3 py-1.5">
-                        <div className="flex items-center gap-0.5">
-                          <span className="text-muted-foreground">$</span>
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            className={inputClass}
-                            value={getVal(timeline, "approvedBudget")}
-                            onChange={(e) => updateField(timeline.id, "approvedBudget", e.target.value || null, timeline)}
-                            placeholder="—"
-                            data-testid={`input-budget-${timeline.id}`}
-                          />
-                        </div>
+                        <span className="text-xs" data-testid={`text-budget-${timeline.id}`}>
+                          {(() => {
+                            const budgetVal = getVal(timeline, "approvedBudget");
+                            const budget = parseFloat(budgetVal) || 0;
+                            return budget > 0 ? `$${budget.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—";
+                          })()}
+                        </span>
                       </td>
 
                       <td className="px-3 py-1.5">

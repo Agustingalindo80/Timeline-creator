@@ -97,7 +97,7 @@ A visual project planning tool that supports two input methods:
 - clients: id, name, industry, contactPhone, website, address, notes, status
 - contacts: id, clientId (FK to clients), firstName, lastName, email, phone, role, isLegalRepresentative
 - timelines: id, title, description, color, healthOverall, scopeHealth, budgetHealth, teamHealth, projectType, engagementModel, projectStatus, region, client (legacy), clientId (FK to clients), approvedBudget, totalRunningCost, grossMargin, startDate, endDate
-- milestones: id, timelineId, title, description, date, actualDate, color, icon, sortOrder
+- milestones: id, timelineId, title, description, date, actualDate, color, icon, sortOrder, isFinancialObligation (boolean), amount (numeric)
 - tasks: id, timelineId, title, description, startDate, endDate, actualStartDate, actualEndDate, percentComplete, color, sortOrder, status, health, itemType, parentTaskId
 - risks: id, timelineId, title, description, category, owner, probability, impact, mitigation, contingency, status, dueDate, sortOrder
 - team_members: id, name, email, role, department, monthlyCost, hourlyCost
@@ -111,7 +111,7 @@ A visual project planning tool that supports two input methods:
 - Engagement Model: classification field (Fixed Bid / T&M / Managed Capacity by default), editable on detail page, shown as badge on project list
 - Client: first-class entity with own table, demographics (name, industry, contact, phone, website, address, notes, status), linked to projects via clientId FK; editable on project detail page and projects list; client detail page shows projects tab
 - Project Status: configurable field (Not Started / In Progress / Completed by default), editable on detail page and project list, shown as badge; options managed from Settings > Field Options
-- Approved Budget: currency field (numeric with $ prefix), editable inline on detail page and project list
+- Approved Budget: auto-calculated from sum of milestones marked as Financial Obligation; read-only display on detail page and project list
 - Total Running Cost: auto-calculated from team member allocations up to the current date; Fixed Bid uses monthlyCost × elapsed months, T&M/other uses hourlyCost × weeklyHours × elapsed weeks; only active allocations with start dates in the past are included; future allocations excluded; past-completed allocations use their full duration; read-only display on detail page and project list
 - Gross Margin: auto-calculated as ((Budget - Cost) / Budget) × 100; read-only color-coded display (green ≥30%, amber ≥15%, red <15%); recalculated when budget or allocations change
 - Project Health: 4 health fields per project (Overall, Scope, Budget, Team Composition)
@@ -120,6 +120,9 @@ A visual project planning tool that supports two input methods:
   - Editable inline on project detail page in a "Health" section
   - Labels shown without the word "Health" (Overall, Scope, Budget, Team Composition)
 - Milestones: point-in-time events shown as dots on the timeline
+  - Optional Financial Obligation checkbox: when checked, shows an Amount field
+  - Financial obligation milestones display an amber badge with the dollar amount
+  - Approved Budget = sum of all milestone amounts marked as Financial Obligation
 - Tasks: duration-based items shown as horizontal bars in Gantt section below milestones
   - Status: Not Started, In Progress, Complete
   - Health: Green, Amber, Red (traffic light indicators)

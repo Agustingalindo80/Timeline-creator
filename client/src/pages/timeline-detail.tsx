@@ -21,6 +21,7 @@ import {
   Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -309,11 +310,16 @@ export default function TimelineDetail() {
   const [newTaskDesc, setNewTaskDesc] = useState("");
   const [newTaskPercent, setNewTaskPercent] = useState(0);
 
+  const [newIsFinancialObligation, setNewIsFinancialObligation] = useState(false);
+  const [newAmount, setNewAmount] = useState("");
+
   const [editingMilestoneId, setEditingMilestoneId] = useState<string | null>(null);
   const [editMTitle, setEditMTitle] = useState("");
   const [editMDate, setEditMDate] = useState("");
   const [editMActualDate, setEditMActualDate] = useState("");
   const [editMDesc, setEditMDesc] = useState("");
+  const [editMIsFinancialObligation, setEditMIsFinancialObligation] = useState(false);
+  const [editMAmount, setEditMAmount] = useState("");
 
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editTTitle, setEditTTitle] = useState("");
@@ -334,12 +340,14 @@ export default function TimelineDetail() {
   const [editTItemType, setEditTItemType] = useState("workstream");
   const [editTParentId, setEditTParentId] = useState("");
 
-  const startEditingMilestone = (m: { id: string; title: string; date: string; actualDate: string | null; description: string | null }) => {
+  const startEditingMilestone = (m: { id: string; title: string; date: string; actualDate: string | null; description: string | null; isFinancialObligation: boolean; amount: string | null }) => {
     setEditingMilestoneId(m.id);
     setEditMTitle(m.title);
     setEditMDate(m.date);
     setEditMActualDate(m.actualDate || "");
     setEditMDesc(m.description || "");
+    setEditMIsFinancialObligation(m.isFinancialObligation);
+    setEditMAmount(m.amount || "");
   };
 
   const saveMilestoneEdit = () => {
@@ -352,6 +360,8 @@ export default function TimelineDetail() {
           date: editMDate.trim(),
           actualDate: editMActualDate.trim() || null,
           description: editMDesc.trim() || null,
+          isFinancialObligation: editMIsFinancialObligation,
+          amount: editMIsFinancialObligation ? (editMAmount || null) : null,
         },
       },
       {
@@ -415,13 +425,22 @@ export default function TimelineDetail() {
   const handleAddMilestone = () => {
     if (!newTitle.trim() || !newDate.trim()) return;
     addMilestoneMutation.mutate(
-      { title: newTitle, date: newDate, actualDate: newActualDate || undefined, description: newDesc || undefined },
+      {
+        title: newTitle,
+        date: newDate,
+        actualDate: newActualDate || undefined,
+        description: newDesc || undefined,
+        isFinancialObligation: newIsFinancialObligation,
+        amount: newIsFinancialObligation ? (newAmount || undefined) : undefined,
+      },
       {
         onSuccess: () => {
           setNewTitle("");
           setNewDate("");
           setNewActualDate("");
           setNewDesc("");
+          setNewIsFinancialObligation(false);
+          setNewAmount("");
           setShowAddForm(false);
         },
       }
@@ -1167,26 +1186,10 @@ export default function TimelineDetail() {
               </div>
               <div className="flex items-center gap-2">
                 <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Approved Budget</label>
-                <div className="flex items-center gap-1">
-                  <span className="text-xs text-muted-foreground">$</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    className="text-xs border rounded px-2 py-1 bg-background w-28"
-                    defaultValue={timeline.approvedBudget ?? ""}
-                    key={`budget-${timeline.approvedBudget}`}
-                    onBlur={async (e) => {
-                      const val = e.target.value ? e.target.value : null;
-                      if (val !== (timeline.approvedBudget ?? null)) {
-                        await apiRequest("PATCH", `/api/timelines/${id}`, { approvedBudget: val });
-                        queryClient.invalidateQueries({ queryKey: ["/api/timelines", id] });
-                        queryClient.invalidateQueries({ queryKey: ["/api/timelines"] });
-                      }
-                    }}
-                    data-testid="input-approved-budget"
-                  />
-                </div>
+                <span className="text-xs font-semibold px-2 py-1" data-testid="text-approved-budget">
+                  {timeline.approvedBudget ? `$${parseFloat(timeline.approvedBudget).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—"}
+                </span>
+                <span className="text-[10px] text-muted-foreground italic">(sum of financial obligations)</span>
               </div>
               <div className="flex items-center gap-2">
                 <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Total Running Cost</label>
@@ -1295,6 +1298,29 @@ export default function TimelineDetail() {
                   data-testid="input-new-milestone-desc"
                 />
               </div>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="new-fin-obligation"
+                  checked={newIsFinancialObligation}
+                  onCheckedChange={(checked) => setNewIsFinancialObligation(checked === true)}
+                  data-testid="checkbox-new-milestone-financial"
+                />
+                <label htmlFor="new-fin-obligation" className="text-xs font-medium text-muted-foreground cursor-pointer">Financial Obligation</label>
+              </div>
+              {newIsFinancialObligation && (
+                <div className="w-36">
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Amount ($)</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={newAmount}
+                    onChange={(e) => setNewAmount(e.target.value)}
+                    placeholder="0.00"
+                    data-testid="input-new-milestone-amount"
+                  />
+                </div>
+              )}
               <Button
                 onClick={handleAddMilestone}
                 disabled={!newTitle.trim() || !newDate.trim() || addMilestoneMutation.isPending}
@@ -1546,6 +1572,30 @@ export default function TimelineDetail() {
                             placeholder="Description (optional)"
                             data-testid={`input-edit-milestone-desc-${m.id}`}
                           />
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <div className="flex items-center gap-2">
+                              <Checkbox
+                                id={`edit-fin-obligation-${m.id}`}
+                                checked={editMIsFinancialObligation}
+                                onCheckedChange={(checked) => setEditMIsFinancialObligation(checked === true)}
+                                data-testid={`checkbox-edit-milestone-financial-${m.id}`}
+                              />
+                              <label htmlFor={`edit-fin-obligation-${m.id}`} className="text-xs font-medium text-muted-foreground cursor-pointer">Financial Obligation</label>
+                            </div>
+                            {editMIsFinancialObligation && (
+                              <div className="w-36">
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  value={editMAmount}
+                                  onChange={(e) => setEditMAmount(e.target.value)}
+                                  placeholder="Amount ($)"
+                                  data-testid={`input-edit-milestone-amount-${m.id}`}
+                                />
+                              </div>
+                            )}
+                          </div>
                           <div className="flex items-center gap-2 justify-end">
                             <Button
                               size="sm"
@@ -1575,7 +1625,14 @@ export default function TimelineDetail() {
                               style={{ backgroundColor: m.color || timeline.color }}
                             />
                             <div className="min-w-0">
-                              <p className="text-sm font-medium truncate" data-testid={`text-milestone-title-${m.id}`}>{m.title}</p>
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-medium truncate" data-testid={`text-milestone-title-${m.id}`}>{m.title}</p>
+                                {m.isFinancialObligation && (
+                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-500 text-amber-600 dark:text-amber-400" data-testid={`badge-financial-${m.id}`}>
+                                    ${m.amount ? parseFloat(m.amount).toLocaleString("en-US", { minimumFractionDigits: 2 }) : "0.00"}
+                                  </Badge>
+                                )}
+                              </div>
                               <p className="text-xs text-muted-foreground">
                                 Planned: {m.date}
                                 {m.actualDate && <span className="ml-2">Actual: {m.actualDate}</span>}
