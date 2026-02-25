@@ -7,8 +7,6 @@ import {
   Edit3,
   Plus,
   Trash2,
-  AlignHorizontalDistributeCenter,
-  AlignVerticalDistributeCenter,
   Save,
   X,
   Download,
@@ -46,7 +44,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { TimelineView, TimelineViewHorizontal } from "@/components/timeline-view";
+import { TimelineView } from "@/components/timeline-view";
 import { ThemePicker } from "@/components/theme-picker";
 import { RiskRegister } from "@/components/risk-register";
 import type { TimelineWithMilestones, AppSettings, FieldOption, Client, AllocationWithTeamMember } from "@shared/schema";
@@ -60,7 +58,6 @@ import {
   DEFAULT_REGIONS,
 } from "@shared/schema";
 
-type ViewMode = "vertical" | "horizontal";
 type FilterMode = "all" | "milestones";
 
 function ProjectTeamMembersTab({ timelineId }: { timelineId: string }) {
@@ -166,7 +163,6 @@ export default function TimelineDetail() {
   const { id } = useParams<{ id: string }>();
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const [viewMode, setViewMode] = useState<ViewMode>("vertical");
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
@@ -918,23 +914,6 @@ export default function TimelineDetail() {
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <Button
-              size="icon"
-              variant={viewMode === "vertical" ? "secondary" : "ghost"}
-              onClick={() => setViewMode("vertical")}
-              data-testid="button-view-vertical"
-            >
-              <AlignVerticalDistributeCenter className="w-4 h-4" />
-            </Button>
-            <Button
-              size="icon"
-              variant={viewMode === "horizontal" ? "secondary" : "ghost"}
-              onClick={() => setViewMode("horizontal")}
-              data-testid="button-view-horizontal"
-            >
-              <AlignHorizontalDistributeCenter className="w-4 h-4" />
-            </Button>
-
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -1487,21 +1466,12 @@ export default function TimelineDetail() {
         </div>
 
         <div ref={timelineRef} data-export-timeline className="bg-background rounded-md">
-          {viewMode === "vertical" ? (
-            <TimelineView
-              milestones={timeline.milestones}
-              tasks={timeline.tasks}
-              timelineColor={timeline.color}
-              showTasks={showTasks}
-            />
-          ) : (
-            <TimelineViewHorizontal
-              milestones={timeline.milestones}
-              tasks={timeline.tasks}
-              timelineColor={timeline.color}
-              showTasks={showTasks}
-            />
-          )}
+          <TimelineView
+            milestones={timeline.milestones}
+            tasks={timeline.tasks}
+            timelineColor={timeline.color}
+            showTasks={showTasks}
+          />
         </div>
 
         <Tabs defaultValue="milestones" className="mt-8" data-testid="manage-tabs">
