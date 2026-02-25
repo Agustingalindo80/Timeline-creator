@@ -7,6 +7,7 @@ import path from "path";
 import fs from "fs";
 import express from "express";
 import { storage } from "./storage";
+import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
@@ -130,7 +131,17 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
 
+  await setupAuth(app);
+  registerAuthRoutes(app);
+
   app.use("/uploads", express.static(uploadsDir));
+
+  app.use((req, res, next) => {
+    if (!req.path.startsWith("/api/")) return next();
+    const publicPaths = ["/api/login", "/api/logout", "/api/callback", "/api/auth/user", "/api/branding"];
+    if (publicPaths.includes(req.path)) return next();
+    return isAuthenticated(req, res, next);
+  });
 
   // --- BRANDING ROUTES ---
 

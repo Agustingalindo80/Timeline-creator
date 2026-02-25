@@ -3,6 +3,8 @@ import { pgTable, text, varchar, integer, boolean, jsonb, numeric } from "drizzl
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+export * from "./models/auth";
+
 export const fieldOptionSchema = z.object({
   value: z.string(),
   label: z.string(),

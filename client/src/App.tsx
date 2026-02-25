@@ -8,6 +8,8 @@ import { BrandingProvider } from "@/components/branding-provider";
 import { HelmetProvider } from "react-helmet-async";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { useAuth } from "@/hooks/use-auth";
+import { Loader2 } from "lucide-react";
 import Dashboard from "@/pages/dashboard";
 import Home from "@/pages/home";
 import CreateTimeline from "@/pages/create-timeline";
@@ -19,6 +21,7 @@ import ContactsList from "@/pages/contacts";
 import TeamMembersList from "@/pages/team-members";
 import TeamMemberDetail from "@/pages/team-member-detail";
 import AllocationsPage from "@/pages/allocations";
+import Landing from "@/pages/landing";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -45,6 +48,42 @@ const sidebarStyle = {
   "--sidebar-width-icon": "3rem",
 };
 
+function AuthenticatedApp() {
+  return (
+    <SidebarProvider style={sidebarStyle as React.CSSProperties}>
+      <div className="flex h-screen w-full">
+        <AppSidebar />
+        <div className="flex flex-col flex-1 min-w-0">
+          <header className="flex items-center p-2 border-b shrink-0">
+            <SidebarTrigger data-testid="button-sidebar-toggle" />
+          </header>
+          <main className="flex-1 overflow-auto">
+            <Router />
+          </main>
+        </div>
+      </div>
+    </SidebarProvider>
+  );
+}
+
+function AppContent() {
+  const { isLoading, isAuthenticated } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Landing />;
+  }
+
+  return <AuthenticatedApp />;
+}
+
 function App() {
   return (
     <HelmetProvider>
@@ -52,19 +91,7 @@ function App() {
         <QueryClientProvider client={queryClient}>
           <BrandingProvider>
             <TooltipProvider>
-              <SidebarProvider style={sidebarStyle as React.CSSProperties}>
-                <div className="flex h-screen w-full">
-                  <AppSidebar />
-                  <div className="flex flex-col flex-1 min-w-0">
-                    <header className="flex items-center p-2 border-b shrink-0">
-                      <SidebarTrigger data-testid="button-sidebar-toggle" />
-                    </header>
-                    <main className="flex-1 overflow-auto">
-                      <Router />
-                    </main>
-                  </div>
-                </div>
-              </SidebarProvider>
+              <AppContent />
               <Toaster />
             </TooltipProvider>
           </BrandingProvider>
