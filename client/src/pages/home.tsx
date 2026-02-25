@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { TimelineWithMilestones, Task, AppSettings, Client } from "@shared/schema";
-import { DEFAULT_TASK_HEALTH, DEFAULT_PROJECT_TYPES, DEFAULT_ENGAGEMENT_MODELS } from "@shared/schema";
+import { DEFAULT_TASK_HEALTH, DEFAULT_PROJECT_TYPES, DEFAULT_ENGAGEMENT_MODELS, DEFAULT_PROJECT_STATUSES } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 
 const MONTHS: Record<string, number> = {
@@ -68,22 +68,24 @@ const HEALTH_COLORS: Record<string, string> = {
 interface RowEdits {
   projectType?: string | null;
   engagementModel?: string | null;
+  projectStatus?: string | null;
   clientId?: string | null;
   approvedBudget?: string | null;
-  grossMargin?: string | null;
+  totalRunningCost?: string | null;
   healthOverall?: string;
   scopeHealth?: string;
   budgetHealth?: string;
   teamHealth?: string;
 }
 
-type SortField = "title" | "client" | "projectType" | "engagementModel" | "approvedBudget" | "grossMargin" | "healthOverall" | "scopeHealth" | "budgetHealth" | "teamHealth" | "progress";
+type SortField = "title" | "client" | "projectType" | "engagementModel" | "projectStatus" | "approvedBudget" | "totalRunningCost" | "grossMargin" | "healthOverall" | "scopeHealth" | "budgetHealth" | "teamHealth" | "progress";
 type SortDir = "asc" | "desc";
 
 interface ColumnFilters {
   clientId?: string;
   projectType?: string;
   engagementModel?: string;
+  projectStatus?: string;
   healthOverall?: string;
   scopeHealth?: string;
   budgetHealth?: string;
@@ -116,6 +118,7 @@ export default function Home() {
   const healthOptions = settings?.taskHealthOptions || DEFAULT_TASK_HEALTH;
   const projectTypeOptions = settings?.projectTypes || DEFAULT_PROJECT_TYPES;
   const engagementModelOptions = settings?.engagementModels || DEFAULT_ENGAGEMENT_MODELS;
+  const projectStatusOptions = settings?.projectStatuses || DEFAULT_PROJECT_STATUSES;
 
   const getClientName = useCallback((clientId: string | null | undefined): string => {
     if (!clientId || !clientsList) return "";
@@ -138,6 +141,7 @@ export default function Home() {
       if (columnFilters.clientId && (t.clientId || "") !== columnFilters.clientId) return false;
       if (columnFilters.projectType && (t.projectType || "") !== columnFilters.projectType) return false;
       if (columnFilters.engagementModel && (t.engagementModel || "") !== columnFilters.engagementModel) return false;
+      if (columnFilters.projectStatus && (t.projectStatus || "not_started") !== columnFilters.projectStatus) return false;
       if (columnFilters.healthOverall && (t.healthOverall || "green") !== columnFilters.healthOverall) return false;
       if (columnFilters.scopeHealth && (t.scopeHealth || "green") !== columnFilters.scopeHealth) return false;
       if (columnFilters.budgetHealth && (t.budgetHealth || "green") !== columnFilters.budgetHealth) return false;
@@ -175,9 +179,20 @@ export default function Home() {
             bVal = bLabel.toLowerCase();
             break;
           }
+          case "projectStatus": {
+            const aLabel2 = a.projectStatus ? (projectStatusOptions.find((o) => o.value === a.projectStatus)?.label || a.projectStatus) : "";
+            const bLabel2 = b.projectStatus ? (projectStatusOptions.find((o) => o.value === b.projectStatus)?.label || b.projectStatus) : "";
+            aVal = aLabel2.toLowerCase();
+            bVal = bLabel2.toLowerCase();
+            break;
+          }
           case "approvedBudget":
             aVal = a.approvedBudget ? parseFloat(a.approvedBudget) : -1;
             bVal = b.approvedBudget ? parseFloat(b.approvedBudget) : -1;
+            break;
+          case "totalRunningCost":
+            aVal = a.totalRunningCost ? parseFloat(a.totalRunningCost) : -1;
+            bVal = b.totalRunningCost ? parseFloat(b.totalRunningCost) : -1;
             break;
           case "grossMargin":
             aVal = a.grossMargin ? parseFloat(a.grossMargin) : -1;
@@ -208,7 +223,7 @@ export default function Home() {
     }
 
     return result;
-  }, [timelines, searchQuery, columnFilters, sortField, sortDir, getClientName, projectTypeOptions, engagementModelOptions]);
+  }, [timelines, searchQuery, columnFilters, sortField, sortDir, getClientName, projectTypeOptions, engagementModelOptions, projectStatusOptions]);
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -263,7 +278,7 @@ export default function Home() {
     try {
       const payload: Record<string, any> = {};
       for (const [key, val] of Object.entries(rowEdits)) {
-        if (key === "approvedBudget" || key === "grossMargin") {
+        if (key === "approvedBudget" || key === "totalRunningCost") {
           payload[key] = val && val !== "" ? parseFloat(val as string) : null;
         } else {
           payload[key] = val && val !== "" ? val : null;
@@ -475,10 +490,12 @@ export default function Home() {
                 <tr className="bg-muted/50 border-b">
                   <SortHeader field="title" label="Project Name" />
                   <SortHeader field="client" label="Client" />
+                  <SortHeader field="projectStatus" label="Status" />
                   <SortHeader field="projectType" label="Project Type" />
                   <SortHeader field="engagementModel" label="Engagement Model" />
                   <SortHeader field="approvedBudget" label="Budget" />
-                  <SortHeader field="grossMargin" label="Margin" />
+                  <SortHeader field="totalRunningCost" label="Running Cost" />
+                  <SortHeader field="grossMargin" label="GM %" />
                   <SortHeader field="healthOverall" label="Overall" align="center" />
                   <SortHeader field="scopeHealth" label="Scope" align="center" />
                   <SortHeader field="budgetHealth" label="Budget" align="center" />
@@ -499,6 +516,19 @@ export default function Home() {
                         <option value="">All</option>
                         {(clientsList || []).map((cl) => (
                           <option key={cl.id} value={cl.id}>{cl.name}</option>
+                        ))}
+                      </select>
+                    </th>
+                    <th className="px-3 py-1.5">
+                      <select
+                        className={filterSelectClass}
+                        value={columnFilters.projectStatus || ""}
+                        onChange={(e) => setFilter("projectStatus", e.target.value)}
+                        data-testid="filter-projectStatus"
+                      >
+                        <option value="">All</option>
+                        {projectStatusOptions.map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
                       </select>
                     </th>
@@ -528,6 +558,7 @@ export default function Home() {
                         ))}
                       </select>
                     </th>
+                    <th className="px-3 py-1.5" />
                     <th className="px-3 py-1.5" />
                     <th className="px-3 py-1.5" />
                     <th className="px-3 py-1.5">
@@ -635,6 +666,19 @@ export default function Home() {
                       <td className="px-3 py-1.5">
                         <select
                           className={selectClass}
+                          value={getVal(timeline, "projectStatus") || "not_started"}
+                          onChange={(e) => updateField(timeline.id, "projectStatus", e.target.value || null, timeline)}
+                          data-testid={`select-project-status-${timeline.id}`}
+                        >
+                          {projectStatusOptions.map((opt) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                      </td>
+
+                      <td className="px-3 py-1.5">
+                        <select
+                          className={selectClass}
                           value={getVal(timeline, "projectType")}
                           onChange={(e) => updateField(timeline.id, "projectType", e.target.value || null, timeline)}
                           data-testid={`select-project-type-${timeline.id}`}
@@ -678,19 +722,41 @@ export default function Home() {
 
                       <td className="px-3 py-1.5">
                         <div className="flex items-center gap-0.5">
+                          <span className="text-muted-foreground">$</span>
                           <input
                             type="number"
-                            step="0.1"
+                            step="0.01"
                             min="0"
-                            max="100"
                             className={inputClass}
-                            value={getVal(timeline, "grossMargin")}
-                            onChange={(e) => updateField(timeline.id, "grossMargin", e.target.value || null, timeline)}
+                            value={getVal(timeline, "totalRunningCost")}
+                            onChange={(e) => updateField(timeline.id, "totalRunningCost", e.target.value || null, timeline)}
                             placeholder="—"
-                            data-testid={`input-margin-${timeline.id}`}
+                            data-testid={`input-running-cost-${timeline.id}`}
                           />
-                          <span className="text-muted-foreground">%</span>
                         </div>
+                      </td>
+
+                      <td className="px-3 py-1.5">
+                        {(() => {
+                          const budgetStr = getVal(timeline, "approvedBudget");
+                          const costStr = getVal(timeline, "totalRunningCost");
+                          const budget = parseFloat(budgetStr) || 0;
+                          const cost = parseFloat(costStr) || 0;
+                          const gm = budget > 0 ? ((budget - cost) / budget) * 100 : null;
+                          return (
+                            <span
+                              className={`text-xs font-medium ${
+                                gm === null ? "text-muted-foreground" :
+                                gm >= 30 ? "text-green-600 dark:text-green-400" :
+                                gm >= 15 ? "text-amber-600 dark:text-amber-400" :
+                                "text-red-600 dark:text-red-400"
+                              }`}
+                              data-testid={`text-gm-${timeline.id}`}
+                            >
+                              {gm !== null ? `${gm.toFixed(1)}%` : "—"}
+                            </span>
+                          );
+                        })()}
                       </td>
 
                       <td className="px-3 py-1.5">

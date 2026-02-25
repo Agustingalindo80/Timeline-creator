@@ -87,21 +87,23 @@ A visual project planning tool that supports two input methods:
 ## Database
 - clients: id, name, industry, contactPhone, website, address, notes, status
 - contacts: id, clientId (FK to clients), firstName, lastName, email, phone, role, isLegalRepresentative
-- timelines: id, title, description, color, healthOverall, scopeHealth, budgetHealth, teamHealth, projectType, engagementModel, client (legacy), clientId (FK to clients), approvedBudget, grossMargin
+- timelines: id, title, description, color, healthOverall, scopeHealth, budgetHealth, teamHealth, projectType, engagementModel, projectStatus, client (legacy), clientId (FK to clients), approvedBudget, totalRunningCost, grossMargin
 - milestones: id, timelineId, title, description, date, actualDate, color, icon, sortOrder
 - tasks: id, timelineId, title, description, startDate, endDate, actualStartDate, actualEndDate, percentComplete, color, sortOrder, status, health, itemType, parentTaskId
 - risks: id, timelineId, title, description, category, owner, probability, impact, mitigation, contingency, status, dueDate, sortOrder
 - team_members: id, name, email, role, department
 - rate_cards: id, name, costRate, billRate
 - project_team_members: id, timelineId (FK to timelines), teamMemberId (FK to team_members), rateCardId (FK to rate_cards), monthlyCost, hourlyCost, allocation, startDate, endDate
-- app_settings: id, riskRegisterEnabled, taskStatuses, taskHealthOptions, taskItemTypes, riskProbabilities, riskImpacts, riskStatuses, projectTypes, engagementModels, clients
+- app_settings: id, riskRegisterEnabled, taskStatuses, taskHealthOptions, taskItemTypes, riskProbabilities, riskImpacts, riskStatuses, projectTypes, engagementModels, projectStatuses, clients
 
 ## Features
 - Project Type: classification field (Billable / Non-Billable by default), editable on detail page, shown as badge on project list
 - Engagement Model: classification field (Fixed Bid / T&M / Managed Capacity by default), editable on detail page, shown as badge on project list
 - Client: first-class entity with own table, demographics (name, industry, contact, phone, website, address, notes, status), linked to projects via clientId FK; editable on project detail page and projects list; client detail page shows projects tab
-- Approved Budget: currency field (numeric with $ prefix), editable inline on detail page
-- Gross Margin: percentage field (manual entry, numeric with % suffix), editable inline on detail page
+- Project Status: configurable field (Not Started / In Progress / Completed by default), editable on detail page and project list, shown as badge; options managed from Settings > Field Options
+- Approved Budget: currency field (numeric with $ prefix), editable inline on detail page and project list
+- Total Running Cost: currency field (numeric with $ prefix), editable inline on detail page and project list
+- Gross Margin: auto-calculated as ((Budget - Cost) / Budget) × 100; read-only color-coded display (green ≥30%, amber ≥15%, red <15%); recalculated on save
 - Project Health: 4 health fields per project (Overall, Scope, Budget, Team Composition)
   - Uses same options as Task Health (Green/Amber/Red by default)
   - Displayed as colored dots on project list cards

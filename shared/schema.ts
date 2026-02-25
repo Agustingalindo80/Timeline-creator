@@ -50,6 +50,11 @@ export const DEFAULT_ENGAGEMENT_MODELS: FieldOption[] = [
   { value: "t_and_m", label: "T&M" },
   { value: "managed_capacity", label: "Managed Capacity" },
 ];
+export const DEFAULT_PROJECT_STATUSES: FieldOption[] = [
+  { value: "not_started", label: "Not Started" },
+  { value: "in_progress", label: "In Progress" },
+  { value: "completed", label: "Completed" },
+];
 export const DEFAULT_CLIENTS: FieldOption[] = [
   { value: "client_a", label: "Client A" },
   { value: "client_b", label: "Client B" },
@@ -108,7 +113,9 @@ export const timelines = pgTable("timelines", {
   client: text("client"),
   clientId: varchar("client_id"),
   approvedBudget: numeric("approved_budget", { precision: 12, scale: 2 }),
+  totalRunningCost: numeric("total_running_cost", { precision: 12, scale: 2 }),
   grossMargin: numeric("gross_margin", { precision: 5, scale: 2 }),
+  projectStatus: text("project_status").notNull().default("not_started"),
 });
 
 export const milestones = pgTable("milestones", {
@@ -198,6 +205,7 @@ export const appSettings = pgTable("app_settings", {
   clients: jsonb("clients").$type<FieldOption[]>(),
   contactRoles: jsonb("contact_roles").$type<FieldOption[]>(),
   industries: jsonb("industries").$type<FieldOption[]>(),
+  projectStatuses: jsonb("project_statuses").$type<FieldOption[]>(),
 });
 
 export const insertClientSchema = createInsertSchema(clients).omit({ id: true });

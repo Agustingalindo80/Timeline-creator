@@ -56,6 +56,7 @@ import {
   DEFAULT_TASK_ITEM_TYPES,
   DEFAULT_PROJECT_TYPES,
   DEFAULT_ENGAGEMENT_MODELS,
+  DEFAULT_PROJECT_STATUSES,
 } from "@shared/schema";
 
 type ViewMode = "vertical" | "horizontal";
@@ -87,6 +88,7 @@ export default function TimelineDetail() {
   const taskItemTypes = settings?.taskItemTypes || DEFAULT_TASK_ITEM_TYPES;
   const projectTypes = settings?.projectTypes || DEFAULT_PROJECT_TYPES;
   const engagementModels = settings?.engagementModels || DEFAULT_ENGAGEMENT_MODELS;
+  const projectStatuses = settings?.projectStatuses || DEFAULT_PROJECT_STATUSES;
   const { data: clientsList } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
   });
@@ -993,6 +995,23 @@ export default function TimelineDetail() {
                 </select>
               </div>
               <div className="flex items-center gap-2">
+                <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Status</label>
+                <select
+                  className="text-xs border rounded px-2 py-1 bg-background"
+                  value={timeline.projectStatus || "not_started"}
+                  onChange={async (e) => {
+                    await apiRequest("PATCH", `/api/timelines/${id}`, { projectStatus: e.target.value });
+                    queryClient.invalidateQueries({ queryKey: ["/api/timelines", id] });
+                    queryClient.invalidateQueries({ queryKey: ["/api/timelines"] });
+                  }}
+                  data-testid="select-project-status"
+                >
+                  {projectStatuses.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
                 <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Approved Budget</label>
                 <div className="flex items-center gap-1">
                   <span className="text-xs text-muted-foreground">$</span>
@@ -1016,28 +1035,48 @@ export default function TimelineDetail() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Gross Margin</label>
+                <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Total Running Cost</label>
                 <div className="flex items-center gap-1">
+                  <span className="text-xs text-muted-foreground">$</span>
                   <input
                     type="number"
-                    step="0.1"
+                    step="0.01"
                     min="0"
-                    max="100"
-                    className="text-xs border rounded px-2 py-1 bg-background w-20"
-                    defaultValue={timeline.grossMargin ?? ""}
-                    key={`margin-${timeline.grossMargin}`}
+                    className="text-xs border rounded px-2 py-1 bg-background w-28"
+                    defaultValue={timeline.totalRunningCost ?? ""}
+                    key={`cost-${timeline.totalRunningCost}`}
                     onBlur={async (e) => {
                       const val = e.target.value ? e.target.value : null;
-                      if (val !== (timeline.grossMargin ?? null)) {
-                        await apiRequest("PATCH", `/api/timelines/${id}`, { grossMargin: val });
+                      if (val !== (timeline.totalRunningCost ?? null)) {
+                        await apiRequest("PATCH", `/api/timelines/${id}`, { totalRunningCost: val });
                         queryClient.invalidateQueries({ queryKey: ["/api/timelines", id] });
                         queryClient.invalidateQueries({ queryKey: ["/api/timelines"] });
                       }
                     }}
-                    data-testid="input-gross-margin"
+                    data-testid="input-total-running-cost"
                   />
-                  <span className="text-xs text-muted-foreground">%</span>
                 </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Gross Margin</label>
+                {(() => {
+                  const budget = parseFloat(timeline.approvedBudget ?? "0") || 0;
+                  const cost = parseFloat(timeline.totalRunningCost ?? "0") || 0;
+                  const gm = budget > 0 ? ((budget - cost) / budget) * 100 : null;
+                  return (
+                    <span
+                      className={`text-xs font-semibold px-2 py-1 rounded ${
+                        gm === null ? "text-muted-foreground" :
+                        gm >= 30 ? "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950" :
+                        gm >= 15 ? "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950" :
+                        "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950"
+                      }`}
+                      data-testid="text-gross-margin"
+                    >
+                      {gm !== null ? `${gm.toFixed(1)}%` : "—"}
+                    </span>
+                  );
+                })()}
               </div>
             </div>
             <h4 className="text-xs font-medium text-muted-foreground mb-3">Health</h4>

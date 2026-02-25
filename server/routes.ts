@@ -247,21 +247,28 @@ export async function registerRoutes(
   // UPDATE timeline
   app.patch("/api/timelines/:id", async (req, res) => {
     try {
-      const { title, description, color, healthOverall, scopeHealth, budgetHealth, teamHealth, projectType, engagementModel, client, clientId, approvedBudget, grossMargin } = req.body;
       const updates: any = {};
-      if (title !== undefined) updates.title = title;
-      if (description !== undefined) updates.description = description;
-      if (color !== undefined) updates.color = color;
-      if (healthOverall !== undefined) updates.healthOverall = healthOverall;
-      if (scopeHealth !== undefined) updates.scopeHealth = scopeHealth;
-      if (budgetHealth !== undefined) updates.budgetHealth = budgetHealth;
-      if (teamHealth !== undefined) updates.teamHealth = teamHealth;
-      if (projectType !== undefined) updates.projectType = projectType;
-      if (engagementModel !== undefined) updates.engagementModel = engagementModel;
-      if (client !== undefined) updates.client = client;
-      if (clientId !== undefined) updates.clientId = clientId;
-      if (approvedBudget !== undefined) updates.approvedBudget = approvedBudget;
-      if (grossMargin !== undefined) updates.grossMargin = grossMargin;
+      const timelineFields = [
+        "title", "description", "color", "healthOverall", "scopeHealth", "budgetHealth",
+        "teamHealth", "projectType", "engagementModel", "client", "clientId",
+        "approvedBudget", "totalRunningCost", "grossMargin", "projectStatus",
+      ];
+      for (const field of timelineFields) {
+        if (req.body[field] !== undefined) updates[field] = req.body[field];
+      }
+
+      if (updates.approvedBudget !== undefined || updates.totalRunningCost !== undefined) {
+        const existing = await storage.getTimeline(req.params.id);
+        if (existing) {
+          const budget = parseFloat(updates.approvedBudget !== undefined ? updates.approvedBudget : existing.approvedBudget ?? "0") || 0;
+          const cost = parseFloat(updates.totalRunningCost !== undefined ? updates.totalRunningCost : existing.totalRunningCost ?? "0") || 0;
+          if (budget > 0) {
+            updates.grossMargin = (((budget - cost) / budget) * 100).toFixed(2);
+          } else {
+            updates.grossMargin = null;
+          }
+        }
+      }
 
       const timeline = await storage.updateTimeline(req.params.id, updates);
       if (!timeline) return res.status(404).json({ message: "Timeline not found" });
@@ -687,7 +694,7 @@ export async function registerRoutes(
       const fields = [
         "riskRegisterEnabled", "taskStatuses", "taskHealthOptions", "taskItemTypes",
         "riskProbabilities", "riskImpacts", "riskStatuses", "projectTypes",
-        "engagementModels", "clients", "contactRoles", "industries",
+        "engagementModels", "clients", "contactRoles", "industries", "projectStatuses",
       ];
       for (const field of fields) {
         if (req.body[field] !== undefined) updates[field] = req.body[field];
