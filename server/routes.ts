@@ -44,7 +44,11 @@ async function recalcTotalRunningCost(timelineId: string) {
 
     if (timeline.engagementModel === "fixed_bid") {
       const monthlyCost = parseFloat(member.monthlyCost ?? "0") || 0;
-      const months = diffDays / 30.44;
+      const startYear = allocStart.getFullYear();
+      const startMonth = allocStart.getMonth();
+      const endYear = effectiveEnd.getFullYear();
+      const endMonth = effectiveEnd.getMonth();
+      const months = (endYear - startYear) * 12 + (endMonth - startMonth) + 1;
       totalCost += monthlyCost * months;
     } else {
       const hourlyCost = parseFloat(member.hourlyCost ?? "0") || 0;
