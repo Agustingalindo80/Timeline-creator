@@ -157,6 +157,33 @@ export const risks = pgTable("risks", {
   sortOrder: integer("sort_order").notNull().default(0),
 });
 
+export const teamMembers = pgTable("team_members", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  email: text("email"),
+  role: text("role"),
+  department: text("department"),
+});
+
+export const rateCards = pgTable("rate_cards", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  costRate: numeric("cost_rate", { precision: 10, scale: 2 }),
+  billRate: numeric("bill_rate", { precision: 10, scale: 2 }),
+});
+
+export const projectTeamMembers = pgTable("project_team_members", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  timelineId: varchar("timeline_id").notNull().references(() => timelines.id, { onDelete: "cascade" }),
+  teamMemberId: varchar("team_member_id").notNull().references(() => teamMembers.id, { onDelete: "cascade" }),
+  rateCardId: varchar("rate_card_id").references(() => rateCards.id),
+  monthlyCost: numeric("monthly_cost", { precision: 10, scale: 2 }),
+  hourlyCost: numeric("hourly_cost", { precision: 10, scale: 2 }),
+  allocation: integer("allocation").notNull().default(100),
+  startDate: text("start_date"),
+  endDate: text("end_date"),
+});
+
 export const appSettings = pgTable("app_settings", {
   id: varchar("id").primaryKey().default("app"),
   riskRegisterEnabled: boolean("risk_register_enabled").notNull().default(false),
@@ -187,6 +214,9 @@ export const insertRiskSchema = createInsertSchema(risks).omit({ id: true }).ext
   impact: z.string().default("medium"),
   status: z.string().default("open"),
 });
+export const insertTeamMemberSchema = createInsertSchema(teamMembers).omit({ id: true });
+export const insertRateCardSchema = createInsertSchema(rateCards).omit({ id: true });
+export const insertProjectTeamMemberSchema = createInsertSchema(projectTeamMembers).omit({ id: true });
 
 export type InsertClient = z.infer<typeof insertClientSchema>;
 export type Client = typeof clients.$inferSelect;
@@ -200,8 +230,15 @@ export type InsertTask = z.infer<typeof insertTaskSchema>;
 export type Task = typeof tasks.$inferSelect;
 export type InsertRisk = z.infer<typeof insertRiskSchema>;
 export type Risk = typeof risks.$inferSelect;
+export type InsertTeamMember = z.infer<typeof insertTeamMemberSchema>;
+export type TeamMember = typeof teamMembers.$inferSelect;
+export type InsertRateCard = z.infer<typeof insertRateCardSchema>;
+export type RateCard = typeof rateCards.$inferSelect;
+export type InsertProjectTeamMember = z.infer<typeof insertProjectTeamMemberSchema>;
+export type ProjectTeamMember = typeof projectTeamMembers.$inferSelect;
 export type AppSettings = typeof appSettings.$inferSelect;
 
+export type ProjectTeamMemberWithDetails = ProjectTeamMember & { teamMember: TeamMember; rateCard: RateCard | null };
 export type TimelineWithMilestones = Timeline & { milestones: Milestone[]; tasks: Task[] };
 export type TimelineWithAll = TimelineWithMilestones & { risks: Risk[] };
 export type ClientWithProjects = Client & { projects: TimelineWithMilestones[]; contacts: Contact[] };

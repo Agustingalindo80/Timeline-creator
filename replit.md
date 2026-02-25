@@ -30,9 +30,10 @@ A visual project planning tool that supports two input methods:
 - `client/src/pages/clients.tsx` - Clients list page
 - `client/src/pages/client-detail.tsx` - Client detail with demographics and projects tab
 - `client/src/pages/contacts.tsx` - Contacts list page with Excel-like table
-- `client/src/pages/admin.tsx` - Settings page with feature toggles
+- `client/src/pages/admin.tsx` - Settings page with feature toggles, team members, rate cards, field options
 - `client/src/components/timeline-view.tsx` - Timeline visualization components (vertical + horizontal)
 - `client/src/components/risk-register.tsx` - Risk register component for project risk tracking
+- `client/src/components/team-composition.tsx` - Team composition tab for project team member management
 - `client/src/components/theme-provider.tsx` - Dark/light mode provider
 - `server/routes.ts` - API routes for clients, timelines, milestones, risks, settings, and Excel parsing
 - `server/migrate-clients.ts` - One-time migration of legacy client text fields to clients table
@@ -67,6 +68,18 @@ A visual project planning tool that supports two input methods:
 - POST /api/timelines/:id/risks - Add risk
 - PATCH /api/risks/:id - Update risk
 - DELETE /api/risks/:id - Delete risk
+- GET /api/team-members - List all team members
+- POST /api/team-members - Create team member
+- PATCH /api/team-members/:id - Update team member
+- DELETE /api/team-members/:id - Delete team member (removes project assignments)
+- GET /api/rate-cards - List all rate cards
+- POST /api/rate-cards - Create rate card
+- PATCH /api/rate-cards/:id - Update rate card
+- DELETE /api/rate-cards/:id - Delete rate card (unlinks from assignments)
+- GET /api/timelines/:id/team - Get project team assignments with member/rate card details
+- POST /api/timelines/:id/team - Add team member to project
+- PATCH /api/project-team/:id - Update project team assignment
+- DELETE /api/project-team/:id - Remove team member from project
 - GET /api/settings - Get app settings
 - PATCH /api/settings - Update app settings
 - POST /api/parse-excel - Parse Excel/CSV file (multipart form)
@@ -78,6 +91,9 @@ A visual project planning tool that supports two input methods:
 - milestones: id, timelineId, title, description, date, actualDate, color, icon, sortOrder
 - tasks: id, timelineId, title, description, startDate, endDate, actualStartDate, actualEndDate, percentComplete, color, sortOrder, status, health, itemType, parentTaskId
 - risks: id, timelineId, title, description, category, owner, probability, impact, mitigation, contingency, status, dueDate, sortOrder
+- team_members: id, name, email, role, department
+- rate_cards: id, name, costRate, billRate
+- project_team_members: id, timelineId (FK to timelines), teamMemberId (FK to team_members), rateCardId (FK to rate_cards), monthlyCost, hourlyCost, allocation, startDate, endDate
 - app_settings: id, riskRegisterEnabled, taskStatuses, taskHealthOptions, taskItemTypes, riskProbabilities, riskImpacts, riskStatuses, projectTypes, engagementModels, clients
 
 ## Features
@@ -110,8 +126,24 @@ A visual project planning tool that supports two input methods:
   - Fields: title, description, category, owner, probability (Low/Medium/High/Very High), impact, mitigation, contingency, status (Open/Mitigated/Closed/Accepted), dueDate
   - Risk score = probability × impact (1-16 scale)
   - Expandable cards with edit/delete
-- Settings: /admin page with feature toggles and field option management
-  - Risk Register toggle (on/off)
+- Team Composition: tab on project detail page for managing team assignments
+  - Assign team members (from Settings) to projects
+  - Monthly Cost and Hourly Cost fields per assignment (for fixed-fee project cost calculation)
+  - Rate Card association (optional, from Settings rate cards)
+  - Allocation percentage per team member
+  - Start/End date per assignment
+  - Total Monthly Cost and Total Hourly Cost summary (weighted by allocation)
+- Team Members: managed from Settings > Team Members tab
+  - Fields: name, email, role, department
+  - CRUD with inline edit
+- Rate Cards: managed from Settings > Rate Cards tab
+  - Fields: name, cost rate ($/hr), bill rate ($/hr)
+  - Shows margin percentage when both rates set
+  - CRUD with inline edit
+- Settings: /admin page reorganized into tabs (General, Team Members, Rate Cards, Field Options)
+  - General: feature toggles (Risk Register on/off)
+  - Team Members: manage team member records
+  - Rate Cards: manage cost/bill rate templates
   - Field Options: customizable dropdown values for all list-based fields
     - Industry (configurable list for clients)
     - Contact Role (configurable list for contacts)

@@ -18,6 +18,7 @@ import {
   ListFilter,
   Calendar,
   ClipboardList,
+  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -47,6 +48,7 @@ import { useToast } from "@/hooks/use-toast";
 import { TimelineView, TimelineViewHorizontal } from "@/components/timeline-view";
 import { ThemePicker } from "@/components/theme-picker";
 import { RiskRegister } from "@/components/risk-register";
+import { TeamComposition } from "@/components/team-composition";
 import type { TimelineWithMilestones, AppSettings, FieldOption, Client } from "@shared/schema";
 import {
   DEFAULT_TASK_STATUSES,
@@ -1311,6 +1313,9 @@ export default function TimelineDetail() {
             <TabsTrigger value="workstreams" data-testid="tab-workstreams">
               Workstreams ({timeline.tasks.filter((t) => t.itemType === "workstream").length})
             </TabsTrigger>
+            <TabsTrigger value="team" data-testid="tab-team">
+              Team
+            </TabsTrigger>
             {settings?.riskRegisterEnabled && (
               <TabsTrigger value="risks" data-testid="tab-risks">
                 Risks
@@ -1474,6 +1479,10 @@ export default function TimelineDetail() {
                   .map((t) => renderTaskCard(t, timeline))
               )}
             </div>
+          </TabsContent>
+
+          <TabsContent value="team">
+            <TeamComposition timelineId={timeline.id} />
           </TabsContent>
 
           {settings?.riskRegisterEnabled && (

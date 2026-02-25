@@ -7,6 +7,9 @@ import {
   milestones,
   tasks,
   risks,
+  teamMembers,
+  rateCards,
+  projectTeamMembers,
   appSettings,
   type Client,
   type InsertClient,
@@ -20,6 +23,13 @@ import {
   type InsertTask,
   type Risk,
   type InsertRisk,
+  type TeamMember,
+  type InsertTeamMember,
+  type RateCard,
+  type InsertRateCard,
+  type ProjectTeamMember,
+  type InsertProjectTeamMember,
+  type ProjectTeamMemberWithDetails,
   type AppSettings,
   type TimelineWithMilestones,
   type ClientWithProjects,
@@ -54,6 +64,20 @@ export interface IStorage {
   createRisk(data: InsertRisk): Promise<Risk>;
   updateRisk(id: string, data: Partial<InsertRisk>): Promise<Risk | undefined>;
   deleteRisk(id: string): Promise<void>;
+  getTeamMembers(): Promise<TeamMember[]>;
+  getTeamMember(id: string): Promise<TeamMember | undefined>;
+  createTeamMember(data: InsertTeamMember): Promise<TeamMember>;
+  updateTeamMember(id: string, data: Partial<InsertTeamMember>): Promise<TeamMember | undefined>;
+  deleteTeamMember(id: string): Promise<void>;
+  getRateCards(): Promise<RateCard[]>;
+  getRateCard(id: string): Promise<RateCard | undefined>;
+  createRateCard(data: InsertRateCard): Promise<RateCard>;
+  updateRateCard(id: string, data: Partial<InsertRateCard>): Promise<RateCard | undefined>;
+  deleteRateCard(id: string): Promise<void>;
+  getProjectTeamMembers(timelineId: string): Promise<ProjectTeamMemberWithDetails[]>;
+  createProjectTeamMember(data: InsertProjectTeamMember): Promise<ProjectTeamMember>;
+  updateProjectTeamMember(id: string, data: Partial<InsertProjectTeamMember>): Promise<ProjectTeamMember | undefined>;
+  deleteProjectTeamMember(id: string): Promise<void>;
   getSettings(): Promise<AppSettings>;
   updateSettings(data: Partial<Omit<AppSettings, "id">>): Promise<AppSettings>;
 }
@@ -189,6 +213,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteTimeline(id: string): Promise<void> {
+    await db.delete(projectTeamMembers).where(eq(projectTeamMembers.timelineId, id));
     await db.delete(risks).where(eq(risks.timelineId, id));
     await db.delete(tasks).where(eq(tasks.timelineId, id));
     await db.delete(milestones).where(eq(milestones.timelineId, id));
@@ -259,6 +284,89 @@ export class DatabaseStorage implements IStorage {
 
   async deleteRisk(id: string): Promise<void> {
     await db.delete(risks).where(eq(risks.id, id));
+  }
+
+  async getTeamMembers(): Promise<TeamMember[]> {
+    return db.select().from(teamMembers);
+  }
+
+  async getTeamMember(id: string): Promise<TeamMember | undefined> {
+    const [member] = await db.select().from(teamMembers).where(eq(teamMembers.id, id));
+    return member;
+  }
+
+  async createTeamMember(data: InsertTeamMember): Promise<TeamMember> {
+    const [member] = await db.insert(teamMembers).values(data).returning();
+    return member;
+  }
+
+  async updateTeamMember(id: string, data: Partial<InsertTeamMember>): Promise<TeamMember | undefined> {
+    const [member] = await db.update(teamMembers).set(data).where(eq(teamMembers.id, id)).returning();
+    return member;
+  }
+
+  async deleteTeamMember(id: string): Promise<void> {
+    await db.delete(projectTeamMembers).where(eq(projectTeamMembers.teamMemberId, id));
+    await db.delete(teamMembers).where(eq(teamMembers.id, id));
+  }
+
+  async getRateCards(): Promise<RateCard[]> {
+    return db.select().from(rateCards);
+  }
+
+  async getRateCard(id: string): Promise<RateCard | undefined> {
+    const [card] = await db.select().from(rateCards).where(eq(rateCards.id, id));
+    return card;
+  }
+
+  async createRateCard(data: InsertRateCard): Promise<RateCard> {
+    const [card] = await db.insert(rateCards).values(data).returning();
+    return card;
+  }
+
+  async updateRateCard(id: string, data: Partial<InsertRateCard>): Promise<RateCard | undefined> {
+    const [card] = await db.update(rateCards).set(data).where(eq(rateCards.id, id)).returning();
+    return card;
+  }
+
+  async deleteRateCard(id: string): Promise<void> {
+    await db.update(projectTeamMembers).set({ rateCardId: null }).where(eq(projectTeamMembers.rateCardId, id));
+    await db.delete(rateCards).where(eq(rateCards.id, id));
+  }
+
+  async getProjectTeamMembers(timelineId: string): Promise<ProjectTeamMemberWithDetails[]> {
+    const assignments = await db.select().from(projectTeamMembers).where(eq(projectTeamMembers.timelineId, timelineId));
+    const allMembers = await db.select().from(teamMembers);
+    const allCards = await db.select().from(rateCards);
+
+    const memberMap = new Map(allMembers.map(m => [m.id, m]));
+    const cardMap = new Map(allCards.map(c => [c.id, c]));
+
+    return assignments
+      .map(a => {
+        const teamMember = memberMap.get(a.teamMemberId);
+        if (!teamMember) return null;
+        return {
+          ...a,
+          teamMember,
+          rateCard: a.rateCardId ? cardMap.get(a.rateCardId) || null : null,
+        };
+      })
+      .filter((a): a is ProjectTeamMemberWithDetails => a !== null);
+  }
+
+  async createProjectTeamMember(data: InsertProjectTeamMember): Promise<ProjectTeamMember> {
+    const [assignment] = await db.insert(projectTeamMembers).values(data).returning();
+    return assignment;
+  }
+
+  async updateProjectTeamMember(id: string, data: Partial<InsertProjectTeamMember>): Promise<ProjectTeamMember | undefined> {
+    const [assignment] = await db.update(projectTeamMembers).set(data).where(eq(projectTeamMembers.id, id)).returning();
+    return assignment;
+  }
+
+  async deleteProjectTeamMember(id: string): Promise<void> {
+    await db.delete(projectTeamMembers).where(eq(projectTeamMembers.id, id));
   }
 
   async getSettings(): Promise<AppSettings> {

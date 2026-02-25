@@ -509,6 +509,167 @@ export async function registerRoutes(
     }
   });
 
+  // --- TEAM MEMBER ROUTES ---
+
+  app.get("/api/team-members", async (_req, res) => {
+    try {
+      const members = await storage.getTeamMembers();
+      res.json(members);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/team-members", async (req, res) => {
+    try {
+      const { name, email, role, department } = req.body;
+      if (!name?.trim()) return res.status(400).json({ message: "Name is required" });
+      const member = await storage.createTeamMember({
+        name: name.trim(),
+        email: email || null,
+        role: role || null,
+        department: department || null,
+      });
+      res.status(201).json(member);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/team-members/:id", async (req, res) => {
+    try {
+      const { name, email, role, department } = req.body;
+      const updates: any = {};
+      if (name !== undefined) updates.name = name;
+      if (email !== undefined) updates.email = email;
+      if (role !== undefined) updates.role = role;
+      if (department !== undefined) updates.department = department;
+      const member = await storage.updateTeamMember(req.params.id, updates);
+      if (!member) return res.status(404).json({ message: "Team member not found" });
+      res.json(member);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.delete("/api/team-members/:id", async (req, res) => {
+    try {
+      await storage.deleteTeamMember(req.params.id);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // --- RATE CARD ROUTES ---
+
+  app.get("/api/rate-cards", async (_req, res) => {
+    try {
+      const cards = await storage.getRateCards();
+      res.json(cards);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/rate-cards", async (req, res) => {
+    try {
+      const { name, costRate, billRate } = req.body;
+      if (!name?.trim()) return res.status(400).json({ message: "Name is required" });
+      const card = await storage.createRateCard({
+        name: name.trim(),
+        costRate: costRate || null,
+        billRate: billRate || null,
+      });
+      res.status(201).json(card);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/rate-cards/:id", async (req, res) => {
+    try {
+      const { name, costRate, billRate } = req.body;
+      const updates: any = {};
+      if (name !== undefined) updates.name = name;
+      if (costRate !== undefined) updates.costRate = costRate;
+      if (billRate !== undefined) updates.billRate = billRate;
+      const card = await storage.updateRateCard(req.params.id, updates);
+      if (!card) return res.status(404).json({ message: "Rate card not found" });
+      res.json(card);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.delete("/api/rate-cards/:id", async (req, res) => {
+    try {
+      await storage.deleteRateCard(req.params.id);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // --- PROJECT TEAM MEMBER ROUTES ---
+
+  app.get("/api/timelines/:id/team", async (req, res) => {
+    try {
+      const members = await storage.getProjectTeamMembers(req.params.id);
+      res.json(members);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/timelines/:id/team", async (req, res) => {
+    try {
+      const { teamMemberId, rateCardId, monthlyCost, hourlyCost, allocation, startDate, endDate } = req.body;
+      if (!teamMemberId) return res.status(400).json({ message: "Team member is required" });
+      const assignment = await storage.createProjectTeamMember({
+        timelineId: req.params.id,
+        teamMemberId,
+        rateCardId: rateCardId || null,
+        monthlyCost: monthlyCost || null,
+        hourlyCost: hourlyCost || null,
+        allocation: allocation ?? 100,
+        startDate: startDate || null,
+        endDate: endDate || null,
+      });
+      res.status(201).json(assignment);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/project-team/:id", async (req, res) => {
+    try {
+      const { teamMemberId, rateCardId, monthlyCost, hourlyCost, allocation, startDate, endDate } = req.body;
+      const updates: any = {};
+      if (teamMemberId !== undefined) updates.teamMemberId = teamMemberId;
+      if (rateCardId !== undefined) updates.rateCardId = rateCardId;
+      if (monthlyCost !== undefined) updates.monthlyCost = monthlyCost;
+      if (hourlyCost !== undefined) updates.hourlyCost = hourlyCost;
+      if (allocation !== undefined) updates.allocation = allocation;
+      if (startDate !== undefined) updates.startDate = startDate;
+      if (endDate !== undefined) updates.endDate = endDate;
+      const assignment = await storage.updateProjectTeamMember(req.params.id, updates);
+      if (!assignment) return res.status(404).json({ message: "Assignment not found" });
+      res.json(assignment);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.delete("/api/project-team/:id", async (req, res) => {
+    try {
+      await storage.deleteProjectTeamMember(req.params.id);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // GET app settings
   app.get("/api/settings", async (_req, res) => {
     try {
@@ -522,29 +683,15 @@ export async function registerRoutes(
   // UPDATE app settings
   app.patch("/api/settings", async (req, res) => {
     try {
-      const {
-        riskRegisterEnabled,
-        taskStatuses,
-        taskHealthOptions,
-        taskItemTypes,
-        riskProbabilities,
-        riskImpacts,
-        riskStatuses,
-        projectTypes,
-        engagementModels,
-        clients,
-      } = req.body;
       const updates: any = {};
-      if (riskRegisterEnabled !== undefined) updates.riskRegisterEnabled = riskRegisterEnabled;
-      if (taskStatuses !== undefined) updates.taskStatuses = taskStatuses;
-      if (taskHealthOptions !== undefined) updates.taskHealthOptions = taskHealthOptions;
-      if (taskItemTypes !== undefined) updates.taskItemTypes = taskItemTypes;
-      if (riskProbabilities !== undefined) updates.riskProbabilities = riskProbabilities;
-      if (riskImpacts !== undefined) updates.riskImpacts = riskImpacts;
-      if (riskStatuses !== undefined) updates.riskStatuses = riskStatuses;
-      if (projectTypes !== undefined) updates.projectTypes = projectTypes;
-      if (engagementModels !== undefined) updates.engagementModels = engagementModels;
-      if (clients !== undefined) updates.clients = clients;
+      const fields = [
+        "riskRegisterEnabled", "taskStatuses", "taskHealthOptions", "taskItemTypes",
+        "riskProbabilities", "riskImpacts", "riskStatuses", "projectTypes",
+        "engagementModels", "clients", "contactRoles", "industries",
+      ];
+      for (const field of fields) {
+        if (req.body[field] !== undefined) updates[field] = req.body[field];
+      }
 
       const settings = await storage.updateSettings(updates);
       res.json(settings);

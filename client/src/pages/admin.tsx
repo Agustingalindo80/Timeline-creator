@@ -1,16 +1,27 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Helmet } from "react-helmet-async";
-import { Shield, List, Plus, X, GripVertical, RotateCcw } from "lucide-react";
+import { Shield, List, Plus, X, GripVertical, RotateCcw, Users, CreditCard, Edit3, Trash2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { AppSettings, FieldOption } from "@shared/schema";
+import type { AppSettings, FieldOption, TeamMember, RateCard } from "@shared/schema";
 import {
   DEFAULT_TASK_STATUSES,
   DEFAULT_TASK_HEALTH,
@@ -266,6 +277,386 @@ interface TabConfig {
   fields: FieldConfig[];
 }
 
+function TeamMembersManager() {
+  const { toast } = useToast();
+  const [showAdd, setShowAdd] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newRole, setNewRole] = useState("");
+  const [newDept, setNewDept] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editRole, setEditRole] = useState("");
+  const [editDept, setEditDept] = useState("");
+
+  const { data: members = [], isLoading } = useQuery<TeamMember[]>({
+    queryKey: ["/api/team-members"],
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: any) => {
+      await apiRequest("POST", "/api/team-members", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/team-members"] });
+      toast({ title: "Team member created" });
+      setNewName(""); setNewEmail(""); setNewRole(""); setNewDept("");
+      setShowAdd(false);
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      await apiRequest("PATCH", `/api/team-members/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/team-members"] });
+      toast({ title: "Team member updated" });
+      setEditingId(null);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/team-members/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/team-members"] });
+      toast({ title: "Team member deleted" });
+    },
+  });
+
+  const startEditing = (m: TeamMember) => {
+    setEditingId(m.id);
+    setEditName(m.name);
+    setEditEmail(m.email || "");
+    setEditRole(m.role || "");
+    setEditDept(m.department || "");
+  };
+
+  if (isLoading) return <Skeleton className="h-32 w-full" />;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-medium flex items-center gap-2">
+            <Users className="w-4 h-4" />
+            Team Members
+          </h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Manage team members that can be assigned to projects.
+          </p>
+        </div>
+        <Button size="sm" onClick={() => setShowAdd(!showAdd)} data-testid="button-add-team-member-settings">
+          <Plus className="w-3.5 h-3.5 mr-1" />
+          Add Member
+        </Button>
+      </div>
+
+      {showAdd && (
+        <Card className="p-4" data-testid="form-add-team-member">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Name *</label>
+              <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Full name" data-testid="input-new-member-name" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Email</label>
+              <Input value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="Email" data-testid="input-new-member-email" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Role</label>
+              <Input value={newRole} onChange={e => setNewRole(e.target.value)} placeholder="e.g. Developer" data-testid="input-new-member-role" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Department</label>
+              <Input value={newDept} onChange={e => setNewDept(e.target.value)} placeholder="e.g. Engineering" data-testid="input-new-member-dept" />
+            </div>
+          </div>
+          <div className="flex gap-2 mt-3 justify-end">
+            <Button variant="ghost" size="sm" onClick={() => { setShowAdd(false); setNewName(""); setNewEmail(""); setNewRole(""); setNewDept(""); }} data-testid="button-cancel-add-member">
+              Cancel
+            </Button>
+            <Button size="sm" onClick={() => createMutation.mutate({ name: newName, email: newEmail || null, role: newRole || null, department: newDept || null })} disabled={!newName.trim() || createMutation.isPending} data-testid="button-save-new-member">
+              {createMutation.isPending ? "Creating..." : "Create"}
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {members.length === 0 ? (
+        <Card className="p-6 text-center">
+          <p className="text-sm text-muted-foreground">No team members yet. Add your first team member above.</p>
+        </Card>
+      ) : (
+        <div className="space-y-2">
+          {members.map(m => (
+            <Card key={m.id} className="p-3" data-testid={`team-member-${m.id}`}>
+              {editingId === m.id ? (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Name *</label>
+                      <Input value={editName} onChange={e => setEditName(e.target.value)} data-testid={`input-edit-member-name-${m.id}`} />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Email</label>
+                      <Input value={editEmail} onChange={e => setEditEmail(e.target.value)} data-testid={`input-edit-member-email-${m.id}`} />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Role</label>
+                      <Input value={editRole} onChange={e => setEditRole(e.target.value)} data-testid={`input-edit-member-role-${m.id}`} />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Department</label>
+                      <Input value={editDept} onChange={e => setEditDept(e.target.value)} data-testid={`input-edit-member-dept-${m.id}`} />
+                    </div>
+                  </div>
+                  <div className="flex gap-2 justify-end">
+                    <Button variant="ghost" size="sm" onClick={() => setEditingId(null)} data-testid={`button-cancel-edit-member-${m.id}`}>Cancel</Button>
+                    <Button size="sm" onClick={() => updateMutation.mutate({ id: m.id, data: { name: editName, email: editEmail || null, role: editRole || null, department: editDept || null } })} disabled={!editName.trim() || updateMutation.isPending} data-testid={`button-save-edit-member-${m.id}`}>
+                      <Save className="w-3.5 h-3.5 mr-1" />
+                      {updateMutation.isPending ? "Saving..." : "Save"}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary shrink-0">
+                      {m.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate" data-testid={`text-member-name-${m.id}`}>{m.name}</p>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        {m.role && <span>{m.role}</span>}
+                        {m.department && <span>· {m.department}</span>}
+                        {m.email && <span>· {m.email}</span>}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button size="icon" variant="ghost" onClick={() => startEditing(m)} data-testid={`button-edit-member-${m.id}`}>
+                      <Edit3 className="w-3.5 h-3.5" />
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button size="icon" variant="ghost" data-testid={`button-delete-member-${m.id}`}>
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete team member?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will permanently delete "{m.name}" and remove them from all project assignments.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => deleteMutation.mutate(m.id)} data-testid={`button-confirm-delete-member-${m.id}`}>
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </div>
+              )}
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RateCardsManager() {
+  const { toast } = useToast();
+  const [showAdd, setShowAdd] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newCostRate, setNewCostRate] = useState("");
+  const [newBillRate, setNewBillRate] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editCostRate, setEditCostRate] = useState("");
+  const [editBillRate, setEditBillRate] = useState("");
+
+  const { data: cards = [], isLoading } = useQuery<RateCard[]>({
+    queryKey: ["/api/rate-cards"],
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: any) => {
+      await apiRequest("POST", "/api/rate-cards", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/rate-cards"] });
+      toast({ title: "Rate card created" });
+      setNewName(""); setNewCostRate(""); setNewBillRate("");
+      setShowAdd(false);
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      await apiRequest("PATCH", `/api/rate-cards/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/rate-cards"] });
+      toast({ title: "Rate card updated" });
+      setEditingId(null);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/rate-cards/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/rate-cards"] });
+      toast({ title: "Rate card deleted" });
+    },
+  });
+
+  const startEditing = (c: RateCard) => {
+    setEditingId(c.id);
+    setEditName(c.name);
+    setEditCostRate(c.costRate ?? "");
+    setEditBillRate(c.billRate ?? "");
+  };
+
+  if (isLoading) return <Skeleton className="h-32 w-full" />;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-medium flex items-center gap-2">
+            <CreditCard className="w-4 h-4" />
+            Rate Cards
+          </h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Define cost and bill rates that can be assigned to team members on projects.
+          </p>
+        </div>
+        <Button size="sm" onClick={() => setShowAdd(!showAdd)} data-testid="button-add-rate-card">
+          <Plus className="w-3.5 h-3.5 mr-1" />
+          Add Rate Card
+        </Button>
+      </div>
+
+      {showAdd && (
+        <Card className="p-4" data-testid="form-add-rate-card">
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Name *</label>
+              <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="e.g. Senior Developer" data-testid="input-new-card-name" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Cost Rate ($/hr)</label>
+              <Input type="number" step="0.01" min="0" value={newCostRate} onChange={e => setNewCostRate(e.target.value)} placeholder="0.00" data-testid="input-new-card-cost" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Bill Rate ($/hr)</label>
+              <Input type="number" step="0.01" min="0" value={newBillRate} onChange={e => setNewBillRate(e.target.value)} placeholder="0.00" data-testid="input-new-card-bill" />
+            </div>
+          </div>
+          <div className="flex gap-2 mt-3 justify-end">
+            <Button variant="ghost" size="sm" onClick={() => { setShowAdd(false); setNewName(""); setNewCostRate(""); setNewBillRate(""); }} data-testid="button-cancel-add-card">
+              Cancel
+            </Button>
+            <Button size="sm" onClick={() => createMutation.mutate({ name: newName, costRate: newCostRate || null, billRate: newBillRate || null })} disabled={!newName.trim() || createMutation.isPending} data-testid="button-save-new-card">
+              {createMutation.isPending ? "Creating..." : "Create"}
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {cards.length === 0 ? (
+        <Card className="p-6 text-center">
+          <p className="text-sm text-muted-foreground">No rate cards yet. Add your first rate card above.</p>
+        </Card>
+      ) : (
+        <div className="space-y-2">
+          {cards.map(c => (
+            <Card key={c.id} className="p-3" data-testid={`rate-card-${c.id}`}>
+              {editingId === c.id ? (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Name *</label>
+                      <Input value={editName} onChange={e => setEditName(e.target.value)} data-testid={`input-edit-card-name-${c.id}`} />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Cost Rate ($/hr)</label>
+                      <Input type="number" step="0.01" min="0" value={editCostRate} onChange={e => setEditCostRate(e.target.value)} data-testid={`input-edit-card-cost-${c.id}`} />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Bill Rate ($/hr)</label>
+                      <Input type="number" step="0.01" min="0" value={editBillRate} onChange={e => setEditBillRate(e.target.value)} data-testid={`input-edit-card-bill-${c.id}`} />
+                    </div>
+                  </div>
+                  <div className="flex gap-2 justify-end">
+                    <Button variant="ghost" size="sm" onClick={() => setEditingId(null)} data-testid={`button-cancel-edit-card-${c.id}`}>Cancel</Button>
+                    <Button size="sm" onClick={() => updateMutation.mutate({ id: c.id, data: { name: editName, costRate: editCostRate || null, billRate: editBillRate || null } })} disabled={!editName.trim() || updateMutation.isPending} data-testid={`button-save-edit-card-${c.id}`}>
+                      <Save className="w-3.5 h-3.5 mr-1" />
+                      {updateMutation.isPending ? "Saving..." : "Save"}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate" data-testid={`text-card-name-${c.id}`}>{c.name}</p>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      {c.costRate && <span>Cost: ${parseFloat(c.costRate).toFixed(2)}/hr</span>}
+                      {c.billRate && <span>Bill: ${parseFloat(c.billRate).toFixed(2)}/hr</span>}
+                      {c.costRate && c.billRate && (
+                        <span className="text-green-600 dark:text-green-400">
+                          Margin: {((1 - parseFloat(c.costRate) / parseFloat(c.billRate)) * 100).toFixed(0)}%
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button size="icon" variant="ghost" onClick={() => startEditing(c)} data-testid={`button-edit-card-${c.id}`}>
+                      <Edit3 className="w-3.5 h-3.5" />
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button size="icon" variant="ghost" data-testid={`button-delete-card-${c.id}`}>
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete rate card?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will permanently delete the "{c.name}" rate card. Project assignments using this card will have the rate card unlinked.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => deleteMutation.mutate(c.id)} data-testid={`button-confirm-delete-card-${c.id}`}>
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </div>
+              )}
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Admin() {
   const { toast } = useToast();
 
@@ -287,7 +678,7 @@ export default function Admin() {
     updateMutation.mutate({ [key]: options } as any);
   };
 
-  const tabs: TabConfig[] = [
+  const fieldTabs: TabConfig[] = [
     {
       value: "global",
       label: "Global",
@@ -415,44 +806,63 @@ export default function Admin() {
       <h1 className="text-xl font-semibold mb-6">Settings</h1>
 
       <div className="max-w-3xl">
-        <div className="mb-6">
-          <h2 className="text-base font-semibold mb-1 flex items-center gap-2">
-            <Shield className="w-4 h-4" />
-            Feature Toggles
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Enable or disable optional features across the application.
-          </p>
-        </div>
+        <Tabs defaultValue="general" data-testid="tabs-settings-main">
+          <TabsList className="mb-6" data-testid="tabs-list-settings-main">
+            <TabsTrigger value="general" data-testid="tab-settings-general">General</TabsTrigger>
+            <TabsTrigger value="team_members" data-testid="tab-settings-team-members">Team Members</TabsTrigger>
+            <TabsTrigger value="rate_cards" data-testid="tab-settings-rate-cards">Rate Cards</TabsTrigger>
+            <TabsTrigger value="field_options" data-testid="tab-settings-field-options">Field Options</TabsTrigger>
+          </TabsList>
 
-        {isLoading ? (
-          <Card className="p-5">
-            <Skeleton className="h-5 w-48 mb-2" />
-            <Skeleton className="h-4 w-64" />
-          </Card>
-        ) : (
-          <>
-            <div className="space-y-4 mb-10">
-              <Card className="p-5">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <h3 className="text-sm font-medium" data-testid="text-risk-register-label">Risk Register</h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Enable the risk register feature on all projects. When enabled, each project will have a Risk Register tab for tracking project risks, their probability, impact, and mitigation strategies.
-                    </p>
-                  </div>
-                  <Switch
-                    checked={settings?.riskRegisterEnabled ?? false}
-                    onCheckedChange={(checked) =>
-                      updateMutation.mutate({ riskRegisterEnabled: checked })
-                    }
-                    disabled={updateMutation.isPending}
-                    data-testid="switch-risk-register"
-                  />
-                </div>
-              </Card>
+          <TabsContent value="general">
+            <div className="mb-6">
+              <h2 className="text-base font-semibold mb-1 flex items-center gap-2">
+                <Shield className="w-4 h-4" />
+                Feature Toggles
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Enable or disable optional features across the application.
+              </p>
             </div>
 
+            {isLoading ? (
+              <Card className="p-5">
+                <Skeleton className="h-5 w-48 mb-2" />
+                <Skeleton className="h-4 w-64" />
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                <Card className="p-5">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <h3 className="text-sm font-medium" data-testid="text-risk-register-label">Risk Register</h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Enable the risk register feature on all projects. When enabled, each project will have a Risk Register tab for tracking project risks, their probability, impact, and mitigation strategies.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={settings?.riskRegisterEnabled ?? false}
+                      onCheckedChange={(checked) =>
+                        updateMutation.mutate({ riskRegisterEnabled: checked })
+                      }
+                      disabled={updateMutation.isPending}
+                      data-testid="switch-risk-register"
+                    />
+                  </div>
+                </Card>
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="team_members">
+            <TeamMembersManager />
+          </TabsContent>
+
+          <TabsContent value="rate_cards">
+            <RateCardsManager />
+          </TabsContent>
+
+          <TabsContent value="field_options">
             <div className="mb-6">
               <h2 className="text-base font-semibold mb-1 flex items-center gap-2">
                 <List className="w-4 h-4" />
@@ -463,37 +873,41 @@ export default function Admin() {
               </p>
             </div>
 
-            <Tabs defaultValue="global" data-testid="tabs-field-options">
-              <TabsList className="mb-4" data-testid="tabs-list-field-options">
-                {tabs.map((tab) => (
-                  <TabsTrigger key={tab.value} value={tab.value} data-testid={`tab-${tab.value}`}>
-                    {tab.label}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
+            {isLoading ? (
+              <Skeleton className="h-32 w-full" />
+            ) : (
+              <Tabs defaultValue="global" data-testid="tabs-field-options">
+                <TabsList className="mb-4" data-testid="tabs-list-field-options">
+                  {fieldTabs.map((tab) => (
+                    <TabsTrigger key={tab.value} value={tab.value} data-testid={`tab-${tab.value}`}>
+                      {tab.label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
 
-              {tabs.map((tab) => (
-                <TabsContent key={tab.value} value={tab.value} data-testid={`tab-content-${tab.value}`}>
-                  <div className="space-y-4">
-                    {tab.fields.map((config) => (
-                      <FieldOptionEditor
-                        key={config.key}
-                        title={config.title}
-                        description={config.description}
-                        options={config.current}
-                        defaults={config.defaults}
-                        settingsKey={config.key}
-                        onSave={handleFieldSave}
-                        isPending={updateMutation.isPending}
-                        testIdPrefix={config.testId}
-                      />
-                    ))}
-                  </div>
-                </TabsContent>
-              ))}
-            </Tabs>
-          </>
-        )}
+                {fieldTabs.map((tab) => (
+                  <TabsContent key={tab.value} value={tab.value} data-testid={`tab-content-${tab.value}`}>
+                    <div className="space-y-4">
+                      {tab.fields.map((config) => (
+                        <FieldOptionEditor
+                          key={config.key}
+                          title={config.title}
+                          description={config.description}
+                          options={config.current}
+                          defaults={config.defaults}
+                          settingsKey={config.key}
+                          onSave={handleFieldSave}
+                          isPending={updateMutation.isPending}
+                          testIdPrefix={config.testId}
+                        />
+                      ))}
+                    </div>
+                  </TabsContent>
+                ))}
+              </Tabs>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
