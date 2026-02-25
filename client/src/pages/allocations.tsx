@@ -38,7 +38,29 @@ function isWithinWeek(weekStart: Date, allocStart: Date | null, allocEnd: Date |
   return aStart < weekEnd && aEnd >= weekStart;
 }
 
+function getHoursForWeek(alloc: AllocationFull, weekStart: Date): number {
+  const allocStart = alloc.startDate ? new Date(alloc.startDate) : null;
+  const allocEnd = alloc.endDate ? new Date(alloc.endDate) : null;
+  if (alloc.status === "active" && isWithinWeek(weekStart, allocStart, allocEnd)) {
+    return parseFloat(alloc.weeklyHours ?? "0") || 0;
+  }
+  return 0;
+}
+
 const WEEKS_VISIBLE = 12;
+
+type ProjectAllocation = {
+  projectId: string;
+  projectTitle: string;
+  allocations: AllocationFull[];
+};
+
+type MemberGroup = {
+  id: string;
+  name: string;
+  role: string;
+  projects: ProjectAllocation[];
+};
 
 export default function AllocationsPage() {
   const [rangeStart, setRangeStart] = useState(() => getWeekStart(new Date()));
@@ -68,33 +90,47 @@ export default function AllocationsPage() {
     return allocations.filter(a => a.timelineId === projectFilter);
   }, [allocations, projectFilter]);
 
-  const memberMap = useMemo(() => {
-    const map = new Map<string, { name: string; role: string; allocations: AllocationFull[] }>();
+  const memberGroups: MemberGroup[] = useMemo(() => {
+    const map = new Map<string, MemberGroup>();
     for (const alloc of filtered) {
-      const existing = map.get(alloc.teamMemberId);
-      if (existing) {
-        existing.allocations.push(alloc);
-      } else {
-        map.set(alloc.teamMemberId, {
+      let group = map.get(alloc.teamMemberId);
+      if (!group) {
+        group = {
+          id: alloc.teamMemberId,
           name: alloc.teamMember.name,
           role: alloc.teamMember.role || "",
-          allocations: [alloc],
-        });
+          projects: [],
+        };
+        map.set(alloc.teamMemberId, group);
       }
+      let proj = group.projects.find(p => p.projectId === alloc.timelineId);
+      if (!proj) {
+        proj = {
+          projectId: alloc.timelineId,
+          projectTitle: alloc.project.title,
+          allocations: [],
+        };
+        group.projects.push(proj);
+      }
+      proj.allocations.push(alloc);
     }
-    return Array.from(map.entries())
-      .map(([id, data]) => ({ id, ...data }))
-      .sort((a, b) => a.name.localeCompare(b.name));
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [filtered]);
 
-  const getWeeklyHoursForWeek = (allocs: AllocationFull[], weekStart: Date): number => {
+  const getTotalHoursForWeek = (projects: ProjectAllocation[], weekStart: Date): number => {
     let total = 0;
-    for (const a of allocs) {
-      const allocStart = a.startDate ? new Date(a.startDate) : null;
-      const allocEnd = a.endDate ? new Date(a.endDate) : null;
-      if (a.status === "active" && isWithinWeek(weekStart, allocStart, allocEnd)) {
-        total += parseFloat(a.weeklyHours ?? "0") || 0;
+    for (const proj of projects) {
+      for (const alloc of proj.allocations) {
+        total += getHoursForWeek(alloc, weekStart);
       }
+    }
+    return total;
+  };
+
+  const getProjectHoursForWeek = (allocs: AllocationFull[], weekStart: Date): number => {
+    let total = 0;
+    for (const alloc of allocs) {
+      total += getHoursForWeek(alloc, weekStart);
     }
     return total;
   };
@@ -104,6 +140,11 @@ export default function AllocationsPage() {
     if (hours > 40) return "bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300";
     if (hours >= 32) return "bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-300";
     return "bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300";
+  };
+
+  const getSubCellColor = (hours: number): string => {
+    if (hours === 0) return "";
+    return "bg-muted/50 text-foreground";
   };
 
   return (
@@ -165,6 +206,9 @@ export default function AllocationsPage() {
                 <th className="text-left px-4 py-3 font-medium text-muted-foreground min-w-[200px] sticky left-0 bg-muted/30 z-10">
                   Resource
                 </th>
+                <th className="text-left px-3 py-3 font-medium text-muted-foreground min-w-[160px]">
+                  Project
+                </th>
                 {weeks.map((w, i) => (
                   <th key={i} className="text-center px-2 py-3 font-medium text-muted-foreground min-w-[70px]">
                     {formatWeekLabel(w)}
@@ -172,41 +216,90 @@ export default function AllocationsPage() {
                 ))}
               </tr>
             </thead>
-            <tbody>
-              {memberMap.length === 0 ? (
+
+              {memberGroups.length === 0 ? (
+                <tbody>
                 <tr>
-                  <td colSpan={weeks.length + 1} className="text-center py-12 text-muted-foreground">
+                  <td colSpan={weeks.length + 2} className="text-center py-12 text-muted-foreground">
                     No allocations found
                   </td>
                 </tr>
+                </tbody>
               ) : (
-                memberMap.map(member => (
-                  <tr key={member.id} className="border-b last:border-b-0 hover:bg-muted/20" data-testid={`row-member-${member.id}`}>
-                    <td className="px-4 py-3 sticky left-0 bg-background z-10">
-                      <div>
-                        <p className="font-medium" data-testid={`text-member-name-${member.id}`}>{member.name}</p>
-                        <p className="text-xs text-muted-foreground">{member.role}</p>
-                      </div>
-                    </td>
-                    {weeks.map((w, i) => {
-                      const hours = getWeeklyHoursForWeek(member.allocations, w);
-                      const colorClass = getCellColor(hours);
-                      return (
-                        <td key={i} className="text-center px-2 py-3">
-                          {hours > 0 ? (
-                            <span className={`inline-block rounded px-2.5 py-1 text-xs font-semibold ${colorClass}`} data-testid={`cell-hours-${member.id}-${i}`}>
-                              {hours}
-                            </span>
+                memberGroups.map(member => {
+                  const hasMultipleProjects = member.projects.length > 1;
+                  return (
+                    <tbody key={member.id} className="border-b last:border-b-0" data-testid={`group-member-${member.id}`}>
+                      {hasMultipleProjects && (
+                        <tr className="bg-muted/10">
+                          <td className="px-4 py-2.5 sticky left-0 bg-muted/10 z-10">
+                            <div>
+                              <p className="font-semibold" data-testid={`text-member-name-${member.id}`}>{member.name}</p>
+                              <p className="text-xs text-muted-foreground">{member.role}</p>
+                            </div>
+                          </td>
+                          <td className="px-3 py-2.5 text-xs text-muted-foreground italic">
+                            {member.projects.length} projects
+                          </td>
+                          {weeks.map((w, i) => {
+                            const totalHours = getTotalHoursForWeek(member.projects, w);
+                            const colorClass = getCellColor(totalHours);
+                            return (
+                              <td key={i} className="text-center px-2 py-2.5">
+                                {totalHours > 0 ? (
+                                  <span className={`inline-block rounded px-2.5 py-1 text-xs font-bold ${colorClass}`} data-testid={`cell-total-${member.id}-${i}`}>
+                                    {totalHours}
+                                  </span>
+                                ) : (
+                                  <span className="text-muted-foreground/40">–</span>
+                                )}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      )}
+                      {member.projects.map((proj, pIdx) => (
+                        <tr
+                          key={proj.projectId}
+                          className={`${hasMultipleProjects ? "bg-background" : "hover:bg-muted/20"}`}
+                          data-testid={`row-alloc-${member.id}-${proj.projectId}`}
+                        >
+                          {!hasMultipleProjects ? (
+                            <td className="px-4 py-2.5 sticky left-0 bg-background z-10">
+                              <div>
+                                <p className="font-medium" data-testid={`text-member-name-${member.id}`}>{member.name}</p>
+                                <p className="text-xs text-muted-foreground">{member.role}</p>
+                              </div>
+                            </td>
                           ) : (
-                            <span className="text-muted-foreground/40">–</span>
+                            <td className="sticky left-0 bg-background z-10" />
                           )}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))
+                          <td className="px-3 py-2.5">
+                            <p className={`text-xs ${hasMultipleProjects ? "pl-2 border-l-2 border-primary/30" : "font-medium"}`} data-testid={`text-project-${member.id}-${proj.projectId}`}>
+                              {proj.projectTitle}
+                            </p>
+                          </td>
+                          {weeks.map((w, i) => {
+                            const hours = getProjectHoursForWeek(proj.allocations, w);
+                            const colorClass = hasMultipleProjects ? getSubCellColor(hours) : getCellColor(hours);
+                            return (
+                              <td key={i} className="text-center px-2 py-2.5">
+                                {hours > 0 ? (
+                                  <span className={`inline-block rounded px-2.5 py-1 text-xs font-semibold ${colorClass}`} data-testid={`cell-hours-${member.id}-${proj.projectId}-${i}`}>
+                                    {hours}
+                                  </span>
+                                ) : (
+                                  <span className="text-muted-foreground/40">–</span>
+                                )}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  );
+                })
               )}
-            </tbody>
           </table>
         </div>
       )}
