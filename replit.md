@@ -80,6 +80,10 @@ A visual project planning tool that supports two input methods:
 - POST /api/timelines/:id/team - Add team member to project
 - PATCH /api/project-team/:id - Update project team assignment
 - DELETE /api/project-team/:id - Remove team member from project
+- GET /api/team-members/:id/allocations - Get allocations for team member (with project details)
+- POST /api/team-members/:id/allocations - Create allocation (timelineId required)
+- PATCH /api/allocations/:id - Update allocation
+- DELETE /api/allocations/:id - Delete allocation
 - GET /api/settings - Get app settings
 - PATCH /api/settings - Update app settings
 - POST /api/parse-excel - Parse Excel/CSV file (multipart form)
@@ -94,6 +98,7 @@ A visual project planning tool that supports two input methods:
 - team_members: id, name, email, role, department, monthlyCost, hourlyCost
 - rate_cards: id, name, role, region, costRate, billRate
 - project_team_members: id, timelineId (FK to timelines), teamMemberId (FK to team_members), rateCardId (FK to rate_cards), monthlyCost, hourlyCost, allocation, startDate, endDate
+- allocations: id, teamMemberId (FK to team_members), timelineId (FK to timelines), weeklyHours, startDate, endDate, notes
 - app_settings: id, riskRegisterEnabled, taskStatuses, taskHealthOptions, taskItemTypes, riskProbabilities, riskImpacts, riskStatuses, projectTypes, engagementModels, projectStatuses, teamMemberRoles, regions, clients
 
 ## Features
@@ -140,6 +145,13 @@ A visual project planning tool that supports two input methods:
   - Fields: name, email, role (dropdown from configurable roles), department, monthly cost ($), hourly cost ($)
   - Role uses same configurable dropdown as Rate Cards (Salesforce implementation roles)
   - CRUD with inline edit
+  - Expandable allocations per member (click avatar to expand)
+- Allocations: weekly allocation tracking per team member
+  - 1:N relationship from Team Member to Allocations; Project is a lookup in each allocation
+  - Only one allocation per project per team member (enforced in UI)
+  - Fields: project (lookup), weekly hours, start date, end date, notes
+  - Total weekly hours displayed per team member
+  - Cascade delete: deleting a team member or project removes related allocations
 - Rate Cards: regional rate cards managed from Settings > Rate Cards tab
   - Regions are parent containers; each region displays its rate cards nested underneath
   - Fields per card: name, role (dropdown from configurable roles), cost rate ($/hr), bill rate ($/hr)

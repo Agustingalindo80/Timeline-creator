@@ -217,6 +217,16 @@ export const projectTeamMembers = pgTable("project_team_members", {
   endDate: text("end_date"),
 });
 
+export const allocations = pgTable("allocations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  teamMemberId: varchar("team_member_id").notNull().references(() => teamMembers.id, { onDelete: "cascade" }),
+  timelineId: varchar("timeline_id").notNull().references(() => timelines.id, { onDelete: "cascade" }),
+  weeklyHours: numeric("weekly_hours", { precision: 5, scale: 1 }),
+  startDate: text("start_date"),
+  endDate: text("end_date"),
+  notes: text("notes"),
+});
+
 export const appSettings = pgTable("app_settings", {
   id: varchar("id").primaryKey().default("app"),
   riskRegisterEnabled: boolean("risk_register_enabled").notNull().default(false),
@@ -253,6 +263,7 @@ export const insertRiskSchema = createInsertSchema(risks).omit({ id: true }).ext
 export const insertTeamMemberSchema = createInsertSchema(teamMembers).omit({ id: true });
 export const insertRateCardSchema = createInsertSchema(rateCards).omit({ id: true });
 export const insertProjectTeamMemberSchema = createInsertSchema(projectTeamMembers).omit({ id: true });
+export const insertAllocationSchema = createInsertSchema(allocations).omit({ id: true });
 
 export type InsertClient = z.infer<typeof insertClientSchema>;
 export type Client = typeof clients.$inferSelect;
@@ -272,6 +283,9 @@ export type InsertRateCard = z.infer<typeof insertRateCardSchema>;
 export type RateCard = typeof rateCards.$inferSelect;
 export type InsertProjectTeamMember = z.infer<typeof insertProjectTeamMemberSchema>;
 export type ProjectTeamMember = typeof projectTeamMembers.$inferSelect;
+export type InsertAllocation = z.infer<typeof insertAllocationSchema>;
+export type Allocation = typeof allocations.$inferSelect;
+export type AllocationWithProject = Allocation & { project: Timeline };
 export type AppSettings = typeof appSettings.$inferSelect;
 
 export type ProjectTeamMemberWithDetails = ProjectTeamMember & { teamMember: TeamMember; rateCard: RateCard | null };

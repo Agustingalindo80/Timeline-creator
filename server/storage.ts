@@ -10,6 +10,7 @@ import {
   teamMembers,
   rateCards,
   projectTeamMembers,
+  allocations,
   appSettings,
   type Client,
   type InsertClient,
@@ -30,6 +31,9 @@ import {
   type ProjectTeamMember,
   type InsertProjectTeamMember,
   type ProjectTeamMemberWithDetails,
+  type Allocation,
+  type InsertAllocation,
+  type AllocationWithProject,
   type AppSettings,
   type TimelineWithMilestones,
   type ClientWithProjects,
@@ -78,6 +82,10 @@ export interface IStorage {
   createProjectTeamMember(data: InsertProjectTeamMember): Promise<ProjectTeamMember>;
   updateProjectTeamMember(id: string, data: Partial<InsertProjectTeamMember>): Promise<ProjectTeamMember | undefined>;
   deleteProjectTeamMember(id: string): Promise<void>;
+  getAllocations(teamMemberId: string): Promise<AllocationWithProject[]>;
+  createAllocation(data: InsertAllocation): Promise<Allocation>;
+  updateAllocation(id: string, data: Partial<InsertAllocation>): Promise<Allocation | undefined>;
+  deleteAllocation(id: string): Promise<void>;
   getSettings(): Promise<AppSettings>;
   updateSettings(data: Partial<Omit<AppSettings, "id">>): Promise<AppSettings>;
 }
@@ -377,6 +385,35 @@ export class DatabaseStorage implements IStorage {
       .values({ id: "app", riskRegisterEnabled: false })
       .returning();
     return created;
+  }
+
+  async getAllocations(teamMemberId: string): Promise<AllocationWithProject[]> {
+    const rows = await db
+      .select()
+      .from(allocations)
+      .where(eq(allocations.teamMemberId, teamMemberId));
+    const result: AllocationWithProject[] = [];
+    for (const row of rows) {
+      const [project] = await db.select().from(timelines).where(eq(timelines.id, row.timelineId));
+      if (project) {
+        result.push({ ...row, project });
+      }
+    }
+    return result;
+  }
+
+  async createAllocation(data: InsertAllocation): Promise<Allocation> {
+    const [allocation] = await db.insert(allocations).values(data).returning();
+    return allocation;
+  }
+
+  async updateAllocation(id: string, data: Partial<InsertAllocation>): Promise<Allocation | undefined> {
+    const [allocation] = await db.update(allocations).set(data).where(eq(allocations.id, id)).returning();
+    return allocation;
+  }
+
+  async deleteAllocation(id: string): Promise<void> {
+    await db.delete(allocations).where(eq(allocations.id, id));
   }
 
   async updateSettings(data: Partial<Omit<AppSettings, "id">>): Promise<AppSettings> {

@@ -685,6 +685,64 @@ export async function registerRoutes(
     }
   });
 
+  // GET allocations for a team member
+  app.get("/api/team-members/:id/allocations", async (req, res) => {
+    try {
+      const allocs = await storage.getAllocations(req.params.id);
+      res.json(allocs);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // CREATE allocation for a team member
+  app.post("/api/team-members/:id/allocations", async (req, res) => {
+    try {
+      const data = {
+        teamMemberId: req.params.id,
+        timelineId: req.body.timelineId,
+        weeklyHours: req.body.weeklyHours || null,
+        startDate: req.body.startDate || null,
+        endDate: req.body.endDate || null,
+        notes: req.body.notes || null,
+      };
+      if (!data.timelineId) {
+        return res.status(400).json({ message: "timelineId is required" });
+      }
+      const allocation = await storage.createAllocation(data);
+      res.json(allocation);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // UPDATE allocation
+  app.patch("/api/allocations/:id", async (req, res) => {
+    try {
+      const updates: any = {};
+      if (req.body.timelineId !== undefined) updates.timelineId = req.body.timelineId;
+      if (req.body.weeklyHours !== undefined) updates.weeklyHours = req.body.weeklyHours;
+      if (req.body.startDate !== undefined) updates.startDate = req.body.startDate;
+      if (req.body.endDate !== undefined) updates.endDate = req.body.endDate;
+      if (req.body.notes !== undefined) updates.notes = req.body.notes;
+      const allocation = await storage.updateAllocation(req.params.id, updates);
+      if (!allocation) return res.status(404).json({ message: "Allocation not found" });
+      res.json(allocation);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // DELETE allocation
+  app.delete("/api/allocations/:id", async (req, res) => {
+    try {
+      await storage.deleteAllocation(req.params.id);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // GET app settings
   app.get("/api/settings", async (_req, res) => {
     try {
