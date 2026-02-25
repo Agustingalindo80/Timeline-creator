@@ -17,38 +17,34 @@ const MONTHS: Record<string, number> = {
 
 function parseDateToNum(dateStr: string): number {
   const s = dateStr.trim().toLowerCase();
+
   const isoDate = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (isoDate) {
     return parseInt(isoDate[1]) * 12 + (parseInt(isoDate[2]) - 1) + parseInt(isoDate[3]) / 31;
   }
+
   const yearOnly = s.match(/^(\d{4})$/);
   if (yearOnly) return parseInt(yearOnly[1]) * 12;
 
-  const dayMatch = s.match(/\b(\d{1,2})\b/);
-  const dayFraction = dayMatch ? parseInt(dayMatch[1]) / 31 : 0;
-
+  let month = -1;
+  let monthName = "";
   for (const [name, idx] of Object.entries(MONTHS)) {
-    if (s.includes(name)) {
-      const yearMatch = s.match(/(\d{4})/);
-      const year = yearMatch ? parseInt(yearMatch[1]) : 2000;
-      return year * 12 + idx + dayFraction;
+    if (s.includes(name) && name.length > monthName.length) {
+      month = idx;
+      monthName = name;
     }
   }
-  return 999999;
-}
 
-function shortLabel(dateStr: string): string {
-  const s = dateStr.trim();
-  const yearOnly = s.match(/^(\d{4})$/);
-  if (yearOnly) return s;
-  for (const [name] of Object.entries(MONTHS)) {
-    if (s.toLowerCase().includes(name)) {
-      const monthAbbr = name.charAt(0).toUpperCase() + name.slice(1, 3);
-      const yearMatch = s.match(/(\d{4})/);
-      return yearMatch ? `${monthAbbr} ${yearMatch[1].slice(2)}` : monthAbbr;
-    }
-  }
-  return s.length > 10 ? s.slice(0, 10) : s;
+  if (month === -1) return 999999;
+
+  const yearMatch = s.match(/(\d{4})/);
+  const year = yearMatch ? parseInt(yearMatch[1]) : 2000;
+
+  const stripped = s.replace(monthName, "").replace(/(\d{4})/, "").replace(/[,\/\-\.]/g, " ").trim();
+  const dayMatch = stripped.match(/(\d{1,2})/);
+  const day = dayMatch ? parseInt(dayMatch[1]) : 15;
+
+  return year * 12 + month + (day / 31);
 }
 
 export function TimelineView({ milestones, tasks, timelineColor, showTasks = true }: TimelineViewProps) {
@@ -83,111 +79,81 @@ export function TimelineView({ milestones, tasks, timelineColor, showTasks = tru
 
   function pct(dateStr: string): number {
     const num = parseDateToNum(dateStr);
-    return ((num - minDate) / range) * 100;
+    return Math.max(0, Math.min(100, ((num - minDate) / range) * 100));
   }
 
-  const LABEL_MIN_GAP = 12;
-  const milestoneRows: { milestone: Milestone; left: number; row: number }[] = [];
+  const PAD = 5;
+
+  const milestonePositions = sorted.map((m) => ({
+    milestone: m,
+    left: PAD + pct(m.date) * (100 - 2 * PAD) / 100,
+  }));
+
+  const LABEL_MIN_GAP_PCT = 10;
+  const rows: { milestone: Milestone; left: number; row: number }[] = [];
   const rowEnds: number[] = [];
-  sorted.forEach((m) => {
-    const left = pct(m.date);
+  milestonePositions.forEach(({ milestone, left }) => {
     let placed = false;
     for (let r = 0; r < rowEnds.length; r++) {
-      if (left - rowEnds[r] >= LABEL_MIN_GAP) {
-        milestoneRows.push({ milestone: m, left, row: r });
+      if (left - rowEnds[r] >= LABEL_MIN_GAP_PCT) {
+        rows.push({ milestone, left, row: r });
         rowEnds[r] = left;
         placed = true;
         break;
       }
     }
     if (!placed) {
-      milestoneRows.push({ milestone: m, left, row: rowEnds.length });
+      rows.push({ milestone, left, row: rowEnds.length });
       rowEnds.push(left);
     }
   });
   const totalRows = rowEnds.length || 1;
+  const ROW_HEIGHT = 65;
+  const LINE_Y = totalRows * ROW_HEIGHT;
 
   return (
-    <div className="relative overflow-x-auto py-8 px-4">
+    <div className="relative overflow-x-auto py-4 px-4">
       <div className="min-w-[600px]">
         <div className="relative mx-8">
-          <div className="relative" style={{ minHeight: `${Math.max(totalRows * 70 + 20, 100)}px` }}>
-            {milestoneRows.map(({ milestone, left, row }) => {
-              const isAbove = row % 2 === 0;
+          <div className="relative" style={{ height: `${LINE_Y + 20}px` }}>
+            {rows.map(({ milestone, left, row }) => {
               const dotColor = milestone.color || timelineColor;
               const hasActual = !!milestone.actualDate;
-              const topOffset = isAbove
-                ? `${row * 35}px`
-                : `${row * 35}px`;
+              const topPx = row * ROW_HEIGHT;
               return (
                 <div
                   key={`m-${milestone.id}`}
-                  className="absolute -translate-x-1/2 flex flex-col items-center"
-                  style={{ left: `${left}%`, top: topOffset }}
+                  className="absolute flex flex-col items-center"
+                  style={{ left: `${left}%`, top: `${topPx}px`, transform: "translateX(-50%)" }}
                   data-testid={`milestone-h-${milestone.id}`}
                 >
-                  {isAbove ? (
-                    <div className="flex flex-col items-center">
-                      <div className="text-center max-w-[140px] mb-2">
-                        <p className="text-[10px] font-medium text-muted-foreground whitespace-nowrap">
-                          {milestone.date}
-                        </p>
-                        {hasActual && (
-                          <p className="text-[10px] font-medium whitespace-nowrap" style={{ color: dotColor }}>
-                            Actual: {milestone.actualDate}
-                          </p>
-                        )}
-                        <h3 className="font-semibold text-xs whitespace-nowrap">{milestone.title}</h3>
-                      </div>
-                      {hasActual ? (
-                        <div className="relative">
-                          <div
-                            className="w-3 h-3 rounded-full ring-4 ring-background z-10 border-2"
-                            style={{ borderColor: dotColor, backgroundColor: "transparent" }}
-                          />
-                          <div
-                            className="absolute inset-0 m-auto w-2 h-2 rounded-full z-20"
-                            style={{ backgroundColor: dotColor }}
-                          />
-                        </div>
-                      ) : (
-                        <div
-                          className="w-3 h-3 rounded-full ring-4 ring-background z-10 shrink-0"
-                          style={{ backgroundColor: dotColor }}
-                        />
-                      )}
+                  <div className="text-center mb-1">
+                    <p className="text-[10px] font-medium text-muted-foreground whitespace-nowrap">
+                      {milestone.date}
+                    </p>
+                    {hasActual && (
+                      <p className="text-[10px] font-medium whitespace-nowrap" style={{ color: dotColor }}>
+                        Actual: {milestone.actualDate}
+                      </p>
+                    )}
+                    <h3 className="font-semibold text-xs whitespace-nowrap">{milestone.title}</h3>
+                  </div>
+                  {hasActual ? (
+                    <div className="relative">
+                      <div
+                        className="w-3 h-3 rounded-full ring-4 ring-background z-10 border-2"
+                        style={{ borderColor: dotColor, backgroundColor: "transparent" }}
+                      />
+                      <div
+                        className="absolute inset-0 m-auto w-2 h-2 rounded-full z-20"
+                        style={{ backgroundColor: dotColor }}
+                      />
                     </div>
                   ) : (
-                    <div className="flex flex-col items-center">
-                      {hasActual ? (
-                        <div className="relative">
-                          <div
-                            className="w-3 h-3 rounded-full ring-4 ring-background z-10 border-2"
-                            style={{ borderColor: dotColor, backgroundColor: "transparent" }}
-                          />
-                          <div
-                            className="absolute inset-0 m-auto w-2 h-2 rounded-full z-20"
-                            style={{ backgroundColor: dotColor }}
-                          />
-                        </div>
-                      ) : (
-                        <div
-                          className="w-3 h-3 rounded-full ring-4 ring-background z-10 shrink-0"
-                          style={{ backgroundColor: dotColor }}
-                        />
-                      )}
-                      <div className="text-center max-w-[140px] mt-2">
-                        <h3 className="font-semibold text-xs whitespace-nowrap">{milestone.title}</h3>
-                        <p className="text-[10px] font-medium text-muted-foreground whitespace-nowrap">
-                          {milestone.date}
-                        </p>
-                        {hasActual && (
-                          <p className="text-[10px] font-medium whitespace-nowrap" style={{ color: dotColor }}>
-                            Actual: {milestone.actualDate}
-                          </p>
-                        )}
-                      </div>
-                    </div>
+                    <div
+                      className="w-3 h-3 rounded-full ring-4 ring-background z-10 shrink-0"
+                      style={{ backgroundColor: dotColor }}
+                    />
                   )}
                 </div>
               );
@@ -196,14 +162,14 @@ export function TimelineView({ milestones, tasks, timelineColor, showTasks = tru
               className="absolute left-0 right-0 h-0.5"
               style={{
                 backgroundColor: `${timelineColor}30`,
-                top: `${Math.max(totalRows * 35 + 10, 60)}px`,
+                top: `${LINE_Y}px`,
               }}
             />
           </div>
         </div>
 
         {sortedTasks.length > 0 && (
-          <div className="mt-6 border-t border-border pt-4 mx-8" data-testid="task-bars-section-h">
+          <div className="mt-2 border-t border-border pt-3 mx-8" data-testid="task-bars-section-h">
             <div className="space-y-1">
               {(() => {
                 const phases = sortedTasks.filter((t) => t.itemType === "phase").sort((a, b) => a.sortOrder - b.sortOrder);
@@ -251,22 +217,6 @@ export function TimelineView({ milestones, tasks, timelineColor, showTasks = tru
                         )}
                       </div>
                       <div className={cn("relative rounded-md bg-muted/40", isPhase ? "h-5" : "h-7")}>
-                        {sorted.map((m) => {
-                          const mPct = pct(m.date);
-                          if (mPct >= startPct && mPct <= startPct + barWidth) {
-                            return (
-                              <div
-                                key={`guide-${m.id}`}
-                                className="absolute top-0 bottom-0 w-px z-10"
-                                style={{
-                                  left: `${mPct}%`,
-                                  backgroundColor: `${m.color || timelineColor}50`,
-                                }}
-                              />
-                            );
-                          }
-                          return null;
-                        })}
                         <div
                           className={cn("absolute top-0 bottom-0 rounded-md flex items-center overflow-hidden", isPhase ? "px-2" : "px-2.5")}
                           style={{
@@ -337,7 +287,7 @@ export function TimelineView({ milestones, tasks, timelineColor, showTasks = tru
             </div>
 
             {sortedTasks.some((t) => t.actualStartDate || t.actualEndDate) && (
-              <div className="flex items-center gap-4 mt-4 px-1">
+              <div className="flex items-center gap-4 mt-3 px-1">
                 <div className="flex items-center gap-1.5">
                   <div className="w-6 h-2 rounded-sm border border-dashed" style={{ borderColor: `${timelineColor}60`, backgroundColor: `${timelineColor}10` }} />
                   <span className="text-[10px] text-muted-foreground">Planned</span>
@@ -352,7 +302,7 @@ export function TimelineView({ milestones, tasks, timelineColor, showTasks = tru
         )}
 
         {sorted.some((m) => m.actualDate) && sortedTasks.length === 0 && (
-          <div className="flex items-center gap-4 mt-4 px-8">
+          <div className="flex items-center gap-4 mt-3 px-8">
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-3 rounded-full border-2" style={{ borderColor: timelineColor, backgroundColor: "transparent" }} />
               <span className="text-[10px] text-muted-foreground">Planned</span>
