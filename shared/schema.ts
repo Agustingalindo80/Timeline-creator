@@ -259,6 +259,22 @@ export const appSettings = pgTable("app_settings", {
   dateFormats: jsonb("date_formats").$type<FieldOption[]>(),
 });
 
+export const brandingConfig = pgTable("branding_config", {
+  id: varchar("id").primaryKey().default("default"),
+  appName: text("app_name").notNull().default("Project High Level Planning"),
+  logoUrl: text("logo_url"),
+  faviconUrl: text("favicon_url"),
+  primaryColor: text("primary_color"),
+  sidebarColor: text("sidebar_color"),
+  sidebarForegroundColor: text("sidebar_foreground_color"),
+  sidebarAccentColor: text("sidebar_accent_color"),
+  accentColor: text("accent_color"),
+});
+
+export const insertBrandingSchema = createInsertSchema(brandingConfig).omit({ id: true });
+export type InsertBranding = z.infer<typeof insertBrandingSchema>;
+export type BrandingConfig = typeof brandingConfig.$inferSelect;
+
 export const insertClientSchema = createInsertSchema(clients).omit({ id: true });
 export const insertContactSchema = createInsertSchema(contacts).omit({ id: true });
 export const insertTimelineSchema = createInsertSchema(timelines).omit({ id: true });

@@ -3,9 +3,17 @@ import { createServer, type Server } from "http";
 import multer from "multer";
 import * as XLSX from "xlsx";
 import { z } from "zod";
+import path from "path";
+import fs from "fs";
+import express from "express";
 import { storage } from "./storage";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+const uploadsDir = path.join(process.cwd(), "public", "uploads");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
 async function recalcApprovedBudget(timelineId: string) {
   const timeline = await storage.getTimeline(timelineId);
@@ -121,6 +129,64 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+
+  app.use("/uploads", express.static(uploadsDir));
+
+  // --- BRANDING ROUTES ---
+
+  app.get("/api/branding", async (_req, res) => {
+    try {
+      const branding = await storage.getBranding();
+      res.json(branding);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/branding", async (req, res) => {
+    try {
+      const fields = [
+        "appName", "logoUrl", "faviconUrl", "primaryColor",
+        "sidebarColor", "sidebarForegroundColor", "sidebarAccentColor", "accentColor",
+      ];
+      const updates: any = {};
+      for (const field of fields) {
+        if (req.body[field] !== undefined) updates[field] = req.body[field];
+      }
+      const branding = await storage.updateBranding(updates);
+      res.json(branding);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/branding/logo", upload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+      const ext = path.extname(req.file.originalname) || ".png";
+      const filename = `logo-${Date.now()}${ext}`;
+      fs.writeFileSync(path.join(uploadsDir, filename), req.file.buffer);
+      const url = `/uploads/${filename}`;
+      const branding = await storage.updateBranding({ logoUrl: url });
+      res.json(branding);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/branding/favicon", upload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+      const ext = path.extname(req.file.originalname) || ".png";
+      const filename = `favicon-${Date.now()}${ext}`;
+      fs.writeFileSync(path.join(uploadsDir, filename), req.file.buffer);
+      const url = `/uploads/${filename}`;
+      const branding = await storage.updateBranding({ faviconUrl: url });
+      res.json(branding);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
 
   // --- CLIENT ROUTES ---
 
@@ -921,7 +987,7 @@ export async function registerRoutes(
         "riskRegisterEnabled", "taskStatuses", "taskHealthOptions", "taskItemTypes",
         "riskProbabilities", "riskImpacts", "riskStatuses", "projectTypes",
         "engagementModels", "clients", "contactRoles", "industries", "projectStatuses",
-        "teamMemberRoles", "regions",
+        "teamMemberRoles", "regions", "dateFormats",
       ];
       for (const field of fields) {
         if (req.body[field] !== undefined) updates[field] = req.body[field];

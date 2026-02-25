@@ -12,6 +12,9 @@ import {
   projectTeamMembers,
   allocations,
   appSettings,
+  brandingConfig,
+  type BrandingConfig,
+  type InsertBranding,
   type Client,
   type InsertClient,
   type Contact,
@@ -92,6 +95,8 @@ export interface IStorage {
   deleteAllocation(id: string): Promise<void>;
   getSettings(): Promise<AppSettings>;
   updateSettings(data: Partial<Omit<AppSettings, "id">>): Promise<AppSettings>;
+  getBranding(): Promise<BrandingConfig>;
+  updateBranding(data: Partial<InsertBranding>): Promise<BrandingConfig>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -459,6 +464,26 @@ export class DatabaseStorage implements IStorage {
       .update(appSettings)
       .set(data)
       .where(eq(appSettings.id, "app"))
+      .returning();
+    return updated;
+  }
+
+  async getBranding(): Promise<BrandingConfig> {
+    const [branding] = await db.select().from(brandingConfig);
+    if (branding) return branding;
+    const [created] = await db
+      .insert(brandingConfig)
+      .values({ id: "default" })
+      .returning();
+    return created;
+  }
+
+  async updateBranding(data: Partial<InsertBranding>): Promise<BrandingConfig> {
+    await this.getBranding();
+    const [updated] = await db
+      .update(brandingConfig)
+      .set(data)
+      .where(eq(brandingConfig.id, "default"))
       .returning();
     return updated;
   }

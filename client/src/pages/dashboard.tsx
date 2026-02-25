@@ -1,11 +1,13 @@
 import { Helmet } from "react-helmet-async";
 import { LayoutDashboard } from "lucide-react";
+import { useAppTitle } from "@/hooks/use-app-title";
 
 export default function Dashboard() {
+  const appTitle = useAppTitle("Dashboard");
   return (
     <div className="p-6">
       <Helmet>
-        <title>Dashboard | Project High Level Planning</title>
+        <title>{appTitle}</title>
       </Helmet>
       <div className="flex flex-col items-center justify-center py-24 text-center">
         <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-6">

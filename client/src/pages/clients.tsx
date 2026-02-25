@@ -32,6 +32,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Client, AppSettings } from "@shared/schema";
 import { DEFAULT_INDUSTRIES } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
+import { useAppTitle } from "@/hooks/use-app-title";
 
 interface RowEdits {
   industry?: string | null;
@@ -49,6 +50,7 @@ interface ColumnFilters {
 
 export default function Clients() {
   const { toast } = useToast();
+  const appTitle = useAppTitle("Clients");
   const [searchQuery, setSearchQuery] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState("");
@@ -284,7 +286,7 @@ export default function Clients() {
   return (
     <div className="p-6">
       <Helmet>
-        <title>Clients | Project High Level Planning</title>
+        <title>{appTitle}</title>
         <meta name="description" content="Manage your clients with inline editing and bulk save." />
       </Helmet>
 

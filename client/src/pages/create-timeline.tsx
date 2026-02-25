@@ -21,6 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAppTitle } from "@/hooks/use-app-title";
 import { TimelineView } from "@/components/timeline-view";
 import { ThemePicker } from "@/components/theme-picker";
 import { formatDateForProject } from "@/lib/date-format";
@@ -41,6 +42,7 @@ export default function CreateTimeline() {
   const params = new URLSearchParams(searchString);
   const initialMode = params.get("mode") === "upload" ? "upload" : "manual";
   const { toast } = useToast();
+  const appTitle = useAppTitle("Create Project");
 
   const { data: settings } = useQuery<AppSettings>({ queryKey: ["/api/settings"] });
   const dateFormats = settings?.dateFormats || DEFAULT_DATE_FORMATS;
@@ -219,7 +221,7 @@ export default function CreateTimeline() {
   return (
     <div className="min-h-screen bg-background">
       <Helmet>
-        <title>Create Project | Project High Level Planning</title>
+        <title>{appTitle}</title>
         <meta name="description" content="Create a new project by adding milestones manually or importing from an Excel spreadsheet." />
       </Helmet>
       <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">

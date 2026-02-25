@@ -44,6 +44,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAppTitle } from "@/hooks/use-app-title";
 import { TimelineView } from "@/components/timeline-view";
 import { ThemePicker } from "@/components/theme-picker";
 import { RiskRegister } from "@/components/risk-register";
@@ -165,6 +166,7 @@ export default function TimelineDetail() {
   const { id } = useParams<{ id: string }>();
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const appTitleOnly = useAppTitle();
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
@@ -902,9 +904,9 @@ export default function TimelineDetail() {
   return (
     <div className="min-h-screen bg-background">
       <Helmet>
-        <title>{timeline.title} | Project High Level Planning</title>
+        <title>{`${timeline.title} | ${appTitleOnly}`}</title>
         <meta name="description" content={timeline.description || `View the ${timeline.title} project with ${timeline.milestones.length} milestones.`} />
-        <meta property="og:title" content={`${timeline.title} | Project High Level Planning`} />
+        <meta property="og:title" content={`${timeline.title} | ${appTitleOnly}`} />
       </Helmet>
       <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4 flex-wrap">

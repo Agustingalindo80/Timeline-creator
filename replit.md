@@ -29,6 +29,7 @@ The application is built with a modern web stack, utilizing React with Vite, Tai
 - **Resource Allocation:** A resource planning matrix view for team members and their weekly hours across projects.
 - **Configurable Fields:** Many dropdown fields (e.g., Project Type, Engagement Model, Statuses, Roles, Regions) are user-configurable via the settings page, stored as JSONB.
 - **Date Formatting:** Per-project date format setting, applied consistently across all date inputs and displays within that project.
+- **Branding & Theming:** Database-driven branding system (`branding_config` table) allowing customization of app name, logo, favicon, and color scheme (primary, sidebar background/text/accent, accent colors). Multi-tenant ready — keyed by tenant ID (currently "default"). Colors stored as HSL strings, injected as CSS custom properties at runtime via `BrandingProvider` context. Logo/favicon uploaded via API and served from `public/uploads/`. All page titles use `useAppTitle` hook for dynamic app name. Settings > Branding tab provides full UI with color pickers, file uploads, live preview, and reset-to-defaults.
 
 ## External Dependencies
 - **React:** Frontend library.

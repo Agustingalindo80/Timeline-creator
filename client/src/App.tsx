@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
+import { BrandingProvider } from "@/components/branding-provider";
 import { HelmetProvider } from "react-helmet-async";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
@@ -49,22 +50,24 @@ function App() {
     <HelmetProvider>
       <ThemeProvider>
         <QueryClientProvider client={queryClient}>
-          <TooltipProvider>
-            <SidebarProvider style={sidebarStyle as React.CSSProperties}>
-              <div className="flex h-screen w-full">
-                <AppSidebar />
-                <div className="flex flex-col flex-1 min-w-0">
-                  <header className="flex items-center p-2 border-b shrink-0">
-                    <SidebarTrigger data-testid="button-sidebar-toggle" />
-                  </header>
-                  <main className="flex-1 overflow-auto">
-                    <Router />
-                  </main>
+          <BrandingProvider>
+            <TooltipProvider>
+              <SidebarProvider style={sidebarStyle as React.CSSProperties}>
+                <div className="flex h-screen w-full">
+                  <AppSidebar />
+                  <div className="flex flex-col flex-1 min-w-0">
+                    <header className="flex items-center p-2 border-b shrink-0">
+                      <SidebarTrigger data-testid="button-sidebar-toggle" />
+                    </header>
+                    <main className="flex-1 overflow-auto">
+                      <Router />
+                    </main>
+                  </div>
                 </div>
-              </div>
-            </SidebarProvider>
-            <Toaster />
-          </TooltipProvider>
+              </SidebarProvider>
+              <Toaster />
+            </TooltipProvider>
+          </BrandingProvider>
         </QueryClientProvider>
       </ThemeProvider>
     </HelmetProvider>

@@ -21,6 +21,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { TimelineWithMilestones, Task, AppSettings, Client } from "@shared/schema";
 import { DEFAULT_TASK_HEALTH, DEFAULT_PROJECT_TYPES, DEFAULT_ENGAGEMENT_MODELS, DEFAULT_PROJECT_STATUSES, DEFAULT_REGIONS } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
+import { useAppTitle } from "@/hooks/use-app-title";
 
 const MONTHS: Record<string, number> = {
   january: 0, february: 1, march: 2, april: 3, may: 4, june: 5,
@@ -97,6 +98,7 @@ interface ColumnFilters {
 export default function Home() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const appTitle = useAppTitle("Projects");
   const [searchQuery, setSearchQuery] = useState("");
   const [edits, setEdits] = useState<Record<string, RowEdits>>({});
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
@@ -378,7 +380,7 @@ export default function Home() {
   return (
     <div className="p-6">
       <Helmet>
-        <title>Projects | Project High Level Planning</title>
+        <title>{appTitle}</title>
         <meta name="description" content="Manage your projects with milestones, tasks, and health tracking." />
       </Helmet>
 

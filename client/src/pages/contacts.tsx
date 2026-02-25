@@ -22,6 +22,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Contact, Client, AppSettings } from "@shared/schema";
 import { DEFAULT_CONTACT_ROLES } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
+import { useAppTitle } from "@/hooks/use-app-title";
 
 interface RowEdits {
   role?: string | null;
@@ -41,6 +42,7 @@ interface ColumnFilters {
 
 export default function ContactsList() {
   const { toast } = useToast();
+  const appTitle = useAppTitle("Contacts");
   const [searchQuery, setSearchQuery] = useState("");
   const [edits, setEdits] = useState<Record<string, RowEdits>>({});
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
@@ -286,7 +288,7 @@ export default function ContactsList() {
   return (
     <div className="p-6">
       <Helmet>
-        <title>Contacts | Project High Level Planning</title>
+        <title>{appTitle}</title>
         <meta name="description" content="Manage your contacts across all clients." />
       </Helmet>
 
