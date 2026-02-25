@@ -118,6 +118,7 @@ function ProjectTeamMembersTab({ timelineId }: { timelineId: string }) {
               <th className="text-right p-3 font-medium">Hours/Week</th>
               <th className="text-left p-3 font-medium">Start</th>
               <th className="text-left p-3 font-medium">End</th>
+              <th className="text-left p-3 font-medium">Status</th>
               <th className="text-left p-3 font-medium">Notes</th>
             </tr>
           </thead>
@@ -146,6 +147,11 @@ function ProjectTeamMembersTab({ timelineId }: { timelineId: string }) {
                 <td className="p-3 text-right font-mono">{a.weeklyHours}</td>
                 <td className="p-3 text-muted-foreground">{a.startDate || "—"}</td>
                 <td className="p-3 text-muted-foreground">{a.endDate || "—"}</td>
+                <td className="p-3">
+                  <Badge variant={a.status === "active" ? "default" : "secondary"} className={a.status === "active" ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"} data-testid={`badge-alloc-status-${a.id}`}>
+                    {a.status === "active" ? "Active" : "Inactive"}
+                  </Badge>
+                </td>
                 <td className="p-3 text-muted-foreground text-xs">{a.notes || "—"}</td>
               </tr>
             ))}

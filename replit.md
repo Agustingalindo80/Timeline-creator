@@ -103,7 +103,7 @@ A visual project planning tool that supports two input methods:
 - team_members: id, name, email, role, department, monthlyCost, hourlyCost
 - rate_cards: id, name, role, region, costRate, billRate
 - project_team_members: id, timelineId (FK to timelines), teamMemberId (FK to team_members), rateCardId (FK to rate_cards), monthlyCost, hourlyCost, allocation, startDate, endDate
-- allocations: id, teamMemberId (FK to team_members), timelineId (FK to timelines), weeklyHours, startDate, endDate, notes
+- allocations: id, teamMemberId (FK to team_members), timelineId (FK to timelines), weeklyHours, startDate, endDate, status (active/inactive), notes
 - app_settings: id, riskRegisterEnabled, taskStatuses, taskHealthOptions, taskItemTypes, riskProbabilities, riskImpacts, riskStatuses, projectTypes, engagementModels, projectStatuses, teamMemberRoles, regions, clients
 
 ## Features

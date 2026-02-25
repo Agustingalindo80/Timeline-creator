@@ -724,6 +724,7 @@ export async function registerRoutes(
         weeklyHours: req.body.weeklyHours || null,
         startDate: req.body.startDate || null,
         endDate: req.body.endDate || null,
+        status: req.body.status || "active",
         notes: req.body.notes || null,
       };
       if (!data.timelineId) {
@@ -744,6 +745,7 @@ export async function registerRoutes(
       if (req.body.weeklyHours !== undefined) updates.weeklyHours = req.body.weeklyHours;
       if (req.body.startDate !== undefined) updates.startDate = req.body.startDate;
       if (req.body.endDate !== undefined) updates.endDate = req.body.endDate;
+      if (req.body.status !== undefined) updates.status = req.body.status;
       if (req.body.notes !== undefined) updates.notes = req.body.notes;
       const allocation = await storage.updateAllocation(req.params.id, updates);
       if (!allocation) return res.status(404).json({ message: "Allocation not found" });

@@ -224,6 +224,7 @@ export const allocations = pgTable("allocations", {
   weeklyHours: numeric("weekly_hours", { precision: 5, scale: 1 }),
   startDate: text("start_date"),
   endDate: text("end_date"),
+  status: text("status").notNull().default("active"),
   notes: text("notes"),
 });
 

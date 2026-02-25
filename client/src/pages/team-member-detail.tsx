@@ -278,11 +278,13 @@ function AllocationsTab({ memberId, allocs, projects, isLoading, totalWeeklyHour
   const [newStartDate, setNewStartDate] = useState("");
   const [newEndDate, setNewEndDate] = useState("");
   const [newNotes, setNewNotes] = useState("");
+  const [newStatus, setNewStatus] = useState("active");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editWeeklyHours, setEditWeeklyHours] = useState("");
   const [editStartDate, setEditStartDate] = useState("");
   const [editEndDate, setEditEndDate] = useState("");
   const [editNotes, setEditNotes] = useState("");
+  const [editStatus, setEditStatus] = useState("active");
 
   const assignedProjectIds = allocs.map(a => a.timelineId);
   const availableProjects = projects.filter(p => !assignedProjectIds.includes(p.id));
@@ -326,6 +328,7 @@ function AllocationsTab({ memberId, allocs, projects, isLoading, totalWeeklyHour
     setNewStartDate("");
     setNewEndDate("");
     setNewNotes("");
+    setNewStatus("active");
   };
 
   const startEditing = (a: AllocationWithProject) => {
@@ -334,6 +337,7 @@ function AllocationsTab({ memberId, allocs, projects, isLoading, totalWeeklyHour
     setEditStartDate(a.startDate || "");
     setEditEndDate(a.endDate || "");
     setEditNotes(a.notes || "");
+    setEditStatus(a.status || "active");
   };
 
   if (isLoading) return <Skeleton className="h-32 w-full" />;
@@ -354,7 +358,7 @@ function AllocationsTab({ memberId, allocs, projects, isLoading, totalWeeklyHour
 
       {showAdd && (
         <div className="border rounded-lg p-4 bg-muted/30 space-y-3" data-testid="form-add-allocation">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
             <div>
               <Label>Project *</Label>
               <select className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm" value={newProjectId} onChange={e => setNewProjectId(e.target.value)} data-testid="select-alloc-project">
@@ -375,13 +379,20 @@ function AllocationsTab({ memberId, allocs, projects, isLoading, totalWeeklyHour
               <Input type="date" value={newEndDate} onChange={e => setNewEndDate(e.target.value)} data-testid="input-alloc-end" />
             </div>
             <div>
+              <Label>Status</Label>
+              <select className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm" value={newStatus} onChange={e => setNewStatus(e.target.value)} data-testid="select-alloc-status">
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+            <div>
               <Label>Notes</Label>
               <Input value={newNotes} onChange={e => setNewNotes(e.target.value)} placeholder="Optional" data-testid="input-alloc-notes" />
             </div>
           </div>
           <div className="flex gap-2 justify-end">
             <Button variant="ghost" size="sm" onClick={resetForm}>Cancel</Button>
-            <Button size="sm" onClick={() => createMutation.mutate({ timelineId: newProjectId, weeklyHours: newWeeklyHours || null, startDate: newStartDate || null, endDate: newEndDate || null, notes: newNotes || null })} disabled={!newProjectId || createMutation.isPending} data-testid="button-save-allocation">
+            <Button size="sm" onClick={() => createMutation.mutate({ timelineId: newProjectId, weeklyHours: newWeeklyHours || null, startDate: newStartDate || null, endDate: newEndDate || null, status: newStatus, notes: newNotes || null })} disabled={!newProjectId || createMutation.isPending} data-testid="button-save-allocation">
               {createMutation.isPending ? "Adding..." : "Add Allocation"}
             </Button>
           </div>
@@ -401,6 +412,7 @@ function AllocationsTab({ memberId, allocs, projects, isLoading, totalWeeklyHour
                 <th className="text-right p-2.5 font-medium text-xs">Hours/Week</th>
                 <th className="text-left p-2.5 font-medium text-xs">Start Date</th>
                 <th className="text-left p-2.5 font-medium text-xs">End Date</th>
+                <th className="text-left p-2.5 font-medium text-xs">Status</th>
                 <th className="text-left p-2.5 font-medium text-xs">Notes</th>
                 <th className="w-20 p-2.5"></th>
               </tr>
@@ -423,11 +435,17 @@ function AllocationsTab({ memberId, allocs, projects, isLoading, totalWeeklyHour
                         <Input className="h-8 text-xs" type="date" value={editEndDate} onChange={e => setEditEndDate(e.target.value)} data-testid={`input-edit-end-${a.id}`} />
                       </td>
                       <td className="p-2.5">
+                        <select className="h-8 rounded-md border border-input bg-background px-2 text-xs" value={editStatus} onChange={e => setEditStatus(e.target.value)} data-testid={`select-edit-status-${a.id}`}>
+                          <option value="active">Active</option>
+                          <option value="inactive">Inactive</option>
+                        </select>
+                      </td>
+                      <td className="p-2.5">
                         <Input className="h-8 text-xs" value={editNotes} onChange={e => setEditNotes(e.target.value)} data-testid={`input-edit-notes-${a.id}`} />
                       </td>
                       <td className="p-2.5">
                         <div className="flex items-center gap-1 justify-end">
-                          <Button size="sm" className="h-7 text-xs" onClick={() => updateMutation.mutate({ id: a.id, data: { weeklyHours: editWeeklyHours || null, startDate: editStartDate || null, endDate: editEndDate || null, notes: editNotes || null } })} disabled={updateMutation.isPending} data-testid={`button-save-alloc-${a.id}`}>
+                          <Button size="sm" className="h-7 text-xs" onClick={() => updateMutation.mutate({ id: a.id, data: { weeklyHours: editWeeklyHours || null, startDate: editStartDate || null, endDate: editEndDate || null, status: editStatus, notes: editNotes || null } })} disabled={updateMutation.isPending} data-testid={`button-save-alloc-${a.id}`}>
                             Save
                           </Button>
                           <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setEditingId(null)}>Cancel</Button>
@@ -448,6 +466,11 @@ function AllocationsTab({ memberId, allocs, projects, isLoading, totalWeeklyHour
                       </td>
                       <td className="p-2.5 text-muted-foreground">{a.startDate || "—"}</td>
                       <td className="p-2.5 text-muted-foreground">{a.endDate || "—"}</td>
+                      <td className="p-2.5">
+                        <Badge variant={a.status === "active" ? "default" : "secondary"} className={a.status === "active" ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"} data-testid={`badge-status-${a.id}`}>
+                          {a.status === "active" ? "Active" : "Inactive"}
+                        </Badge>
+                      </td>
                       <td className="p-2.5 text-muted-foreground truncate max-w-[150px]">{a.notes || "—"}</td>
                       <td className="p-2.5">
                         <div className="flex items-center gap-1 justify-end">

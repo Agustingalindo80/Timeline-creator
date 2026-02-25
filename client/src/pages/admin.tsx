@@ -288,12 +288,14 @@ function MemberAllocations({ memberId, memberName }: { memberId: string; memberN
   const [newStartDate, setNewStartDate] = useState("");
   const [newEndDate, setNewEndDate] = useState("");
   const [newNotes, setNewNotes] = useState("");
+  const [newStatus, setNewStatus] = useState("active");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editProjectId, setEditProjectId] = useState("");
   const [editWeeklyHours, setEditWeeklyHours] = useState("");
   const [editStartDate, setEditStartDate] = useState("");
   const [editEndDate, setEditEndDate] = useState("");
   const [editNotes, setEditNotes] = useState("");
+  const [editStatus, setEditStatus] = useState("active");
 
   const { data: allocs = [], isLoading } = useQuery<AllocationWithProject[]>({
     queryKey: ["/api/team-members", memberId, "allocations"],
@@ -345,6 +347,7 @@ function MemberAllocations({ memberId, memberName }: { memberId: string; memberN
     setNewStartDate("");
     setNewEndDate("");
     setNewNotes("");
+    setNewStatus("active");
   };
 
   const startEditing = (a: AllocationWithProject) => {
@@ -354,6 +357,7 @@ function MemberAllocations({ memberId, memberName }: { memberId: string; memberN
     setEditStartDate(a.startDate || "");
     setEditEndDate(a.endDate || "");
     setEditNotes(a.notes || "");
+    setEditStatus(a.status || "active");
   };
 
   const totalWeeklyHours = allocs.reduce((sum, a) => sum + (a.weeklyHours ? parseFloat(a.weeklyHours) : 0), 0);
@@ -378,7 +382,7 @@ function MemberAllocations({ memberId, memberName }: { memberId: string; memberN
 
       {showAdd && (
         <div className="border rounded-md p-2.5 bg-muted/30 mb-2 space-y-2" data-testid={`form-add-allocation-${memberId}`}>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Project *</label>
               <select className="w-full h-8 rounded-md border border-input bg-background px-2 py-1 text-xs" value={newProjectId} onChange={e => setNewProjectId(e.target.value)} data-testid={`select-new-alloc-project-${memberId}`}>
@@ -399,13 +403,20 @@ function MemberAllocations({ memberId, memberName }: { memberId: string; memberN
               <Input className="h-8 text-xs" type="date" value={newEndDate} onChange={e => setNewEndDate(e.target.value)} data-testid={`input-new-alloc-end-${memberId}`} />
             </div>
             <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Status</label>
+              <select className="w-full h-8 rounded-md border border-input bg-background px-2 py-1 text-xs" value={newStatus} onChange={e => setNewStatus(e.target.value)} data-testid={`select-new-alloc-status-${memberId}`}>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+            <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Notes</label>
               <Input className="h-8 text-xs" value={newNotes} onChange={e => setNewNotes(e.target.value)} placeholder="Optional" data-testid={`input-new-alloc-notes-${memberId}`} />
             </div>
           </div>
           <div className="flex gap-2 justify-end">
             <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={resetForm}>Cancel</Button>
-            <Button size="sm" className="h-7 text-xs" onClick={() => createMutation.mutate({ timelineId: newProjectId, weeklyHours: newWeeklyHours || null, startDate: newStartDate || null, endDate: newEndDate || null, notes: newNotes || null })} disabled={!newProjectId || createMutation.isPending} data-testid={`button-save-new-alloc-${memberId}`}>
+            <Button size="sm" className="h-7 text-xs" onClick={() => createMutation.mutate({ timelineId: newProjectId, weeklyHours: newWeeklyHours || null, startDate: newStartDate || null, endDate: newEndDate || null, status: newStatus, notes: newNotes || null })} disabled={!newProjectId || createMutation.isPending} data-testid={`button-save-new-alloc-${memberId}`}>
               {createMutation.isPending ? "Adding..." : "Add"}
             </Button>
           </div>
@@ -421,7 +432,7 @@ function MemberAllocations({ memberId, memberName }: { memberId: string; memberN
           <div key={a.id} className="border rounded-md p-2 bg-background text-xs" data-testid={`allocation-${a.id}`}>
             {editingId === a.id ? (
               <div className="space-y-2">
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
                   <div>
                     <label className="text-xs font-medium text-muted-foreground mb-1 block">Project</label>
                     <select className="w-full h-8 rounded-md border border-input bg-background px-2 py-1 text-xs" value={editProjectId} onChange={e => setEditProjectId(e.target.value)} data-testid={`select-edit-alloc-project-${a.id}`}>
@@ -441,13 +452,20 @@ function MemberAllocations({ memberId, memberName }: { memberId: string; memberN
                     <Input className="h-8 text-xs" type="date" value={editEndDate} onChange={e => setEditEndDate(e.target.value)} data-testid={`input-edit-alloc-end-${a.id}`} />
                   </div>
                   <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Status</label>
+                    <select className="w-full h-8 rounded-md border border-input bg-background px-2 py-1 text-xs" value={editStatus} onChange={e => setEditStatus(e.target.value)} data-testid={`select-edit-alloc-status-${a.id}`}>
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                  </div>
+                  <div>
                     <label className="text-xs font-medium text-muted-foreground mb-1 block">Notes</label>
                     <Input className="h-8 text-xs" value={editNotes} onChange={e => setEditNotes(e.target.value)} data-testid={`input-edit-alloc-notes-${a.id}`} />
                   </div>
                 </div>
                 <div className="flex gap-2 justify-end">
                   <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setEditingId(null)}>Cancel</Button>
-                  <Button size="sm" className="h-6 text-xs" onClick={() => updateMutation.mutate({ id: a.id, data: { timelineId: editProjectId, weeklyHours: editWeeklyHours || null, startDate: editStartDate || null, endDate: editEndDate || null, notes: editNotes || null } })} disabled={updateMutation.isPending} data-testid={`button-save-edit-alloc-${a.id}`}>
+                  <Button size="sm" className="h-6 text-xs" onClick={() => updateMutation.mutate({ id: a.id, data: { timelineId: editProjectId, weeklyHours: editWeeklyHours || null, startDate: editStartDate || null, endDate: editEndDate || null, status: editStatus, notes: editNotes || null } })} disabled={updateMutation.isPending} data-testid={`button-save-edit-alloc-${a.id}`}>
                     {updateMutation.isPending ? "Saving..." : "Save"}
                   </Button>
                 </div>
@@ -459,6 +477,9 @@ function MemberAllocations({ memberId, memberName }: { memberId: string; memberN
                   {a.weeklyHours && <span className="text-muted-foreground shrink-0">{parseFloat(a.weeklyHours)}h/week</span>}
                   {a.startDate && a.endDate && <span className="text-muted-foreground shrink-0">{a.startDate} → {a.endDate}</span>}
                   {a.startDate && !a.endDate && <span className="text-muted-foreground shrink-0">from {a.startDate}</span>}
+                  <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium ${a.status === "active" ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"}`} data-testid={`badge-alloc-status-${a.id}`}>
+                    {a.status === "active" ? "Active" : "Inactive"}
+                  </span>
                   {a.notes && <span className="text-muted-foreground truncate">· {a.notes}</span>}
                 </div>
                 <div className="flex items-center gap-0.5 shrink-0">
