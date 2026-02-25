@@ -16,14 +16,18 @@ async function recalcTotalRunningCost(timelineId: string) {
 
   let totalCost = 0;
 
+  const now = new Date();
+
   for (const a of activeAllocs) {
     const member = a.teamMember;
     const start = a.startDate ? new Date(a.startDate) : null;
     const end = a.endDate ? new Date(a.endDate) : null;
 
-    if (!start || !end || isNaN(start.getTime()) || isNaN(end.getTime())) continue;
+    if (!start || isNaN(start.getTime())) continue;
+    if (now < start) continue;
 
-    const diffMs = end.getTime() - start.getTime();
+    const effectiveEnd = end && !isNaN(end.getTime()) && end < now ? end : now;
+    const diffMs = effectiveEnd.getTime() - start.getTime();
     if (diffMs <= 0) continue;
 
     const diffDays = diffMs / (1000 * 60 * 60 * 24);

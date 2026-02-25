@@ -112,7 +112,7 @@ A visual project planning tool that supports two input methods:
 - Client: first-class entity with own table, demographics (name, industry, contact, phone, website, address, notes, status), linked to projects via clientId FK; editable on project detail page and projects list; client detail page shows projects tab
 - Project Status: configurable field (Not Started / In Progress / Completed by default), editable on detail page and project list, shown as badge; options managed from Settings > Field Options
 - Approved Budget: currency field (numeric with $ prefix), editable inline on detail page and project list
-- Total Running Cost: auto-calculated from team member allocations; Fixed Bid uses monthlyCost × months, T&M/other uses hourlyCost × weeklyHours × weeks; only active allocations with both start/end dates are included; read-only display on detail page and project list
+- Total Running Cost: auto-calculated from team member allocations up to the current date; Fixed Bid uses monthlyCost × elapsed months, T&M/other uses hourlyCost × weeklyHours × elapsed weeks; only active allocations with start dates in the past are included; future allocations excluded; past-completed allocations use their full duration; read-only display on detail page and project list
 - Gross Margin: auto-calculated as ((Budget - Cost) / Budget) × 100; read-only color-coded display (green ≥30%, amber ≥15%, red <15%); recalculated when budget or allocations change
 - Project Health: 4 health fields per project (Overall, Scope, Budget, Team Composition)
   - Uses same options as Task Health (Green/Amber/Red by default)
