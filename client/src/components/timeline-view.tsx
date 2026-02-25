@@ -226,9 +226,6 @@ function TaskBarsSection({
         </div>
       </div>
 
-      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4 px-1">
-        Tasks
-      </p>
       <div className="space-y-1 mx-2">
         {(() => {
           const phases = tasks.filter((t) => t.itemType === "phase").sort((a, b) => a.sortOrder - b.sortOrder);
@@ -506,9 +503,6 @@ export function TimelineViewHorizontal({ milestones, tasks, timelineColor, showT
 
         {sortedTasks.length > 0 && (
           <div className="mt-6 border-t border-border pt-4 mx-8" data-testid="task-bars-section-h">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-              Tasks
-            </p>
             <div className="space-y-1">
               {(() => {
                 const phases = sortedTasks.filter((t) => t.itemType === "phase").sort((a, b) => a.sortOrder - b.sortOrder);
