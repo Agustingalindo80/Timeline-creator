@@ -514,12 +514,10 @@ function TeamMembersManager() {
 function RateCardsManager() {
   const { toast } = useToast();
   const [addingForRegion, setAddingForRegion] = useState<string | null>(null);
-  const [newName, setNewName] = useState("");
   const [newRole, setNewRole] = useState("");
   const [newCostRate, setNewCostRate] = useState("");
   const [newBillRate, setNewBillRate] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState("");
   const [editRole, setEditRole] = useState("");
   const [editCostRate, setEditCostRate] = useState("");
   const [editBillRate, setEditBillRate] = useState("");
@@ -590,15 +588,22 @@ function RateCardsManager() {
 
   const resetAddForm = () => {
     setAddingForRegion(null);
-    setNewName("");
     setNewRole("");
     setNewCostRate("");
     setNewBillRate("");
   };
 
+  const getRoleLabel = (value: string) => roleOptions.find(r => r.value === value)?.label || value;
+  const getRegionLabel = (value: string) => regionOptions.find(r => r.value === value)?.label || value;
+  const autoName = (role: string, region: string) => {
+    const parts = [];
+    if (region) parts.push(getRegionLabel(region));
+    if (role) parts.push(getRoleLabel(role));
+    return parts.length > 0 ? parts.join(" - ") : "Rate Card";
+  };
+
   const startEditing = (c: RateCard) => {
     setEditingId(c.id);
-    setEditName(c.name);
     setEditRole(c.role || "");
     setEditCostRate(c.costRate ?? "");
     setEditBillRate(c.billRate ?? "");
@@ -610,13 +615,9 @@ function RateCardsManager() {
     <div key={c.id} className="border rounded-md p-2.5 bg-background" data-testid={`rate-card-${c.id}`}>
       {editingId === c.id ? (
         <div className="space-y-3">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Name *</label>
-              <Input value={editName} onChange={e => setEditName(e.target.value)} data-testid={`input-edit-card-name-${c.id}`} />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Role</label>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Role *</label>
               <select className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm" value={editRole} onChange={e => setEditRole(e.target.value)} data-testid={`select-edit-card-role-${c.id}`}>
                 <option value="">Select role...</option>
                 {roleOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
@@ -633,7 +634,7 @@ function RateCardsManager() {
           </div>
           <div className="flex gap-2 justify-end">
             <Button variant="ghost" size="sm" onClick={() => setEditingId(null)} data-testid={`button-cancel-edit-card-${c.id}`}>Cancel</Button>
-            <Button size="sm" onClick={() => updateMutation.mutate({ id: c.id, data: { name: editName, role: editRole || null, costRate: editCostRate || null, billRate: editBillRate || null } })} disabled={!editName.trim() || updateMutation.isPending} data-testid={`button-save-edit-card-${c.id}`}>
+            <Button size="sm" onClick={() => updateMutation.mutate({ id: c.id, data: { name: autoName(editRole, c.region || ""), role: editRole || null, costRate: editCostRate || null, billRate: editBillRate || null } })} disabled={!editRole.trim() || updateMutation.isPending} data-testid={`button-save-edit-card-${c.id}`}>
               <Save className="w-3.5 h-3.5 mr-1" />
               {updateMutation.isPending ? "Saving..." : "Save"}
             </Button>
@@ -642,9 +643,10 @@ function RateCardsManager() {
       ) : (
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-sm font-medium truncate" data-testid={`text-card-name-${c.id}`}>{c.name}</p>
+            <p className="text-sm font-medium truncate" data-testid={`text-card-name-${c.id}`}>
+              {c.role ? getRoleLabel(c.role) : c.name}
+            </p>
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
-              {c.role && <span>{roleOptions.find(r => r.value === c.role)?.label || c.role}</span>}
               {c.costRate && <span>Cost: ${parseFloat(c.costRate).toFixed(2)}/hr</span>}
               {c.billRate && <span>Bill: ${parseFloat(c.billRate).toFixed(2)}/hr</span>}
               {c.costRate && c.billRate && (
@@ -668,7 +670,7 @@ function RateCardsManager() {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Delete rate card?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will permanently delete the "{c.name}" rate card. Project assignments using this card will have the rate card unlinked.
+                    This will permanently delete this rate card. Project assignments using this card will have the rate card unlinked.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -687,13 +689,9 @@ function RateCardsManager() {
 
   const renderAddForm = (regionValue: string) => (
     <div className="border rounded-md p-3 bg-muted/30 mt-2" data-testid={`form-add-rate-card-${regionValue}`}>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+      <div className="grid grid-cols-3 gap-2">
         <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1 block">Name *</label>
-          <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="e.g. Senior Developer" data-testid="input-new-card-name" />
-        </div>
-        <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1 block">Role</label>
+          <label className="text-xs font-medium text-muted-foreground mb-1 block">Role *</label>
           <select className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm" value={newRole} onChange={e => setNewRole(e.target.value)} data-testid="select-new-card-role">
             <option value="">Select role...</option>
             {roleOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
@@ -710,7 +708,7 @@ function RateCardsManager() {
       </div>
       <div className="flex gap-2 mt-3 justify-end">
         <Button variant="ghost" size="sm" onClick={resetAddForm} data-testid="button-cancel-add-card">Cancel</Button>
-        <Button size="sm" onClick={() => createMutation.mutate({ name: newName, role: newRole || null, region: regionValue, costRate: newCostRate || null, billRate: newBillRate || null })} disabled={!newName.trim() || createMutation.isPending} data-testid="button-save-new-card">
+        <Button size="sm" onClick={() => createMutation.mutate({ name: autoName(newRole, regionValue), role: newRole || null, region: regionValue, costRate: newCostRate || null, billRate: newBillRate || null })} disabled={!newRole.trim() || createMutation.isPending} data-testid="button-save-new-card">
           {createMutation.isPending ? "Creating..." : "Create"}
         </Button>
       </div>
