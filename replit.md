@@ -141,10 +141,13 @@ A visual project planning tool that supports two input methods:
   - Role uses same configurable dropdown as Rate Cards (Salesforce implementation roles)
   - CRUD with inline edit
 - Rate Cards: regional rate cards managed from Settings > Rate Cards tab
-  - Fields: name, role (dropdown from configurable roles), region (dropdown from configurable regions), cost rate ($/hr), bill rate ($/hr)
-  - Role and Region use same configurable dropdowns from Global settings
+  - Regions are parent containers; each region displays its rate cards nested underneath
+  - Fields per card: name, role (dropdown from configurable roles), cost rate ($/hr), bill rate ($/hr)
+  - Region is assigned automatically based on which region section the card is added to
+  - Role uses same configurable dropdown from Global settings
+  - Collapsible region sections with card count; "Add" button per region
   - Shows margin percentage when both rates set
-  - CRUD with inline edit
+  - CRUD with inline edit; unassigned cards shown in separate section
 - Settings: /admin page reorganized into tabs (General, Team Members, Rate Cards, Field Options)
   - General: feature toggles (Risk Register on/off)
   - Team Members: manage team member records with costs
