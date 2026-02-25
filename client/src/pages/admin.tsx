@@ -36,6 +36,7 @@ import {
   DEFAULT_INDUSTRIES,
   DEFAULT_TEAM_MEMBER_ROLES,
   DEFAULT_REGIONS,
+  DEFAULT_DATE_FORMATS,
 } from "@shared/schema";
 
 interface FieldOptionEditorProps {
@@ -1093,6 +1094,14 @@ export default function Admin() {
           defaults: DEFAULT_ENGAGEMENT_MODELS,
           current: settings?.engagementModels || DEFAULT_ENGAGEMENT_MODELS,
           testId: "engagement-models",
+        },
+        {
+          title: "Date Formats",
+          description: "Available date format options for projects. Each project selects one format at creation.",
+          key: "dateFormats",
+          defaults: DEFAULT_DATE_FORMATS,
+          current: settings?.dateFormats || DEFAULT_DATE_FORMATS,
+          testId: "date-formats",
         },
       ],
     },

@@ -18,11 +18,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { TimelineView } from "@/components/timeline-view";
 import { ThemePicker } from "@/components/theme-picker";
-import type { Milestone } from "@shared/schema";
+import { formatDateForProject } from "@/lib/date-format";
+import type { Milestone, AppSettings } from "@shared/schema";
+import { DEFAULT_DATE_FORMATS } from "@shared/schema";
 
 interface MilestoneForm {
   tempId: string;
@@ -39,9 +42,13 @@ export default function CreateTimeline() {
   const initialMode = params.get("mode") === "upload" ? "upload" : "manual";
   const { toast } = useToast();
 
+  const { data: settings } = useQuery<AppSettings>({ queryKey: ["/api/settings"] });
+  const dateFormats = settings?.dateFormats || DEFAULT_DATE_FORMATS;
+
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [color, setColor] = useState("#2563eb");
+  const [dateFormat, setDateFormat] = useState("");
   const [milestones, setMilestones] = useState<MilestoneForm[]>([]);
   const [activeTab, setActiveTab] = useState(initialMode);
   const [uploadDragOver, setUploadDragOver] = useState(false);
@@ -162,10 +169,11 @@ export default function CreateTimeline() {
         title,
         description: description || null,
         color,
+        dateFormat,
         milestones: milestones.map((m, i) => ({
           title: m.title,
           description: m.description || null,
-          date: m.date,
+          date: dateFormat ? formatDateForProject(m.date, dateFormat) : m.date,
           color: m.color || null,
           sortOrder: i,
         })),
@@ -188,6 +196,7 @@ export default function CreateTimeline() {
 
   const canSubmit =
     title.trim().length > 0 &&
+    dateFormat.length > 0 &&
     milestones.length > 0 &&
     milestones.every((m) => m.title.trim() && m.date.trim());
 
@@ -198,11 +207,13 @@ export default function CreateTimeline() {
       timelineId: "",
       title: m.title,
       description: m.description || null,
-      date: m.date,
+      date: dateFormat ? formatDateForProject(m.date, dateFormat) : m.date,
       actualDate: null,
       color: m.color || null,
       icon: null,
       sortOrder: i,
+      isFinancialObligation: false,
+      amount: null,
     }));
 
   return (
@@ -265,6 +276,24 @@ export default function CreateTimeline() {
               <div className="space-y-2">
                 <Label>Theme</Label>
                 <ThemePicker value={color} onChange={setColor} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="dateFormat">Date Format *</Label>
+                <select
+                  id="dateFormat"
+                  className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
+                  value={dateFormat}
+                  onChange={(e) => setDateFormat(e.target.value)}
+                  data-testid="select-date-format"
+                >
+                  <option value="">Select date format...</option>
+                  {dateFormats.map((df) => (
+                    <option key={df.value} value={df.value}>{df.label}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  This format will be used for all dates in this project and cannot be changed later.
+                </p>
               </div>
             </Card>
 
@@ -364,9 +393,9 @@ export default function CreateTimeline() {
                                   data-testid={`input-milestone-title-${index}`}
                                 />
                               </div>
-                              <div className="w-36">
+                              <div className="w-40">
                                 <Input
-                                  placeholder="Date (e.g. Jan 2025)"
+                                  type="date"
                                   value={m.date}
                                   onChange={(e) =>
                                     updateMilestone(m.tempId, "date", e.target.value)

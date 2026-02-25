@@ -97,6 +97,12 @@ export const DEFAULT_CONTACT_ROLES: FieldOption[] = [
   { value: "stakeholder", label: "Stakeholder" },
   { value: "legal", label: "Legal" },
 ];
+export const DEFAULT_DATE_FORMATS: FieldOption[] = [
+  { value: "MM/DD/YYYY", label: "MM/DD/YYYY" },
+  { value: "DD/MM/YYYY", label: "DD/MM/YYYY" },
+  { value: "YYYY-MM-DD", label: "YYYY-MM-DD" },
+  { value: "Month DD, YYYY", label: "Month DD, YYYY" },
+];
 
 export const clients = pgTable("clients", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -140,6 +146,7 @@ export const timelines = pgTable("timelines", {
   region: text("region"),
   startDate: text("start_date"),
   endDate: text("end_date"),
+  dateFormat: text("date_format"),
 });
 
 export const milestones = pgTable("milestones", {
@@ -249,6 +256,7 @@ export const appSettings = pgTable("app_settings", {
   projectStatuses: jsonb("project_statuses").$type<FieldOption[]>(),
   teamMemberRoles: jsonb("team_member_roles").$type<FieldOption[]>(),
   regions: jsonb("regions").$type<FieldOption[]>(),
+  dateFormats: jsonb("date_formats").$type<FieldOption[]>(),
 });
 
 export const insertClientSchema = createInsertSchema(clients).omit({ id: true });

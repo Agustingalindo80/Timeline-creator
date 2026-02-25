@@ -21,6 +21,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { formatDateForProject } from "@/lib/date-format";
 import type { TeamMember, AppSettings, AllocationWithProject, TimelineWithMilestones } from "@shared/schema";
 import { DEFAULT_TEAM_MEMBER_ROLES } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
@@ -288,6 +289,8 @@ function AllocationsTab({ memberId, allocs, projects, isLoading, totalWeeklyHour
 
   const assignedProjectIds = allocs.map(a => a.timelineId);
   const availableProjects = projects.filter(p => !assignedProjectIds.includes(p.id));
+  const selectedProject = projects.find(p => p.id === newProjectId);
+  const selectedDateFormat = selectedProject?.dateFormat || "";
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -390,6 +393,9 @@ function AllocationsTab({ memberId, allocs, projects, isLoading, totalWeeklyHour
               <Input value={newNotes} onChange={e => setNewNotes(e.target.value)} placeholder="Optional" data-testid="input-alloc-notes" />
             </div>
           </div>
+          {selectedDateFormat && (
+            <p className="text-xs text-muted-foreground">Date format for this project: <strong>{selectedDateFormat}</strong></p>
+          )}
           <div className="flex gap-2 justify-end">
             <Button variant="ghost" size="sm" onClick={resetForm}>Cancel</Button>
             <Button size="sm" onClick={() => createMutation.mutate({ timelineId: newProjectId, weeklyHours: newWeeklyHours || null, startDate: newStartDate || null, endDate: newEndDate || null, status: newStatus, notes: newNotes || null })} disabled={!newProjectId || createMutation.isPending} data-testid="button-save-allocation">

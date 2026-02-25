@@ -47,6 +47,7 @@ import { useToast } from "@/hooks/use-toast";
 import { TimelineView } from "@/components/timeline-view";
 import { ThemePicker } from "@/components/theme-picker";
 import { RiskRegister } from "@/components/risk-register";
+import { formatDateForProject, parseDateToISO } from "@/lib/date-format";
 import type { TimelineWithMilestones, AppSettings, FieldOption, Client, AllocationWithTeamMember } from "@shared/schema";
 import {
   DEFAULT_TASK_STATUSES,
@@ -56,6 +57,7 @@ import {
   DEFAULT_ENGAGEMENT_MODELS,
   DEFAULT_PROJECT_STATUSES,
   DEFAULT_REGIONS,
+  DEFAULT_DATE_FORMATS,
 } from "@shared/schema";
 
 type FilterMode = "all" | "milestones";
@@ -364,8 +366,8 @@ export default function TimelineDetail() {
         milestoneId: editingMilestoneId,
         data: {
           title: editMTitle.trim(),
-          date: editMDate.trim(),
-          actualDate: editMActualDate.trim() || null,
+          date: fmtDate(editMDate.trim()),
+          actualDate: editMActualDate.trim() ? fmtDate(editMActualDate.trim()) : null,
           description: editMDesc.trim() || null,
           isFinancialObligation: editMIsFinancialObligation,
           amount: editMIsFinancialObligation ? (editMAmount || null) : null,
@@ -405,10 +407,10 @@ export default function TimelineDetail() {
         taskId: editingTaskId,
         data: {
           title: editTTitle.trim(),
-          startDate: editTStart.trim(),
-          endDate: editTEnd.trim(),
-          actualStartDate: editTActualStart.trim() || null,
-          actualEndDate: editTActualEnd.trim() || null,
+          startDate: fmtDate(editTStart.trim()),
+          endDate: fmtDate(editTEnd.trim()),
+          actualStartDate: editTActualStart.trim() ? fmtDate(editTActualStart.trim()) : null,
+          actualEndDate: editTActualEnd.trim() ? fmtDate(editTActualEnd.trim()) : null,
           description: editTDesc.trim() || null,
           percentComplete: editTPercent,
           status: editTStatus,
@@ -429,13 +431,20 @@ export default function TimelineDetail() {
     setEditingTaskId(null);
   };
 
+  const projectDateFormat = timeline?.dateFormat || "";
+
+  const fmtDate = (isoDate: string) => {
+    if (!isoDate || !projectDateFormat) return isoDate;
+    return formatDateForProject(isoDate, projectDateFormat);
+  };
+
   const handleAddMilestone = () => {
     if (!newTitle.trim() || !newDate.trim()) return;
     addMilestoneMutation.mutate(
       {
         title: newTitle,
-        date: newDate,
-        actualDate: newActualDate || undefined,
+        date: fmtDate(newDate),
+        actualDate: newActualDate ? fmtDate(newActualDate) : undefined,
         description: newDesc || undefined,
         isFinancialObligation: newIsFinancialObligation,
         amount: newIsFinancialObligation ? (newAmount || undefined) : undefined,
@@ -459,10 +468,10 @@ export default function TimelineDetail() {
     addTaskMutation.mutate(
       {
         title: newTaskTitle,
-        startDate: newTaskStart,
-        endDate: newTaskEnd,
-        actualStartDate: newTaskActualStart || undefined,
-        actualEndDate: newTaskActualEnd || undefined,
+        startDate: fmtDate(newTaskStart),
+        endDate: fmtDate(newTaskEnd),
+        actualStartDate: newTaskActualStart ? fmtDate(newTaskActualStart) : undefined,
+        actualEndDate: newTaskActualEnd ? fmtDate(newTaskActualEnd) : undefined,
         description: newTaskDesc || undefined,
         percentComplete: newTaskPercent,
         status: newTaskStatus,
@@ -658,33 +667,37 @@ export default function TimelineDetail() {
                 data-testid={`input-edit-task-title-${t.id}`}
               />
             </div>
-            <div className="w-36">
+            <div className="w-40">
               <Input
-                value={editTStart}
+                type={projectDateFormat ? "date" : "text"}
+                value={projectDateFormat ? parseDateToISO(editTStart, projectDateFormat) : editTStart}
                 onChange={(e) => setEditTStart(e.target.value)}
                 placeholder="Planned start"
                 data-testid={`input-edit-task-start-${t.id}`}
               />
             </div>
-            <div className="w-36">
+            <div className="w-40">
               <Input
-                value={editTEnd}
+                type={projectDateFormat ? "date" : "text"}
+                value={projectDateFormat ? parseDateToISO(editTEnd, projectDateFormat) : editTEnd}
                 onChange={(e) => setEditTEnd(e.target.value)}
                 placeholder="Planned end"
                 data-testid={`input-edit-task-end-${t.id}`}
               />
             </div>
-            <div className="w-36">
+            <div className="w-40">
               <Input
-                value={editTActualStart}
+                type={projectDateFormat ? "date" : "text"}
+                value={projectDateFormat ? parseDateToISO(editTActualStart, projectDateFormat) : editTActualStart}
                 onChange={(e) => setEditTActualStart(e.target.value)}
                 placeholder="Actual start"
                 data-testid={`input-edit-task-actual-start-${t.id}`}
               />
             </div>
-            <div className="w-36">
+            <div className="w-40">
               <Input
-                value={editTActualEnd}
+                type={projectDateFormat ? "date" : "text"}
+                value={projectDateFormat ? parseDateToISO(editTActualEnd, projectDateFormat) : editTActualEnd}
                 onChange={(e) => setEditTActualEnd(e.target.value)}
                 placeholder="Actual end"
                 data-testid={`input-edit-task-actual-end-${t.id}`}
@@ -1138,6 +1151,12 @@ export default function TimelineDetail() {
                   ))}
                 </select>
               </div>
+              {timeline.dateFormat && (
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Date Format</label>
+                  <Badge variant="outline" className="text-xs" data-testid="badge-date-format">{timeline.dateFormat}</Badge>
+                </div>
+              )}
               <div className="flex items-center gap-2">
                 <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Start Date</label>
                 <input
@@ -1261,18 +1280,20 @@ export default function TimelineDetail() {
                   data-testid="input-new-milestone-title"
                 />
               </div>
-              <div className="w-36">
+              <div className="w-40">
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">Planned Date</label>
                 <Input
+                  type={projectDateFormat ? "date" : "text"}
                   value={newDate}
                   onChange={(e) => setNewDate(e.target.value)}
-                  placeholder="e.g. Mar 2025"
+                  placeholder={projectDateFormat || "e.g. Mar 2025"}
                   data-testid="input-new-milestone-date"
                 />
               </div>
-              <div className="w-36">
+              <div className="w-40">
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">Actual Date</label>
                 <Input
+                  type={projectDateFormat ? "date" : "text"}
                   value={newActualDate}
                   onChange={(e) => setNewActualDate(e.target.value)}
                   placeholder="Optional"
@@ -1335,36 +1356,40 @@ export default function TimelineDetail() {
                   data-testid="input-new-task-title"
                 />
               </div>
-              <div className="w-36">
+              <div className="w-40">
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">Planned Start</label>
                 <Input
+                  type={projectDateFormat ? "date" : "text"}
                   value={newTaskStart}
                   onChange={(e) => setNewTaskStart(e.target.value)}
-                  placeholder="e.g. Jan 2025"
+                  placeholder={projectDateFormat || "e.g. Jan 2025"}
                   data-testid="input-new-task-start"
                 />
               </div>
-              <div className="w-36">
+              <div className="w-40">
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">Planned End</label>
                 <Input
+                  type={projectDateFormat ? "date" : "text"}
                   value={newTaskEnd}
                   onChange={(e) => setNewTaskEnd(e.target.value)}
-                  placeholder="e.g. Mar 2025"
+                  placeholder={projectDateFormat || "e.g. Mar 2025"}
                   data-testid="input-new-task-end"
                 />
               </div>
-              <div className="w-36">
+              <div className="w-40">
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">Actual Start</label>
                 <Input
+                  type={projectDateFormat ? "date" : "text"}
                   value={newTaskActualStart}
                   onChange={(e) => setNewTaskActualStart(e.target.value)}
                   placeholder="Optional"
                   data-testid="input-new-task-actual-start"
                 />
               </div>
-              <div className="w-36">
+              <div className="w-40">
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">Actual End</label>
                 <Input
+                  type={projectDateFormat ? "date" : "text"}
                   value={newTaskActualEnd}
                   onChange={(e) => setNewTaskActualEnd(e.target.value)}
                   placeholder="Optional"
@@ -1530,17 +1555,19 @@ export default function TimelineDetail() {
                                 data-testid={`input-edit-milestone-title-${m.id}`}
                               />
                             </div>
-                            <div className="w-36">
+                            <div className="w-40">
                               <Input
-                                value={editMDate}
+                                type={projectDateFormat ? "date" : "text"}
+                                value={projectDateFormat ? parseDateToISO(editMDate, projectDateFormat) : editMDate}
                                 onChange={(e) => setEditMDate(e.target.value)}
                                 placeholder="Planned date"
                                 data-testid={`input-edit-milestone-date-${m.id}`}
                               />
                             </div>
-                            <div className="w-36">
+                            <div className="w-40">
                               <Input
-                                value={editMActualDate}
+                                type={projectDateFormat ? "date" : "text"}
+                                value={projectDateFormat ? parseDateToISO(editMActualDate, projectDateFormat) : editMActualDate}
                                 onChange={(e) => setEditMActualDate(e.target.value)}
                                 placeholder="Actual date"
                                 data-testid={`input-edit-milestone-actual-date-${m.id}`}
