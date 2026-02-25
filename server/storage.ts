@@ -83,6 +83,7 @@ export interface IStorage {
   createProjectTeamMember(data: InsertProjectTeamMember): Promise<ProjectTeamMember>;
   updateProjectTeamMember(id: string, data: Partial<InsertProjectTeamMember>): Promise<ProjectTeamMember | undefined>;
   deleteProjectTeamMember(id: string): Promise<void>;
+  getAllocation(id: string): Promise<Allocation | undefined>;
   getAllocations(teamMemberId: string): Promise<AllocationWithProject[]>;
   getAllocationsByTimeline(timelineId: string): Promise<AllocationWithTeamMember[]>;
   createAllocation(data: InsertAllocation): Promise<Allocation>;
@@ -402,6 +403,11 @@ export class DatabaseStorage implements IStorage {
       }
     }
     return result;
+  }
+
+  async getAllocation(id: string): Promise<Allocation | undefined> {
+    const [row] = await db.select().from(allocations).where(eq(allocations.id, id));
+    return row;
   }
 
   async getAllocationsByTimeline(timelineId: string): Promise<AllocationWithTeamMember[]> {

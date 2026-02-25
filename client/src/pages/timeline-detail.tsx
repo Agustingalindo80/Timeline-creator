@@ -48,7 +48,6 @@ import { useToast } from "@/hooks/use-toast";
 import { TimelineView, TimelineViewHorizontal } from "@/components/timeline-view";
 import { ThemePicker } from "@/components/theme-picker";
 import { RiskRegister } from "@/components/risk-register";
-import { TeamComposition } from "@/components/team-composition";
 import type { TimelineWithMilestones, AppSettings, FieldOption, Client, AllocationWithTeamMember } from "@shared/schema";
 import {
   DEFAULT_TASK_STATUSES,
@@ -1155,26 +1154,9 @@ export default function TimelineDetail() {
               </div>
               <div className="flex items-center gap-2">
                 <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Total Running Cost</label>
-                <div className="flex items-center gap-1">
-                  <span className="text-xs text-muted-foreground">$</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    className="text-xs border rounded px-2 py-1 bg-background w-28"
-                    defaultValue={timeline.totalRunningCost ?? ""}
-                    key={`cost-${timeline.totalRunningCost}`}
-                    onBlur={async (e) => {
-                      const val = e.target.value ? e.target.value : null;
-                      if (val !== (timeline.totalRunningCost ?? null)) {
-                        await apiRequest("PATCH", `/api/timelines/${id}`, { totalRunningCost: val });
-                        queryClient.invalidateQueries({ queryKey: ["/api/timelines", id] });
-                        queryClient.invalidateQueries({ queryKey: ["/api/timelines"] });
-                      }
-                    }}
-                    data-testid="input-total-running-cost"
-                  />
-                </div>
+                <span className="text-xs font-semibold px-2 py-1" data-testid="text-total-running-cost">
+                  {timeline.totalRunningCost ? `$${parseFloat(timeline.totalRunningCost).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—"}
+                </span>
               </div>
               <div className="flex items-center gap-2">
                 <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Gross Margin</label>
@@ -1471,9 +1453,6 @@ export default function TimelineDetail() {
             <TabsTrigger value="workstreams" data-testid="tab-workstreams">
               Workstreams ({timeline.tasks.filter((t) => t.itemType === "workstream").length})
             </TabsTrigger>
-            <TabsTrigger value="team" data-testid="tab-team">
-              Team
-            </TabsTrigger>
             <TabsTrigger value="team-members" data-testid="tab-team-members">
               Team Members
             </TabsTrigger>
@@ -1640,10 +1619,6 @@ export default function TimelineDetail() {
                   .map((t) => renderTaskCard(t, timeline))
               )}
             </div>
-          </TabsContent>
-
-          <TabsContent value="team">
-            <TeamComposition timelineId={timeline.id} />
           </TabsContent>
 
           <TabsContent value="team-members">

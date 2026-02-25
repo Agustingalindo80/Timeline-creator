@@ -112,8 +112,8 @@ A visual project planning tool that supports two input methods:
 - Client: first-class entity with own table, demographics (name, industry, contact, phone, website, address, notes, status), linked to projects via clientId FK; editable on project detail page and projects list; client detail page shows projects tab
 - Project Status: configurable field (Not Started / In Progress / Completed by default), editable on detail page and project list, shown as badge; options managed from Settings > Field Options
 - Approved Budget: currency field (numeric with $ prefix), editable inline on detail page and project list
-- Total Running Cost: currency field (numeric with $ prefix), editable inline on detail page and project list
-- Gross Margin: auto-calculated as ((Budget - Cost) / Budget) × 100; read-only color-coded display (green ≥30%, amber ≥15%, red <15%); recalculated on save
+- Total Running Cost: auto-calculated from team member allocations; Fixed Bid uses monthlyCost × months, T&M/other uses hourlyCost × weeklyHours × weeks; only active allocations with both start/end dates are included; read-only display on detail page and project list
+- Gross Margin: auto-calculated as ((Budget - Cost) / Budget) × 100; read-only color-coded display (green ≥30%, amber ≥15%, red <15%); recalculated when budget or allocations change
 - Project Health: 4 health fields per project (Overall, Scope, Budget, Team Composition)
   - Uses same options as Task Health (Green/Amber/Red by default)
   - Displayed as colored dots on project list cards
@@ -138,13 +138,10 @@ A visual project planning tool that supports two input methods:
   - Fields: title, description, category, owner, probability (Low/Medium/High/Very High), impact, mitigation, contingency, status (Open/Mitigated/Closed/Accepted), dueDate
   - Risk score = probability × impact (1-16 scale)
   - Expandable cards with edit/delete
-- Team Composition: tab on project detail page for managing team assignments
-  - Assign team members (from Settings) to projects
-  - Monthly Cost and Hourly Cost fields per assignment (for fixed-fee project cost calculation)
-  - Rate Card association (optional, from Settings rate cards)
-  - Allocation percentage per team member
-  - Start/End date per assignment
-  - Total Monthly Cost and Total Hourly Cost summary (weighted by allocation)
+- Team Members (Project tab): shows team members with active allocations to the project
+  - Displays name (linked to detail), role, department, hours/week, start/end dates, status, notes
+  - Summary with count and total weekly hours
+  - Empty state links to Team Members page
 - Region: configurable field (US / LATAM / Caribe by default), editable on detail page and project list; options managed from Settings > Field Options > Global
 - Team Members: managed from Settings > Team Members tab
   - Fields: name, email, role (dropdown from configurable roles), department, monthly cost ($), hourly cost ($)

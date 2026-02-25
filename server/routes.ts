@@ -7,6 +7,54 @@ import { storage } from "./storage";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
+async function recalcTotalRunningCost(timelineId: string) {
+  const timeline = await storage.getTimeline(timelineId);
+  if (!timeline) return;
+
+  const allocs = await storage.getAllocationsByTimeline(timelineId);
+  const activeAllocs = allocs.filter(a => a.status === "active");
+
+  let totalCost = 0;
+
+  for (const a of activeAllocs) {
+    const member = a.teamMember;
+    const start = a.startDate ? new Date(a.startDate) : null;
+    const end = a.endDate ? new Date(a.endDate) : null;
+
+    if (!start || !end || isNaN(start.getTime()) || isNaN(end.getTime())) continue;
+
+    const diffMs = end.getTime() - start.getTime();
+    if (diffMs <= 0) continue;
+
+    const diffDays = diffMs / (1000 * 60 * 60 * 24);
+
+    if (timeline.engagementModel === "fixed_bid") {
+      const monthlyCost = parseFloat(member.monthlyCost ?? "0") || 0;
+      const months = diffDays / 30.44;
+      totalCost += monthlyCost * months;
+    } else {
+      const hourlyCost = parseFloat(member.hourlyCost ?? "0") || 0;
+      const weeklyHours = parseFloat(a.weeklyHours ?? "0") || 0;
+      const weeks = diffDays / 7;
+      totalCost += hourlyCost * weeklyHours * weeks;
+    }
+  }
+
+  const costStr = totalCost > 0 ? totalCost.toFixed(2) : null;
+  const budget = parseFloat(timeline.approvedBudget ?? "0") || 0;
+  let grossMargin: string | null = null;
+  if (budget > 0 && totalCost > 0) {
+    grossMargin = (((budget - totalCost) / budget) * 100).toFixed(2);
+  } else if (budget > 0) {
+    grossMargin = "100.00";
+  }
+
+  await storage.updateTimeline(timelineId, {
+    totalRunningCost: costStr,
+    grossMargin,
+  });
+}
+
 const MONTHS: Record<string, number> = {
   jan: 0, january: 0, feb: 1, february: 1, mar: 2, march: 2,
   apr: 3, april: 3, may: 4, jun: 5, june: 5, jul: 6, july: 6,
@@ -272,6 +320,13 @@ export async function registerRoutes(
 
       const timeline = await storage.updateTimeline(req.params.id, updates);
       if (!timeline) return res.status(404).json({ message: "Timeline not found" });
+
+      if (updates.engagementModel !== undefined) {
+        await recalcTotalRunningCost(req.params.id);
+        const refreshed = await storage.getTimeline(req.params.id);
+        if (refreshed) return res.json(refreshed);
+      }
+
       res.json(timeline);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -731,6 +786,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: "timelineId is required" });
       }
       const allocation = await storage.createAllocation(data);
+      await recalcTotalRunningCost(data.timelineId);
       res.json(allocation);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -740,6 +796,9 @@ export async function registerRoutes(
   // UPDATE allocation
   app.patch("/api/allocations/:id", async (req, res) => {
     try {
+      const existing = await storage.getAllocation(req.params.id);
+      if (!existing) return res.status(404).json({ message: "Allocation not found" });
+
       const updates: any = {};
       if (req.body.timelineId !== undefined) updates.timelineId = req.body.timelineId;
       if (req.body.weeklyHours !== undefined) updates.weeklyHours = req.body.weeklyHours;
@@ -749,6 +808,11 @@ export async function registerRoutes(
       if (req.body.notes !== undefined) updates.notes = req.body.notes;
       const allocation = await storage.updateAllocation(req.params.id, updates);
       if (!allocation) return res.status(404).json({ message: "Allocation not found" });
+
+      await recalcTotalRunningCost(allocation.timelineId);
+      if (existing.timelineId !== allocation.timelineId) {
+        await recalcTotalRunningCost(existing.timelineId);
+      }
       res.json(allocation);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -758,7 +822,11 @@ export async function registerRoutes(
   // DELETE allocation
   app.delete("/api/allocations/:id", async (req, res) => {
     try {
+      const existing = await storage.getAllocation(req.params.id);
       await storage.deleteAllocation(req.params.id);
+      if (existing) {
+        await recalcTotalRunningCost(existing.timelineId);
+      }
       res.json({ success: true });
     } catch (err: any) {
       res.status(500).json({ message: err.message });
