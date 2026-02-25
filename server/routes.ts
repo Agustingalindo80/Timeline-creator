@@ -695,6 +695,16 @@ export async function registerRoutes(
     }
   });
 
+  // GET allocations for a timeline/project (with team member details)
+  app.get("/api/timelines/:id/allocations", async (req, res) => {
+    try {
+      const allocs = await storage.getAllocationsByTimeline(req.params.id);
+      res.json(allocs);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // GET allocations for a team member
   app.get("/api/team-members/:id/allocations", async (req, res) => {
     try {

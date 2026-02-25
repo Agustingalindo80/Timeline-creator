@@ -71,6 +71,7 @@ A visual project planning tool that supports two input methods:
 - POST /api/timelines/:id/risks - Add risk
 - PATCH /api/risks/:id - Update risk
 - DELETE /api/risks/:id - Delete risk
+- GET /api/timelines/:id/allocations - Get allocations for project (with team member details)
 - GET /api/team-members - List all team members
 - GET /api/team-members/:id - Get single team member
 - POST /api/team-members - Create team member

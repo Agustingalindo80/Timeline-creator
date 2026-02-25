@@ -286,6 +286,7 @@ export type ProjectTeamMember = typeof projectTeamMembers.$inferSelect;
 export type InsertAllocation = z.infer<typeof insertAllocationSchema>;
 export type Allocation = typeof allocations.$inferSelect;
 export type AllocationWithProject = Allocation & { project: Timeline };
+export type AllocationWithTeamMember = Allocation & { teamMember: TeamMember };
 export type AppSettings = typeof appSettings.$inferSelect;
 
 export type ProjectTeamMemberWithDetails = ProjectTeamMember & { teamMember: TeamMember; rateCard: RateCard | null };

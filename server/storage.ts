@@ -34,6 +34,7 @@ import {
   type Allocation,
   type InsertAllocation,
   type AllocationWithProject,
+  type AllocationWithTeamMember,
   type AppSettings,
   type TimelineWithMilestones,
   type ClientWithProjects,
@@ -83,6 +84,7 @@ export interface IStorage {
   updateProjectTeamMember(id: string, data: Partial<InsertProjectTeamMember>): Promise<ProjectTeamMember | undefined>;
   deleteProjectTeamMember(id: string): Promise<void>;
   getAllocations(teamMemberId: string): Promise<AllocationWithProject[]>;
+  getAllocationsByTimeline(timelineId: string): Promise<AllocationWithTeamMember[]>;
   createAllocation(data: InsertAllocation): Promise<Allocation>;
   updateAllocation(id: string, data: Partial<InsertAllocation>): Promise<Allocation | undefined>;
   deleteAllocation(id: string): Promise<void>;
@@ -397,6 +399,21 @@ export class DatabaseStorage implements IStorage {
       const [project] = await db.select().from(timelines).where(eq(timelines.id, row.timelineId));
       if (project) {
         result.push({ ...row, project });
+      }
+    }
+    return result;
+  }
+
+  async getAllocationsByTimeline(timelineId: string): Promise<AllocationWithTeamMember[]> {
+    const rows = await db
+      .select()
+      .from(allocations)
+      .where(eq(allocations.timelineId, timelineId));
+    const result: AllocationWithTeamMember[] = [];
+    for (const row of rows) {
+      const [member] = await db.select().from(teamMembers).where(eq(teamMembers.id, row.teamMemberId));
+      if (member) {
+        result.push({ ...row, teamMember: member });
       }
     }
     return result;
