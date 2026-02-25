@@ -87,14 +87,14 @@ A visual project planning tool that supports two input methods:
 ## Database
 - clients: id, name, industry, contactPhone, website, address, notes, status
 - contacts: id, clientId (FK to clients), firstName, lastName, email, phone, role, isLegalRepresentative
-- timelines: id, title, description, color, healthOverall, scopeHealth, budgetHealth, teamHealth, projectType, engagementModel, projectStatus, client (legacy), clientId (FK to clients), approvedBudget, totalRunningCost, grossMargin
+- timelines: id, title, description, color, healthOverall, scopeHealth, budgetHealth, teamHealth, projectType, engagementModel, projectStatus, region, client (legacy), clientId (FK to clients), approvedBudget, totalRunningCost, grossMargin
 - milestones: id, timelineId, title, description, date, actualDate, color, icon, sortOrder
 - tasks: id, timelineId, title, description, startDate, endDate, actualStartDate, actualEndDate, percentComplete, color, sortOrder, status, health, itemType, parentTaskId
 - risks: id, timelineId, title, description, category, owner, probability, impact, mitigation, contingency, status, dueDate, sortOrder
-- team_members: id, name, email, role, department
-- rate_cards: id, name, costRate, billRate
+- team_members: id, name, email, role, department, monthlyCost, hourlyCost
+- rate_cards: id, name, role, region, costRate, billRate
 - project_team_members: id, timelineId (FK to timelines), teamMemberId (FK to team_members), rateCardId (FK to rate_cards), monthlyCost, hourlyCost, allocation, startDate, endDate
-- app_settings: id, riskRegisterEnabled, taskStatuses, taskHealthOptions, taskItemTypes, riskProbabilities, riskImpacts, riskStatuses, projectTypes, engagementModels, projectStatuses, clients
+- app_settings: id, riskRegisterEnabled, taskStatuses, taskHealthOptions, taskItemTypes, riskProbabilities, riskImpacts, riskStatuses, projectTypes, engagementModels, projectStatuses, teamMemberRoles, regions, clients
 
 ## Features
 - Project Type: classification field (Billable / Non-Billable by default), editable on detail page, shown as badge on project list
@@ -135,22 +135,26 @@ A visual project planning tool that supports two input methods:
   - Allocation percentage per team member
   - Start/End date per assignment
   - Total Monthly Cost and Total Hourly Cost summary (weighted by allocation)
+- Region: configurable field (US / LATAM / Caribe by default), editable on detail page and project list; options managed from Settings > Field Options > Global
 - Team Members: managed from Settings > Team Members tab
-  - Fields: name, email, role, department
+  - Fields: name, email, role (dropdown from configurable roles), department, monthly cost ($), hourly cost ($)
+  - Role uses same configurable dropdown as Rate Cards (Salesforce implementation roles)
   - CRUD with inline edit
-- Rate Cards: managed from Settings > Rate Cards tab
-  - Fields: name, cost rate ($/hr), bill rate ($/hr)
+- Rate Cards: regional rate cards managed from Settings > Rate Cards tab
+  - Fields: name, role (dropdown from configurable roles), region (dropdown from configurable regions), cost rate ($/hr), bill rate ($/hr)
+  - Role and Region use same configurable dropdowns from Global settings
   - Shows margin percentage when both rates set
   - CRUD with inline edit
 - Settings: /admin page reorganized into tabs (General, Team Members, Rate Cards, Field Options)
   - General: feature toggles (Risk Register on/off)
-  - Team Members: manage team member records
-  - Rate Cards: manage cost/bill rate templates
+  - Team Members: manage team member records with costs
+  - Rate Cards: manage regional cost/bill rate templates
   - Field Options: customizable dropdown values for all list-based fields
-    - Industry (configurable list for clients)
-    - Contact Role (configurable list for contacts)
-    - Task Status, Task Health, Task Item Type
-    - Risk Probability, Risk Impact, Risk Status
-    - Project Type, Engagement Model, Client
+    - Global: Health, Roles (Salesforce implementation roles), Regions
+    - Projects: Project Status, Project Type, Engagement Model
+    - Clients: Industry
+    - Contacts: Contact Role
+    - Tasks: Task Status, Task Item Type
+    - Risks: Risk Probability, Risk Impact, Risk Status
     - Each field supports add, remove, rename, reorder, and reset to defaults
     - Stored as JSONB in app_settings table; falls back to defaults when null

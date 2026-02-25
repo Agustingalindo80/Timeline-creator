@@ -251,7 +251,7 @@ export async function registerRoutes(
       const timelineFields = [
         "title", "description", "color", "healthOverall", "scopeHealth", "budgetHealth",
         "teamHealth", "projectType", "engagementModel", "client", "clientId",
-        "approvedBudget", "totalRunningCost", "grossMargin", "projectStatus",
+        "approvedBudget", "totalRunningCost", "grossMargin", "projectStatus", "region",
       ];
       for (const field of timelineFields) {
         if (req.body[field] !== undefined) updates[field] = req.body[field];
@@ -529,13 +529,15 @@ export async function registerRoutes(
 
   app.post("/api/team-members", async (req, res) => {
     try {
-      const { name, email, role, department } = req.body;
+      const { name, email, role, department, monthlyCost, hourlyCost } = req.body;
       if (!name?.trim()) return res.status(400).json({ message: "Name is required" });
       const member = await storage.createTeamMember({
         name: name.trim(),
         email: email || null,
         role: role || null,
         department: department || null,
+        monthlyCost: monthlyCost || null,
+        hourlyCost: hourlyCost || null,
       });
       res.status(201).json(member);
     } catch (err: any) {
@@ -545,12 +547,14 @@ export async function registerRoutes(
 
   app.patch("/api/team-members/:id", async (req, res) => {
     try {
-      const { name, email, role, department } = req.body;
+      const { name, email, role, department, monthlyCost, hourlyCost } = req.body;
       const updates: any = {};
       if (name !== undefined) updates.name = name;
       if (email !== undefined) updates.email = email;
       if (role !== undefined) updates.role = role;
       if (department !== undefined) updates.department = department;
+      if (monthlyCost !== undefined) updates.monthlyCost = monthlyCost;
+      if (hourlyCost !== undefined) updates.hourlyCost = hourlyCost;
       const member = await storage.updateTeamMember(req.params.id, updates);
       if (!member) return res.status(404).json({ message: "Team member not found" });
       res.json(member);
@@ -581,10 +585,12 @@ export async function registerRoutes(
 
   app.post("/api/rate-cards", async (req, res) => {
     try {
-      const { name, costRate, billRate } = req.body;
+      const { name, role, region, costRate, billRate } = req.body;
       if (!name?.trim()) return res.status(400).json({ message: "Name is required" });
       const card = await storage.createRateCard({
         name: name.trim(),
+        role: role || null,
+        region: region || null,
         costRate: costRate || null,
         billRate: billRate || null,
       });
@@ -596,9 +602,11 @@ export async function registerRoutes(
 
   app.patch("/api/rate-cards/:id", async (req, res) => {
     try {
-      const { name, costRate, billRate } = req.body;
+      const { name, role, region, costRate, billRate } = req.body;
       const updates: any = {};
       if (name !== undefined) updates.name = name;
+      if (role !== undefined) updates.role = role;
+      if (region !== undefined) updates.region = region;
       if (costRate !== undefined) updates.costRate = costRate;
       if (billRate !== undefined) updates.billRate = billRate;
       const card = await storage.updateRateCard(req.params.id, updates);
@@ -695,6 +703,7 @@ export async function registerRoutes(
         "riskRegisterEnabled", "taskStatuses", "taskHealthOptions", "taskItemTypes",
         "riskProbabilities", "riskImpacts", "riskStatuses", "projectTypes",
         "engagementModels", "clients", "contactRoles", "industries", "projectStatuses",
+        "teamMemberRoles", "regions",
       ];
       for (const field of fields) {
         if (req.body[field] !== undefined) updates[field] = req.body[field];

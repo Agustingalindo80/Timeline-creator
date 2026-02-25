@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { TimelineWithMilestones, Task, AppSettings, Client } from "@shared/schema";
-import { DEFAULT_TASK_HEALTH, DEFAULT_PROJECT_TYPES, DEFAULT_ENGAGEMENT_MODELS, DEFAULT_PROJECT_STATUSES } from "@shared/schema";
+import { DEFAULT_TASK_HEALTH, DEFAULT_PROJECT_TYPES, DEFAULT_ENGAGEMENT_MODELS, DEFAULT_PROJECT_STATUSES, DEFAULT_REGIONS } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 
 const MONTHS: Record<string, number> = {
@@ -70,6 +70,7 @@ interface RowEdits {
   engagementModel?: string | null;
   projectStatus?: string | null;
   clientId?: string | null;
+  region?: string | null;
   approvedBudget?: string | null;
   totalRunningCost?: string | null;
   healthOverall?: string;
@@ -78,7 +79,7 @@ interface RowEdits {
   teamHealth?: string;
 }
 
-type SortField = "title" | "client" | "projectType" | "engagementModel" | "projectStatus" | "approvedBudget" | "totalRunningCost" | "grossMargin" | "healthOverall" | "scopeHealth" | "budgetHealth" | "teamHealth" | "progress";
+type SortField = "title" | "client" | "projectType" | "engagementModel" | "projectStatus" | "region" | "approvedBudget" | "totalRunningCost" | "grossMargin" | "healthOverall" | "scopeHealth" | "budgetHealth" | "teamHealth" | "progress";
 type SortDir = "asc" | "desc";
 
 interface ColumnFilters {
@@ -86,6 +87,7 @@ interface ColumnFilters {
   projectType?: string;
   engagementModel?: string;
   projectStatus?: string;
+  region?: string;
   healthOverall?: string;
   scopeHealth?: string;
   budgetHealth?: string;
@@ -119,6 +121,7 @@ export default function Home() {
   const projectTypeOptions = settings?.projectTypes || DEFAULT_PROJECT_TYPES;
   const engagementModelOptions = settings?.engagementModels || DEFAULT_ENGAGEMENT_MODELS;
   const projectStatusOptions = settings?.projectStatuses || DEFAULT_PROJECT_STATUSES;
+  const regionOptions = settings?.regions || DEFAULT_REGIONS;
 
   const getClientName = useCallback((clientId: string | null | undefined): string => {
     if (!clientId || !clientsList) return "";
@@ -142,6 +145,7 @@ export default function Home() {
       if (columnFilters.projectType && (t.projectType || "") !== columnFilters.projectType) return false;
       if (columnFilters.engagementModel && (t.engagementModel || "") !== columnFilters.engagementModel) return false;
       if (columnFilters.projectStatus && (t.projectStatus || "not_started") !== columnFilters.projectStatus) return false;
+      if (columnFilters.region && (t.region || "") !== columnFilters.region) return false;
       if (columnFilters.healthOverall && (t.healthOverall || "green") !== columnFilters.healthOverall) return false;
       if (columnFilters.scopeHealth && (t.scopeHealth || "green") !== columnFilters.scopeHealth) return false;
       if (columnFilters.budgetHealth && (t.budgetHealth || "green") !== columnFilters.budgetHealth) return false;
@@ -186,6 +190,13 @@ export default function Home() {
             bVal = bLabel2.toLowerCase();
             break;
           }
+          case "region": {
+            const aRegion = a.region ? (regionOptions.find((o) => o.value === a.region)?.label || a.region) : "";
+            const bRegion = b.region ? (regionOptions.find((o) => o.value === b.region)?.label || b.region) : "";
+            aVal = aRegion.toLowerCase();
+            bVal = bRegion.toLowerCase();
+            break;
+          }
           case "approvedBudget":
             aVal = a.approvedBudget ? parseFloat(a.approvedBudget) : -1;
             bVal = b.approvedBudget ? parseFloat(b.approvedBudget) : -1;
@@ -223,7 +234,7 @@ export default function Home() {
     }
 
     return result;
-  }, [timelines, searchQuery, columnFilters, sortField, sortDir, getClientName, projectTypeOptions, engagementModelOptions, projectStatusOptions]);
+  }, [timelines, searchQuery, columnFilters, sortField, sortDir, getClientName, projectTypeOptions, engagementModelOptions, projectStatusOptions, regionOptions]);
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -491,6 +502,7 @@ export default function Home() {
                   <SortHeader field="title" label="Project Name" />
                   <SortHeader field="client" label="Client" />
                   <SortHeader field="projectStatus" label="Status" />
+                  <SortHeader field="region" label="Region" />
                   <SortHeader field="projectType" label="Project Type" />
                   <SortHeader field="engagementModel" label="Engagement Model" />
                   <SortHeader field="approvedBudget" label="Budget" />
@@ -528,6 +540,19 @@ export default function Home() {
                       >
                         <option value="">All</option>
                         {projectStatusOptions.map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </th>
+                    <th className="px-3 py-1.5">
+                      <select
+                        className={filterSelectClass}
+                        value={columnFilters.region || ""}
+                        onChange={(e) => setFilter("region", e.target.value)}
+                        data-testid="filter-region"
+                      >
+                        <option value="">All</option>
+                        {regionOptions.map((opt) => (
                           <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
                       </select>
@@ -671,6 +696,20 @@ export default function Home() {
                           data-testid={`select-project-status-${timeline.id}`}
                         >
                           {projectStatusOptions.map((opt) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                      </td>
+
+                      <td className="px-3 py-1.5">
+                        <select
+                          className={selectClass}
+                          value={getVal(timeline, "region")}
+                          onChange={(e) => updateField(timeline.id, "region", e.target.value || null, timeline)}
+                          data-testid={`select-region-${timeline.id}`}
+                        >
+                          <option value="">—</option>
+                          {regionOptions.map((opt) => (
                             <option key={opt.value} value={opt.value}>{opt.label}</option>
                           ))}
                         </select>

@@ -31,8 +31,11 @@ import {
   DEFAULT_RISK_STATUSES,
   DEFAULT_PROJECT_TYPES,
   DEFAULT_ENGAGEMENT_MODELS,
+  DEFAULT_PROJECT_STATUSES,
   DEFAULT_CONTACT_ROLES,
   DEFAULT_INDUSTRIES,
+  DEFAULT_TEAM_MEMBER_ROLES,
+  DEFAULT_REGIONS,
 } from "@shared/schema";
 
 interface FieldOptionEditorProps {
@@ -284,15 +287,24 @@ function TeamMembersManager() {
   const [newEmail, setNewEmail] = useState("");
   const [newRole, setNewRole] = useState("");
   const [newDept, setNewDept] = useState("");
+  const [newMonthlyCost, setNewMonthlyCost] = useState("");
+  const [newHourlyCost, setNewHourlyCost] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editRole, setEditRole] = useState("");
   const [editDept, setEditDept] = useState("");
+  const [editMonthlyCost, setEditMonthlyCost] = useState("");
+  const [editHourlyCost, setEditHourlyCost] = useState("");
 
   const { data: members = [], isLoading } = useQuery<TeamMember[]>({
     queryKey: ["/api/team-members"],
   });
+
+  const { data: settings } = useQuery<AppSettings>({
+    queryKey: ["/api/settings"],
+  });
+  const roleOptions = settings?.teamMemberRoles || DEFAULT_TEAM_MEMBER_ROLES;
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -301,7 +313,7 @@ function TeamMembersManager() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/team-members"] });
       toast({ title: "Team member created" });
-      setNewName(""); setNewEmail(""); setNewRole(""); setNewDept("");
+      setNewName(""); setNewEmail(""); setNewRole(""); setNewDept(""); setNewMonthlyCost(""); setNewHourlyCost("");
       setShowAdd(false);
     },
   });
@@ -333,6 +345,8 @@ function TeamMembersManager() {
     setEditEmail(m.email || "");
     setEditRole(m.role || "");
     setEditDept(m.department || "");
+    setEditMonthlyCost(m.monthlyCost ?? "");
+    setEditHourlyCost(m.hourlyCost ?? "");
   };
 
   if (isLoading) return <Skeleton className="h-32 w-full" />;
@@ -357,7 +371,7 @@ function TeamMembersManager() {
 
       {showAdd && (
         <Card className="p-4" data-testid="form-add-team-member">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Name *</label>
               <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Full name" data-testid="input-new-member-name" />
@@ -368,18 +382,29 @@ function TeamMembersManager() {
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Role</label>
-              <Input value={newRole} onChange={e => setNewRole(e.target.value)} placeholder="e.g. Developer" data-testid="input-new-member-role" />
+              <select className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm" value={newRole} onChange={e => setNewRole(e.target.value)} data-testid="select-new-member-role">
+                <option value="">Select role...</option>
+                {roleOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+              </select>
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Department</label>
               <Input value={newDept} onChange={e => setNewDept(e.target.value)} placeholder="e.g. Engineering" data-testid="input-new-member-dept" />
             </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Monthly Cost ($)</label>
+              <Input type="number" step="0.01" min="0" value={newMonthlyCost} onChange={e => setNewMonthlyCost(e.target.value)} placeholder="0.00" data-testid="input-new-member-monthly-cost" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Hourly Cost ($)</label>
+              <Input type="number" step="0.01" min="0" value={newHourlyCost} onChange={e => setNewHourlyCost(e.target.value)} placeholder="0.00" data-testid="input-new-member-hourly-cost" />
+            </div>
           </div>
           <div className="flex gap-2 mt-3 justify-end">
-            <Button variant="ghost" size="sm" onClick={() => { setShowAdd(false); setNewName(""); setNewEmail(""); setNewRole(""); setNewDept(""); }} data-testid="button-cancel-add-member">
+            <Button variant="ghost" size="sm" onClick={() => { setShowAdd(false); setNewName(""); setNewEmail(""); setNewRole(""); setNewDept(""); setNewMonthlyCost(""); setNewHourlyCost(""); }} data-testid="button-cancel-add-member">
               Cancel
             </Button>
-            <Button size="sm" onClick={() => createMutation.mutate({ name: newName, email: newEmail || null, role: newRole || null, department: newDept || null })} disabled={!newName.trim() || createMutation.isPending} data-testid="button-save-new-member">
+            <Button size="sm" onClick={() => createMutation.mutate({ name: newName, email: newEmail || null, role: newRole || null, department: newDept || null, monthlyCost: newMonthlyCost || null, hourlyCost: newHourlyCost || null })} disabled={!newName.trim() || createMutation.isPending} data-testid="button-save-new-member">
               {createMutation.isPending ? "Creating..." : "Create"}
             </Button>
           </div>
@@ -396,7 +421,7 @@ function TeamMembersManager() {
             <Card key={m.id} className="p-3" data-testid={`team-member-${m.id}`}>
               {editingId === m.id ? (
                 <div className="space-y-3">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     <div>
                       <label className="text-xs font-medium text-muted-foreground mb-1 block">Name *</label>
                       <Input value={editName} onChange={e => setEditName(e.target.value)} data-testid={`input-edit-member-name-${m.id}`} />
@@ -407,16 +432,27 @@ function TeamMembersManager() {
                     </div>
                     <div>
                       <label className="text-xs font-medium text-muted-foreground mb-1 block">Role</label>
-                      <Input value={editRole} onChange={e => setEditRole(e.target.value)} data-testid={`input-edit-member-role-${m.id}`} />
+                      <select className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm" value={editRole} onChange={e => setEditRole(e.target.value)} data-testid={`select-edit-member-role-${m.id}`}>
+                        <option value="">Select role...</option>
+                        {roleOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                      </select>
                     </div>
                     <div>
                       <label className="text-xs font-medium text-muted-foreground mb-1 block">Department</label>
                       <Input value={editDept} onChange={e => setEditDept(e.target.value)} data-testid={`input-edit-member-dept-${m.id}`} />
                     </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Monthly Cost ($)</label>
+                      <Input type="number" step="0.01" min="0" value={editMonthlyCost} onChange={e => setEditMonthlyCost(e.target.value)} data-testid={`input-edit-member-monthly-cost-${m.id}`} />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Hourly Cost ($)</label>
+                      <Input type="number" step="0.01" min="0" value={editHourlyCost} onChange={e => setEditHourlyCost(e.target.value)} data-testid={`input-edit-member-hourly-cost-${m.id}`} />
+                    </div>
                   </div>
                   <div className="flex gap-2 justify-end">
                     <Button variant="ghost" size="sm" onClick={() => setEditingId(null)} data-testid={`button-cancel-edit-member-${m.id}`}>Cancel</Button>
-                    <Button size="sm" onClick={() => updateMutation.mutate({ id: m.id, data: { name: editName, email: editEmail || null, role: editRole || null, department: editDept || null } })} disabled={!editName.trim() || updateMutation.isPending} data-testid={`button-save-edit-member-${m.id}`}>
+                    <Button size="sm" onClick={() => updateMutation.mutate({ id: m.id, data: { name: editName, email: editEmail || null, role: editRole || null, department: editDept || null, monthlyCost: editMonthlyCost || null, hourlyCost: editHourlyCost || null } })} disabled={!editName.trim() || updateMutation.isPending} data-testid={`button-save-edit-member-${m.id}`}>
                       <Save className="w-3.5 h-3.5 mr-1" />
                       {updateMutation.isPending ? "Saving..." : "Save"}
                     </Button>
@@ -431,9 +467,11 @@ function TeamMembersManager() {
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate" data-testid={`text-member-name-${m.id}`}>{m.name}</p>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        {m.role && <span>{m.role}</span>}
+                        {m.role && <span>{roleOptions.find(r => r.value === m.role)?.label || m.role}</span>}
                         {m.department && <span>· {m.department}</span>}
                         {m.email && <span>· {m.email}</span>}
+                        {m.monthlyCost && <span>· ${parseFloat(m.monthlyCost).toFixed(2)}/mo</span>}
+                        {m.hourlyCost && <span>· ${parseFloat(m.hourlyCost).toFixed(2)}/hr</span>}
                       </div>
                     </div>
                   </div>
@@ -477,16 +515,26 @@ function RateCardsManager() {
   const { toast } = useToast();
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState("");
+  const [newRole, setNewRole] = useState("");
+  const [newRegion, setNewRegion] = useState("");
   const [newCostRate, setNewCostRate] = useState("");
   const [newBillRate, setNewBillRate] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
+  const [editRole, setEditRole] = useState("");
+  const [editRegion, setEditRegion] = useState("");
   const [editCostRate, setEditCostRate] = useState("");
   const [editBillRate, setEditBillRate] = useState("");
 
   const { data: cards = [], isLoading } = useQuery<RateCard[]>({
     queryKey: ["/api/rate-cards"],
   });
+
+  const { data: settings } = useQuery<AppSettings>({
+    queryKey: ["/api/settings"],
+  });
+  const roleOptions = settings?.teamMemberRoles || DEFAULT_TEAM_MEMBER_ROLES;
+  const regionOptions = settings?.regions || DEFAULT_REGIONS;
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -495,7 +543,7 @@ function RateCardsManager() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/rate-cards"] });
       toast({ title: "Rate card created" });
-      setNewName(""); setNewCostRate(""); setNewBillRate("");
+      setNewName(""); setNewRole(""); setNewRegion(""); setNewCostRate(""); setNewBillRate("");
       setShowAdd(false);
     },
   });
@@ -524,6 +572,8 @@ function RateCardsManager() {
   const startEditing = (c: RateCard) => {
     setEditingId(c.id);
     setEditName(c.name);
+    setEditRole(c.role || "");
+    setEditRegion(c.region || "");
     setEditCostRate(c.costRate ?? "");
     setEditBillRate(c.billRate ?? "");
   };
@@ -550,10 +600,24 @@ function RateCardsManager() {
 
       {showAdd && (
         <Card className="p-4" data-testid="form-add-rate-card">
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Name *</label>
-              <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="e.g. Senior Developer" data-testid="input-new-card-name" />
+              <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="e.g. US Senior Developer" data-testid="input-new-card-name" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Role</label>
+              <select className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm" value={newRole} onChange={e => setNewRole(e.target.value)} data-testid="select-new-card-role">
+                <option value="">Select role...</option>
+                {roleOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Region</label>
+              <select className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm" value={newRegion} onChange={e => setNewRegion(e.target.value)} data-testid="select-new-card-region">
+                <option value="">Select region...</option>
+                {regionOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+              </select>
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Cost Rate ($/hr)</label>
@@ -565,10 +629,10 @@ function RateCardsManager() {
             </div>
           </div>
           <div className="flex gap-2 mt-3 justify-end">
-            <Button variant="ghost" size="sm" onClick={() => { setShowAdd(false); setNewName(""); setNewCostRate(""); setNewBillRate(""); }} data-testid="button-cancel-add-card">
+            <Button variant="ghost" size="sm" onClick={() => { setShowAdd(false); setNewName(""); setNewRole(""); setNewRegion(""); setNewCostRate(""); setNewBillRate(""); }} data-testid="button-cancel-add-card">
               Cancel
             </Button>
-            <Button size="sm" onClick={() => createMutation.mutate({ name: newName, costRate: newCostRate || null, billRate: newBillRate || null })} disabled={!newName.trim() || createMutation.isPending} data-testid="button-save-new-card">
+            <Button size="sm" onClick={() => createMutation.mutate({ name: newName, role: newRole || null, region: newRegion || null, costRate: newCostRate || null, billRate: newBillRate || null })} disabled={!newName.trim() || createMutation.isPending} data-testid="button-save-new-card">
               {createMutation.isPending ? "Creating..." : "Create"}
             </Button>
           </div>
@@ -585,10 +649,24 @@ function RateCardsManager() {
             <Card key={c.id} className="p-3" data-testid={`rate-card-${c.id}`}>
               {editingId === c.id ? (
                 <div className="space-y-3">
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     <div>
                       <label className="text-xs font-medium text-muted-foreground mb-1 block">Name *</label>
                       <Input value={editName} onChange={e => setEditName(e.target.value)} data-testid={`input-edit-card-name-${c.id}`} />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Role</label>
+                      <select className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm" value={editRole} onChange={e => setEditRole(e.target.value)} data-testid={`select-edit-card-role-${c.id}`}>
+                        <option value="">Select role...</option>
+                        {roleOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Region</label>
+                      <select className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm" value={editRegion} onChange={e => setEditRegion(e.target.value)} data-testid={`select-edit-card-region-${c.id}`}>
+                        <option value="">Select region...</option>
+                        {regionOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                      </select>
                     </div>
                     <div>
                       <label className="text-xs font-medium text-muted-foreground mb-1 block">Cost Rate ($/hr)</label>
@@ -601,7 +679,7 @@ function RateCardsManager() {
                   </div>
                   <div className="flex gap-2 justify-end">
                     <Button variant="ghost" size="sm" onClick={() => setEditingId(null)} data-testid={`button-cancel-edit-card-${c.id}`}>Cancel</Button>
-                    <Button size="sm" onClick={() => updateMutation.mutate({ id: c.id, data: { name: editName, costRate: editCostRate || null, billRate: editBillRate || null } })} disabled={!editName.trim() || updateMutation.isPending} data-testid={`button-save-edit-card-${c.id}`}>
+                    <Button size="sm" onClick={() => updateMutation.mutate({ id: c.id, data: { name: editName, role: editRole || null, region: editRegion || null, costRate: editCostRate || null, billRate: editBillRate || null } })} disabled={!editName.trim() || updateMutation.isPending} data-testid={`button-save-edit-card-${c.id}`}>
                       <Save className="w-3.5 h-3.5 mr-1" />
                       {updateMutation.isPending ? "Saving..." : "Save"}
                     </Button>
@@ -612,6 +690,8 @@ function RateCardsManager() {
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate" data-testid={`text-card-name-${c.id}`}>{c.name}</p>
                     <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      {c.role && <span>{roleOptions.find(r => r.value === c.role)?.label || c.role}</span>}
+                      {c.region && <span className="bg-muted px-1.5 py-0.5 rounded">{regionOptions.find(r => r.value === c.region)?.label || c.region}</span>}
                       {c.costRate && <span>Cost: ${parseFloat(c.costRate).toFixed(2)}/hr</span>}
                       {c.billRate && <span>Bill: ${parseFloat(c.billRate).toFixed(2)}/hr</span>}
                       {c.costRate && c.billRate && (
@@ -691,12 +771,36 @@ export default function Admin() {
           current: settings?.taskHealthOptions || DEFAULT_TASK_HEALTH,
           testId: "task-health",
         },
+        {
+          title: "Roles",
+          description: "Role options for team members and rate cards (Salesforce implementation roles).",
+          key: "teamMemberRoles",
+          defaults: DEFAULT_TEAM_MEMBER_ROLES,
+          current: settings?.teamMemberRoles || DEFAULT_TEAM_MEMBER_ROLES,
+          testId: "team-member-roles",
+        },
+        {
+          title: "Regions",
+          description: "Region options for rate cards and projects.",
+          key: "regions",
+          defaults: DEFAULT_REGIONS,
+          current: settings?.regions || DEFAULT_REGIONS,
+          testId: "regions",
+        },
       ],
     },
     {
       value: "projects",
       label: "Projects",
       fields: [
+        {
+          title: "Project Status",
+          description: "Status options for projects (e.g., Not Started, In Progress, Completed).",
+          key: "projectStatuses",
+          defaults: DEFAULT_PROJECT_STATUSES,
+          current: settings?.projectStatuses || DEFAULT_PROJECT_STATUSES,
+          testId: "project-statuses",
+        },
         {
           title: "Project Type",
           description: "Type classifications for projects (e.g., Billable, Non-Billable).",

@@ -55,6 +55,27 @@ export const DEFAULT_PROJECT_STATUSES: FieldOption[] = [
   { value: "in_progress", label: "In Progress" },
   { value: "completed", label: "Completed" },
 ];
+export const DEFAULT_TEAM_MEMBER_ROLES: FieldOption[] = [
+  { value: "solution_architect", label: "Solution Architect" },
+  { value: "technical_architect", label: "Technical Architect" },
+  { value: "project_manager", label: "Project Manager" },
+  { value: "business_analyst", label: "Business Analyst" },
+  { value: "senior_developer", label: "Senior Developer" },
+  { value: "developer", label: "Developer" },
+  { value: "qa_lead", label: "QA Lead" },
+  { value: "qa_engineer", label: "QA Engineer" },
+  { value: "data_migration_specialist", label: "Data Migration Specialist" },
+  { value: "integration_specialist", label: "Integration Specialist" },
+  { value: "admin_config_specialist", label: "Admin/Configuration Specialist" },
+  { value: "change_management", label: "Change Management" },
+  { value: "training_specialist", label: "Training Specialist" },
+  { value: "release_manager", label: "Release Manager" },
+];
+export const DEFAULT_REGIONS: FieldOption[] = [
+  { value: "us", label: "US" },
+  { value: "latam", label: "LATAM" },
+  { value: "caribe", label: "Caribe" },
+];
 export const DEFAULT_CLIENTS: FieldOption[] = [
   { value: "client_a", label: "Client A" },
   { value: "client_b", label: "Client B" },
@@ -116,6 +137,7 @@ export const timelines = pgTable("timelines", {
   totalRunningCost: numeric("total_running_cost", { precision: 12, scale: 2 }),
   grossMargin: numeric("gross_margin", { precision: 5, scale: 2 }),
   projectStatus: text("project_status").notNull().default("not_started"),
+  region: text("region"),
 });
 
 export const milestones = pgTable("milestones", {
@@ -170,11 +192,15 @@ export const teamMembers = pgTable("team_members", {
   email: text("email"),
   role: text("role"),
   department: text("department"),
+  monthlyCost: numeric("monthly_cost", { precision: 10, scale: 2 }),
+  hourlyCost: numeric("hourly_cost", { precision: 10, scale: 2 }),
 });
 
 export const rateCards = pgTable("rate_cards", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
+  role: text("role"),
+  region: text("region"),
   costRate: numeric("cost_rate", { precision: 10, scale: 2 }),
   billRate: numeric("bill_rate", { precision: 10, scale: 2 }),
 });
@@ -206,6 +232,8 @@ export const appSettings = pgTable("app_settings", {
   contactRoles: jsonb("contact_roles").$type<FieldOption[]>(),
   industries: jsonb("industries").$type<FieldOption[]>(),
   projectStatuses: jsonb("project_statuses").$type<FieldOption[]>(),
+  teamMemberRoles: jsonb("team_member_roles").$type<FieldOption[]>(),
+  regions: jsonb("regions").$type<FieldOption[]>(),
 });
 
 export const insertClientSchema = createInsertSchema(clients).omit({ id: true });

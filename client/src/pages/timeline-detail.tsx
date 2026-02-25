@@ -57,6 +57,7 @@ import {
   DEFAULT_PROJECT_TYPES,
   DEFAULT_ENGAGEMENT_MODELS,
   DEFAULT_PROJECT_STATUSES,
+  DEFAULT_REGIONS,
 } from "@shared/schema";
 
 type ViewMode = "vertical" | "horizontal";
@@ -89,6 +90,7 @@ export default function TimelineDetail() {
   const projectTypes = settings?.projectTypes || DEFAULT_PROJECT_TYPES;
   const engagementModels = settings?.engagementModels || DEFAULT_ENGAGEMENT_MODELS;
   const projectStatuses = settings?.projectStatuses || DEFAULT_PROJECT_STATUSES;
+  const regionOptions = settings?.regions || DEFAULT_REGIONS;
   const { data: clientsList } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
   });
@@ -1007,6 +1009,24 @@ export default function TimelineDetail() {
                   data-testid="select-project-status"
                 >
                   {projectStatuses.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Region</label>
+                <select
+                  className="text-xs border rounded px-2 py-1 bg-background"
+                  value={timeline.region || ""}
+                  onChange={async (e) => {
+                    await apiRequest("PATCH", `/api/timelines/${id}`, { region: e.target.value || null });
+                    queryClient.invalidateQueries({ queryKey: ["/api/timelines", id] });
+                    queryClient.invalidateQueries({ queryKey: ["/api/timelines"] });
+                  }}
+                  data-testid="select-region"
+                >
+                  <option value="">Not set</option>
+                  {regionOptions.map((opt) => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>
