@@ -190,6 +190,17 @@ export default function TimelineDetail() {
     queryKey: ["/api/clients"],
   });
 
+  const { data: projectAllocs = [] } = useQuery<AllocationWithTeamMember[]>({
+    queryKey: ["/api/timelines", id, "allocations"],
+    queryFn: async () => {
+      const res = await fetch(`/api/timelines/${id}/allocations`);
+      if (!res.ok) throw new Error("Failed to fetch allocations");
+      return res.json();
+    },
+    enabled: !!id,
+  });
+  const uniqueTeamMemberCount = new Set(projectAllocs.map(a => a.teamMemberId)).size;
+
   const updateMutation = useMutation({
     mutationFn: async () => {
       await apiRequest("PATCH", `/api/timelines/${id}`, {
@@ -1486,7 +1497,7 @@ export default function TimelineDetail() {
               Workstreams ({timeline.tasks.filter((t) => t.itemType === "workstream").length})
             </TabsTrigger>
             <TabsTrigger value="team-members" data-testid="tab-team-members">
-              Team Members
+              Team Members ({uniqueTeamMemberCount})
             </TabsTrigger>
             {settings?.riskRegisterEnabled && (
               <TabsTrigger value="risks" data-testid="tab-risks">
