@@ -16,31 +16,46 @@ const MONTHS: Record<string, number> = {
 };
 
 function parseDateToNum(dateStr: string): number {
-  const s = dateStr.trim().toLowerCase();
+  const s = dateStr.trim();
+  const low = s.toLowerCase();
 
-  const isoDate = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (isoDate) {
-    return parseInt(isoDate[1]) * 12 + (parseInt(isoDate[2]) - 1) + parseInt(isoDate[3]) / 31;
+  const iso = low.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (iso) {
+    return parseInt(iso[1]) * 12 + (parseInt(iso[2]) - 1) + parseInt(iso[3]) / 31;
   }
 
-  const yearOnly = s.match(/^(\d{4})$/);
+  const slashDate = low.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (slashDate) {
+    const mm = parseInt(slashDate[1]) - 1;
+    const dd = parseInt(slashDate[2]);
+    const yyyy = parseInt(slashDate[3]);
+    return yyyy * 12 + mm + dd / 31;
+  }
+
+  const yearOnly = low.match(/^(\d{4})$/);
   if (yearOnly) return parseInt(yearOnly[1]) * 12;
 
   let month = -1;
   let monthName = "";
   for (const [name, idx] of Object.entries(MONTHS)) {
-    if (s.includes(name) && name.length > monthName.length) {
+    if (low.includes(name) && name.length > monthName.length) {
       month = idx;
       monthName = name;
     }
   }
 
-  if (month === -1) return 999999;
+  if (month === -1) {
+    const d = new Date(s);
+    if (!isNaN(d.getTime())) {
+      return d.getFullYear() * 12 + d.getMonth() + d.getDate() / 31;
+    }
+    return 999999;
+  }
 
-  const yearMatch = s.match(/(\d{4})/);
+  const yearMatch = low.match(/(\d{4})/);
   const year = yearMatch ? parseInt(yearMatch[1]) : 2000;
 
-  const stripped = s.replace(monthName, "").replace(/(\d{4})/, "").replace(/[,\/\-\.]/g, " ").trim();
+  const stripped = low.replace(monthName, "").replace(/(\d{4})/, "").replace(/[,\/\-\.]/g, " ").trim();
   const dayMatch = stripped.match(/(\d{1,2})/);
   const day = dayMatch ? parseInt(dayMatch[1]) : 15;
 
