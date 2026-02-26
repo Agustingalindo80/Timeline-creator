@@ -730,6 +730,11 @@ export async function registerRoutes(
       if (!timelineId || !teamMemberId || !weekEnding || hours === undefined) {
         return res.status(400).json({ message: "timelineId, teamMemberId, weekEnding, and hours are required" });
       }
+      const allAllocations = await storage.getAllocations(teamMemberId);
+      const hasActiveAllocation = allAllocations.some(a => a.timelineId === timelineId && a.status === "active");
+      if (!hasActiveAllocation) {
+        return res.status(403).json({ message: "Team member does not have an active allocation to this project" });
+      }
       const entry = await storage.createTimesheetEntry({
         timelineId,
         teamMemberId,

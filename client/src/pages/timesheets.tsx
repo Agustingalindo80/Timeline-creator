@@ -93,6 +93,19 @@ export default function TimesheetsPage() {
     queryKey: ["/api/timelines"],
   });
 
+  const { data: memberAllocations = [] } = useQuery<{ timelineId: string }[]>({
+    queryKey: ["/api/team-members", selectedTeamMemberId, "allocations"],
+    enabled: !!selectedTeamMemberId,
+  });
+
+  const allocatedProjectIds = useMemo(() => {
+    return new Set(memberAllocations.filter((a: any) => a.status === "active").map(a => a.timelineId));
+  }, [memberAllocations]);
+
+  const allocatedProjects = useMemo(() => {
+    return projects.filter(p => allocatedProjectIds.has(p.id));
+  }, [projects, allocatedProjectIds]);
+
   const { data: entriesRaw = [], isLoading: entriesLoading } = useQuery<TimesheetEntry[]>({
     queryKey: ["/api/timesheets", { teamMemberId: selectedTeamMemberId, weekEnding }],
     enabled: !!selectedTeamMemberId,
@@ -538,9 +551,15 @@ export default function TimesheetsPage() {
                           <SelectValue placeholder="Select project" />
                         </SelectTrigger>
                         <SelectContent>
-                          {projects.map((p) => (
-                            <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>
-                          ))}
+                          {allocatedProjects.length === 0 ? (
+                            <div className="px-2 py-3 text-sm text-muted-foreground text-center" data-testid="text-no-allocated-projects">
+                              No project allocations found for this team member
+                            </div>
+                          ) : (
+                            allocatedProjects.map((p) => (
+                              <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>
+                            ))
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
