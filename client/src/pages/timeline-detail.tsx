@@ -715,17 +715,30 @@ export default function TimelineDetail() {
                 data-testid={`input-edit-task-desc-${t.id}`}
               />
             </div>
-            <div className="flex items-center gap-2 w-44">
+            <div className="flex items-center gap-2 w-56">
               <span className="text-xs text-muted-foreground whitespace-nowrap">% Done</span>
-              <Input
-                type="number"
-                min={0}
-                max={100}
-                value={editTPercent}
-                onChange={(e) => setEditTPercent(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
-                className="w-20"
-                data-testid={`input-edit-task-percent-${t.id}`}
-              />
+              {t.itemType === "phase" && tl.tasks.some((ct) => ct.parentTaskId === t.id) ? (
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    value={editTPercent}
+                    className="w-20 opacity-60"
+                    disabled
+                    data-testid={`input-edit-task-percent-${t.id}`}
+                  />
+                  <span className="text-[10px] text-muted-foreground italic whitespace-nowrap">Auto-calculated</span>
+                </div>
+              ) : (
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={editTPercent}
+                  onChange={(e) => setEditTPercent(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
+                  className="w-20"
+                  data-testid={`input-edit-task-percent-${t.id}`}
+                />
+              )}
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
@@ -830,6 +843,9 @@ export default function TimelineDetail() {
                   t.health === "amber" ? "bg-amber-500" : t.health === "red" ? "bg-red-500" : "bg-green-500"
                 }`} title={taskHealthOptions.find((h) => h.value === t.health)?.label || t.health} />
                 {t.itemType === "phase" && <Badge variant="outline" className="text-xs">{taskItemTypes.find((it) => it.value === "phase")?.label || "Phase"}</Badge>}
+                {t.itemType === "phase" && tl.tasks.some((ct) => ct.parentTaskId === t.id) && (
+                  <span className="text-[10px] text-muted-foreground italic" data-testid={`text-phase-auto-${t.id}`}>Auto-calculated</span>
+                )}
                 {t.parentTaskId && (() => {
                   const parent = tl.tasks.find((pt) => pt.id === t.parentTaskId);
                   return parent ? <Badge variant="outline" className="text-xs text-muted-foreground">↳ {parent.title}</Badge> : null;

@@ -126,6 +126,38 @@ function parseDateToNum(dateStr: string): number {
   return 999999;
 }
 
+async function recalcPhaseProgress(phaseId: string) {
+  const children = await storage.getTasksByParent(phaseId);
+  if (children.length === 0) return;
+
+  let totalWeight = 0;
+  let weightedSum = 0;
+  let anyInProgress = false;
+  let allComplete = true;
+
+  for (const child of children) {
+    const dur = Math.max(1, parseDateToNum(child.endDate) - parseDateToNum(child.startDate));
+    totalWeight += dur;
+    weightedSum += child.percentComplete * dur;
+    if (child.status === "in_progress") anyInProgress = true;
+    if (child.status !== "complete") allComplete = false;
+  }
+
+  const updates: any = {};
+  updates.percentComplete = totalWeight > 0 ? Math.round(weightedSum / totalWeight) : 0;
+
+  const phase = await storage.getTask(phaseId);
+  if (phase) {
+    if (allComplete) {
+      updates.status = "complete";
+    } else if ((anyInProgress || children.some(c => c.status === "complete")) && phase.status === "not_started") {
+      updates.status = "in_progress";
+    }
+  }
+
+  await storage.updateTask(phaseId, updates);
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -574,6 +606,11 @@ export async function registerRoutes(
         itemType: itemType || "workstream",
         parentTaskId: parentTaskId || null,
       });
+
+      if (parentTaskId) {
+        await recalcPhaseProgress(parentTaskId);
+      }
+
       res.status(201).json(task);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -619,6 +656,15 @@ export async function registerRoutes(
 
       const task = await storage.updateTask(req.params.id, updates);
       if (!task) return res.status(404).json({ message: "Task not found" });
+
+      const resolvedParentId = parentTaskId !== undefined ? parentTaskId : currentTask?.parentTaskId;
+      if (resolvedParentId) {
+        await recalcPhaseProgress(resolvedParentId);
+      }
+      if (task.itemType === "phase") {
+        await recalcPhaseProgress(task.id);
+      }
+
       res.json(task);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -628,7 +674,11 @@ export async function registerRoutes(
   // DELETE task
   app.delete("/api/tasks/:id", async (req, res) => {
     try {
+      const taskToDelete = await storage.getTask(req.params.id);
       await storage.deleteTask(req.params.id);
+      if (taskToDelete?.parentTaskId) {
+        await recalcPhaseProgress(taskToDelete.parentTaskId);
+      }
       res.json({ success: true });
     } catch (err: any) {
       res.status(500).json({ message: err.message });
