@@ -104,7 +104,7 @@ export interface IStorage {
   updateSettings(data: Partial<Omit<AppSettings, "id">>): Promise<AppSettings>;
   getBranding(): Promise<BrandingConfig>;
   updateBranding(data: Partial<InsertBranding>): Promise<BrandingConfig>;
-  getTimesheetEntries(filters?: { timelineId?: string; teamMemberId?: string; weekEnding?: string; taskId?: string }): Promise<TimesheetEntry[]>;
+  getTimesheetEntries(filters?: { timelineId?: string; teamMemberId?: string; weekEnding?: string; taskId?: string; dayDate?: string }): Promise<TimesheetEntry[]>;
   getTimesheetEntry(id: string): Promise<TimesheetEntry | undefined>;
   createTimesheetEntry(data: InsertTimesheetEntry): Promise<TimesheetEntry>;
   updateTimesheetEntry(id: string, data: Partial<InsertTimesheetEntry>): Promise<TimesheetEntry | undefined>;
@@ -509,12 +509,13 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  async getTimesheetEntries(filters?: { timelineId?: string; teamMemberId?: string; weekEnding?: string; taskId?: string }): Promise<TimesheetEntry[]> {
+  async getTimesheetEntries(filters?: { timelineId?: string; teamMemberId?: string; weekEnding?: string; taskId?: string; dayDate?: string }): Promise<TimesheetEntry[]> {
     const conditions = [];
     if (filters?.timelineId) conditions.push(eq(timesheetEntries.timelineId, filters.timelineId));
     if (filters?.teamMemberId) conditions.push(eq(timesheetEntries.teamMemberId, filters.teamMemberId));
     if (filters?.weekEnding) conditions.push(eq(timesheetEntries.weekEnding, filters.weekEnding));
     if (filters?.taskId) conditions.push(eq(timesheetEntries.taskId, filters.taskId));
+    if (filters?.dayDate) conditions.push(eq(timesheetEntries.dayDate, filters.dayDate));
     if (conditions.length === 0) return db.select().from(timesheetEntries);
     return db.select().from(timesheetEntries).where(and(...conditions));
   }

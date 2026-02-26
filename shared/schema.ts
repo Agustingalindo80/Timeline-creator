@@ -279,6 +279,7 @@ export const timesheetEntries = pgTable("timesheet_entries", {
   teamMemberId: varchar("team_member_id").notNull().references(() => teamMembers.id, { onDelete: "cascade" }),
   taskId: varchar("task_id").references(() => tasks.id, { onDelete: "set null" }),
   weekEnding: text("week_ending").notNull(),
+  dayDate: text("day_date"),
   hours: numeric("hours", { precision: 6, scale: 2 }).notNull(),
   billableType: text("billable_type").notNull().default("billable"),
   notes: text("notes"),
