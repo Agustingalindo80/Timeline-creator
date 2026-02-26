@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { db } from "./db";
 import {
   clients,
@@ -13,6 +13,8 @@ import {
   allocations,
   appSettings,
   brandingConfig,
+  timesheetEntries,
+  progressEntries,
   type BrandingConfig,
   type InsertBranding,
   type Client,
@@ -41,6 +43,10 @@ import {
   type AppSettings,
   type TimelineWithMilestones,
   type ClientWithProjects,
+  type TimesheetEntry,
+  type InsertTimesheetEntry,
+  type ProgressEntry,
+  type InsertProgressEntry,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -98,6 +104,16 @@ export interface IStorage {
   updateSettings(data: Partial<Omit<AppSettings, "id">>): Promise<AppSettings>;
   getBranding(): Promise<BrandingConfig>;
   updateBranding(data: Partial<InsertBranding>): Promise<BrandingConfig>;
+  getTimesheetEntries(filters?: { timelineId?: string; teamMemberId?: string; weekEnding?: string; taskId?: string }): Promise<TimesheetEntry[]>;
+  getTimesheetEntry(id: string): Promise<TimesheetEntry | undefined>;
+  createTimesheetEntry(data: InsertTimesheetEntry): Promise<TimesheetEntry>;
+  updateTimesheetEntry(id: string, data: Partial<InsertTimesheetEntry>): Promise<TimesheetEntry | undefined>;
+  deleteTimesheetEntry(id: string): Promise<void>;
+  getProgressEntries(filters?: { timelineId?: string; taskId?: string; weekEnding?: string }): Promise<ProgressEntry[]>;
+  getProgressEntry(id: string): Promise<ProgressEntry | undefined>;
+  createProgressEntry(data: InsertProgressEntry): Promise<ProgressEntry>;
+  updateProgressEntry(id: string, data: Partial<InsertProgressEntry>): Promise<ProgressEntry | undefined>;
+  deleteProgressEntry(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -491,6 +507,63 @@ export class DatabaseStorage implements IStorage {
       .where(eq(brandingConfig.id, "default"))
       .returning();
     return updated;
+  }
+
+  async getTimesheetEntries(filters?: { timelineId?: string; teamMemberId?: string; weekEnding?: string; taskId?: string }): Promise<TimesheetEntry[]> {
+    const conditions = [];
+    if (filters?.timelineId) conditions.push(eq(timesheetEntries.timelineId, filters.timelineId));
+    if (filters?.teamMemberId) conditions.push(eq(timesheetEntries.teamMemberId, filters.teamMemberId));
+    if (filters?.weekEnding) conditions.push(eq(timesheetEntries.weekEnding, filters.weekEnding));
+    if (filters?.taskId) conditions.push(eq(timesheetEntries.taskId, filters.taskId));
+    if (conditions.length === 0) return db.select().from(timesheetEntries);
+    return db.select().from(timesheetEntries).where(and(...conditions));
+  }
+
+  async getTimesheetEntry(id: string): Promise<TimesheetEntry | undefined> {
+    const [entry] = await db.select().from(timesheetEntries).where(eq(timesheetEntries.id, id));
+    return entry;
+  }
+
+  async createTimesheetEntry(data: InsertTimesheetEntry): Promise<TimesheetEntry> {
+    const [entry] = await db.insert(timesheetEntries).values(data).returning();
+    return entry;
+  }
+
+  async updateTimesheetEntry(id: string, data: Partial<InsertTimesheetEntry>): Promise<TimesheetEntry | undefined> {
+    const [entry] = await db.update(timesheetEntries).set(data).where(eq(timesheetEntries.id, id)).returning();
+    return entry;
+  }
+
+  async deleteTimesheetEntry(id: string): Promise<void> {
+    await db.delete(timesheetEntries).where(eq(timesheetEntries.id, id));
+  }
+
+  async getProgressEntries(filters?: { timelineId?: string; taskId?: string; weekEnding?: string }): Promise<ProgressEntry[]> {
+    const conditions = [];
+    if (filters?.timelineId) conditions.push(eq(progressEntries.timelineId, filters.timelineId));
+    if (filters?.taskId) conditions.push(eq(progressEntries.taskId, filters.taskId));
+    if (filters?.weekEnding) conditions.push(eq(progressEntries.weekEnding, filters.weekEnding));
+    if (conditions.length === 0) return db.select().from(progressEntries);
+    return db.select().from(progressEntries).where(and(...conditions));
+  }
+
+  async getProgressEntry(id: string): Promise<ProgressEntry | undefined> {
+    const [entry] = await db.select().from(progressEntries).where(eq(progressEntries.id, id));
+    return entry;
+  }
+
+  async createProgressEntry(data: InsertProgressEntry): Promise<ProgressEntry> {
+    const [entry] = await db.insert(progressEntries).values(data).returning();
+    return entry;
+  }
+
+  async updateProgressEntry(id: string, data: Partial<InsertProgressEntry>): Promise<ProgressEntry | undefined> {
+    const [entry] = await db.update(progressEntries).set(data).where(eq(progressEntries.id, id)).returning();
+    return entry;
+  }
+
+  async deleteProgressEntry(id: string): Promise<void> {
+    await db.delete(progressEntries).where(eq(progressEntries.id, id));
   }
 }
 

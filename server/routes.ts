@@ -685,6 +685,173 @@ export async function registerRoutes(
     }
   });
 
+  // ===== TIMESHEET ENTRIES =====
+
+  app.get("/api/timesheets", async (req, res) => {
+    try {
+      const { timelineId, teamMemberId, weekEnding } = req.query;
+      const entries = await storage.getTimesheetEntries({
+        timelineId: timelineId as string | undefined,
+        teamMemberId: teamMemberId as string | undefined,
+        weekEnding: weekEnding as string | undefined,
+      });
+      res.json(entries);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/timelines/:id/timesheets", async (req, res) => {
+    try {
+      const { weekEnding, teamMemberId } = req.query;
+      const entries = await storage.getTimesheetEntries({
+        timelineId: req.params.id,
+        weekEnding: weekEnding as string | undefined,
+        teamMemberId: teamMemberId as string | undefined,
+      });
+      res.json(entries);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/timesheets", async (req, res) => {
+    try {
+      const { timelineId, teamMemberId, taskId, weekEnding, hours, billableType, notes } = req.body;
+      if (!timelineId || !teamMemberId || !weekEnding || hours === undefined) {
+        return res.status(400).json({ message: "timelineId, teamMemberId, weekEnding, and hours are required" });
+      }
+      const entry = await storage.createTimesheetEntry({
+        timelineId,
+        teamMemberId,
+        taskId: taskId || null,
+        weekEnding,
+        hours: String(hours),
+        billableType: billableType || "billable",
+        notes: notes || null,
+      });
+      res.status(201).json(entry);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/timesheets/:entryId", async (req, res) => {
+    try {
+      const updates: any = {};
+      if (req.body.hours !== undefined) updates.hours = String(req.body.hours);
+      if (req.body.taskId !== undefined) updates.taskId = req.body.taskId;
+      if (req.body.weekEnding !== undefined) updates.weekEnding = req.body.weekEnding;
+      if (req.body.billableType !== undefined) updates.billableType = req.body.billableType;
+      if (req.body.notes !== undefined) updates.notes = req.body.notes;
+      if (req.body.teamMemberId !== undefined) updates.teamMemberId = req.body.teamMemberId;
+      if (req.body.timelineId !== undefined) updates.timelineId = req.body.timelineId;
+      const entry = await storage.updateTimesheetEntry(req.params.entryId, updates);
+      if (!entry) return res.status(404).json({ message: "Timesheet entry not found" });
+      res.json(entry);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.delete("/api/timesheets/:entryId", async (req, res) => {
+    try {
+      await storage.deleteTimesheetEntry(req.params.entryId);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ===== PROGRESS ENTRIES =====
+
+  app.get("/api/timelines/:id/progress", async (req, res) => {
+    try {
+      const { weekEnding, taskId } = req.query;
+      const entries = await storage.getProgressEntries({
+        timelineId: req.params.id,
+        weekEnding: weekEnding as string | undefined,
+        taskId: taskId as string | undefined,
+      });
+      res.json(entries);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/timelines/:id/progress", async (req, res) => {
+    try {
+      const { taskId, weekEnding, percentComplete, notes } = req.body;
+      if (!taskId || !weekEnding || percentComplete === undefined) {
+        return res.status(400).json({ message: "taskId, weekEnding, and percentComplete are required" });
+      }
+      const pct = Math.max(0, Math.min(100, parseInt(percentComplete) || 0));
+
+      const task = await storage.getTask(taskId);
+      if (!task || task.timelineId !== req.params.id) {
+        return res.status(400).json({ message: "Task not found in this project" });
+      }
+      if (task.itemType !== "workstream") {
+        return res.status(400).json({ message: "Progress can only be entered for workstreams" });
+      }
+
+      const entry = await storage.createProgressEntry({
+        timelineId: req.params.id,
+        taskId,
+        weekEnding,
+        percentComplete: pct,
+        notes: notes || null,
+      });
+
+      await storage.updateTask(taskId, { percentComplete: pct });
+      if (task.parentTaskId) {
+        await recalcPhaseProgress(task.parentTaskId);
+      }
+
+      res.status(201).json(entry);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/progress/:entryId", async (req, res) => {
+    try {
+      const existing = await storage.getProgressEntry(req.params.entryId);
+      if (!existing) return res.status(404).json({ message: "Progress entry not found" });
+
+      const updates: any = {};
+      if (req.body.percentComplete !== undefined) updates.percentComplete = Math.max(0, Math.min(100, parseInt(req.body.percentComplete) || 0));
+      if (req.body.weekEnding !== undefined) updates.weekEnding = req.body.weekEnding;
+      if (req.body.notes !== undefined) updates.notes = req.body.notes;
+
+      const entry = await storage.updateProgressEntry(req.params.entryId, updates);
+      if (!entry) return res.status(404).json({ message: "Progress entry not found" });
+
+      if (updates.percentComplete !== undefined) {
+        const task = await storage.getTask(existing.taskId);
+        if (task) {
+          await storage.updateTask(existing.taskId, { percentComplete: updates.percentComplete });
+          if (task.parentTaskId) {
+            await recalcPhaseProgress(task.parentTaskId);
+          }
+        }
+      }
+
+      res.json(entry);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.delete("/api/progress/:entryId", async (req, res) => {
+    try {
+      await storage.deleteProgressEntry(req.params.entryId);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // GET risks for timeline
   app.get("/api/timelines/:id/risks", async (req, res) => {
     try {

@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo, Fragment } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, useLocation, Link } from "wouter";
 import { Helmet } from "react-helmet-async";
@@ -17,6 +17,8 @@ import {
   Calendar,
   ClipboardList,
   Users,
+  TrendingUp,
+  BarChart3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -49,7 +51,7 @@ import { TimelineView } from "@/components/timeline-view";
 import { ThemePicker } from "@/components/theme-picker";
 import { RiskRegister } from "@/components/risk-register";
 import { formatDateForProject, parseDateToISO } from "@/lib/date-format";
-import type { TimelineWithMilestones, AppSettings, FieldOption, Client, AllocationWithTeamMember } from "@shared/schema";
+import type { TimelineWithMilestones, AppSettings, FieldOption, Client, AllocationWithTeamMember, Task, ProgressEntry, TimesheetEntry, ProjectTeamMemberWithDetails } from "@shared/schema";
 import {
   DEFAULT_TASK_STATUSES,
   DEFAULT_TASK_HEALTH,
@@ -62,6 +64,694 @@ import {
 } from "@shared/schema";
 
 type FilterMode = "all" | "milestones";
+
+function getWeekEnding(date: Date): string {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = day === 0 ? 0 : 7 - day;
+  d.setDate(d.getDate() + diff);
+  return d.toISOString().slice(0, 10);
+}
+
+function getPreviousWeekEnding(weekEnding: string): string {
+  const d = new Date(weekEnding + "T00:00:00");
+  d.setDate(d.getDate() - 7);
+  return d.toISOString().slice(0, 10);
+}
+
+function ProgressTrackingTab({ timelineId, tasks, approvedBudget }: { timelineId: string; tasks: Task[]; approvedBudget: string | null }) {
+  const { toast } = useToast();
+  const [weekEnding, setWeekEnding] = useState(() => getWeekEnding(new Date()));
+
+  const previousWeekEnding = useMemo(() => getPreviousWeekEnding(weekEnding), [weekEnding]);
+
+  const { data: currentEntries = [], isLoading: loadingCurrent } = useQuery<ProgressEntry[]>({
+    queryKey: ["/api/timelines", timelineId, "progress", { weekEnding }],
+    queryFn: async () => {
+      const res = await fetch(`/api/timelines/${timelineId}/progress?weekEnding=${weekEnding}`);
+      if (!res.ok) throw new Error("Failed to fetch progress entries");
+      return res.json();
+    },
+  });
+
+  const { data: previousEntries = [] } = useQuery<ProgressEntry[]>({
+    queryKey: ["/api/timelines", timelineId, "progress", { weekEnding: previousWeekEnding }],
+    queryFn: async () => {
+      const res = await fetch(`/api/timelines/${timelineId}/progress?weekEnding=${previousWeekEnding}`);
+      if (!res.ok) throw new Error("Failed to fetch previous progress entries");
+      return res.json();
+    },
+  });
+
+  const currentEntryMap = useMemo(() => {
+    const map: Record<string, ProgressEntry> = {};
+    for (const e of currentEntries) map[e.taskId] = e;
+    return map;
+  }, [currentEntries]);
+
+  const previousEntryMap = useMemo(() => {
+    const map: Record<string, ProgressEntry> = {};
+    for (const e of previousEntries) map[e.taskId] = e;
+    return map;
+  }, [previousEntries]);
+
+  const phases = useMemo(() => tasks.filter(t => t.itemType === "phase"), [tasks]);
+  const workstreams = useMemo(() => tasks.filter(t => t.itemType === "workstream"), [tasks]);
+
+  const totalBudget = parseFloat(approvedBudget || "0") || 0;
+  const totalWorkstreamDuration = useMemo(() => {
+    return workstreams.reduce((sum, ws) => {
+      const start = new Date(ws.startDate).getTime();
+      const end = new Date(ws.endDate).getTime();
+      return sum + Math.max(1, (end - start) / (1000 * 60 * 60 * 24));
+    }, 0);
+  }, [workstreams]);
+
+  const getWorkstreamBudget = useCallback((ws: Task) => {
+    if (totalBudget === 0 || totalWorkstreamDuration === 0) return 0;
+    const start = new Date(ws.startDate).getTime();
+    const end = new Date(ws.endDate).getTime();
+    const dur = Math.max(1, (end - start) / (1000 * 60 * 60 * 24));
+    return (dur / totalWorkstreamDuration) * totalBudget;
+  }, [totalBudget, totalWorkstreamDuration]);
+
+  const groupedData = useMemo(() => {
+    const groups: { phase: Task | null; workstreams: Task[] }[] = [];
+    const phaseMap: Record<string, Task[]> = {};
+    const orphanWorkstreams: Task[] = [];
+
+    for (const ws of workstreams) {
+      if (ws.parentTaskId) {
+        if (!phaseMap[ws.parentTaskId]) phaseMap[ws.parentTaskId] = [];
+        phaseMap[ws.parentTaskId].push(ws);
+      } else {
+        orphanWorkstreams.push(ws);
+      }
+    }
+
+    for (const phase of phases) {
+      groups.push({ phase, workstreams: phaseMap[phase.id] || [] });
+    }
+
+    if (orphanWorkstreams.length > 0) {
+      groups.push({ phase: null, workstreams: orphanWorkstreams });
+    }
+
+    return groups;
+  }, [phases, workstreams]);
+
+  const getPhasePercent = useCallback((phaseChildren: Task[]) => {
+    if (phaseChildren.length === 0) return 0;
+    let totalWeight = 0;
+    let weightedSum = 0;
+    for (const ws of phaseChildren) {
+      const start = new Date(ws.startDate).getTime();
+      const end = new Date(ws.endDate).getTime();
+      const dur = Math.max(1, (end - start) / (1000 * 60 * 60 * 24));
+      const pct = currentEntryMap[ws.id]?.percentComplete ?? ws.percentComplete;
+      weightedSum += pct * dur;
+      totalWeight += dur;
+    }
+    return totalWeight > 0 ? Math.round(weightedSum / totalWeight) : 0;
+  }, [currentEntryMap]);
+
+  const getPhasePrevPercent = useCallback((phaseChildren: Task[]) => {
+    if (phaseChildren.length === 0) return 0;
+    let totalWeight = 0;
+    let weightedSum = 0;
+    for (const ws of phaseChildren) {
+      const start = new Date(ws.startDate).getTime();
+      const end = new Date(ws.endDate).getTime();
+      const dur = Math.max(1, (end - start) / (1000 * 60 * 60 * 24));
+      const pct = previousEntryMap[ws.id]?.percentComplete ?? 0;
+      weightedSum += pct * dur;
+      totalWeight += dur;
+    }
+    return totalWeight > 0 ? Math.round(weightedSum / totalWeight) : 0;
+  }, [previousEntryMap]);
+
+  const createProgressMutation = useMutation({
+    mutationFn: async (data: { taskId: string; percentComplete: number }) => {
+      await apiRequest("POST", `/api/timelines/${timelineId}/progress`, {
+        taskId: data.taskId,
+        weekEnding,
+        percentComplete: data.percentComplete,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/timelines", timelineId, "progress"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/timelines", timelineId] });
+    },
+    onError: (err: any) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const updateProgressMutation = useMutation({
+    mutationFn: async (data: { entryId: string; percentComplete: number }) => {
+      await apiRequest("PATCH", `/api/progress/${data.entryId}`, {
+        percentComplete: data.percentComplete,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/timelines", timelineId, "progress"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/timelines", timelineId] });
+    },
+    onError: (err: any) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const handlePercentChange = useCallback((taskId: string, value: number) => {
+    const pct = Math.max(0, Math.min(100, value));
+    const existing = currentEntryMap[taskId];
+    if (existing) {
+      updateProgressMutation.mutate({ entryId: existing.id, percentComplete: pct });
+    } else {
+      createProgressMutation.mutate({ taskId, percentComplete: pct });
+    }
+  }, [currentEntryMap, updateProgressMutation, createProgressMutation]);
+
+  const summaryTotals = useMemo(() => {
+    let totalBudgetSum = 0;
+    let totalEV = 0;
+    for (const ws of workstreams) {
+      const budget = getWorkstreamBudget(ws);
+      const pct = currentEntryMap[ws.id]?.percentComplete ?? ws.percentComplete;
+      totalBudgetSum += budget;
+      totalEV += (pct / 100) * budget;
+    }
+    return { totalBudget: totalBudgetSum, totalEV };
+  }, [workstreams, getWorkstreamBudget, currentEntryMap]);
+
+  const formatCurrency = (val: number) => {
+    return `$${val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
+  if (loadingCurrent) {
+    return (
+      <div className="space-y-3">
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
+
+  if (workstreams.length === 0) {
+    return (
+      <div className="text-center py-8" data-testid="progress-empty-state">
+        <TrendingUp className="mx-auto h-10 w-10 text-muted-foreground mb-3" />
+        <p className="text-sm text-muted-foreground">No workstreams defined yet.</p>
+        <p className="text-xs text-muted-foreground mt-1">Add workstreams to start tracking progress.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4" data-testid="progress-tracking-tab">
+      <div className="flex items-center gap-3 flex-wrap">
+        <label className="text-sm font-medium text-muted-foreground whitespace-nowrap">Week Ending</label>
+        <Input
+          type="date"
+          value={weekEnding}
+          onChange={(e) => {
+            if (e.target.value) {
+              setWeekEnding(getWeekEnding(new Date(e.target.value + "T00:00:00")));
+            }
+          }}
+          className="w-44"
+          data-testid="input-progress-week-ending"
+        />
+        <div className="flex items-center gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const d = new Date(weekEnding + "T00:00:00");
+              d.setDate(d.getDate() - 7);
+              setWeekEnding(d.toISOString().slice(0, 10));
+            }}
+            data-testid="button-progress-prev-week"
+          >
+            Prev
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setWeekEnding(getWeekEnding(new Date()))}
+            data-testid="button-progress-current-week"
+          >
+            Current
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const d = new Date(weekEnding + "T00:00:00");
+              d.setDate(d.getDate() + 7);
+              setWeekEnding(d.toISOString().slice(0, 10));
+            }}
+            data-testid="button-progress-next-week"
+          >
+            Next
+          </Button>
+        </div>
+      </div>
+
+      <div className="border rounded-lg overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b bg-muted/50">
+              <th className="text-left p-3 font-medium">Phase / Workstream</th>
+              <th className="text-right p-3 font-medium">Budget</th>
+              <th className="text-right p-3 font-medium">Prev Week %</th>
+              <th className="text-right p-3 font-medium">Current %</th>
+              <th className="text-right p-3 font-medium">EV</th>
+            </tr>
+          </thead>
+          <tbody>
+            {groupedData.map((group) => {
+              const phaseBudget = group.workstreams.reduce((s, ws) => s + getWorkstreamBudget(ws), 0);
+              const phaseCurrentPct = group.phase ? getPhasePercent(group.workstreams) : 0;
+              const phasePrevPct = group.phase ? getPhasePrevPercent(group.workstreams) : 0;
+              const phaseEV = (phaseCurrentPct / 100) * phaseBudget;
+
+              return (
+                <Fragment key={group.phase?.id || "ungrouped"}>
+                  {group.phase && (
+                    <tr className="border-b bg-muted/30" data-testid={`progress-phase-row-${group.phase.id}`}>
+                      <td className="p-3 font-medium">
+                        {group.phase.title}
+                      </td>
+                      <td className="p-3 text-right font-mono text-muted-foreground">
+                        {totalBudget > 0 ? formatCurrency(phaseBudget) : "\u2014"}
+                      </td>
+                      <td className="p-3 text-right font-mono text-muted-foreground">
+                        {phasePrevPct}%
+                      </td>
+                      <td className="p-3 text-right font-mono text-muted-foreground">
+                        {phaseCurrentPct}%
+                      </td>
+                      <td className="p-3 text-right font-mono text-muted-foreground">
+                        {totalBudget > 0 ? formatCurrency(phaseEV) : "\u2014"}
+                      </td>
+                    </tr>
+                  )}
+                  {group.workstreams.map((ws) => {
+                    const wsBudget = getWorkstreamBudget(ws);
+                    const currentPct = currentEntryMap[ws.id]?.percentComplete ?? ws.percentComplete;
+                    const prevPct = previousEntryMap[ws.id]?.percentComplete ?? 0;
+                    const wsEV = (currentPct / 100) * wsBudget;
+
+                    return (
+                      <tr
+                        key={ws.id}
+                        className="border-b last:border-b-0 hover:bg-muted/20"
+                        data-testid={`progress-workstream-row-${ws.id}`}
+                      >
+                        <td className={`p-3 ${group.phase ? "pl-8" : ""}`}>
+                          {ws.title}
+                        </td>
+                        <td className="p-3 text-right font-mono">
+                          {totalBudget > 0 ? formatCurrency(wsBudget) : "\u2014"}
+                        </td>
+                        <td className="p-3 text-right font-mono text-muted-foreground">
+                          {prevPct}%
+                        </td>
+                        <td className="p-3 text-right">
+                          <Input
+                            type="number"
+                            min={0}
+                            max={100}
+                            defaultValue={currentPct}
+                            key={`${ws.id}-${weekEnding}-${currentPct}`}
+                            onBlur={(e) => {
+                              const val = parseInt(e.target.value) || 0;
+                              if (val !== currentPct) {
+                                handlePercentChange(ws.id, val);
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                (e.target as HTMLInputElement).blur();
+                              }
+                            }}
+                            className="w-20 text-right ml-auto font-mono"
+                            data-testid={`input-progress-percent-${ws.id}`}
+                          />
+                        </td>
+                        <td className="p-3 text-right font-mono">
+                          {totalBudget > 0 ? formatCurrency(wsEV) : "\u2014"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </Fragment>
+              );
+            })}
+            <tr className="border-t-2 bg-muted/50 font-semibold">
+              <td className="p-3">Total</td>
+              <td className="p-3 text-right font-mono" data-testid="text-progress-total-budget">
+                {totalBudget > 0 ? formatCurrency(summaryTotals.totalBudget) : "\u2014"}
+              </td>
+              <td className="p-3"></td>
+              <td className="p-3"></td>
+              <td className="p-3 text-right font-mono" data-testid="text-progress-total-ev">
+                {totalBudget > 0 ? formatCurrency(summaryTotals.totalEV) : "\u2014"}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function EVMTab({ timelineId, tasks, approvedBudget }: { timelineId: string; tasks: Task[]; approvedBudget: string | null }) {
+  const bac = parseFloat(approvedBudget || "0");
+  const workstreams = useMemo(() => tasks.filter(t => t.itemType === "workstream"), [tasks]);
+  const phases = useMemo(() => tasks.filter(t => t.itemType === "phase"), [tasks]);
+
+  const { data: progressEntries = [] } = useQuery<ProgressEntry[]>({
+    queryKey: ["/api/timelines", timelineId, "progress-all"],
+    queryFn: async () => {
+      const res = await fetch(`/api/timelines/${timelineId}/progress`);
+      if (!res.ok) throw new Error("Failed to fetch progress entries");
+      return res.json();
+    },
+  });
+
+  const { data: timesheetEntries = [] } = useQuery<TimesheetEntry[]>({
+    queryKey: ["/api/timelines", timelineId, "timesheets"],
+    queryFn: async () => {
+      const res = await fetch(`/api/timelines/${timelineId}/timesheets`);
+      if (!res.ok) throw new Error("Failed to fetch timesheet entries");
+      return res.json();
+    },
+  });
+
+  const { data: projectTeam = [] } = useQuery<ProjectTeamMemberWithDetails[]>({
+    queryKey: ["/api/timelines", timelineId, "team"],
+    queryFn: async () => {
+      const res = await fetch(`/api/timelines/${timelineId}/team`);
+      if (!res.ok) throw new Error("Failed to fetch team");
+      return res.json();
+    },
+  });
+
+  const { data: allocations = [] } = useQuery<AllocationWithTeamMember[]>({
+    queryKey: ["/api/timelines", timelineId, "allocations"],
+    queryFn: async () => {
+      const res = await fetch(`/api/timelines/${timelineId}/allocations`);
+      if (!res.ok) throw new Error("Failed to fetch allocations");
+      return res.json();
+    },
+  });
+
+  const workstreamBudgets = useMemo(() => {
+    const durations: Record<string, number> = {};
+    let totalDuration = 0;
+    workstreams.forEach(ws => {
+      const start = ws.startDate ? new Date(ws.startDate + "T00:00:00") : null;
+      const end = ws.endDate ? new Date(ws.endDate + "T00:00:00") : null;
+      const duration = start && end ? Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))) : 1;
+      durations[ws.id] = duration;
+      totalDuration += duration;
+    });
+    const budgets: Record<string, number> = {};
+    workstreams.forEach(ws => {
+      budgets[ws.id] = totalDuration > 0 ? (durations[ws.id] / totalDuration) * bac : 0;
+    });
+    return budgets;
+  }, [workstreams, bac]);
+
+  const rateByTeamMember = useMemo(() => {
+    const rates: Record<string, number> = {};
+    projectTeam.forEach(ptm => {
+      const rate = ptm.rateCard ? parseFloat(ptm.rateCard.costRate || "0") : parseFloat(ptm.teamMember.hourlyCost || "0");
+      rates[ptm.teamMemberId] = rate;
+    });
+    return rates;
+  }, [projectTeam]);
+
+  const weeklyData = useMemo(() => {
+    const allWeeks = new Set<string>();
+    timesheetEntries.forEach(e => allWeeks.add(e.weekEnding));
+    progressEntries.forEach(e => allWeeks.add(e.weekEnding));
+    allocations.forEach(a => {
+      if (a.startDate && a.endDate) {
+        const start = new Date(a.startDate + "T00:00:00");
+        const end = new Date(a.endDate + "T00:00:00");
+        const current = new Date(start);
+        while (current <= end) {
+          allWeeks.add(getWeekEnding(current));
+          current.setDate(current.getDate() + 7);
+        }
+      }
+    });
+    const sorted = [...allWeeks].sort();
+
+    let cumulativePV = 0;
+    let cumulativeAC = 0;
+    const latestProgress: Record<string, number> = {};
+
+    return sorted.map(week => {
+      let weekPV = 0;
+      allocations.forEach(a => {
+        if (a.startDate && a.endDate) {
+          const wEnd = new Date(week + "T00:00:00");
+          const aStart = new Date(a.startDate + "T00:00:00");
+          const aEnd = new Date(a.endDate + "T00:00:00");
+          if (wEnd >= aStart && wEnd <= aEnd) {
+            const rate = rateByTeamMember[a.teamMemberId] || 0;
+            weekPV += parseFloat(a.weeklyHours || "0") * rate;
+          }
+        }
+      });
+
+      let weekAC = 0;
+      timesheetEntries.filter(e => e.weekEnding === week).forEach(e => {
+        const rate = rateByTeamMember[e.teamMemberId] || 0;
+        weekAC += parseFloat(e.hours) * rate;
+      });
+
+      progressEntries.filter(e => e.weekEnding === week).forEach(e => {
+        latestProgress[e.taskId] = e.percentComplete;
+      });
+
+      let ev = 0;
+      workstreams.forEach(ws => {
+        const pct = latestProgress[ws.id] ?? 0;
+        ev += (pct / 100) * (workstreamBudgets[ws.id] || 0);
+      });
+
+      cumulativePV += weekPV;
+      cumulativeAC += weekAC;
+
+      return { week, pv: cumulativePV, ac: cumulativeAC, ev };
+    });
+  }, [timesheetEntries, progressEntries, allocations, workstreams, workstreamBudgets, rateByTeamMember]);
+
+  const latest = weeklyData.length > 0 ? weeklyData[weeklyData.length - 1] : { pv: 0, ac: 0, ev: 0 };
+  const pv = latest.pv;
+  const ac = latest.ac;
+  const ev = latest.ev;
+  const sv = ev - pv;
+  const cv = ev - ac;
+  const spi = pv > 0 ? ev / pv : 0;
+  const cpi = ac > 0 ? ev / ac : 0;
+  const eac = cpi > 0 ? bac / cpi : 0;
+  const etc = eac - ac;
+
+  const getIndicatorColor = (value: number) => {
+    if (value >= 1.0) return "text-green-600 dark:text-green-400";
+    if (value >= 0.9) return "text-amber-600 dark:text-amber-400";
+    return "text-red-600 dark:text-red-400";
+  };
+
+  const getIndicatorBg = (value: number) => {
+    if (value >= 1.0) return "bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800";
+    if (value >= 0.9) return "bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800";
+    return "bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800";
+  };
+
+  const fmt = (n: number) => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  const workstreamBreakdown = useMemo(() => {
+    const latestPct: Record<string, number> = {};
+    const latestWeek: Record<string, string> = {};
+    progressEntries.forEach(e => {
+      if (!latestWeek[e.taskId] || e.weekEnding > latestWeek[e.taskId]) {
+        latestWeek[e.taskId] = e.weekEnding;
+        latestPct[e.taskId] = e.percentComplete;
+      }
+    });
+
+    return workstreams.map(ws => {
+      const budget = workstreamBudgets[ws.id] || 0;
+      const pct = latestPct[ws.id] ?? (ws.percentComplete || 0);
+      const wsEv = (pct / 100) * budget;
+      const parentPhase = phases.find(p => p.id === ws.parentTaskId);
+      return { ws, budget, pct, ev: wsEv, phaseName: parentPhase?.title || "Unassigned" };
+    });
+  }, [workstreams, workstreamBudgets, progressEntries, phases]);
+
+  if (workstreams.length === 0) {
+    return (
+      <div className="text-center py-8" data-testid="evm-empty-state">
+        <BarChart3 className="mx-auto h-10 w-10 text-muted-foreground mb-2" />
+        <p className="text-sm text-muted-foreground">No workstreams available for EVM calculations.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6" data-testid="evm-tab">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3" data-testid="evm-summary-cards">
+        <Card className="p-4 border" data-testid="evm-card-bac">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide">BAC</p>
+          <p className="text-lg font-semibold font-mono mt-1">${fmt(bac)}</p>
+          <p className="text-[10px] text-muted-foreground">Budget at Completion</p>
+        </Card>
+        <Card className="p-4 border" data-testid="evm-card-pv">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide">PV</p>
+          <p className="text-lg font-semibold font-mono mt-1">${fmt(pv)}</p>
+          <p className="text-[10px] text-muted-foreground">Planned Value</p>
+        </Card>
+        <Card className="p-4 border" data-testid="evm-card-ac">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide">AC</p>
+          <p className="text-lg font-semibold font-mono mt-1">${fmt(ac)}</p>
+          <p className="text-[10px] text-muted-foreground">Actual Cost</p>
+        </Card>
+        <Card className="p-4 border" data-testid="evm-card-ev">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide">EV</p>
+          <p className="text-lg font-semibold font-mono mt-1">${fmt(ev)}</p>
+          <p className="text-[10px] text-muted-foreground">Earned Value</p>
+        </Card>
+        <Card className={`p-4 border ${getIndicatorBg(spi)}`} data-testid="evm-card-spi">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide">SPI</p>
+          <p className={`text-lg font-semibold font-mono mt-1 ${getIndicatorColor(spi)}`}>{spi.toFixed(2)}</p>
+          <p className="text-[10px] text-muted-foreground">Schedule Performance</p>
+        </Card>
+        <Card className={`p-4 border ${getIndicatorBg(cpi)}`} data-testid="evm-card-cpi">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide">CPI</p>
+          <p className={`text-lg font-semibold font-mono mt-1 ${getIndicatorColor(cpi)}`}>{cpi.toFixed(2)}</p>
+          <p className="text-[10px] text-muted-foreground">Cost Performance</p>
+        </Card>
+        <Card className="p-4 border" data-testid="evm-card-sv">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide">SV</p>
+          <p className={`text-lg font-semibold font-mono mt-1 ${sv >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>${fmt(sv)}</p>
+          <p className="text-[10px] text-muted-foreground">Schedule Variance</p>
+        </Card>
+        <Card className="p-4 border" data-testid="evm-card-cv">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide">CV</p>
+          <p className={`text-lg font-semibold font-mono mt-1 ${cv >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>${fmt(cv)}</p>
+          <p className="text-[10px] text-muted-foreground">Cost Variance</p>
+        </Card>
+        <Card className="p-4 border" data-testid="evm-card-eac">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide">EAC</p>
+          <p className="text-lg font-semibold font-mono mt-1">${fmt(eac)}</p>
+          <p className="text-[10px] text-muted-foreground">Estimate at Completion</p>
+        </Card>
+        <Card className="p-4 border" data-testid="evm-card-etc">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide">ETC</p>
+          <p className="text-lg font-semibold font-mono mt-1">${fmt(etc)}</p>
+          <p className="text-[10px] text-muted-foreground">Estimate to Complete</p>
+        </Card>
+      </div>
+
+      {weeklyData.length > 0 && (
+        <div data-testid="evm-weekly-breakdown">
+          <h3 className="text-sm font-semibold mb-3">Weekly Cumulative Breakdown</h3>
+          <div className="border rounded-lg overflow-auto max-h-[300px]">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50 sticky top-0">
+                <tr>
+                  <th className="p-2 text-left font-medium">Week Ending</th>
+                  <th className="p-2 text-right font-medium">PV (Cumulative)</th>
+                  <th className="p-2 text-right font-medium">AC (Cumulative)</th>
+                  <th className="p-2 text-right font-medium">EV (Cumulative)</th>
+                  <th className="p-2 text-right font-medium">SV</th>
+                  <th className="p-2 text-right font-medium">CV</th>
+                </tr>
+              </thead>
+              <tbody>
+                {weeklyData.map(row => {
+                  const rowSV = row.ev - row.pv;
+                  const rowCV = row.ev - row.ac;
+                  return (
+                    <tr key={row.week} className="border-t" data-testid={`evm-week-row-${row.week}`}>
+                      <td className="p-2 font-mono text-xs">{row.week}</td>
+                      <td className="p-2 text-right font-mono text-xs">${fmt(row.pv)}</td>
+                      <td className="p-2 text-right font-mono text-xs">${fmt(row.ac)}</td>
+                      <td className="p-2 text-right font-mono text-xs">${fmt(row.ev)}</td>
+                      <td className={`p-2 text-right font-mono text-xs ${rowSV >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>${fmt(rowSV)}</td>
+                      <td className={`p-2 text-right font-mono text-xs ${rowCV >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>${fmt(rowCV)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      <div data-testid="evm-workstream-breakdown">
+        <h3 className="text-sm font-semibold mb-3">Per-Workstream Breakdown</h3>
+        <div className="border rounded-lg overflow-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50">
+              <tr>
+                <th className="p-2 text-left font-medium">Phase / Workstream</th>
+                <th className="p-2 text-right font-medium">Budget</th>
+                <th className="p-2 text-right font-medium">% Complete</th>
+                <th className="p-2 text-right font-medium">Earned Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(() => {
+                const grouped: Record<string, typeof workstreamBreakdown> = {};
+                workstreamBreakdown.forEach(row => {
+                  if (!grouped[row.phaseName]) grouped[row.phaseName] = [];
+                  grouped[row.phaseName].push(row);
+                });
+                return Object.entries(grouped).map(([phaseName, rows]) => {
+                  const phaseBudget = rows.reduce((s, r) => s + r.budget, 0);
+                  const phaseEV = rows.reduce((s, r) => s + r.ev, 0);
+                  const phasePct = phaseBudget > 0 ? (phaseEV / phaseBudget) * 100 : 0;
+                  return (
+                    <Fragment key={phaseName}>
+                      <tr className="border-t bg-muted/30" data-testid={`evm-phase-${phaseName}`}>
+                        <td className="p-2 font-medium">{phaseName}</td>
+                        <td className="p-2 text-right font-mono">${fmt(phaseBudget)}</td>
+                        <td className="p-2 text-right font-mono">{phasePct.toFixed(0)}%</td>
+                        <td className="p-2 text-right font-mono">${fmt(phaseEV)}</td>
+                      </tr>
+                      {rows.map(row => (
+                        <tr key={row.ws.id} className="border-t" data-testid={`evm-workstream-${row.ws.id}`}>
+                          <td className="p-2 pl-6 text-muted-foreground">{row.ws.title}</td>
+                          <td className="p-2 text-right font-mono">${fmt(row.budget)}</td>
+                          <td className="p-2 text-right font-mono">{row.pct}%</td>
+                          <td className="p-2 text-right font-mono">${fmt(row.ev)}</td>
+                        </tr>
+                      ))}
+                    </Fragment>
+                  );
+                });
+              })()}
+              <tr className="border-t bg-muted/50 font-semibold">
+                <td className="p-2">Total</td>
+                <td className="p-2 text-right font-mono" data-testid="evm-total-budget">${fmt(workstreamBreakdown.reduce((s, r) => s + r.budget, 0))}</td>
+                <td className="p-2 text-right font-mono"></td>
+                <td className="p-2 text-right font-mono" data-testid="evm-total-ev">${fmt(workstreamBreakdown.reduce((s, r) => s + r.ev, 0))}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function ProjectTeamMembersTab({ timelineId }: { timelineId: string }) {
   const { data: allocs = [], isLoading } = useQuery<AllocationWithTeamMember[]>({
@@ -1542,6 +2232,12 @@ export default function TimelineDetail() {
             <TabsTrigger value="team-members" data-testid="tab-team-members">
               Team Members ({uniqueTeamMemberCount})
             </TabsTrigger>
+            <TabsTrigger value="progress" data-testid="tab-progress">
+              Progress
+            </TabsTrigger>
+            <TabsTrigger value="evm" data-testid="tab-evm">
+              EVM
+            </TabsTrigger>
             {settings?.riskRegisterEnabled && (
               <TabsTrigger value="risks" data-testid="tab-risks">
                 Risks
@@ -1742,6 +2438,22 @@ export default function TimelineDetail() {
 
           <TabsContent value="team-members">
             <ProjectTeamMembersTab timelineId={timeline.id} />
+          </TabsContent>
+
+          <TabsContent value="progress">
+            <ProgressTrackingTab
+              timelineId={timeline.id}
+              tasks={timeline.tasks}
+              approvedBudget={timeline.approvedBudget}
+            />
+          </TabsContent>
+
+          <TabsContent value="evm">
+            <EVMTab
+              timelineId={timeline.id}
+              tasks={timeline.tasks}
+              approvedBudget={timeline.approvedBudget}
+            />
           </TabsContent>
 
           {settings?.riskRegisterEnabled && (

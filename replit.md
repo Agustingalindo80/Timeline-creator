@@ -10,7 +10,7 @@ I prefer iterative development with a focus on delivering core features first. P
 The application is built with a modern web stack, utilizing React with Vite, Tailwind CSS, and shadcn/ui for the frontend, ensuring a responsive and aesthetically pleasing user interface. State management and data fetching are handled by TanStack React Query. The backend is powered by Express.js on Node.js, providing robust API services. PostgreSQL, accessed via Drizzle ORM, serves as the primary data store.
 
 **UI/UX Decisions:**
-- A consistent left-hand sidebar navigation (shadcn Sidebar) provides access to key sections: Dashboard, Clients, Contacts, Projects, Team Members, Allocations, and Settings.
+- A consistent left-hand sidebar navigation (shadcn Sidebar) provides access to key sections: Dashboard, Clients, Contacts, Projects, Team Members, Allocations, Timesheets, and Settings.
 - Dark/light mode theme toggling is available.
 - Project visualisations include horizontal timeline views for milestones and Gantt-like bars for tasks.
 - Health indicators are visually represented by colored dots.
@@ -20,11 +20,15 @@ The application is built with a modern web stack, utilizing React with Vite, Tai
 **Technical Implementations:**
 - **Project Structure:** Clear separation of client-side (React components, pages, utilities) and server-side (API routes, database interactions) code. A `shared` directory holds common schema definitions (Drizzle + Zod).
 - **Routing:** Handled client-side.
-- **API Design:** RESTful API endpoints for managing all entities (clients, projects, milestones, tasks, risks, team members, allocations, rate cards, settings).
-- **Database Schema:** Detailed schemas for clients, contacts, timelines (projects), milestones, tasks, risks, team members, rate_cards, project_team_members, allocations, and app_settings.
+- **API Design:** RESTful API endpoints for managing all entities (clients, projects, milestones, tasks, risks, team members, allocations, rate cards, settings, timesheet entries, progress entries).
+- **Database Schema:** Detailed schemas for clients, contacts, timelines (projects), milestones, tasks, risks, team members, rate_cards, project_team_members, allocations, app_settings, timesheet_entries, and progress_entries.
 - **Financial Calculations:** Automated calculation of `Approved Budget` (sum of financial obligation milestones), `Total Running Cost` (based on team allocations and elapsed time), and `Gross Margin`.
 - **Project Health:** Four independent health indicators (Overall, Scope, Budget, Team Composition) with configurable options.
 - **Milestones & Tasks:** Milestones are point-in-time events; tasks are duration-based with progress tracking (`percentComplete`) and planned vs. actual date visualization. Tasks have a hierarchical structure with `itemType` ("phase" or "workstream") and `parentTaskId`. Phase `percentComplete` is auto-calculated from child workstreams using duration-weighted average when children exist (read-only in UI). Status cascades upward: if any child is "in_progress" or "complete", the parent phase auto-upgrades to "in_progress". Workstream dates are validated against parent phase date range. Helper function `recalcPhaseProgress(phaseId)` in routes.ts handles all recalculations on create/update/delete. Storage method `getTasksByParent(parentTaskId)` fetches children.
+- **Timesheet Management:** Global-level page (`/timesheets`) for tracking actual effort (hours) per team member, per workstream, per week. Matrix table with project/week selectors, inline editable hour cells, row/column totals, cost calculations (hours × rate). Data stored in `timesheet_entries` table (timelineId, teamMemberId, taskId, weekEnding, hours, billableType, notes).
+- **Progress Tracking:** Project-level tab (inside project detail, before EVM/Risks) for weekly % complete per workstream. Phases auto-calculate from child workstreams. Progress entries stored in `progress_entries` table (timelineId, taskId, weekEnding, percentComplete, notes). On save, syncs `tasks.percentComplete` and triggers `recalcPhaseProgress` on parent phase.
+- **EVM Dashboard:** Read-only project-level tab showing Earned Value Management metrics. Calculates BAC, PV, AC, EV, SV, CV, SPI, CPI, EAC, ETC. Color-coded indicators (green ≥1.0, amber 0.9-1.0, red <0.9). Weekly cumulative breakdown table and per-workstream breakdown. PV from allocations×rates, AC from timesheets×rates, EV from progress×workstream budgets.
+- **Project Detail Tab Order:** Milestones | Phases | Workstreams | Team Members | Progress | EVM | Risks
 - **Risk Register:** Optional feature for tracking project risks with detailed fields and a calculated risk score.
 - **Resource Allocation:** A resource planning matrix view for team members and their weekly hours across projects.
 - **Configurable Fields:** Many dropdown fields (e.g., Project Type, Engagement Model, Statuses, Roles, Regions) are user-configurable via the settings page, stored as JSONB.

@@ -273,6 +273,26 @@ export const brandingConfig = pgTable("branding_config", {
   accentColor: text("accent_color"),
 });
 
+export const timesheetEntries = pgTable("timesheet_entries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  timelineId: varchar("timeline_id").notNull().references(() => timelines.id, { onDelete: "cascade" }),
+  teamMemberId: varchar("team_member_id").notNull().references(() => teamMembers.id, { onDelete: "cascade" }),
+  taskId: varchar("task_id").references(() => tasks.id, { onDelete: "set null" }),
+  weekEnding: text("week_ending").notNull(),
+  hours: numeric("hours", { precision: 6, scale: 2 }).notNull(),
+  billableType: text("billable_type").notNull().default("billable"),
+  notes: text("notes"),
+});
+
+export const progressEntries = pgTable("progress_entries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  timelineId: varchar("timeline_id").notNull().references(() => timelines.id, { onDelete: "cascade" }),
+  taskId: varchar("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
+  weekEnding: text("week_ending").notNull(),
+  percentComplete: integer("percent_complete").notNull().default(0),
+  notes: text("notes"),
+});
+
 export const insertBrandingSchema = createInsertSchema(brandingConfig).omit({ id: true });
 export type InsertBranding = z.infer<typeof insertBrandingSchema>;
 export type BrandingConfig = typeof brandingConfig.$inferSelect;
@@ -295,6 +315,8 @@ export const insertTeamMemberSchema = createInsertSchema(teamMembers).omit({ id:
 export const insertRateCardSchema = createInsertSchema(rateCards).omit({ id: true });
 export const insertProjectTeamMemberSchema = createInsertSchema(projectTeamMembers).omit({ id: true });
 export const insertAllocationSchema = createInsertSchema(allocations).omit({ id: true });
+export const insertTimesheetEntrySchema = createInsertSchema(timesheetEntries).omit({ id: true });
+export const insertProgressEntrySchema = createInsertSchema(progressEntries).omit({ id: true });
 
 export type InsertClient = z.infer<typeof insertClientSchema>;
 export type Client = typeof clients.$inferSelect;
@@ -319,8 +341,13 @@ export type Allocation = typeof allocations.$inferSelect;
 export type AllocationWithProject = Allocation & { project: Timeline };
 export type AllocationWithTeamMember = Allocation & { teamMember: TeamMember };
 export type AllocationFull = Allocation & { teamMember: TeamMember; project: Timeline };
+export type InsertTimesheetEntry = z.infer<typeof insertTimesheetEntrySchema>;
+export type TimesheetEntry = typeof timesheetEntries.$inferSelect;
+export type InsertProgressEntry = z.infer<typeof insertProgressEntrySchema>;
+export type ProgressEntry = typeof progressEntries.$inferSelect;
 export type AppSettings = typeof appSettings.$inferSelect;
 
+export type TimesheetEntryWithDetails = TimesheetEntry & { teamMember: TeamMember; task: Task | null };
 export type ProjectTeamMemberWithDetails = ProjectTeamMember & { teamMember: TeamMember; rateCard: RateCard | null };
 export type TimelineWithMilestones = Timeline & { milestones: Milestone[]; tasks: Task[] };
 export type TimelineWithAll = TimelineWithMilestones & { risks: Risk[] };
