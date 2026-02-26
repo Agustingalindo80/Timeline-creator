@@ -19,6 +19,7 @@ import {
   Users,
   TrendingUp,
   BarChart3,
+  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -51,7 +52,7 @@ import { TimelineView } from "@/components/timeline-view";
 import { ThemePicker } from "@/components/theme-picker";
 import { RiskRegister } from "@/components/risk-register";
 import { formatDateForProject, parseDateToISO } from "@/lib/date-format";
-import type { TimelineWithMilestones, AppSettings, FieldOption, Client, AllocationWithTeamMember, Task, ProgressEntry, TimesheetEntry, ProjectTeamMemberWithDetails } from "@shared/schema";
+import type { TimelineWithMilestones, AppSettings, FieldOption, Client, AllocationWithTeamMember, Task, ProgressEntry, TimesheetEntry, ProjectTeamMemberWithDetails, TeamMember } from "@shared/schema";
 import {
   DEFAULT_TASK_STATUSES,
   DEFAULT_TASK_HEALTH,
@@ -77,6 +78,155 @@ function getPreviousWeekEnding(weekEnding: string): string {
   const d = new Date(weekEnding + "T00:00:00");
   d.setDate(d.getDate() - 7);
   return d.toISOString().slice(0, 10);
+}
+
+function ProjectTimesheetsTab({ timelineId, tasks }: { timelineId: string; tasks: Task[] }) {
+  const workstreams = useMemo(() => tasks.filter(t => t.itemType === "workstream"), [tasks]);
+  const phases = useMemo(() => tasks.filter(t => t.itemType === "phase"), [tasks]);
+
+  const { data: entries = [], isLoading } = useQuery<TimesheetEntry[]>({
+    queryKey: ["/api/timelines", timelineId, "timesheets"],
+    queryFn: async () => {
+      const res = await fetch(`/api/timelines/${timelineId}/timesheets`);
+      if (!res.ok) throw new Error("Failed to fetch timesheets");
+      return res.json();
+    },
+  });
+
+  const { data: allTeamMembers = [] } = useQuery<TeamMember[]>({
+    queryKey: ["/api/team-members"],
+  });
+
+  const teamMemberMap = useMemo(() => {
+    const map: Record<string, TeamMember> = {};
+    allTeamMembers.forEach(tm => { map[tm.id] = tm; });
+    return map;
+  }, [allTeamMembers]);
+
+  const taskMap = useMemo(() => {
+    const map: Record<string, Task> = {};
+    tasks.forEach(t => { map[t.id] = t; });
+    return map;
+  }, [tasks]);
+
+  const groupedByWeek = useMemo(() => {
+    const weeks: Record<string, TimesheetEntry[]> = {};
+    entries.forEach(e => {
+      if (!weeks[e.weekEnding]) weeks[e.weekEnding] = [];
+      weeks[e.weekEnding].push(e);
+    });
+    return Object.entries(weeks).sort(([a], [b]) => b.localeCompare(a));
+  }, [entries]);
+
+  const totalHours = useMemo(() => entries.reduce((s, e) => s + parseFloat(e.hours), 0), [entries]);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
+
+  if (entries.length === 0) {
+    return (
+      <div className="text-center py-8" data-testid="timesheets-empty-state">
+        <Clock className="mx-auto h-10 w-10 text-muted-foreground mb-3" />
+        <p className="text-sm text-muted-foreground">No timesheet entries recorded yet.</p>
+        <p className="text-xs text-muted-foreground mt-1">Time entries logged on the Timesheets page will appear here.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4" data-testid="project-timesheets-tab">
+      <div className="flex items-center gap-4">
+        <Card className="px-4 py-3 border">
+          <p className="text-xs text-muted-foreground">Total Hours</p>
+          <p className="text-xl font-semibold font-mono" data-testid="text-project-ts-total-hours">{totalHours.toFixed(1)}</p>
+        </Card>
+        <Card className="px-4 py-3 border">
+          <p className="text-xs text-muted-foreground">Entries</p>
+          <p className="text-xl font-semibold font-mono" data-testid="text-project-ts-entry-count">{entries.length}</p>
+        </Card>
+        <Card className="px-4 py-3 border">
+          <p className="text-xs text-muted-foreground">Weeks</p>
+          <p className="text-xl font-semibold font-mono" data-testid="text-project-ts-week-count">{groupedByWeek.length}</p>
+        </Card>
+      </div>
+
+      {groupedByWeek.map(([week, weekEntries]) => {
+        const weekTotal = weekEntries.reduce((s, e) => s + parseFloat(e.hours), 0);
+        const byMember: Record<string, TimesheetEntry[]> = {};
+        weekEntries.forEach(e => {
+          if (!byMember[e.teamMemberId]) byMember[e.teamMemberId] = [];
+          byMember[e.teamMemberId].push(e);
+        });
+
+        return (
+          <div key={week} className="border rounded-lg overflow-hidden" data-testid={`ts-week-${week}`}>
+            <div className="bg-muted/50 px-4 py-2 flex items-center justify-between">
+              <span className="text-sm font-medium">Week ending: {week}</span>
+              <span className="text-sm font-mono text-muted-foreground">{weekTotal.toFixed(1)} hrs</span>
+            </div>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left p-3 font-medium">Team Member</th>
+                  <th className="text-left p-3 font-medium">Workstream</th>
+                  <th className="text-left p-3 font-medium">Date</th>
+                  <th className="text-right p-3 font-medium">Hours</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(byMember).map(([tmId, memberEntries]) => {
+                  const tm = teamMemberMap[tmId];
+                  return memberEntries
+                    .sort((a, b) => (a.dayDate || "").localeCompare(b.dayDate || ""))
+                    .map((entry, idx) => {
+                      const task = entry.taskId ? taskMap[entry.taskId] : null;
+                      const parentPhase = task?.parentTaskId ? taskMap[task.parentTaskId] : null;
+                      return (
+                        <tr key={entry.id} className="border-b last:border-b-0 hover:bg-muted/20" data-testid={`ts-entry-${entry.id}`}>
+                          <td className="p-3 text-xs">
+                            {idx === 0 ? (tm?.name || "Unknown") : ""}
+                          </td>
+                          <td className="p-3 text-xs">
+                            {parentPhase ? <span className="text-muted-foreground">{parentPhase.title} / </span> : null}
+                            {task?.title || "—"}
+                          </td>
+                          <td className="p-3 text-xs font-mono text-muted-foreground">
+                            {entry.dayDate || "—"}
+                          </td>
+                          <td className="p-3 text-right font-mono text-xs">
+                            {parseFloat(entry.hours).toFixed(1)}
+                          </td>
+                        </tr>
+                      );
+                    });
+                })}
+              </tbody>
+            </table>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function safeParseDate(dateStr: string | null | undefined): Date | null {
+  if (!dateStr) return null;
+  let d = new Date(dateStr + "T00:00:00");
+  if (!isNaN(d.getTime())) return d;
+  d = new Date(dateStr);
+  if (!isNaN(d.getTime())) return d;
+  const parts = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (parts) {
+    d = new Date(`${parts[3]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}T00:00:00`);
+    if (!isNaN(d.getTime())) return d;
+  }
+  return null;
 }
 
 function ProgressTrackingTab({ timelineId, tasks, approvedBudget }: { timelineId: string; tasks: Task[]; approvedBudget: string | null }) {
@@ -121,17 +271,18 @@ function ProgressTrackingTab({ timelineId, tasks, approvedBudget }: { timelineId
   const totalBudget = parseFloat(approvedBudget || "0") || 0;
   const totalWorkstreamDuration = useMemo(() => {
     return workstreams.reduce((sum, ws) => {
-      const start = new Date(ws.startDate).getTime();
-      const end = new Date(ws.endDate).getTime();
-      return sum + Math.max(1, (end - start) / (1000 * 60 * 60 * 24));
+      const start = safeParseDate(ws.startDate);
+      const end = safeParseDate(ws.endDate);
+      const dur = start && end ? Math.max(1, (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) : 1;
+      return sum + dur;
     }, 0);
   }, [workstreams]);
 
   const getWorkstreamBudget = useCallback((ws: Task) => {
     if (totalBudget === 0 || totalWorkstreamDuration === 0) return 0;
-    const start = new Date(ws.startDate).getTime();
-    const end = new Date(ws.endDate).getTime();
-    const dur = Math.max(1, (end - start) / (1000 * 60 * 60 * 24));
+    const start = safeParseDate(ws.startDate);
+    const end = safeParseDate(ws.endDate);
+    const dur = start && end ? Math.max(1, (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) : 1;
     return (dur / totalWorkstreamDuration) * totalBudget;
   }, [totalBudget, totalWorkstreamDuration]);
 
@@ -165,9 +316,9 @@ function ProgressTrackingTab({ timelineId, tasks, approvedBudget }: { timelineId
     let totalWeight = 0;
     let weightedSum = 0;
     for (const ws of phaseChildren) {
-      const start = new Date(ws.startDate).getTime();
-      const end = new Date(ws.endDate).getTime();
-      const dur = Math.max(1, (end - start) / (1000 * 60 * 60 * 24));
+      const start = safeParseDate(ws.startDate);
+      const end = safeParseDate(ws.endDate);
+      const dur = start && end ? Math.max(1, (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) : 1;
       const pct = currentEntryMap[ws.id]?.percentComplete ?? ws.percentComplete;
       weightedSum += pct * dur;
       totalWeight += dur;
@@ -180,9 +331,9 @@ function ProgressTrackingTab({ timelineId, tasks, approvedBudget }: { timelineId
     let totalWeight = 0;
     let weightedSum = 0;
     for (const ws of phaseChildren) {
-      const start = new Date(ws.startDate).getTime();
-      const end = new Date(ws.endDate).getTime();
-      const dur = Math.max(1, (end - start) / (1000 * 60 * 60 * 24));
+      const start = safeParseDate(ws.startDate);
+      const end = safeParseDate(ws.endDate);
+      const dur = start && end ? Math.max(1, (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) : 1;
       const pct = previousEntryMap[ws.id]?.percentComplete ?? 0;
       weightedSum += pct * dur;
       totalWeight += dur;
@@ -472,8 +623,8 @@ function EVMTab({ timelineId, tasks, approvedBudget }: { timelineId: string; tas
     const durations: Record<string, number> = {};
     let totalDuration = 0;
     workstreams.forEach(ws => {
-      const start = ws.startDate ? new Date(ws.startDate + "T00:00:00") : null;
-      const end = ws.endDate ? new Date(ws.endDate + "T00:00:00") : null;
+      const start = safeParseDate(ws.startDate);
+      const end = safeParseDate(ws.endDate);
       const duration = start && end ? Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))) : 1;
       durations[ws.id] = duration;
       totalDuration += duration;
@@ -485,14 +636,22 @@ function EVMTab({ timelineId, tasks, approvedBudget }: { timelineId: string; tas
     return budgets;
   }, [workstreams, bac]);
 
+  const { data: allTeamMembers = [] } = useQuery<{ id: string; hourlyCost: string | null }[]>({
+    queryKey: ["/api/team-members"],
+  });
+
   const rateByTeamMember = useMemo(() => {
     const rates: Record<string, number> = {};
+    allTeamMembers.forEach(tm => {
+      const cost = parseFloat(tm.hourlyCost || "0");
+      if (cost > 0) rates[tm.id] = cost;
+    });
     projectTeam.forEach(ptm => {
-      const rate = ptm.rateCard ? parseFloat(ptm.rateCard.costRate || "0") : parseFloat(ptm.teamMember.hourlyCost || "0");
-      rates[ptm.teamMemberId] = rate;
+      const rate = ptm.rateCard ? parseFloat(ptm.rateCard.costRate || "0") : (ptm.hourlyCost ? parseFloat(ptm.hourlyCost) : parseFloat(ptm.teamMember.hourlyCost || "0"));
+      if (rate > 0) rates[ptm.teamMemberId] = rate;
     });
     return rates;
-  }, [projectTeam]);
+  }, [projectTeam, allTeamMembers]);
 
   const weeklyData = useMemo(() => {
     const allWeeks = new Set<string>();
@@ -2232,6 +2391,9 @@ export default function TimelineDetail() {
             <TabsTrigger value="team-members" data-testid="tab-team-members">
               Team Members ({uniqueTeamMemberCount})
             </TabsTrigger>
+            <TabsTrigger value="timesheets" data-testid="tab-timesheets">
+              Timesheets
+            </TabsTrigger>
             <TabsTrigger value="progress" data-testid="tab-progress">
               Progress
             </TabsTrigger>
@@ -2438,6 +2600,13 @@ export default function TimelineDetail() {
 
           <TabsContent value="team-members">
             <ProjectTeamMembersTab timelineId={timeline.id} />
+          </TabsContent>
+
+          <TabsContent value="timesheets">
+            <ProjectTimesheetsTab
+              timelineId={timeline.id}
+              tasks={timeline.tasks}
+            />
           </TabsContent>
 
           <TabsContent value="progress">
