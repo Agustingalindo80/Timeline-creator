@@ -717,7 +717,7 @@ export async function registerRoutes(
 
   app.post("/api/timesheets", async (req, res) => {
     try {
-      const { timelineId, teamMemberId, taskId, weekEnding, hours, billableType, notes } = req.body;
+      const { timelineId, teamMemberId, taskId, weekEnding, dayDate, hours, billableType, notes } = req.body;
       if (!timelineId || !teamMemberId || !weekEnding || hours === undefined) {
         return res.status(400).json({ message: "timelineId, teamMemberId, weekEnding, and hours are required" });
       }
@@ -726,6 +726,7 @@ export async function registerRoutes(
         teamMemberId,
         taskId: taskId || null,
         weekEnding,
+        dayDate: dayDate || null,
         hours: String(hours),
         billableType: billableType || "billable",
         notes: notes || null,
@@ -742,6 +743,7 @@ export async function registerRoutes(
       if (req.body.hours !== undefined) updates.hours = String(req.body.hours);
       if (req.body.taskId !== undefined) updates.taskId = req.body.taskId;
       if (req.body.weekEnding !== undefined) updates.weekEnding = req.body.weekEnding;
+      if (req.body.dayDate !== undefined) updates.dayDate = req.body.dayDate;
       if (req.body.billableType !== undefined) updates.billableType = req.body.billableType;
       if (req.body.notes !== undefined) updates.notes = req.body.notes;
       if (req.body.teamMemberId !== undefined) updates.teamMemberId = req.body.teamMemberId;

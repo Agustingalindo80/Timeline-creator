@@ -1,20 +1,18 @@
-import { useState, useMemo, useCallback } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useState, useMemo, useCallback, useEffect } from "react";
+import { useQuery, useMutation, useQueries } from "@tanstack/react-query";
 import { Helmet } from "react-helmet-async";
-import { Loader2, ChevronLeft, ChevronRight, Calendar, CalendarDays } from "lucide-react";
+import { Loader2, ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type {
   Timeline,
   Task,
   TimesheetEntry,
-  AllocationWithTeamMember,
-  ProjectTeamMemberWithDetails,
+  TeamMember,
 } from "@shared/schema";
 
 function getWeekEnding(date: Date): Date {
@@ -59,111 +57,145 @@ function formatDisplayDate(dateStr: string): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-type CellKey = string;
-function cellKey(teamMemberId: string, taskId: string, dayDate?: string): CellKey {
-  return dayDate ? `${teamMemberId}__${taskId}__${dayDate}` : `${teamMemberId}__${taskId}`;
+type RowKey = string;
+function rowKey(projectId: string, taskId: string): RowKey {
+  return `${projectId}__${taskId}`;
 }
 
-type ViewMode = "weekly" | "daily";
+type CellKey = string;
+function cellKey(projectId: string, taskId: string, dayDate: string): CellKey {
+  return `${projectId}__${taskId}__${dayDate}`;
+}
+
+interface TimesheetRow {
+  projectId: string;
+  taskId: string;
+  key: RowKey;
+}
 
 export default function TimesheetsPage() {
   const { toast } = useToast();
-  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
+  const [selectedTeamMemberId, setSelectedTeamMemberId] = useState<string>("");
   const [weekEnding, setWeekEnding] = useState<string>(() => formatDate(getWeekEnding(new Date())));
   const [editingCells, setEditingCells] = useState<Record<CellKey, string>>({});
-  const [viewMode, setViewMode] = useState<ViewMode>("weekly");
+  const [addingRow, setAddingRow] = useState(false);
+  const [newRowProjectId, setNewRowProjectId] = useState<string>("");
+  const [newRowTaskId, setNewRowTaskId] = useState<string>("");
+  const [pendingRows, setPendingRows] = useState<TimesheetRow[]>([]);
 
   const weekDays = useMemo(() => getWeekDays(weekEnding), [weekEnding]);
+
+  const { data: allTeamMembers = [], isLoading: tmLoading } = useQuery<TeamMember[]>({
+    queryKey: ["/api/team-members"],
+  });
 
   const { data: projects = [], isLoading: projectsLoading } = useQuery<Timeline[]>({
     queryKey: ["/api/timelines"],
   });
 
-  const { data: allocations = [], isLoading: allocsLoading } = useQuery<AllocationWithTeamMember[]>({
-    queryKey: ["/api/timelines", selectedProjectId, "allocations"],
-    enabled: !!selectedProjectId,
+  const { data: entriesRaw = [], isLoading: entriesLoading } = useQuery<TimesheetEntry[]>({
+    queryKey: ["/api/timesheets", { teamMemberId: selectedTeamMemberId, weekEnding }],
+    enabled: !!selectedTeamMemberId,
     queryFn: async () => {
-      const res = await fetch(`/api/timelines/${selectedProjectId}/allocations`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch allocations");
-      return res.json();
-    },
-  });
-
-  const { data: projectTeamRaw = [] } = useQuery<ProjectTeamMemberWithDetails[]>({
-    queryKey: ["/api/timelines", selectedProjectId, "team"],
-    enabled: !!selectedProjectId,
-  });
-
-  const teamMembers = useMemo(() => {
-    const seen = new Set<string>();
-    const result: { teamMemberId: string; name: string; role: string | null; hourlyCost: string | null }[] = [];
-    for (const alloc of allocations) {
-      if (!seen.has(alloc.teamMemberId)) {
-        seen.add(alloc.teamMemberId);
-        result.push({
-          teamMemberId: alloc.teamMemberId,
-          name: alloc.teamMember.name,
-          role: alloc.teamMember.role,
-          hourlyCost: alloc.teamMember.hourlyCost,
-        });
-      }
-    }
-    for (const ptm of projectTeamRaw) {
-      if (!seen.has(ptm.teamMemberId)) {
-        seen.add(ptm.teamMemberId);
-        result.push({
-          teamMemberId: ptm.teamMemberId,
-          name: ptm.teamMember.name,
-          role: ptm.teamMember.role,
-          hourlyCost: ptm.teamMember.hourlyCost,
-        });
-      }
-    }
-    return result;
-  }, [allocations, projectTeamRaw]);
-
-  const { data: allTasks = [], isLoading: tasksLoading } = useQuery<Task[]>({
-    queryKey: ["/api/timelines", selectedProjectId, "tasks"],
-    enabled: !!selectedProjectId,
-  });
-
-  const workstreams = useMemo(
-    () => allTasks.filter((t) => t.itemType === "workstream"),
-    [allTasks]
-  );
-
-  const { data: timesheetEntries = [], isLoading: entriesLoading } = useQuery<TimesheetEntry[]>({
-    queryKey: ["/api/timesheets", { timelineId: selectedProjectId, weekEnding }],
-    enabled: !!selectedProjectId,
-    queryFn: async () => {
-      const res = await fetch(`/api/timelines/${selectedProjectId}/timesheets?weekEnding=${weekEnding}`, { credentials: "include" });
+      const res = await fetch(`/api/timesheets?teamMemberId=${selectedTeamMemberId}&weekEnding=${weekEnding}`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch timesheets");
       return res.json();
     },
   });
 
-  const entryMap = useMemo(() => {
-    const map = new Map<CellKey, TimesheetEntry>();
-    for (const entry of timesheetEntries) {
-      if (entry.taskId) {
-        if (entry.dayDate) {
-          map.set(cellKey(entry.teamMemberId, entry.taskId, entry.dayDate), entry);
-        } else {
-          map.set(cellKey(entry.teamMemberId, entry.taskId), entry);
-        }
+  const serverRows = useMemo(() => {
+    const seen = new Set<RowKey>();
+    const rows: TimesheetRow[] = [];
+    for (const e of entriesRaw) {
+      if (!e.taskId) continue;
+      const rk = rowKey(e.timelineId, e.taskId);
+      if (!seen.has(rk)) {
+        seen.add(rk);
+        rows.push({ projectId: e.timelineId, taskId: e.taskId, key: rk });
+      }
+    }
+    return rows;
+  }, [entriesRaw]);
+
+  const existingRows = useMemo(() => {
+    const seen = new Set<RowKey>();
+    const merged: TimesheetRow[] = [];
+    for (const r of serverRows) {
+      seen.add(r.key);
+      merged.push(r);
+    }
+    for (const r of pendingRows) {
+      if (!seen.has(r.key)) {
+        seen.add(r.key);
+        merged.push(r);
+      }
+    }
+    return merged;
+  }, [serverRows, pendingRows]);
+
+  const legacyWeeklyEntries = useMemo(() => {
+    const map = new Map<RowKey, TimesheetEntry>();
+    for (const entry of entriesRaw) {
+      if (entry.taskId && !entry.dayDate) {
+        map.set(rowKey(entry.timelineId, entry.taskId), entry);
       }
     }
     return map;
-  }, [timesheetEntries]);
+  }, [entriesRaw]);
+
+  const entryMap = useMemo(() => {
+    const map = new Map<CellKey, TimesheetEntry>();
+    for (const entry of entriesRaw) {
+      if (entry.taskId && entry.dayDate) {
+        map.set(cellKey(entry.timelineId, entry.taskId, entry.dayDate), entry);
+      }
+    }
+    return map;
+  }, [entriesRaw]);
+
+  const projectIdsToFetch = useMemo(() => {
+    const pids = new Set<string>();
+    for (const r of existingRows) pids.add(r.projectId);
+    if (newRowProjectId) pids.add(newRowProjectId);
+    return [...pids].sort();
+  }, [existingRows, newRowProjectId]);
+
+  const taskQueryResults = useQueries({
+    queries: projectIdsToFetch.map(pid => ({
+      queryKey: ["/api/timelines", pid, "tasks"],
+      enabled: !!pid,
+    })),
+  });
+
+  const allTasksByProject = useMemo(() => {
+    const map = new Map<string, Task[]>();
+    for (let i = 0; i < projectIdsToFetch.length; i++) {
+      const pid = projectIdsToFetch[i];
+      const data = taskQueryResults[i]?.data as Task[] | undefined;
+      if (data) {
+        map.set(pid, data.filter(t => t.itemType === "workstream"));
+      }
+    }
+    return map;
+  }, [projectIdsToFetch, taskQueryResults]);
+
+  const getProjectName = useCallback((pid: string) => {
+    return projects.find(p => p.id === pid)?.title || "Unknown Project";
+  }, [projects]);
+
+  const getTaskName = useCallback((pid: string, tid: string) => {
+    const tasks = allTasksByProject.get(pid);
+    return tasks?.find(t => t.id === tid)?.title || "Unknown Workstream";
+  }, [allTasksByProject]);
 
   const createMutation = useMutation({
-    mutationFn: async (data: { teamMemberId: string; taskId: string; hours: number; dayDate?: string }) => {
+    mutationFn: async (data: { timelineId: string; taskId: string; hours: number; dayDate: string }) => {
       const res = await apiRequest("POST", "/api/timesheets", {
-        timelineId: selectedProjectId,
-        teamMemberId: data.teamMemberId,
+        timelineId: data.timelineId,
+        teamMemberId: selectedTeamMemberId,
         taskId: data.taskId,
         weekEnding,
-        dayDate: data.dayDate || null,
+        dayDate: data.dayDate,
         hours: data.hours,
         billableType: "billable",
       });
@@ -194,8 +226,8 @@ export default function TimesheetsPage() {
   });
 
   const handleCellBlur = useCallback(
-    (teamMemberId: string, taskId: string, dayDate?: string) => {
-      const key = cellKey(teamMemberId, taskId, dayDate);
+    (projectId: string, taskId: string, dayDate: string) => {
+      const key = cellKey(projectId, taskId, dayDate);
       const rawValue = editingCells[key];
       if (rawValue === undefined) return;
 
@@ -216,9 +248,7 @@ export default function TimesheetsPage() {
       }
 
       if (hours === 0) {
-        if (existing) {
-          deleteMutation.mutate(existing.id);
-        }
+        if (existing) deleteMutation.mutate(existing.id);
         return;
       }
 
@@ -227,14 +257,14 @@ export default function TimesheetsPage() {
           updateMutation.mutate({ entryId: existing.id, hours });
         }
       } else {
-        createMutation.mutate({ teamMemberId, taskId, hours, dayDate });
+        createMutation.mutate({ timelineId: projectId, taskId, hours, dayDate });
       }
     },
     [editingCells, entryMap, createMutation, updateMutation, deleteMutation]
   );
 
-  const getCellValue = (teamMemberId: string, taskId: string, dayDate?: string): string => {
-    const key = cellKey(teamMemberId, taskId, dayDate);
+  const getCellValue = (projectId: string, taskId: string, dayDate: string): string => {
+    const key = cellKey(projectId, taskId, dayDate);
     if (key in editingCells) return editingCells[key];
     const entry = entryMap.get(key);
     if (entry) {
@@ -244,115 +274,67 @@ export default function TimesheetsPage() {
     return "";
   };
 
-  const getRate = (teamMemberId: string): number => {
-    const ptm = projectTeamRaw.find(p => p.teamMemberId === teamMemberId);
-    if (ptm?.rateCard?.costRate) return parseFloat(ptm.rateCard.costRate);
-    if (ptm?.hourlyCost) return parseFloat(ptm.hourlyCost);
-    const tm = teamMembers.find(t => t.teamMemberId === teamMemberId);
-    if (tm?.hourlyCost) return parseFloat(tm.hourlyCost);
-    return 0;
-  };
-
-  const getDailyRowTotal = (teamMemberId: string, taskId: string): number => {
+  const getRowTotal = (projectId: string, taskId: string): number => {
     let total = 0;
     for (const day of weekDays) {
-      const val = getCellValue(teamMemberId, taskId, day.date);
+      const val = getCellValue(projectId, taskId, day.date);
+      const h = parseFloat(val);
+      if (!isNaN(h)) total += h;
+    }
+    const legacyEntry = legacyWeeklyEntries.get(rowKey(projectId, taskId));
+    if (legacyEntry) {
+      total += parseFloat(legacyEntry.hours) || 0;
+    }
+    return total;
+  };
+
+  const getDayTotal = (dayDate: string): number => {
+    let total = 0;
+    for (const row of existingRows) {
+      const val = getCellValue(row.projectId, row.taskId, dayDate);
       const h = parseFloat(val);
       if (!isNaN(h)) total += h;
     }
     return total;
   };
 
-  const getWeeklyRowTotal = (teamMemberId: string): number => {
+  const grandTotal = useMemo(() => {
     let total = 0;
-    for (const ws of workstreams) {
-      if (viewMode === "daily") {
-        total += getDailyRowTotal(teamMemberId, ws.id);
-      } else {
-        const val = getCellValue(teamMemberId, ws.id);
-        const h = parseFloat(val);
-        if (!isNaN(h)) total += h;
-      }
+    for (const row of existingRows) {
+      total += getRowTotal(row.projectId, row.taskId);
     }
     return total;
+  }, [existingRows, weekDays, editingCells, entryMap]);
+
+  const handleAddRow = () => {
+    if (!newRowProjectId || !newRowTaskId) {
+      toast({ title: "Select both a project and workstream", variant: "destructive" });
+      return;
+    }
+    const rk = rowKey(newRowProjectId, newRowTaskId);
+    if (existingRows.some(r => r.key === rk)) {
+      toast({ title: "This project + workstream combination already exists", variant: "destructive" });
+      return;
+    }
+    setPendingRows(prev => [...prev, { projectId: newRowProjectId, taskId: newRowTaskId, key: rk }]);
+    setNewRowProjectId("");
+    setNewRowTaskId("");
+    setAddingRow(false);
   };
 
-  const getColTotal = (taskId: string): number => {
-    let total = 0;
-    for (const tm of teamMembers) {
-      const val = getCellValue(tm.teamMemberId, taskId);
-      const h = parseFloat(val);
-      if (!isNaN(h)) total += h;
-    }
-    return total;
+  const handleDeleteRow = (projectId: string, taskId: string) => {
+    const rk = rowKey(projectId, taskId);
+    setPendingRows(prev => prev.filter(r => r.key !== rk));
+    const toDelete = entriesRaw.filter(e => e.timelineId === projectId && e.taskId === taskId);
+    toDelete.forEach(e => deleteMutation.mutate(e.id));
   };
 
-  const getDayColTotal = (dayDate: string): number => {
-    let total = 0;
-    for (const tm of teamMembers) {
-      for (const ws of workstreams) {
-        const val = getCellValue(tm.teamMemberId, ws.id, dayDate);
-        const h = parseFloat(val);
-        if (!isNaN(h)) total += h;
-      }
-    }
-    return total;
-  };
+  const availableNewWorkstreams = useMemo(() => {
+    if (!newRowProjectId) return [];
+    return allTasksByProject.get(newRowProjectId) || [];
+  }, [newRowProjectId, allTasksByProject]);
 
-  const getMemberTotal = (teamMemberId: string): number => {
-    if (viewMode === "daily") {
-      let total = 0;
-      for (const ws of workstreams) {
-        total += getDailyRowTotal(teamMemberId, ws.id);
-      }
-      return total;
-    }
-    return getWeeklyRowTotal(teamMemberId);
-  };
-
-  const grandTotalHours = useMemo(() => {
-    let total = 0;
-    for (const tm of teamMembers) {
-      total += getMemberTotal(tm.teamMemberId);
-    }
-    return total;
-  }, [teamMembers, workstreams, editingCells, entryMap, viewMode, weekDays]);
-
-  const grandTotalCost = useMemo(() => {
-    let total = 0;
-    for (const tm of teamMembers) {
-      const hours = getMemberTotal(tm.teamMemberId);
-      total += hours * getRate(tm.teamMemberId);
-    }
-    return total;
-  }, [teamMembers, workstreams, editingCells, entryMap, viewMode, weekDays]);
-
-  const isLoading = projectsLoading || (selectedProjectId && (allocsLoading || tasksLoading || entriesLoading));
-
-  const renderDailyInput = (teamMemberId: string, taskId: string, dayDate: string) => {
-    const key = cellKey(teamMemberId, taskId, dayDate);
-    const val = getCellValue(teamMemberId, taskId, dayDate);
-    return (
-      <Input
-        type="number"
-        min="0"
-        step="0.5"
-        className="w-full text-center text-sm h-8"
-        value={val}
-        onChange={(e) =>
-          setEditingCells((prev) => ({ ...prev, [key]: e.target.value }))
-        }
-        onBlur={() => handleCellBlur(teamMemberId, taskId, dayDate)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            (e.target as HTMLInputElement).blur();
-          }
-        }}
-        placeholder="0"
-        data-testid={`input-hours-${teamMemberId}-${taskId}-${dayDate}`}
-      />
-    );
-  };
+  const isLoading = tmLoading || projectsLoading;
 
   return (
     <>
@@ -360,314 +342,235 @@ export default function TimesheetsPage() {
         <title>Timesheets</title>
       </Helmet>
       <div className="p-6 space-y-6">
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold" data-testid="text-page-title">Timesheets</h1>
-            <p className="text-sm text-muted-foreground mt-1" data-testid="text-page-description">
-              Track actual effort hours per team member and workstream
-            </p>
-          </div>
-          <Tabs value={viewMode} onValueChange={(v) => { setViewMode(v as ViewMode); setEditingCells({}); }} data-testid="tabs-view-mode">
-            <TabsList>
-              <TabsTrigger value="weekly" className="gap-1.5" data-testid="tab-weekly">
-                <Calendar className="w-3.5 h-3.5" />
-                Weekly
-              </TabsTrigger>
-              <TabsTrigger value="daily" className="gap-1.5" data-testid="tab-daily">
-                <CalendarDays className="w-3.5 h-3.5" />
-                Daily
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+        <div>
+          <h1 className="text-2xl font-semibold" data-testid="text-page-title">Timesheets</h1>
+          <p className="text-sm text-muted-foreground mt-1" data-testid="text-page-description">
+            Track daily effort hours by project and workstream
+          </p>
         </div>
 
         <div className="flex items-center gap-4 flex-wrap">
           <div className="w-64">
-            <Select value={selectedProjectId} onValueChange={setSelectedProjectId} data-testid="select-project">
-              <SelectTrigger data-testid="select-project-trigger">
-                <SelectValue placeholder="Select a project" />
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">Team Member</label>
+            <Select value={selectedTeamMemberId} onValueChange={(v) => { setSelectedTeamMemberId(v); setEditingCells({}); setPendingRows([]); }} data-testid="select-team-member">
+              <SelectTrigger data-testid="select-team-member-trigger">
+                <SelectValue placeholder="Select team member" />
               </SelectTrigger>
               <SelectContent>
-                {projects.map((p) => (
-                  <SelectItem key={p.id} value={p.id} data-testid={`select-project-${p.id}`}>
-                    {p.title}
+                {allTeamMembers.map((tm) => (
+                  <SelectItem key={tm.id} value={tm.id} data-testid={`select-tm-${tm.id}`}>
+                    {tm.name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Button
-              size="icon"
-              variant="outline"
-              onClick={() => setWeekEnding((w) => shiftWeek(w, -1))}
-              data-testid="button-prev-week"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-            <div className="text-sm font-medium min-w-[180px] text-center" data-testid="text-week-ending">
-              Week ending: {formatDisplayDate(weekEnding)}
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">&nbsp;</label>
+            <div className="flex items-center gap-2">
+              <Button
+                size="icon"
+                variant="outline"
+                onClick={() => { setWeekEnding((w) => shiftWeek(w, -1)); setEditingCells({}); setPendingRows([]); }}
+                data-testid="button-prev-week"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <div className="text-sm font-medium min-w-[200px] text-center" data-testid="text-week-ending">
+                Week ending: {formatDisplayDate(weekEnding)}
+              </div>
+              <Button
+                size="icon"
+                variant="outline"
+                onClick={() => { setWeekEnding((w) => shiftWeek(w, 1)); setEditingCells({}); setPendingRows([]); }}
+                data-testid="button-next-week"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
             </div>
-            <Button
-              size="icon"
-              variant="outline"
-              onClick={() => setWeekEnding((w) => shiftWeek(w, 1))}
-              data-testid="button-next-week"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </Button>
           </div>
         </div>
 
-        {!selectedProjectId && (
+        {!selectedTeamMemberId && (
           <Card>
-            <CardContent className="p-8 text-center text-muted-foreground" data-testid="text-no-project">
-              Select a project to view and edit timesheets
+            <CardContent className="p-8 text-center text-muted-foreground" data-testid="text-no-member">
+              Select a team member to view and edit their timesheet
             </CardContent>
           </Card>
         )}
 
-        {selectedProjectId && isLoading && (
+        {selectedTeamMemberId && entriesLoading && (
           <div className="flex items-center justify-center p-12">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
         )}
 
-        {selectedProjectId && !isLoading && teamMembers.length === 0 && (
-          <Card>
-            <CardContent className="p-8 text-center text-muted-foreground" data-testid="text-no-team">
-              No team members allocated to this project. Add allocations in the team member detail page.
-            </CardContent>
-          </Card>
-        )}
-
-        {selectedProjectId && !isLoading && teamMembers.length > 0 && (
+        {selectedTeamMemberId && !entriesLoading && (
           <>
             <div className="flex items-center gap-4 flex-wrap">
               <Card className="flex-1 min-w-[140px]">
                 <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Total Hours</CardTitle>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Total Hours This Week</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold" data-testid="text-total-hours">{grandTotalHours.toFixed(1)}</div>
+                  <div className="text-2xl font-bold" data-testid="text-total-hours">{grandTotal.toFixed(1)}</div>
                 </CardContent>
               </Card>
               <Card className="flex-1 min-w-[140px]">
                 <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Total Cost</CardTitle>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Entries</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold" data-testid="text-total-cost">
-                    ${grandTotalCost.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </div>
+                  <div className="text-2xl font-bold" data-testid="text-entry-count">{existingRows.length}</div>
                 </CardContent>
               </Card>
             </div>
 
-            {viewMode === "weekly" && (
-              <Card>
-                <CardContent className="p-0">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm" data-testid="table-timesheet-weekly">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left p-3 font-medium sticky left-0 bg-card z-10 min-w-[180px]">
-                            Team Member
+            <Card>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm" data-testid="table-timesheet">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left p-3 font-medium sticky left-0 bg-card z-10 min-w-[140px]">Project</th>
+                        <th className="text-left p-3 font-medium min-w-[140px]">Workstream</th>
+                        {weekDays.map((day) => (
+                          <th key={day.date} className="text-center p-2 font-medium min-w-[72px]">
+                            <div className="text-[10px] text-muted-foreground">{day.dayName}</div>
+                            <div className="text-xs">{day.label}</div>
                           </th>
-                          <th className="text-right p-3 font-medium min-w-[80px]">Rate/hr</th>
-                          {workstreams.map((ws) => (
-                            <th
-                              key={ws.id}
-                              className="text-center p-3 font-medium min-w-[100px] max-w-[140px] truncate"
-                              title={ws.title}
-                            >
-                              {ws.title}
-                            </th>
-                          ))}
-                          <th className="text-right p-3 font-medium min-w-[80px]">Total Hrs</th>
-                          <th className="text-right p-3 font-medium min-w-[100px]">Cost</th>
+                        ))}
+                        <th className="text-right p-3 font-medium min-w-[70px]">Total</th>
+                        <th className="p-3 w-10"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {existingRows.length === 0 && !addingRow && (
+                        <tr>
+                          <td colSpan={11} className="p-8 text-center text-muted-foreground" data-testid="text-no-entries">
+                            No time entries for this week. Click "Add Row" below to start logging hours.
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {teamMembers.map((tm) => {
-                          const rate = getRate(tm.teamMemberId);
-                          const rowHours = getWeeklyRowTotal(tm.teamMemberId);
-                          const rowCost = rowHours * rate;
+                      )}
+                      {existingRows.map((row) => {
+                        const rt = getRowTotal(row.projectId, row.taskId);
+                        return (
+                          <tr key={row.key} className="border-b last:border-b-0" data-testid={`row-entry-${row.key}`}>
+                            <td className="p-2 sticky left-0 bg-card z-10">
+                              <div className="text-xs font-medium truncate max-w-[130px]" title={getProjectName(row.projectId)} data-testid={`text-project-${row.key}`}>
+                                {getProjectName(row.projectId)}
+                              </div>
+                            </td>
+                            <td className="p-2">
+                              <div className="text-xs truncate max-w-[130px]" title={getTaskName(row.projectId, row.taskId)} data-testid={`text-workstream-${row.key}`}>
+                                {getTaskName(row.projectId, row.taskId)}
+                              </div>
+                            </td>
+                            {weekDays.map((day) => {
+                              const ck = cellKey(row.projectId, row.taskId, day.date);
+                              const val = getCellValue(row.projectId, row.taskId, day.date);
+                              return (
+                                <td key={day.date} className="p-1">
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    step="0.5"
+                                    className="w-full text-center text-sm h-8"
+                                    value={val}
+                                    onChange={(e) => setEditingCells((prev) => ({ ...prev, [ck]: e.target.value }))}
+                                    onBlur={() => handleCellBlur(row.projectId, row.taskId, day.date)}
+                                    onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                                    placeholder="0"
+                                    data-testid={`input-hours-${row.key}-${day.date}`}
+                                  />
+                                </td>
+                              );
+                            })}
+                            <td className="p-2 text-right font-medium" data-testid={`text-row-total-${row.key}`}>
+                              {rt > 0 ? rt.toFixed(1) : "-"}
+                            </td>
+                            <td className="p-2">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                onClick={() => handleDeleteRow(row.projectId, row.taskId)}
+                                data-testid={`button-delete-row-${row.key}`}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                    <tfoot>
+                      <tr className="border-t-2">
+                        <td className="p-2 font-medium sticky left-0 bg-card z-10" colSpan={2}>Day Totals</td>
+                        {weekDays.map((day) => {
+                          const dt = getDayTotal(day.date);
                           return (
-                            <tr key={tm.teamMemberId} className="border-b last:border-b-0" data-testid={`row-member-${tm.teamMemberId}`}>
-                              <td className="p-3 sticky left-0 bg-card z-10">
-                                <div className="font-medium" data-testid={`text-member-name-${tm.teamMemberId}`}>
-                                  {tm.name}
-                                </div>
-                                {tm.role && (
-                                  <div className="text-xs text-muted-foreground">{tm.role}</div>
-                                )}
-                              </td>
-                              <td className="p-3 text-right text-muted-foreground" data-testid={`text-rate-${tm.teamMemberId}`}>
-                                ${rate.toFixed(2)}
-                              </td>
-                              {workstreams.map((ws) => {
-                                const key = cellKey(tm.teamMemberId, ws.id);
-                                const val = getCellValue(tm.teamMemberId, ws.id);
-                                return (
-                                  <td key={ws.id} className="p-1.5 text-center">
-                                    <Input
-                                      type="number"
-                                      min="0"
-                                      step="0.5"
-                                      className="w-full text-center text-sm"
-                                      value={val}
-                                      onChange={(e) =>
-                                        setEditingCells((prev) => ({ ...prev, [key]: e.target.value }))
-                                      }
-                                      onBlur={() => handleCellBlur(tm.teamMemberId, ws.id)}
-                                      onKeyDown={(e) => {
-                                        if (e.key === "Enter") {
-                                          (e.target as HTMLInputElement).blur();
-                                        }
-                                      }}
-                                      placeholder="0"
-                                      data-testid={`input-hours-${tm.teamMemberId}-${ws.id}`}
-                                    />
-                                  </td>
-                                );
-                              })}
-                              <td className="p-3 text-right font-medium" data-testid={`text-row-total-${tm.teamMemberId}`}>
-                                {rowHours > 0 ? rowHours.toFixed(1) : "-"}
-                              </td>
-                              <td className="p-3 text-right font-medium" data-testid={`text-row-cost-${tm.teamMemberId}`}>
-                                {rowCost > 0
-                                  ? `$${rowCost.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                                  : "-"}
-                              </td>
-                            </tr>
+                            <td key={day.date} className="p-2 text-center font-medium text-xs" data-testid={`text-day-total-${day.date}`}>
+                              {dt > 0 ? dt.toFixed(1) : "-"}
+                            </td>
                           );
                         })}
-                      </tbody>
-                      <tfoot>
-                        <tr className="border-t-2 font-medium">
-                          <td className="p-3 sticky left-0 bg-card z-10">Column Totals</td>
-                          <td className="p-3"></td>
-                          {workstreams.map((ws) => {
-                            const colTotal = getColTotal(ws.id);
-                            return (
-                              <td key={ws.id} className="p-3 text-center" data-testid={`text-col-total-${ws.id}`}>
-                                {colTotal > 0 ? colTotal.toFixed(1) : "-"}
-                              </td>
-                            );
-                          })}
-                          <td className="p-3 text-right font-bold" data-testid="text-grand-total-hours">
-                            {grandTotalHours.toFixed(1)}
-                          </td>
-                          <td className="p-3 text-right font-bold" data-testid="text-grand-total-cost">
-                            ${grandTotalCost.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
+                        <td className="p-2 text-right font-bold" data-testid="text-grand-total">
+                          {grandTotal.toFixed(1)}
+                        </td>
+                        <td className="p-2"></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+
+            {addingRow ? (
+              <Card data-testid="card-add-row">
+                <CardContent className="p-4">
+                  <div className="flex items-end gap-3 flex-wrap">
+                    <div className="flex-1 min-w-[180px]">
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Project</label>
+                      <Select value={newRowProjectId} onValueChange={(v) => { setNewRowProjectId(v); setNewRowTaskId(""); }}>
+                        <SelectTrigger data-testid="select-new-row-project">
+                          <SelectValue placeholder="Select project" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {projects.map((p) => (
+                            <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex-1 min-w-[180px]">
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Workstream</label>
+                      <Select value={newRowTaskId} onValueChange={setNewRowTaskId} disabled={!newRowProjectId}>
+                        <SelectTrigger data-testid="select-new-row-workstream">
+                          <SelectValue placeholder={newRowProjectId ? "Select workstream" : "Select project first"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableNewWorkstreams.map((ws) => (
+                            <SelectItem key={ws.id} value={ws.id}>{ws.title}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button onClick={handleAddRow} disabled={!newRowProjectId || !newRowTaskId} data-testid="button-confirm-add-row">
+                      Add
+                    </Button>
+                    <Button variant="outline" onClick={() => { setAddingRow(false); setNewRowProjectId(""); setNewRowTaskId(""); }} data-testid="button-cancel-add-row">
+                      Cancel
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
-            )}
-
-            {viewMode === "daily" && (
-              <div className="space-y-4" data-testid="daily-view">
-                {teamMembers.map((tm) => {
-                  const rate = getRate(tm.teamMemberId);
-                  const memberTotal = getMemberTotal(tm.teamMemberId);
-                  const memberCost = memberTotal * rate;
-                  return (
-                    <Card key={tm.teamMemberId} data-testid={`daily-card-${tm.teamMemberId}`}>
-                      <CardHeader className="pb-3">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <CardTitle className="text-base" data-testid={`text-member-name-${tm.teamMemberId}`}>{tm.name}</CardTitle>
-                            {tm.role && <p className="text-xs text-muted-foreground mt-0.5">{tm.role}</p>}
-                          </div>
-                          <div className="text-right">
-                            <div className="text-sm font-medium">{memberTotal.toFixed(1)} hrs</div>
-                            <div className="text-xs text-muted-foreground">
-                              ${rate.toFixed(2)}/hr · ${memberCost.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </div>
-                          </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="pt-0">
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-sm" data-testid={`table-daily-${tm.teamMemberId}`}>
-                            <thead>
-                              <tr className="border-b">
-                                <th className="text-left p-2 font-medium sticky left-0 bg-card z-10 min-w-[160px]">
-                                  Workstream
-                                </th>
-                                {weekDays.map((day) => (
-                                  <th key={day.date} className="text-center p-2 font-medium min-w-[70px]">
-                                    <div className="text-[10px] text-muted-foreground">{day.dayName}</div>
-                                    <div className="text-xs">{day.label}</div>
-                                  </th>
-                                ))}
-                                <th className="text-right p-2 font-medium min-w-[70px]">Total</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {workstreams.map((ws) => {
-                                const wsTotal = getDailyRowTotal(tm.teamMemberId, ws.id);
-                                return (
-                                  <tr key={ws.id} className="border-b last:border-b-0" data-testid={`daily-row-${tm.teamMemberId}-${ws.id}`}>
-                                    <td className="p-2 sticky left-0 bg-card z-10">
-                                      <div className="text-xs font-medium truncate max-w-[150px]" title={ws.title}>
-                                        {ws.title}
-                                      </div>
-                                    </td>
-                                    {weekDays.map((day) => (
-                                      <td key={day.date} className="p-1">
-                                        {renderDailyInput(tm.teamMemberId, ws.id, day.date)}
-                                      </td>
-                                    ))}
-                                    <td className="p-2 text-right font-medium text-xs" data-testid={`text-daily-ws-total-${tm.teamMemberId}-${ws.id}`}>
-                                      {wsTotal > 0 ? wsTotal.toFixed(1) : "-"}
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                            <tfoot>
-                              <tr className="border-t-2">
-                                <td className="p-2 font-medium text-xs sticky left-0 bg-card z-10">Day Totals</td>
-                                {weekDays.map((day) => {
-                                  let dayTotal = 0;
-                                  for (const ws of workstreams) {
-                                    const val = getCellValue(tm.teamMemberId, ws.id, day.date);
-                                    const h = parseFloat(val);
-                                    if (!isNaN(h)) dayTotal += h;
-                                  }
-                                  return (
-                                    <td key={day.date} className="p-2 text-center font-medium text-xs" data-testid={`text-day-total-${tm.teamMemberId}-${day.date}`}>
-                                      {dayTotal > 0 ? dayTotal.toFixed(1) : "-"}
-                                    </td>
-                                  );
-                                })}
-                                <td className="p-2 text-right font-bold text-xs" data-testid={`text-member-total-${tm.teamMemberId}`}>
-                                  {memberTotal.toFixed(1)}
-                                </td>
-                              </tr>
-                            </tfoot>
-                          </table>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            )}
-
-            {workstreams.length === 0 && (
-              <Card>
-                <CardContent className="p-8 text-center text-muted-foreground" data-testid="text-no-workstreams">
-                  No workstreams found for this project. Add workstreams in the project detail page.
-                </CardContent>
-              </Card>
+            ) : (
+              <Button variant="outline" className="gap-2" onClick={() => setAddingRow(true)} data-testid="button-add-row">
+                <Plus className="w-4 h-4" />
+                Add Row
+              </Button>
             )}
           </>
         )}
