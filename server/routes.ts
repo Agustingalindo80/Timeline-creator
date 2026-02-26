@@ -567,6 +567,15 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/timelines/:id/tasks", async (req, res) => {
+    try {
+      const taskList = await storage.getTasksByTimeline(req.params.id);
+      res.json(taskList);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // ADD task to timeline
   app.post("/api/timelines/:id/tasks", async (req, res) => {
     try {

@@ -71,6 +71,7 @@ export interface IStorage {
   updateMilestone(id: string, data: Partial<InsertMilestone>): Promise<Milestone | undefined>;
   deleteMilestone(id: string): Promise<void>;
   getTask(id: string): Promise<Task | undefined>;
+  getTasksByTimeline(timelineId: string): Promise<Task[]>;
   getTasksByParent(parentTaskId: string): Promise<Task[]>;
   createTask(data: InsertTask): Promise<Task>;
   updateTask(id: string, data: Partial<InsertTask>): Promise<Task | undefined>;
@@ -275,6 +276,10 @@ export class DatabaseStorage implements IStorage {
   async getTask(id: string): Promise<Task | undefined> {
     const [task] = await db.select().from(tasks).where(eq(tasks.id, id));
     return task;
+  }
+
+  async getTasksByTimeline(timelineId: string): Promise<Task[]> {
+    return db.select().from(tasks).where(eq(tasks.timelineId, timelineId));
   }
 
   async getTasksByParent(parentTaskId: string): Promise<Task[]> {
