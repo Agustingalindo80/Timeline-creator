@@ -13,6 +13,7 @@ import type {
   Timeline,
   Task,
   TimesheetEntry,
+  AllocationWithTeamMember,
   ProjectTeamMemberWithDetails,
 } from "@shared/schema";
 
@@ -55,10 +56,48 @@ export default function TimesheetsPage() {
     queryKey: ["/api/timelines"],
   });
 
-  const { data: projectTeam = [], isLoading: teamLoading } = useQuery<ProjectTeamMemberWithDetails[]>({
+  const { data: allocations = [], isLoading: allocsLoading } = useQuery<AllocationWithTeamMember[]>({
+    queryKey: ["/api/timelines", selectedProjectId, "allocations"],
+    enabled: !!selectedProjectId,
+    queryFn: async () => {
+      const res = await fetch(`/api/timelines/${selectedProjectId}/allocations`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch allocations");
+      return res.json();
+    },
+  });
+
+  const { data: projectTeamRaw = [] } = useQuery<ProjectTeamMemberWithDetails[]>({
     queryKey: ["/api/timelines", selectedProjectId, "team"],
     enabled: !!selectedProjectId,
   });
+
+  const teamMembers = useMemo(() => {
+    const seen = new Set<string>();
+    const result: { teamMemberId: string; name: string; role: string | null; hourlyCost: string | null }[] = [];
+    for (const alloc of allocations) {
+      if (!seen.has(alloc.teamMemberId)) {
+        seen.add(alloc.teamMemberId);
+        result.push({
+          teamMemberId: alloc.teamMemberId,
+          name: alloc.teamMember.name,
+          role: alloc.teamMember.role,
+          hourlyCost: alloc.teamMember.hourlyCost,
+        });
+      }
+    }
+    for (const ptm of projectTeamRaw) {
+      if (!seen.has(ptm.teamMemberId)) {
+        seen.add(ptm.teamMemberId);
+        result.push({
+          teamMemberId: ptm.teamMemberId,
+          name: ptm.teamMember.name,
+          role: ptm.teamMember.role,
+          hourlyCost: ptm.teamMember.hourlyCost,
+        });
+      }
+    }
+    return result;
+  }, [allocations, projectTeamRaw]);
 
   const { data: allTasks = [], isLoading: tasksLoading } = useQuery<Task[]>({
     queryKey: ["/api/timelines", selectedProjectId, "tasks"],
@@ -177,10 +216,12 @@ export default function TimesheetsPage() {
     return "";
   };
 
-  const getRate = (ptm: ProjectTeamMemberWithDetails): number => {
-    if (ptm.rateCard?.costRate) return parseFloat(ptm.rateCard.costRate);
-    if (ptm.hourlyCost) return parseFloat(ptm.hourlyCost);
-    if (ptm.teamMember.hourlyCost) return parseFloat(ptm.teamMember.hourlyCost);
+  const getRate = (teamMemberId: string): number => {
+    const ptm = projectTeamRaw.find(p => p.teamMemberId === teamMemberId);
+    if (ptm?.rateCard?.costRate) return parseFloat(ptm.rateCard.costRate);
+    if (ptm?.hourlyCost) return parseFloat(ptm.hourlyCost);
+    const tm = teamMembers.find(t => t.teamMemberId === teamMemberId);
+    if (tm?.hourlyCost) return parseFloat(tm.hourlyCost);
     return 0;
   };
 
@@ -196,8 +237,8 @@ export default function TimesheetsPage() {
 
   const getColTotal = (taskId: string): number => {
     let total = 0;
-    for (const ptm of projectTeam) {
-      const val = getCellValue(ptm.teamMemberId, taskId);
+    for (const tm of teamMembers) {
+      const val = getCellValue(tm.teamMemberId, taskId);
       const h = parseFloat(val);
       if (!isNaN(h)) total += h;
     }
@@ -206,22 +247,22 @@ export default function TimesheetsPage() {
 
   const grandTotalHours = useMemo(() => {
     let total = 0;
-    for (const ptm of projectTeam) {
-      total += getRowTotal(ptm.teamMemberId);
+    for (const tm of teamMembers) {
+      total += getRowTotal(tm.teamMemberId);
     }
     return total;
-  }, [projectTeam, workstreams, editingCells, entryMap]);
+  }, [teamMembers, workstreams, editingCells, entryMap]);
 
   const grandTotalCost = useMemo(() => {
     let total = 0;
-    for (const ptm of projectTeam) {
-      const hours = getRowTotal(ptm.teamMemberId);
-      total += hours * getRate(ptm);
+    for (const tm of teamMembers) {
+      const hours = getRowTotal(tm.teamMemberId);
+      total += hours * getRate(tm.teamMemberId);
     }
     return total;
-  }, [projectTeam, workstreams, editingCells, entryMap]);
+  }, [teamMembers, workstreams, editingCells, entryMap]);
 
-  const isLoading = projectsLoading || (selectedProjectId && (teamLoading || tasksLoading || entriesLoading));
+  const isLoading = projectsLoading || (selectedProjectId && (allocsLoading || tasksLoading || entriesLoading));
 
   return (
     <>
@@ -289,15 +330,15 @@ export default function TimesheetsPage() {
           </div>
         )}
 
-        {selectedProjectId && !isLoading && projectTeam.length === 0 && (
+        {selectedProjectId && !isLoading && teamMembers.length === 0 && (
           <Card>
             <CardContent className="p-8 text-center text-muted-foreground" data-testid="text-no-team">
-              No team members assigned to this project. Add team members in the project detail page.
+              No team members allocated to this project. Add allocations in the team member detail page.
             </CardContent>
           </Card>
         )}
 
-        {selectedProjectId && !isLoading && projectTeam.length > 0 && (
+        {selectedProjectId && !isLoading && teamMembers.length > 0 && (
           <>
             <div className="flex items-center gap-4 flex-wrap">
               <Card className="flex-1 min-w-[140px]">
@@ -344,26 +385,26 @@ export default function TimesheetsPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {projectTeam.map((ptm) => {
-                        const rate = getRate(ptm);
-                        const rowHours = getRowTotal(ptm.teamMemberId);
+                      {teamMembers.map((tm) => {
+                        const rate = getRate(tm.teamMemberId);
+                        const rowHours = getRowTotal(tm.teamMemberId);
                         const rowCost = rowHours * rate;
                         return (
-                          <tr key={ptm.id} className="border-b last:border-b-0" data-testid={`row-member-${ptm.teamMemberId}`}>
+                          <tr key={tm.teamMemberId} className="border-b last:border-b-0" data-testid={`row-member-${tm.teamMemberId}`}>
                             <td className="p-3 sticky left-0 bg-card z-10">
-                              <div className="font-medium" data-testid={`text-member-name-${ptm.teamMemberId}`}>
-                                {ptm.teamMember.name}
+                              <div className="font-medium" data-testid={`text-member-name-${tm.teamMemberId}`}>
+                                {tm.name}
                               </div>
-                              {ptm.teamMember.role && (
-                                <div className="text-xs text-muted-foreground">{ptm.teamMember.role}</div>
+                              {tm.role && (
+                                <div className="text-xs text-muted-foreground">{tm.role}</div>
                               )}
                             </td>
-                            <td className="p-3 text-right text-muted-foreground" data-testid={`text-rate-${ptm.teamMemberId}`}>
+                            <td className="p-3 text-right text-muted-foreground" data-testid={`text-rate-${tm.teamMemberId}`}>
                               ${rate.toFixed(2)}
                             </td>
                             {workstreams.map((ws) => {
-                              const key = cellKey(ptm.teamMemberId, ws.id);
-                              const val = getCellValue(ptm.teamMemberId, ws.id);
+                              const key = cellKey(tm.teamMemberId, ws.id);
+                              const val = getCellValue(tm.teamMemberId, ws.id);
                               return (
                                 <td key={ws.id} className="p-1.5 text-center">
                                   <Input
@@ -375,22 +416,22 @@ export default function TimesheetsPage() {
                                     onChange={(e) =>
                                       setEditingCells((prev) => ({ ...prev, [key]: e.target.value }))
                                     }
-                                    onBlur={() => handleCellBlur(ptm.teamMemberId, ws.id)}
+                                    onBlur={() => handleCellBlur(tm.teamMemberId, ws.id)}
                                     onKeyDown={(e) => {
                                       if (e.key === "Enter") {
                                         (e.target as HTMLInputElement).blur();
                                       }
                                     }}
                                     placeholder="0"
-                                    data-testid={`input-hours-${ptm.teamMemberId}-${ws.id}`}
+                                    data-testid={`input-hours-${tm.teamMemberId}-${ws.id}`}
                                   />
                                 </td>
                               );
                             })}
-                            <td className="p-3 text-right font-medium" data-testid={`text-row-total-${ptm.teamMemberId}`}>
+                            <td className="p-3 text-right font-medium" data-testid={`text-row-total-${tm.teamMemberId}`}>
                               {rowHours > 0 ? rowHours.toFixed(1) : "-"}
                             </td>
-                            <td className="p-3 text-right font-medium" data-testid={`text-row-cost-${ptm.teamMemberId}`}>
+                            <td className="p-3 text-right font-medium" data-testid={`text-row-cost-${tm.teamMemberId}`}>
                               {rowCost > 0
                                 ? `$${rowCost.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                                 : "-"}
