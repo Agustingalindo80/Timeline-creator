@@ -16,6 +16,7 @@ The application is built with a modern web stack, utilizing React with Vite, Tai
 - Health indicators are visually represented by colored dots.
 - Data tables (e.g., Contacts, Team Members, Rate Cards) feature inline editing and CRUD operations.
 - Dynamic forms and components are used for project creation and detail management.
+- A static "About" page (`/about`) provides a stakeholder-facing overview of platform modules, key capabilities, and technical summary. Uses app branding (logo, name).
 
 **Technical Implementations:**
 - **Project Structure:** Clear separation of client-side (React components, pages, utilities) and server-side (API routes, database interactions) code. A `shared` directory holds common schema definitions (Drizzle + Zod).

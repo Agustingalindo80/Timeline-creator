@@ -1,4 +1,4 @@
-import { LayoutDashboard, FolderKanban, Settings, Building2, Users, UserCheck, CalendarRange, Clock, LogOut } from "lucide-react";
+import { LayoutDashboard, FolderKanban, Settings, Building2, Users, UserCheck, CalendarRange, Clock, LogOut, Info } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -24,6 +24,7 @@ const navItems = [
   { title: "Team Members", url: "/team-members", icon: UserCheck },
   { title: "Allocations", url: "/allocations", icon: CalendarRange },
   { title: "Timesheets", url: "/timesheets", icon: Clock },
+  { title: "About", url: "/about", icon: Info },
   { title: "Settings", url: "/admin", icon: Settings },
 ];
 
