@@ -24,11 +24,11 @@ function parseDateToNum(dateStr: string): number {
     return parseInt(iso[1]) * 12 + (parseInt(iso[2]) - 1) + parseInt(iso[3]) / 31;
   }
 
-  const slashDate = low.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  const slashDate = low.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4,5})$/);
   if (slashDate) {
     const mm = parseInt(slashDate[1]) - 1;
     const dd = parseInt(slashDate[2]);
-    const yyyy = parseInt(slashDate[3]);
+    const yyyy = Math.min(parseInt(slashDate[3]), 2200);
     return yyyy * 12 + mm + dd / 31;
   }
 
