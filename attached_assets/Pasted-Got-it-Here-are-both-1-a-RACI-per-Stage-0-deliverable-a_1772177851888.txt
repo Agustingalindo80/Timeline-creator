@@ -1,0 +1,109 @@
+Got it. Here are both: (1) a RACI per Stage 0 deliverable and (2) a 1-page Stage 0 playbook your AEs can actually run with.
+
+⸻
+
+1) Stage 0 RACI — by deliverable
+
+Legend: R = Responsible (does the work) • A = Accountable (final sign-off) • C = Consulted • I = Informed
+
+Stage 0 Deliverable	Sales Owner (AE)	Pre-Sales (SC/SE)	Delivery Lead	Solution Architect	BA Lead	PM/Prog Mgr	Finance/Comm Ops	Customer Sponsor	Customer Biz Owner / PO	Customer IT/EA	Data Owner/Analytics	Change/Enablement
+1. Value Narrative (1–2 pages): “why now”, pain, vision	A/R	R	C	C	C	I	C	A	C	I	I	C
+2. Business Outcomes Pack (3–7 outcomes)	A	C	C	C	R	C	I	A	R	C	C	C
+3. KPI Definitions + Targets (per outcome)	A	C	C	C	R	C	I	A	R	C	R	C
+4. Baseline Method + Data Sources (how we’ll measure)	I	C	C	C	C	C	I	A	C	C	A/R	C
+5. Scope Boundaries (in/out) + MVP hypothesis	A	R	R	C	R	C	C	A	R	C	I	C
+6. Option Set (A/B) with tradeoffs & phasing	A	R	R	R	C	C	C	A	C	C	I	C
+7. High-Level Architecture + Integration/Env overview	I	C	C	A/R	C	I	I	I	I	C/R	C	I
+8. Assumptions, Dependencies, Constraints log	C	C	A/R	R	R	R	C	I	C	C	C	C
+9. High-level Estimate (ROM) + commercial model	A	R	R	C	C	C	A/R	I	I	C	I	I
+10. Delivery Approach (waves, timeline approach, quality gates)	I	C	A/R	R	C	R	I	I	I	C	I	C
+11. Governance Proposal (cadence, forums, roles)	C	I	A/R	C	C	R	I	A	C	C	I	C
+12. Adoption Risk Snapshot + early enablement approach	I	C	C	I	C	C	I	A	C	I	I	A/R
+13. Stage 1 Readiness Plan (workshops, access, decisions)	A	C	R	C	R	A/R	I	C	C	C	C	C
+14. Gate 1 Decision Package (final bundle)	A/R	R	R	C	R	R	C	A	I	I	I	I
+
+Hard rule: if Customer Sponsor isn’t A on outcomes/KPIs, you don’t actually have outcomes—you have aspirations.
+
+⸻
+
+2) Stage 0 “Value Framing” — 1-page playbook (AE-runnable)
+
+Purpose
+
+Turn a sales pursuit into an investment-grade initiative: clear outcomes, measurable KPIs, realistic options, and a governed path to Stage 1.
+
+Inputs you must have before you start
+	•	Sponsor identified (name + title) and reachable
+	•	Business owner / PO identified
+	•	Known systems in scope (even if partial)
+	•	A rough budget signal (range is fine)
+
+Core activities (run this sequence)
+	1.	Sponsor Alignment (30–45 min)
+
+	•	Confirm why now, top pains, business urgency
+	•	Confirm decision process, timeline, and success definition
+	•	Lock Gate 1 date (Value Approval)
+
+	2.	Outcome Workshop (60–90 min)
+
+	•	Define 3–7 outcomes max
+	•	For each: KPI definition, target, time horizon, owner
+	•	Identify what would disprove success (keeps honesty)
+
+	3.	Measurement + Baseline (45–60 min)
+
+	•	Identify baseline data sources and data gaps
+	•	Define measurement cadence and ownership
+	•	Confirm how KPIs will be reported (dashboard/pack)
+
+	4.	Solution Options + Phasing (60 min)
+
+	•	Option A: MVP / Wave 1
+	•	Option B: broader scope (or alternate architecture)
+	•	Tradeoffs: cost/time/risk/adoption impact
+	•	Explicitly define what is out of scope for Wave 1
+
+	5.	Feasibility + Risk Sweep (45–60 min)
+
+	•	Integration dependencies, security constraints, access lead times
+	•	NFRs: performance, compliance, data retention, audit needs
+	•	Adoption constraints: training capacity, process readiness
+
+	6.	Commercial ROM + Delivery Approach (45–60 min)
+
+	•	ROM estimate with assumptions
+	•	Delivery model recommendation (FP/T&M/MS)
+	•	Proposed governance cadence + roles
+
+Deliverables (Stage 0 exit bundle)
+	•	Value Narrative (1–2 pages) + stakeholder map
+	•	Business Outcomes Pack (outcomes + KPIs + targets + owners)
+	•	Baseline/Measurement Plan
+	•	Option Set A/B with phasing logic and scope boundaries
+	•	Assumptions/Dependencies/Risks log
+	•	ROM Estimate + commercial recommendation
+	•	Governance Proposal
+	•	Stage 1 Readiness Plan (workshops, access, decisions, dates)
+
+Gate 1: Pass/Fail criteria (no fluff)
+
+Pass only if:
+	•	Outcomes + KPIs are agreed and measurable
+	•	Baseline method is defined (even if data collection continues)
+	•	Sponsor commits time/resources and governance
+	•	Phasing + in/out of scope is explicit
+	•	Major risks/deps have owners
+	•	Stage 1 kickoff is scheduled with named participants
+
+Common failure modes (call them out early)
+	•	“We’ll define KPIs later” → means value will never be proven
+	•	“Yes, we can do everything in Wave 1” → guaranteed scope fight later
+	•	No sponsor ownership → adoption failure dressed as “technical delays”
+	•	No baseline → you’ll argue opinions at every steering committee
+
+⸻
+
+If you want the next level of usefulness, I can also generate:
+	•	a Stage 0 agenda pack (invite text + detailed workshop agendas),
+	•	and a Stage 0 template set (Outcome Pack template, assumptions log template, Gate 1 decision slide).

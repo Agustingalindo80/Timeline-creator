@@ -1,0 +1,40 @@
+Here are the Vogara FlightPath stages (with the gate you must clear to move forward) and a straight, usable summary for each.
+
+Stage 0 — Value Framing
+
+Goal: Decide what value we’re going after and why it matters.
+What happens: Define Business Outcomes, success KPIs, baseline, ROI hypothesis, scope boundaries, major risks/dependencies, and executive “why now” alignment.
+Key outputs: Business Outcome set + KPI baseline, value hypothesis, high-level risks, initial roadmap concept.
+Gate 1 — Value Approval: Execs approve the value case to invest time/money.
+
+Stage 1 — Structured Initiation
+
+Goal: Turn the value idea into a governed, fundable initiative.
+What happens: Lock governance model, roles/RACI, commercial structure, assumptions, timeline approach, delivery strategy, and measurement plan.
+Key outputs: Project charter / governance pack, high-level plan, decision log, financial guardrails, outcome measurement plan.
+Gate 2 — Initiation Authorization: Budget, accountability, and control model are formally authorized.
+
+Stage 2 — Solution Execution
+
+Goal: Build and deploy the solution without losing traceability to outcomes.
+What happens: Design/build/test/deploy with quality enforcement, requirement-to-outcome traceability, and readiness planning for adoption.
+Key outputs: Working solution, tested releases, cutover plan, adoption/training plan, outcome traceability evidence.
+Gate 3 — Deployment Readiness: Go/No-Go based on quality, risks, operational readiness, and adoption preparedness.
+
+Stage 3 — Adoption Enablement
+
+Goal: Make the solution real in the business (behavior change, not “go-live theater”).
+What happens: Training, change management, comms, hypercare, process readiness, and measurement of early KPI movement.
+Key outputs: Adoption assets, support model, usage/behavior metrics, early KPI deltas, remediation backlog.
+Gate 4 — Value Validation: Confirm the solution is used and leading indicators are moving.
+
+Stage 4 — Value Realization & Evolution
+
+Goal: Prove ROI and decide what to optimize next.
+What happens: KPI monitoring, benefits realization, optimization roadmap, scaling decisions, and reinvestment strategy (next wave).
+Key outputs: Value realization report, ROI validation, optimization roadmap, next-initiative value framing.
+Gate 5 — Evolution Decision: Decide to scale, optimize, extend, or stop—and loop back into Stage 0 for the next cycle.
+
+Cross-cutting layer: Governance Spine (always on)
+
+Runs across all stages: Business Outcomes, financial controls, risk, quality, adoption, and executive transparency—so FlightPath stays “investment-grade,” not hero-based.
