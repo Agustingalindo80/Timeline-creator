@@ -20,6 +20,7 @@ import {
   TrendingUp,
   BarChart3,
   Clock,
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -53,7 +54,7 @@ import { ThemePicker } from "@/components/theme-picker";
 import { RaidLog } from "@/components/raid-log";
 import { GovernanceTab } from "@/components/governance-tab";
 import { formatDateForProject, parseDateToISO } from "@/lib/date-format";
-import type { TimelineWithMilestones, AppSettings, FieldOption, Client, AllocationWithTeamMember, Task, ProgressEntry, TimesheetEntry, ProjectTeamMemberWithDetails, TeamMember } from "@shared/schema";
+import type { TimelineWithMilestones, AppSettings, FieldOption, Client, AllocationWithTeamMember, Task, ProgressEntry, TimesheetEntry, ProjectTeamMemberWithDetails, TeamMember, FlightpathStage } from "@shared/schema";
 import {
   DEFAULT_TASK_STATUSES,
   DEFAULT_TASK_HEALTH,
@@ -1044,6 +1045,10 @@ export default function TimelineDetail() {
     queryKey: ["/api/clients"],
   });
 
+  const { data: governanceStages = [] } = useQuery<FlightpathStage[]>({
+    queryKey: ["/api/flightpath-stages"],
+  });
+
   const { data: projectAllocs = [] } = useQuery<AllocationWithTeamMember[]>({
     queryKey: ["/api/timelines", id, "allocations"],
     queryFn: async () => {
@@ -2025,6 +2030,26 @@ export default function TimelineDetail() {
                   <Badge variant="outline" className="text-xs" data-testid="badge-date-format">{timeline.dateFormat}</Badge>
                 </div>
               )}
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Governance Stage</label>
+                {(() => {
+                  const sorted = [...governanceStages].sort((a, b) => a.stageNumber - b.stageNumber);
+                  const current = sorted.find(s => s.id === timeline.flightpathStageId);
+                  if (current) {
+                    return (
+                      <Badge className="text-xs flex items-center gap-1" data-testid="badge-governance-stage">
+                        <ShieldCheck className="w-3 h-3" />
+                        Stage {current.stageNumber}: {current.name}
+                      </Badge>
+                    );
+                  }
+                  return (
+                    <Badge variant="secondary" className="text-xs" data-testid="badge-governance-stage">
+                      Not Started
+                    </Badge>
+                  );
+                })()}
+              </div>
               <div className="flex items-center gap-2">
                 <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Start Date</label>
                 <input

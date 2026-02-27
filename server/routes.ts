@@ -1475,6 +1475,44 @@ export async function registerRoutes(
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
+  // ── Advance Stage (gate-enforced) ──
+  app.post("/api/timelines/:id/advance-stage", async (req, res) => {
+    try {
+      const { nextStageId } = req.body;
+      if (!nextStageId) return res.status(400).json({ message: "nextStageId is required" });
+
+      const timeline = await storage.getTimeline(req.params.id);
+      if (!timeline) return res.status(404).json({ message: "Timeline not found" });
+
+      const allStages = await storage.getFlightpathStages();
+      const sortedStages = allStages.sort((a, b) => a.stageNumber - b.stageNumber);
+      const nextStage = sortedStages.find(s => s.id === nextStageId);
+      if (!nextStage) return res.status(400).json({ message: "Invalid stage" });
+
+      if (!timeline.flightpathStageId) {
+        if (nextStage.stageNumber !== sortedStages[0]?.stageNumber) {
+          return res.status(400).json({ message: "Must start at the first stage" });
+        }
+      } else {
+        const currentStage = sortedStages.find(s => s.id === timeline.flightpathStageId);
+        if (!currentStage) return res.status(400).json({ message: "Current stage not found" });
+
+        if (nextStage.stageNumber !== currentStage.stageNumber + 1) {
+          return res.status(400).json({ message: "Can only advance to the next sequential stage" });
+        }
+
+        const gates = await storage.getProjectGates(req.params.id);
+        const currentGate = gates.find(g => g.stageId === timeline.flightpathStageId);
+        if (!currentGate || (currentGate.status !== "passed" && currentGate.status !== "exception")) {
+          return res.status(400).json({ message: "Gate for the current stage must be passed or have an approved exception before advancing" });
+        }
+      }
+
+      const updated = await storage.updateTimeline(req.params.id, { flightpathStageId: nextStageId });
+      res.json(updated);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
   // ── Gate Evaluator ──
   app.post("/api/timelines/:id/evaluate-gate", async (req, res) => {
     try {

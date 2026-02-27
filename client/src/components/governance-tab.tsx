@@ -135,13 +135,17 @@ export function GovernanceTab({ timelineId, currentStageId, onStageChange }: Gov
 
   const advanceMutation = useMutation({
     mutationFn: async (nextStageId: string) => {
-      await apiRequest("PATCH", `/api/timelines/${timelineId}`, { flightpathStageId: nextStageId });
+      const res = await apiRequest("POST", `/api/timelines/${timelineId}/advance-stage`, { nextStageId });
+      return res.json();
     },
     onSuccess: (_, nextStageId) => {
       queryClient.invalidateQueries({ queryKey: ["/api/timelines", timelineId] });
       onStageChange(nextStageId);
       setSelectedStageId(nextStageId);
       toast({ title: "Advanced to next stage" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Cannot advance stage", description: err.message.replace(/^\d+:\s*/, ""), variant: "destructive" });
     },
   });
 
@@ -402,6 +406,17 @@ export function GovernanceTab({ timelineId, currentStageId, onStageChange }: Gov
                 <p className="text-sm text-muted-foreground mt-1">{selectedStage.goal}</p>
               </div>
               {selectedStage.id === currentStageId && <Badge variant="default">Current Stage</Badge>}
+              {!currentStageId && selectedStage.stageNumber === stages[0]?.stageNumber && (
+                <Button
+                  size="sm"
+                  onClick={() => advanceMutation.mutate(selectedStage.id)}
+                  disabled={advanceMutation.isPending}
+                  data-testid="button-activate-governance"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 mr-1" />
+                  Activate Governance
+                </Button>
+              )}
             </div>
             {selectedStage.description && <p className="text-sm mb-3">{selectedStage.description}</p>}
             {selectedStage.playbookPurpose && (
