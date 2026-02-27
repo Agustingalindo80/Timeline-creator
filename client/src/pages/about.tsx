@@ -70,7 +70,7 @@ const coreModules = [
   {
     icon: Compass,
     title: "FlightPath Governance",
-    description: "Stage-gated project lifecycle with 5 stages (Value Framing through Value Realization), deliverable checklists, RACI accountability matrices, gate enforcement, and AI-powered readiness evaluation.",
+    description: "Stage-gated project lifecycle with 5 stages (Value Framing through Value Realization), deliverable checklists, RACI accountability matrices, gate enforcement, AI-powered readiness evaluation, and document repository integration for artifact verification.",
   },
   {
     icon: Bot,
@@ -123,7 +123,12 @@ const keyCapabilities = [
   {
     icon: Bot,
     title: "AI-Powered Gate Evaluation",
-    description: "Automated gate readiness assessment that checks checkpoint completion, RAID status, and EVM indicators to provide structured pass/fail recommendations.",
+    description: "Automated gate readiness assessment that checks checkpoint completion, artifact presence and quality, RAID status, and EVM indicators to provide structured pass/fail recommendations.",
+  },
+  {
+    icon: FolderKanban,
+    title: "Document Repository Integration",
+    description: "Connect Google Drive or SharePoint folders to projects. Link deliverable artifacts to governance checkpoints and run AI-powered verification to ensure documents meet requirements.",
   },
   {
     icon: FileSpreadsheet,

@@ -151,6 +151,9 @@ export const timelines = pgTable("timelines", {
   endDate: text("end_date"),
   dateFormat: text("date_format"),
   flightpathStageId: varchar("flightpath_stage_id"),
+  docRepositoryType: text("doc_repository_type"),
+  docRepositoryUrl: text("doc_repository_url"),
+  docRepositoryFolderId: text("doc_repository_folder_id"),
 });
 
 export const milestones = pgTable("milestones", {
@@ -325,6 +328,7 @@ export const flightpathDeliverables = pgTable("flightpath_deliverables", {
   description: text("description"),
   raciData: jsonb("raci_data").$type<Record<string, string>>(),
   sortOrder: integer("sort_order").notNull().default(0),
+  expectedArtifactName: text("expected_artifact_name"),
 });
 
 export const projectCheckpoints = pgTable("project_checkpoints", {
@@ -337,6 +341,12 @@ export const projectCheckpoints = pgTable("project_checkpoints", {
   completedAt: text("completed_at"),
   completedBy: text("completed_by"),
   notes: text("notes"),
+  artifactUrl: text("artifact_url"),
+  artifactFileId: text("artifact_file_id"),
+  artifactFileName: text("artifact_file_name"),
+  artifactVerified: boolean("artifact_verified").notNull().default(false),
+  artifactVerifiedAt: text("artifact_verified_at"),
+  artifactSummary: text("artifact_summary"),
 });
 
 export const projectGates = pgTable("project_gates", {

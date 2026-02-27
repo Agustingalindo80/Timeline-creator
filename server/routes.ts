@@ -7,6 +7,7 @@ import path from "path";
 import fs from "fs";
 import express from "express";
 import OpenAI from "openai";
+import { listFilesInFolder, getFileMetadata, getFileContent, extractFolderIdFromUrl } from "./google-drive";
 import { storage } from "./storage";
 import { seedFlightpathData } from "./seed-flightpath";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
@@ -452,10 +453,22 @@ export async function registerRoutes(
         "title", "description", "color", "healthOverall", "scopeHealth", "budgetHealth",
         "teamHealth", "projectType", "engagementModel", "client", "clientId",
         "approvedBudget", "totalRunningCost", "grossMargin", "projectStatus", "region",
-        "startDate", "endDate",
+        "startDate", "endDate", "docRepositoryType", "docRepositoryUrl",
       ];
       for (const field of timelineFields) {
         if (req.body[field] !== undefined) updates[field] = req.body[field];
+      }
+
+      if (req.body.docRepositoryUrl !== undefined) {
+        const url = req.body.docRepositoryUrl;
+        if (url && req.body.docRepositoryType === "google_drive") {
+          updates.docRepositoryFolderId = extractFolderIdFromUrl(url);
+        } else if (!url) {
+          updates.docRepositoryFolderId = null;
+        }
+      }
+      if (req.body.docRepositoryFolderId !== undefined && updates.docRepositoryFolderId === undefined) {
+        updates.docRepositoryFolderId = req.body.docRepositoryFolderId;
       }
 
       if (updates.approvedBudget !== undefined || updates.totalRunningCost !== undefined) {
@@ -1502,33 +1515,65 @@ export async function registerRoutes(
 
       const completionPercentage = totalCheckpoints > 0 ? Math.round((completedCheckpoints / totalCheckpoints) * 100) : 0;
 
+      const artifactFlags: string[] = [];
+      const checkpointsWithArtifacts = checkpoints.filter(c => c.artifactFileName);
+      const verifiedArtifacts = checkpoints.filter(c => c.artifactVerified);
+      const checkpointsWithoutArtifacts = checkpoints.filter(c => !c.artifactFileName);
+
+      if (checkpoints.length > 0) {
+        artifactFlags.push(`${checkpointsWithArtifacts.length} of ${checkpoints.length} deliverables have linked artifacts`);
+        artifactFlags.push(`${verifiedArtifacts.length} of ${checkpointsWithArtifacts.length} linked artifacts verified by AI`);
+      }
+      for (const cp of checkpointsWithoutArtifacts) {
+        artifactFlags.push(`"${cp.checkpointName}": no artifact linked`);
+      }
+      for (const cp of checkpointsWithArtifacts.filter(c => !c.artifactVerified)) {
+        artifactFlags.push(`"${cp.checkpointName}": artifact linked (${cp.artifactFileName}) but not verified`);
+      }
+      for (const cp of verifiedArtifacts) {
+        if (cp.artifactSummary) {
+          artifactFlags.push(`"${cp.checkpointName}": verified — ${cp.artifactSummary.substring(0, 200)}`);
+        }
+      }
+
       const openai = new OpenAI({
         apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
         baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
       });
 
-      const evalPrompt = `You are a project governance evaluator. Assess whether this project stage gate should pass or fail.
+      const evalPrompt = `You are a project governance evaluator. Assess whether this project stage gate should pass or fail based on three dimensions: checkpoint completion, artifact presence/quality, and RAID status.
 
 Stage: ${stage.name} (Stage ${stage.stageNumber})
 Gate: ${stage.gateName}
 Gate Criteria: ${stage.gateDescription}
 
-Checkpoint Status: ${completedCheckpoints}/${totalCheckpoints} complete (${completionPercentage}%)
+## Dimension 1: Checkpoint Completion
+Status: ${completedCheckpoints}/${totalCheckpoints} complete (${completionPercentage}%)
 Missing Items: ${missingItems.length > 0 ? missingItems.join(", ") : "None"}
 
-RAID Summary:
+## Dimension 2: Artifact Coverage
+${artifactFlags.length > 0 ? artifactFlags.join("\n") : "No artifact data available"}
+
+## Dimension 3: RAID Status
 - Open Risks: ${openRisks.length}${openRisks.length > 0 ? ` (${openRisks.map(r => r.title).join(", ")})` : ""}
 - Open Issues: ${openIssues.length}${openIssues.length > 0 ? ` (${openIssues.map(r => r.title).join(", ")})` : ""}
 - Unresolved Dependencies: ${unresolvedDeps.length}${unresolvedDeps.length > 0 ? ` (${unresolvedDeps.map(r => r.title).join(", ")})` : ""}
 - Unvalidated Assumptions: ${unvalidatedAssumptions.length}${unvalidatedAssumptions.length > 0 ? ` (${unvalidatedAssumptions.map(r => r.title).join(", ")})` : ""}
 
-${evmFlags.length > 0 ? `EVM Notes: ${evmFlags.join("; ")}` : ""}
+${evmFlags.length > 0 ? `## EVM Notes\n${evmFlags.join("; ")}` : ""}
+
+Consider all three dimensions. A gate should fail if:
+- Key deliverables are incomplete
+- Critical deliverables lack linked artifacts (documents not uploaded to the repository)
+- Linked artifacts have not been verified or raise quality concerns
+- Significant RAID items remain unresolved
 
 Respond ONLY with valid JSON in this exact format:
 {
   "status": "pass" or "fail",
   "completionPercentage": <number>,
   "missingItems": [<list of incomplete checkpoint names>],
+  "artifactFlags": [<list of artifact concerns — missing docs, unverified artifacts, quality issues>],
   "raidFlags": [<list of RAID concerns>],
   "evmFlags": [<list of EVM observations>],
   "recommendations": [<list of specific recommended actions>]
@@ -1549,6 +1594,7 @@ Respond ONLY with valid JSON in this exact format:
           status: completionPercentage >= 100 && raidFlags.length === 0 ? "pass" : "fail",
           completionPercentage,
           missingItems,
+          artifactFlags,
           raidFlags,
           evmFlags,
           recommendations: ["AI evaluation parsing failed — review manually"],
@@ -1572,6 +1618,180 @@ Respond ONLY with valid JSON in this exact format:
       }
 
       res.json({ gate, evaluatorResult });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  // ── Document Repository / Artifact Routes ──
+
+  app.get("/api/timelines/:id/artifacts", async (req, res) => {
+    try {
+      const timeline = await storage.getTimeline(req.params.id);
+      if (!timeline) return res.status(404).json({ message: "Timeline not found" });
+
+      if (!timeline.docRepositoryType || !timeline.docRepositoryFolderId) {
+        return res.status(400).json({ message: "No document repository configured for this project" });
+      }
+
+      if (timeline.docRepositoryType === "google_drive") {
+        const files = await listFilesInFolder(timeline.docRepositoryFolderId);
+        return res.json(files);
+      }
+
+      return res.status(400).json({ message: `Unsupported repository type: ${timeline.docRepositoryType}` });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.post("/api/timelines/:id/link-artifact", async (req, res) => {
+    try {
+      const { checkpointId, fileId, fileName, fileUrl } = req.body;
+      if (!checkpointId || !fileName) {
+        return res.status(400).json({ message: "checkpointId and fileName are required" });
+      }
+
+      const checkpoint = await storage.updateProjectCheckpoint(checkpointId, {
+        artifactUrl: fileUrl || null,
+        artifactFileId: fileId || null,
+        artifactFileName: fileName,
+        artifactVerified: false,
+        artifactVerifiedAt: null,
+        artifactSummary: null,
+      });
+      if (!checkpoint) return res.status(404).json({ message: "Checkpoint not found" });
+
+      res.json(checkpoint);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.delete("/api/timelines/:id/unlink-artifact", async (req, res) => {
+    try {
+      const { checkpointId } = req.body;
+      if (!checkpointId) return res.status(400).json({ message: "checkpointId is required" });
+
+      const checkpoint = await storage.updateProjectCheckpoint(checkpointId, {
+        artifactUrl: null,
+        artifactFileId: null,
+        artifactFileName: null,
+        artifactVerified: false,
+        artifactVerifiedAt: null,
+        artifactSummary: null,
+      });
+      if (!checkpoint) return res.status(404).json({ message: "Checkpoint not found" });
+
+      res.json(checkpoint);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.post("/api/timelines/:id/verify-artifacts", async (req, res) => {
+    try {
+      const { stageId } = req.body;
+      if (!stageId) return res.status(400).json({ message: "stageId is required" });
+
+      const timeline = await storage.getTimeline(req.params.id);
+      if (!timeline) return res.status(404).json({ message: "Timeline not found" });
+
+      const checkpoints = await storage.getProjectCheckpointsByStage(req.params.id, stageId);
+      const checkpointsWithArtifacts = checkpoints.filter(c => c.artifactFileId || c.artifactUrl || c.artifactFileName);
+
+      if (checkpointsWithArtifacts.length === 0) {
+        return res.json({ verified: 0, total: checkpoints.length, results: [] });
+      }
+
+      const stage = await storage.getFlightpathStage(stageId);
+      const deliverables = await storage.getStageDeliverables(stageId);
+
+      const openai = new OpenAI({
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+      });
+
+      const results: Array<{ checkpointId: string; checkpointName: string; verified: boolean; summary: string }> = [];
+
+      for (const cp of checkpointsWithArtifacts) {
+        let fileContent: string | null = null;
+        let fileMetadata: any = null;
+
+        if (timeline.docRepositoryType === "google_drive") {
+          const fId = cp.artifactFileId || null;
+          if (fId) {
+            try {
+              fileMetadata = await getFileMetadata(fId);
+              fileContent = await getFileContent(fId, fileMetadata.mimeType);
+            } catch (e) {
+              console.error(`Failed to read file for checkpoint ${cp.id}:`, e);
+            }
+          }
+        }
+
+        const deliverable = deliverables.find(d => d.id === cp.deliverableId);
+
+        const verifyPrompt = `You are a governance artifact reviewer. Evaluate whether this document satisfies the deliverable requirement.
+
+Deliverable: ${cp.checkpointName}
+${deliverable?.description ? `Description: ${deliverable.description}` : ""}
+Stage: ${stage?.name || "Unknown"} (Stage ${stage?.stageNumber ?? "?"})
+
+Artifact File: ${cp.artifactFileName || "Unknown"}
+${fileMetadata ? `File Type: ${fileMetadata.mimeType}` : ""}
+${fileMetadata ? `Last Modified: ${fileMetadata.modifiedTime}` : ""}
+${fileContent ? `\nFile Content (excerpt):\n${fileContent.substring(0, 5000)}` : "\n(File content not accessible — evaluate based on file name and metadata only)"}
+
+Assess:
+1. Does the file name and type seem appropriate for this deliverable?
+2. If content is available, does it adequately cover the deliverable requirements?
+3. Provide a brief summary of what the artifact contains or appears to contain.
+
+Respond ONLY with valid JSON:
+{
+  "verified": true or false,
+  "summary": "Brief assessment of the artifact (2-3 sentences)",
+  "concerns": ["any specific concerns or gaps"] 
+}`;
+
+        try {
+          const aiResponse = await openai.chat.completions.create({
+            model: "gpt-5.2",
+            messages: [{ role: "user", content: verifyPrompt }],
+            response_format: { type: "json_object" },
+            max_completion_tokens: 2048,
+          });
+
+          let result;
+          try {
+            result = JSON.parse(aiResponse.choices[0]?.message?.content || "{}");
+          } catch {
+            result = { verified: false, summary: "AI verification parsing failed", concerns: [] };
+          }
+
+          const summary = result.summary + (result.concerns?.length > 0 ? `\nConcerns: ${result.concerns.join("; ")}` : "");
+
+          await storage.updateProjectCheckpoint(cp.id, {
+            artifactVerified: result.verified === true,
+            artifactVerifiedAt: new Date().toISOString(),
+            artifactSummary: summary,
+          });
+
+          results.push({
+            checkpointId: cp.id,
+            checkpointName: cp.checkpointName,
+            verified: result.verified === true,
+            summary,
+          });
+        } catch (e: any) {
+          results.push({
+            checkpointId: cp.id,
+            checkpointName: cp.checkpointName,
+            verified: false,
+            summary: `Verification failed: ${e.message}`,
+          });
+        }
+      }
+
+      res.json({
+        verified: results.filter(r => r.verified).length,
+        total: checkpoints.length,
+        withArtifacts: checkpointsWithArtifacts.length,
+        results,
+      });
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
