@@ -149,6 +149,7 @@ export const timelines = pgTable("timelines", {
   startDate: text("start_date"),
   endDate: text("end_date"),
   dateFormat: text("date_format"),
+  flightpathStageId: varchar("flightpath_stage_id"),
 });
 
 export const milestones = pgTable("milestones", {
@@ -197,6 +198,14 @@ export const risks = pgTable("risks", {
   status: text("status").notNull().default("open"),
   dueDate: text("due_date"),
   sortOrder: integer("sort_order").notNull().default(0),
+  itemType: text("item_type").notNull().default("risk"),
+  raisedDate: text("raised_date"),
+  resolvedDate: text("resolved_date"),
+  relatedStageId: varchar("related_stage_id"),
+  validationCriteria: text("validation_criteria"),
+  validatedDate: text("validated_date"),
+  dependencySource: text("dependency_source"),
+  requiredByDate: text("required_by_date"),
 });
 
 export const teamMembers = pgTable("team_members", {
@@ -293,6 +302,73 @@ export const progressEntries = pgTable("progress_entries", {
   percentComplete: integer("percent_complete").notNull().default(0),
   notes: text("notes"),
 });
+
+export const flightpathStages = pgTable("flightpath_stages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: text("tenant_id").notNull().default("default"),
+  stageNumber: integer("stage_number").notNull(),
+  name: text("name").notNull(),
+  goal: text("goal").notNull(),
+  description: text("description"),
+  gateName: text("gate_name").notNull(),
+  gateDescription: text("gate_description"),
+  playbookPurpose: text("playbook_purpose"),
+  playbookExitBundle: text("playbook_exit_bundle"),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
+export const flightpathDeliverables = pgTable("flightpath_deliverables", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  stageId: varchar("stage_id").notNull().references(() => flightpathStages.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  description: text("description"),
+  raciData: jsonb("raci_data").$type<Record<string, string>>(),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
+export const projectCheckpoints = pgTable("project_checkpoints", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  timelineId: varchar("timeline_id").notNull().references(() => timelines.id, { onDelete: "cascade" }),
+  stageId: varchar("stage_id").notNull().references(() => flightpathStages.id, { onDelete: "cascade" }),
+  deliverableId: varchar("deliverable_id").references(() => flightpathDeliverables.id, { onDelete: "set null" }),
+  checkpointName: text("checkpoint_name").notNull(),
+  completed: boolean("completed").notNull().default(false),
+  completedAt: text("completed_at"),
+  completedBy: text("completed_by"),
+  notes: text("notes"),
+});
+
+export const projectGates = pgTable("project_gates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  timelineId: varchar("timeline_id").notNull().references(() => timelines.id, { onDelete: "cascade" }),
+  stageId: varchar("stage_id").notNull().references(() => flightpathStages.id, { onDelete: "cascade" }),
+  status: text("status").notNull().default("pending"),
+  approvedAt: text("approved_at"),
+  approvedBy: text("approved_by"),
+  notes: text("notes"),
+  evaluatorResult: jsonb("evaluator_result").$type<{
+    status: string;
+    completionPercentage: number;
+    missingItems: string[];
+    raidFlags: string[];
+    evmFlags: string[];
+    recommendations: string[];
+  }>(),
+});
+
+export const insertFlightpathStageSchema = createInsertSchema(flightpathStages).omit({ id: true });
+export const insertFlightpathDeliverableSchema = createInsertSchema(flightpathDeliverables).omit({ id: true });
+export const insertProjectCheckpointSchema = createInsertSchema(projectCheckpoints).omit({ id: true });
+export const insertProjectGateSchema = createInsertSchema(projectGates).omit({ id: true });
+
+export type InsertFlightpathStage = z.infer<typeof insertFlightpathStageSchema>;
+export type FlightpathStage = typeof flightpathStages.$inferSelect;
+export type InsertFlightpathDeliverable = z.infer<typeof insertFlightpathDeliverableSchema>;
+export type FlightpathDeliverable = typeof flightpathDeliverables.$inferSelect;
+export type InsertProjectCheckpoint = z.infer<typeof insertProjectCheckpointSchema>;
+export type ProjectCheckpoint = typeof projectCheckpoints.$inferSelect;
+export type InsertProjectGate = z.infer<typeof insertProjectGateSchema>;
+export type ProjectGate = typeof projectGates.$inferSelect;
 
 export const insertBrandingSchema = createInsertSchema(brandingConfig).omit({ id: true });
 export type InsertBranding = z.infer<typeof insertBrandingSchema>;
