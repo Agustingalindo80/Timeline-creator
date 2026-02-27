@@ -1522,7 +1522,9 @@ export async function registerRoutes(
       const stage = await storage.getFlightpathStage(stageId);
       if (!stage) return res.status(404).json({ message: "Stage not found" });
 
-      const checkpoints = await storage.getProjectCheckpointsByStage(req.params.id, stageId);
+      const allCheckpoints = await storage.getProjectCheckpointsByStage(req.params.id, stageId);
+      const optionalCount = allCheckpoints.filter(c => c.optional).length;
+      const checkpoints = allCheckpoints.filter(c => !c.optional);
       const totalCheckpoints = checkpoints.length;
       const completedCheckpoints = checkpoints.filter(c => c.completed).length;
       const missingItems = checkpoints.filter(c => !c.completed).map(c => c.checkpointName);
@@ -1586,7 +1588,7 @@ Gate: ${stage.gateName}
 Gate Criteria: ${stage.gateDescription}
 
 ## Dimension 1: Checkpoint Completion
-Status: ${completedCheckpoints}/${totalCheckpoints} complete (${completionPercentage}%)
+Status: ${completedCheckpoints}/${totalCheckpoints} required deliverables complete (${completionPercentage}%)${optionalCount > 0 ? `\n(${optionalCount} deliverable(s) marked optional and excluded from assessment)` : ""}
 Missing Items: ${missingItems.length > 0 ? missingItems.join(", ") : "None"}
 
 ## Dimension 2: Artifact Coverage

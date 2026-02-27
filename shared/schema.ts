@@ -337,6 +337,7 @@ export const projectCheckpoints = pgTable("project_checkpoints", {
   stageId: varchar("stage_id").notNull().references(() => flightpathStages.id, { onDelete: "cascade" }),
   deliverableId: varchar("deliverable_id").references(() => flightpathDeliverables.id, { onDelete: "set null" }),
   checkpointName: text("checkpoint_name").notNull(),
+  optional: boolean("optional").notNull().default(false),
   completed: boolean("completed").notNull().default(false),
   completedAt: text("completed_at"),
   completedBy: text("completed_by"),

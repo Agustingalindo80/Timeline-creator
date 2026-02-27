@@ -115,6 +115,15 @@ export function GovernanceTab({ timelineId, currentStageId, onStageChange }: Gov
     },
   });
 
+  const toggleOptional = useMutation({
+    mutationFn: async ({ id, optional }: { id: string; optional: boolean }) => {
+      await apiRequest("PATCH", `/api/checkpoints/${id}`, { optional });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/timelines", timelineId, "checkpoints"] });
+    },
+  });
+
   const evaluateMutation = useMutation({
     mutationFn: async (stageId: string) => {
       const res = await apiRequest("POST", `/api/timelines/${timelineId}/evaluate-gate`, { stageId });
@@ -234,11 +243,13 @@ export function GovernanceTab({ timelineId, currentStageId, onStageChange }: Gov
     );
   }
 
-  const completedCount = stageCheckpoints.filter(c => c.completed).length;
-  const totalCount = stageCheckpoints.length;
+  const requiredCheckpoints = stageCheckpoints.filter(c => !c.optional);
+  const optionalCheckpoints = stageCheckpoints.filter(c => c.optional);
+  const completedCount = requiredCheckpoints.filter(c => c.completed).length;
+  const totalCount = requiredCheckpoints.length;
   const completionPct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
-  const artifactsLinked = stageCheckpoints.filter(c => c.artifactFileName).length;
-  const artifactsVerified = stageCheckpoints.filter(c => c.artifactVerified).length;
+  const artifactsLinked = requiredCheckpoints.filter(c => c.artifactFileName).length;
+  const artifactsVerified = requiredCheckpoints.filter(c => c.artifactVerified).length;
 
   const currentStageIndex = stages.findIndex(s => s.id === currentStageId);
   const selectedStageIndex = stages.findIndex(s => s.id === selectedStageId);
@@ -438,6 +449,9 @@ export function GovernanceTab({ timelineId, currentStageId, onStageChange }: Gov
                 {totalCount > 0 && (
                   <Badge variant="secondary" className="text-xs">{completedCount}/{totalCount} ({completionPct}%)</Badge>
                 )}
+                {optionalCheckpoints.length > 0 && (
+                  <span className="text-[10px] text-muted-foreground">{optionalCheckpoints.length} optional</span>
+                )}
               </h4>
               <div className="flex items-center gap-2">
                 {hasRepo && stageCheckpoints.some(c => c.artifactFileName) && (
@@ -487,7 +501,7 @@ export function GovernanceTab({ timelineId, currentStageId, onStageChange }: Gov
                 const raciExpanded = expandedRaci === cp.id;
 
                 return (
-                  <Card key={cp.id} className="p-3" data-testid={`checkpoint-${cp.id}`}>
+                  <Card key={cp.id} className={`p-3 ${cp.optional ? "opacity-60 border border-dashed" : ""}`} data-testid={`checkpoint-${cp.id}`}>
                     <div className="flex items-start gap-3">
                       <button
                         onClick={() => toggleCheckpoint.mutate({ id: cp.id, completed: !cp.completed })}
@@ -502,9 +516,20 @@ export function GovernanceTab({ timelineId, currentStageId, onStageChange }: Gov
                       </button>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className={`text-sm font-medium ${cp.completed ? "line-through text-muted-foreground" : ""}`}>
+                          <p className={`text-sm font-medium ${cp.optional ? "italic text-muted-foreground" : ""} ${cp.completed ? "line-through text-muted-foreground" : ""}`}>
                             {cp.checkpointName}
                           </p>
+                          {cp.optional && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0" data-testid={`badge-optional-${cp.id}`}>Optional</Badge>
+                          )}
+                          <button
+                            onClick={() => toggleOptional.mutate({ id: cp.id, optional: !cp.optional })}
+                            className="shrink-0 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                            title={cp.optional ? "Mark as required" : "Mark as optional"}
+                            data-testid={`toggle-optional-${cp.id}`}
+                          >
+                            {cp.optional ? "Set Required" : "Set Optional"}
+                          </button>
                           {hasRepo && (
                             <span className="shrink-0 flex items-center gap-1 text-xs" title={artifactStatusText(cp)}>
                               {artifactStatusIcon(cp)}
