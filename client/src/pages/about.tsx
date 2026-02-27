@@ -21,6 +21,9 @@ import {
   Moon,
   Lock,
   CheckCircle2,
+  AlertTriangle,
+  Compass,
+  Bot,
 } from "lucide-react";
 
 const coreModules = [
@@ -60,9 +63,19 @@ const coreModules = [
     description: "Full Earned Value Management suite: BAC, PV, AC, EV, SV, CV, SPI, CPI, EAC, and ETC. Colour-coded performance indicators with weekly and per-workstream breakdowns.",
   },
   {
-    icon: Shield,
-    title: "Risk Register",
-    description: "Identify, assess, and track project risks with probability, impact, mitigation strategies, and automatically calculated risk scores.",
+    icon: AlertTriangle,
+    title: "RAID Log",
+    description: "Full Risks, Assumptions, Issues, and Dependencies tracking per project with type-specific fields, probability/impact scoring for risks, and linkage to governance stages.",
+  },
+  {
+    icon: Compass,
+    title: "FlightPath Governance",
+    description: "Stage-gated project lifecycle with 5 stages (Value Framing through Value Realization), deliverable checklists, RACI accountability matrices, gate enforcement, and AI-powered readiness evaluation.",
+  },
+  {
+    icon: Bot,
+    title: "FlightPath Coach",
+    description: "AI-powered natural language assistant that guides project managers through the governance framework, explains stage requirements, RACI roles, and recommends next actions.",
   },
   {
     icon: Palette,
@@ -98,6 +111,21 @@ const keyCapabilities = [
     description: "Industry-standard EVM metrics computed from allocations (PV), timesheets (AC), and progress entries (EV) for objective performance measurement.",
   },
   {
+    icon: Shield,
+    title: "Stage-Gated Governance",
+    description: "Five-stage governance framework with pass/fail gate enforcement, AI evaluator assessment, exception workflows, and configurable stage definitions.",
+  },
+  {
+    icon: Compass,
+    title: "RACI Accountability Matrices",
+    description: "Per-deliverable RACI (Responsible, Accountable, Consulted, Informed) matrices ensure clear role assignments across all governance stages.",
+  },
+  {
+    icon: Bot,
+    title: "AI-Powered Gate Evaluation",
+    description: "Automated gate readiness assessment that checks checkpoint completion, RAID status, and EVM indicators to provide structured pass/fail recommendations.",
+  },
+  {
     icon: FileSpreadsheet,
     title: "Bulk Import",
     description: "Import project data from Excel (.xlsx, .xls) and CSV files for rapid project setup and migration from existing tools.",
@@ -112,6 +140,11 @@ const keyCapabilities = [
     title: "Secure Authentication",
     description: "Role-based access control with secure session management. All data is protected behind authentication.",
   },
+  {
+    icon: SlidersHorizontal,
+    title: "Dynamic Framework Configuration",
+    description: "Multi-tenant ready governance framework. Configure stages, deliverables, RACI roles, and gate criteria per organisation. AI Coach dynamically adapts to your framework.",
+  },
 ];
 
 export default function AboutPage() {
@@ -124,9 +157,9 @@ export default function AboutPage() {
     <>
       <Helmet>
         <title>About - {appTitle}</title>
-        <meta name="description" content={`${appName} — A comprehensive visual project planning and Earned Value Management platform for tracking scope, schedule, cost, and team performance.`} />
+        <meta name="description" content={`${appName} — A comprehensive visual project planning, Earned Value Management, and AI-powered governance platform for tracking scope, schedule, cost, team performance, and stage-gated delivery.`} />
         <meta property="og:title" content={`About - ${appName}`} />
-        <meta property="og:description" content="Comprehensive Visual Project Planning & Earned Value Management Platform" />
+        <meta property="og:description" content="Comprehensive Visual Project Planning, EVM & AI-Powered Governance Platform" />
         <meta property="og:type" content="website" />
       </Helmet>
       <div className="p-6 max-w-6xl mx-auto space-y-12" data-testid="about-page">
@@ -144,15 +177,16 @@ export default function AboutPage() {
             {appName}
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto" data-testid="text-about-tagline">
-            Comprehensive Visual Project Planning & Earned Value Management Platform
+            Comprehensive Visual Project Planning, EVM & AI-Powered Governance Platform
           </p>
         </div>
 
         <div className="text-center max-w-3xl mx-auto" data-testid="about-overview">
           <p className="text-sm leading-relaxed text-muted-foreground">
             A unified platform for project managers to plan, execute, and monitor projects with full visibility into
-            scope, schedule, cost, and team performance. From initial client engagement through to delivery, the platform
-            provides the tools and insights needed to keep projects on track and stakeholders informed.
+            scope, schedule, cost, and team performance. From initial value framing through to value realization,
+            the platform combines traditional project management with stage-gated governance and AI-powered insights
+            to keep projects on track and stakeholders informed.
           </p>
         </div>
 
@@ -208,8 +242,11 @@ export default function AboutPage() {
           <p className="text-xs text-muted-foreground max-w-2xl mx-auto leading-relaxed">
             Built on a modern web stack with a React frontend, Node.js backend, and PostgreSQL database.
             Real-time data updates, secure session-based authentication, and a responsive design ensure
-            the platform works reliably across devices and team sizes. All configuration, branding, and
-            field options are database-driven for easy customisation without code changes.
+            the platform works reliably across devices and team sizes. AI-powered features leverage
+            OpenAI integration for intelligent gate evaluation and conversational coaching.
+            All configuration, branding, governance frameworks, and field options are database-driven
+            for easy customisation without code changes. Multi-tenant ready architecture supports
+            different governance frameworks per organisation.
           </p>
         </div>
       </div>

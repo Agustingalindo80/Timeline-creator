@@ -23,6 +23,7 @@ import TeamMemberDetail from "@/pages/team-member-detail";
 import AllocationsPage from "@/pages/allocations";
 import TimesheetsPage from "@/pages/timesheets";
 import AboutPage from "@/pages/about";
+import ChatPage from "@/pages/chat";
 import Landing from "@/pages/landing";
 import NotFound from "@/pages/not-found";
 
@@ -41,6 +42,7 @@ function Router() {
       <Route path="/allocations" component={AllocationsPage} />
       <Route path="/timesheets" component={TimesheetsPage} />
       <Route path="/about" component={AboutPage} />
+      <Route path="/chat" component={ChatPage} />
       <Route path="/admin" component={Admin} />
       <Route component={NotFound} />
     </Switch>

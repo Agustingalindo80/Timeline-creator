@@ -50,7 +50,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAppTitle } from "@/hooks/use-app-title";
 import { TimelineView } from "@/components/timeline-view";
 import { ThemePicker } from "@/components/theme-picker";
-import { RiskRegister } from "@/components/risk-register";
+import { RaidLog } from "@/components/raid-log";
+import { GovernanceTab } from "@/components/governance-tab";
 import { formatDateForProject, parseDateToISO } from "@/lib/date-format";
 import type { TimelineWithMilestones, AppSettings, FieldOption, Client, AllocationWithTeamMember, Task, ProgressEntry, TimesheetEntry, ProjectTeamMemberWithDetails, TeamMember } from "@shared/schema";
 import {
@@ -2400,9 +2401,12 @@ export default function TimelineDetail() {
             <TabsTrigger value="evm" data-testid="tab-evm">
               EVM
             </TabsTrigger>
+            <TabsTrigger value="governance" data-testid="tab-governance">
+              Governance
+            </TabsTrigger>
             {settings?.riskRegisterEnabled && (
-              <TabsTrigger value="risks" data-testid="tab-risks">
-                Risks
+              <TabsTrigger value="raid-log" data-testid="tab-raid-log">
+                RAID Log
               </TabsTrigger>
             )}
           </TabsList>
@@ -2625,9 +2629,19 @@ export default function TimelineDetail() {
             />
           </TabsContent>
 
+          <TabsContent value="governance">
+            <GovernanceTab
+              timelineId={timeline.id}
+              currentStageId={timeline.flightpathStageId || null}
+              onStageChange={(stageId) => {
+                queryClient.invalidateQueries({ queryKey: ["/api/timelines", timeline.id] });
+              }}
+            />
+          </TabsContent>
+
           {settings?.riskRegisterEnabled && (
-            <TabsContent value="risks">
-              <RiskRegister timelineId={timeline.id} />
+            <TabsContent value="raid-log">
+              <RaidLog timelineId={timeline.id} />
             </TabsContent>
           )}
         </Tabs>

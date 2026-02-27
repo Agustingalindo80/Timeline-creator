@@ -6,7 +6,9 @@ import { z } from "zod";
 import path from "path";
 import fs from "fs";
 import express from "express";
+import OpenAI from "openai";
 import { storage } from "./storage";
+import { seedFlightpathData } from "./seed-flightpath";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -1308,6 +1310,343 @@ export async function registerRoutes(
       res.status(500).json({ message: "Failed to parse file: " + err.message });
     }
   });
+
+  // ── FlightPath Stages ──
+  app.get("/api/flightpath-stages", async (req, res) => {
+    try {
+      const tenantId = (req.query.tenantId as string) || "default";
+      const stages = await storage.getFlightpathStages(tenantId);
+      const sorted = stages.sort((a, b) => a.sortOrder - b.sortOrder);
+      const result = [];
+      for (const stage of sorted) {
+        const deliverables = await storage.getStageDeliverables(stage.id);
+        result.push({ ...stage, deliverables: deliverables.sort((a, b) => a.sortOrder - b.sortOrder) });
+      }
+      res.json(result);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.post("/api/flightpath-stages", async (req, res) => {
+    try {
+      const stage = await storage.createFlightpathStage(req.body);
+      res.status(201).json(stage);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.patch("/api/flightpath-stages/:id", async (req, res) => {
+    try {
+      const stage = await storage.updateFlightpathStage(req.params.id, req.body);
+      if (!stage) return res.status(404).json({ message: "Stage not found" });
+      res.json(stage);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.delete("/api/flightpath-stages/:id", async (req, res) => {
+    try {
+      await storage.deleteFlightpathStage(req.params.id);
+      res.status(204).send();
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  // ── FlightPath Deliverables ──
+  app.get("/api/flightpath-stages/:stageId/deliverables", async (req, res) => {
+    try {
+      const deliverables = await storage.getStageDeliverables(req.params.stageId);
+      res.json(deliverables.sort((a, b) => a.sortOrder - b.sortOrder));
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.post("/api/flightpath-stages/:stageId/deliverables", async (req, res) => {
+    try {
+      const deliverable = await storage.createDeliverable({ ...req.body, stageId: req.params.stageId });
+      res.status(201).json(deliverable);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.patch("/api/flightpath-deliverables/:id", async (req, res) => {
+    try {
+      const deliverable = await storage.updateDeliverable(req.params.id, req.body);
+      if (!deliverable) return res.status(404).json({ message: "Deliverable not found" });
+      res.json(deliverable);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.delete("/api/flightpath-deliverables/:id", async (req, res) => {
+    try {
+      await storage.deleteDeliverable(req.params.id);
+      res.status(204).send();
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  // ── Project Checkpoints ──
+  app.get("/api/timelines/:id/checkpoints", async (req, res) => {
+    try {
+      const stageId = req.query.stageId as string | undefined;
+      const checkpoints = stageId
+        ? await storage.getProjectCheckpointsByStage(req.params.id, stageId)
+        : await storage.getProjectCheckpoints(req.params.id);
+      res.json(checkpoints);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.post("/api/timelines/:id/checkpoints", async (req, res) => {
+    try {
+      const checkpoint = await storage.createProjectCheckpoint({ ...req.body, timelineId: req.params.id });
+      res.status(201).json(checkpoint);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.patch("/api/checkpoints/:id", async (req, res) => {
+    try {
+      const checkpoint = await storage.updateProjectCheckpoint(req.params.id, req.body);
+      if (!checkpoint) return res.status(404).json({ message: "Checkpoint not found" });
+      res.json(checkpoint);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.delete("/api/checkpoints/:id", async (req, res) => {
+    try {
+      await storage.deleteProjectCheckpoint(req.params.id);
+      res.status(204).send();
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  // ── Project Gates ──
+  app.get("/api/timelines/:id/gates", async (req, res) => {
+    try {
+      const gates = await storage.getProjectGates(req.params.id);
+      res.json(gates);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.post("/api/timelines/:id/gates", async (req, res) => {
+    try {
+      const gate = await storage.createProjectGate({ ...req.body, timelineId: req.params.id });
+      res.status(201).json(gate);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.patch("/api/gates/:id", async (req, res) => {
+    try {
+      const gate = await storage.updateProjectGate(req.params.id, req.body);
+      if (!gate) return res.status(404).json({ message: "Gate not found" });
+      res.json(gate);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  // ── Stage initialization: auto-create checkpoints from deliverables ──
+  app.post("/api/timelines/:id/initialize-stage", async (req, res) => {
+    try {
+      const { stageId } = req.body;
+      if (!stageId) return res.status(400).json({ message: "stageId is required" });
+
+      const existing = await storage.getProjectCheckpointsByStage(req.params.id, stageId);
+      if (existing.length > 0) {
+        return res.json({ message: "Stage already initialized", checkpoints: existing });
+      }
+
+      const deliverables = await storage.getStageDeliverables(stageId);
+      const checkpoints = [];
+      for (const d of deliverables.sort((a, b) => a.sortOrder - b.sortOrder)) {
+        const cp = await storage.createProjectCheckpoint({
+          timelineId: req.params.id,
+          stageId,
+          deliverableId: d.id,
+          checkpointName: d.name,
+          completed: false,
+        });
+        checkpoints.push(cp);
+      }
+
+      res.status(201).json({ message: "Stage initialized", checkpoints });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  // ── Gate Evaluator ──
+  app.post("/api/timelines/:id/evaluate-gate", async (req, res) => {
+    try {
+      const { stageId } = req.body;
+      if (!stageId) return res.status(400).json({ message: "stageId is required" });
+
+      const stage = await storage.getFlightpathStage(stageId);
+      if (!stage) return res.status(404).json({ message: "Stage not found" });
+
+      const checkpoints = await storage.getProjectCheckpointsByStage(req.params.id, stageId);
+      const totalCheckpoints = checkpoints.length;
+      const completedCheckpoints = checkpoints.filter(c => c.completed).length;
+      const missingItems = checkpoints.filter(c => !c.completed).map(c => c.checkpointName);
+
+      const raidItems = await storage.getRisks(req.params.id);
+      const stageRaidItems = raidItems.filter(r => r.relatedStageId === stageId || !r.relatedStageId);
+      const openRisks = stageRaidItems.filter(r => r.itemType === "risk" && r.status === "open");
+      const openIssues = stageRaidItems.filter(r => r.itemType === "issue" && r.status === "open");
+      const unresolvedDeps = stageRaidItems.filter(r => r.itemType === "dependency" && r.status === "open");
+      const unvalidatedAssumptions = stageRaidItems.filter(r => r.itemType === "assumption" && r.status === "open" && !r.validatedDate);
+
+      const raidFlags: string[] = [];
+      if (openRisks.length > 0) raidFlags.push(`${openRisks.length} open risk(s) require attention`);
+      if (openIssues.length > 0) raidFlags.push(`${openIssues.length} open issue(s) need resolution`);
+      if (unresolvedDeps.length > 0) raidFlags.push(`${unresolvedDeps.length} unresolved dependency(ies)`);
+      if (unvalidatedAssumptions.length > 0) raidFlags.push(`${unvalidatedAssumptions.length} unvalidated assumption(s)`);
+
+      const evmFlags: string[] = [];
+      if (stage.stageNumber >= 2) {
+        try {
+          const allAllocations = await storage.getAllocationsByTimeline(req.params.id);
+          const tsEntries = await storage.getTimesheetEntries({ timelineId: req.params.id });
+          if (allAllocations.length > 0 && tsEntries.length > 0) {
+            evmFlags.push("EVM data available — review SPI/CPI indicators in the EVM tab");
+          }
+        } catch {}
+      }
+
+      const completionPercentage = totalCheckpoints > 0 ? Math.round((completedCheckpoints / totalCheckpoints) * 100) : 0;
+
+      const openai = new OpenAI({
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+      });
+
+      const evalPrompt = `You are a project governance evaluator. Assess whether this project stage gate should pass or fail.
+
+Stage: ${stage.name} (Stage ${stage.stageNumber})
+Gate: ${stage.gateName}
+Gate Criteria: ${stage.gateDescription}
+
+Checkpoint Status: ${completedCheckpoints}/${totalCheckpoints} complete (${completionPercentage}%)
+Missing Items: ${missingItems.length > 0 ? missingItems.join(", ") : "None"}
+
+RAID Summary:
+- Open Risks: ${openRisks.length}${openRisks.length > 0 ? ` (${openRisks.map(r => r.title).join(", ")})` : ""}
+- Open Issues: ${openIssues.length}${openIssues.length > 0 ? ` (${openIssues.map(r => r.title).join(", ")})` : ""}
+- Unresolved Dependencies: ${unresolvedDeps.length}${unresolvedDeps.length > 0 ? ` (${unresolvedDeps.map(r => r.title).join(", ")})` : ""}
+- Unvalidated Assumptions: ${unvalidatedAssumptions.length}${unvalidatedAssumptions.length > 0 ? ` (${unvalidatedAssumptions.map(r => r.title).join(", ")})` : ""}
+
+${evmFlags.length > 0 ? `EVM Notes: ${evmFlags.join("; ")}` : ""}
+
+Respond ONLY with valid JSON in this exact format:
+{
+  "status": "pass" or "fail",
+  "completionPercentage": <number>,
+  "missingItems": [<list of incomplete checkpoint names>],
+  "raidFlags": [<list of RAID concerns>],
+  "evmFlags": [<list of EVM observations>],
+  "recommendations": [<list of specific recommended actions>]
+}`;
+
+      const aiResponse = await openai.chat.completions.create({
+        model: "gpt-5.2",
+        messages: [{ role: "user", content: evalPrompt }],
+        response_format: { type: "json_object" },
+        max_completion_tokens: 8192,
+      });
+
+      let evaluatorResult;
+      try {
+        evaluatorResult = JSON.parse(aiResponse.choices[0]?.message?.content || "{}");
+      } catch {
+        evaluatorResult = {
+          status: completionPercentage >= 100 && raidFlags.length === 0 ? "pass" : "fail",
+          completionPercentage,
+          missingItems,
+          raidFlags,
+          evmFlags,
+          recommendations: ["AI evaluation parsing failed — review manually"],
+        };
+      }
+
+      let gate = await storage.getProjectGate(req.params.id, stageId);
+      if (!gate) {
+        gate = await storage.createProjectGate({
+          timelineId: req.params.id,
+          stageId,
+          status: evaluatorResult.status === "pass" ? "passed" : "failed",
+          evaluatorResult,
+        });
+      } else {
+        gate = await storage.updateProjectGate(gate.id, {
+          status: evaluatorResult.status === "pass" ? "passed" : "failed",
+          evaluatorResult,
+          approvedAt: evaluatorResult.status === "pass" ? new Date().toISOString() : null,
+        });
+      }
+
+      res.json({ gate, evaluatorResult });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  // ── Coach Chat API ──
+  app.post("/api/chat", async (req, res) => {
+    try {
+      const { messages } = req.body;
+      if (!messages || !Array.isArray(messages)) {
+        return res.status(400).json({ message: "messages array is required" });
+      }
+
+      const stages = await storage.getFlightpathStages("default");
+      const sortedStages = stages.sort((a, b) => a.sortOrder - b.sortOrder);
+      let frameworkContext = "You are the FlightPath Governance Coach — an AI assistant that helps project managers navigate the FlightPath governance framework.\n\n";
+      frameworkContext += "## FlightPath Framework Overview\n";
+      frameworkContext += "FlightPath is a 5-stage project governance framework (Stage 0 through Stage 4) that guides projects from initial value framing through to value realization and evolution.\n\n";
+
+      for (const stage of sortedStages) {
+        const deliverables = await storage.getStageDeliverables(stage.id);
+        frameworkContext += `### Stage ${stage.stageNumber}: ${stage.name}\n`;
+        frameworkContext += `- **Goal**: ${stage.goal}\n`;
+        if (stage.description) frameworkContext += `- **Description**: ${stage.description}\n`;
+        frameworkContext += `- **Gate**: ${stage.gateName}\n`;
+        if (stage.gateDescription) frameworkContext += `- **Gate Criteria**: ${stage.gateDescription}\n`;
+        if (stage.playbookPurpose) frameworkContext += `- **Playbook Purpose**: ${stage.playbookPurpose}\n`;
+        if (stage.playbookExitBundle) frameworkContext += `- **Exit Bundle**: ${stage.playbookExitBundle}\n`;
+
+        if (deliverables.length > 0) {
+          frameworkContext += `- **Deliverables** (${deliverables.length}):\n`;
+          for (const d of deliverables.sort((a, b) => a.sortOrder - b.sortOrder)) {
+            frameworkContext += `  - ${d.name}`;
+            if (d.description) frameworkContext += `: ${d.description}`;
+            if (d.raciData && Object.keys(d.raciData).length > 0) {
+              const raciStr = Object.entries(d.raciData).map(([role, resp]) => `${role}=${resp}`).join(", ");
+              frameworkContext += ` [RACI: ${raciStr}]`;
+            }
+            frameworkContext += "\n";
+          }
+        }
+        frameworkContext += "\n";
+      }
+
+      frameworkContext += `## Your Role
+- Answer questions about the FlightPath framework, stages, gates, deliverables, and RACI responsibilities
+- Guide PMs through their current stage and explain what's needed
+- Recommend next actions and warn about common failure modes
+- Explain gate criteria and what it takes to pass each gate
+- Help PMs understand RACI roles and accountability
+- Be specific, actionable, and reference actual framework deliverables and stages
+- Keep responses focused and practical — you're a governance coach, not a general assistant`;
+
+      const openai = new OpenAI({
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+      });
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-5.2",
+        messages: [
+          { role: "system", content: frameworkContext },
+          ...messages.map((m: { role: string; content: string }) => ({
+            role: m.role as "user" | "assistant",
+            content: m.content,
+          })),
+        ],
+        max_completion_tokens: 8192,
+      });
+
+      const reply = response.choices[0]?.message?.content || "I'm sorry, I couldn't generate a response.";
+      res.json({ response: reply });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  // ── Seed FlightPath on startup ──
+  seedFlightpathData().catch(err => console.error("FlightPath seed error:", err));
 
   return httpServer;
 }

@@ -1,4 +1,4 @@
-import { LayoutDashboard, FolderKanban, Settings, Building2, Users, UserCheck, CalendarRange, Clock, LogOut, Info } from "lucide-react";
+import { LayoutDashboard, FolderKanban, Settings, Building2, Users, UserCheck, CalendarRange, Clock, LogOut, Info, Bot } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -18,6 +18,7 @@ import { useAuth } from "@/hooks/use-auth";
 
 const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "FlightPath Coach", url: "/chat", icon: Bot },
   { title: "Clients", url: "/clients", icon: Building2 },
   { title: "Contacts", url: "/contacts", icon: Users },
   { title: "Projects", url: "/projects", icon: FolderKanban },

@@ -15,6 +15,10 @@ import {
   brandingConfig,
   timesheetEntries,
   progressEntries,
+  flightpathStages,
+  flightpathDeliverables,
+  projectCheckpoints,
+  projectGates,
   type BrandingConfig,
   type InsertBranding,
   type Client,
@@ -47,6 +51,14 @@ import {
   type InsertTimesheetEntry,
   type ProgressEntry,
   type InsertProgressEntry,
+  type FlightpathStage,
+  type InsertFlightpathStage,
+  type FlightpathDeliverable,
+  type InsertFlightpathDeliverable,
+  type ProjectCheckpoint,
+  type InsertProjectCheckpoint,
+  type ProjectGate,
+  type InsertProjectGate,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -115,6 +127,25 @@ export interface IStorage {
   createProgressEntry(data: InsertProgressEntry): Promise<ProgressEntry>;
   updateProgressEntry(id: string, data: Partial<InsertProgressEntry>): Promise<ProgressEntry | undefined>;
   deleteProgressEntry(id: string): Promise<void>;
+  getFlightpathStages(tenantId?: string): Promise<FlightpathStage[]>;
+  getFlightpathStage(id: string): Promise<FlightpathStage | undefined>;
+  createFlightpathStage(data: InsertFlightpathStage): Promise<FlightpathStage>;
+  updateFlightpathStage(id: string, data: Partial<InsertFlightpathStage>): Promise<FlightpathStage | undefined>;
+  deleteFlightpathStage(id: string): Promise<void>;
+  getStageDeliverables(stageId: string): Promise<FlightpathDeliverable[]>;
+  getAllDeliverables(tenantId?: string): Promise<FlightpathDeliverable[]>;
+  createDeliverable(data: InsertFlightpathDeliverable): Promise<FlightpathDeliverable>;
+  updateDeliverable(id: string, data: Partial<InsertFlightpathDeliverable>): Promise<FlightpathDeliverable | undefined>;
+  deleteDeliverable(id: string): Promise<void>;
+  getProjectCheckpoints(timelineId: string): Promise<ProjectCheckpoint[]>;
+  getProjectCheckpointsByStage(timelineId: string, stageId: string): Promise<ProjectCheckpoint[]>;
+  createProjectCheckpoint(data: InsertProjectCheckpoint): Promise<ProjectCheckpoint>;
+  updateProjectCheckpoint(id: string, data: Partial<InsertProjectCheckpoint>): Promise<ProjectCheckpoint | undefined>;
+  deleteProjectCheckpoint(id: string): Promise<void>;
+  getProjectGates(timelineId: string): Promise<ProjectGate[]>;
+  getProjectGate(timelineId: string, stageId: string): Promise<ProjectGate | undefined>;
+  createProjectGate(data: InsertProjectGate): Promise<ProjectGate>;
+  updateProjectGate(id: string, data: Partial<InsertProjectGate>): Promise<ProjectGate | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -570,6 +601,98 @@ export class DatabaseStorage implements IStorage {
 
   async deleteProgressEntry(id: string): Promise<void> {
     await db.delete(progressEntries).where(eq(progressEntries.id, id));
+  }
+
+  async getFlightpathStages(tenantId?: string): Promise<FlightpathStage[]> {
+    const tid = tenantId || "default";
+    return db.select().from(flightpathStages).where(eq(flightpathStages.tenantId, tid));
+  }
+
+  async getFlightpathStage(id: string): Promise<FlightpathStage | undefined> {
+    const [stage] = await db.select().from(flightpathStages).where(eq(flightpathStages.id, id));
+    return stage;
+  }
+
+  async createFlightpathStage(data: InsertFlightpathStage): Promise<FlightpathStage> {
+    const [stage] = await db.insert(flightpathStages).values(data).returning();
+    return stage;
+  }
+
+  async updateFlightpathStage(id: string, data: Partial<InsertFlightpathStage>): Promise<FlightpathStage | undefined> {
+    const [stage] = await db.update(flightpathStages).set(data).where(eq(flightpathStages.id, id)).returning();
+    return stage;
+  }
+
+  async deleteFlightpathStage(id: string): Promise<void> {
+    await db.delete(flightpathDeliverables).where(eq(flightpathDeliverables.stageId, id));
+    await db.delete(flightpathStages).where(eq(flightpathStages.id, id));
+  }
+
+  async getStageDeliverables(stageId: string): Promise<FlightpathDeliverable[]> {
+    return db.select().from(flightpathDeliverables).where(eq(flightpathDeliverables.stageId, stageId));
+  }
+
+  async getAllDeliverables(tenantId?: string): Promise<FlightpathDeliverable[]> {
+    const stages = await this.getFlightpathStages(tenantId);
+    const stageIds = stages.map(s => s.id);
+    if (stageIds.length === 0) return [];
+    const allDeliverables = await db.select().from(flightpathDeliverables);
+    return allDeliverables.filter(d => stageIds.includes(d.stageId));
+  }
+
+  async createDeliverable(data: InsertFlightpathDeliverable): Promise<FlightpathDeliverable> {
+    const [deliverable] = await db.insert(flightpathDeliverables).values(data).returning();
+    return deliverable;
+  }
+
+  async updateDeliverable(id: string, data: Partial<InsertFlightpathDeliverable>): Promise<FlightpathDeliverable | undefined> {
+    const [deliverable] = await db.update(flightpathDeliverables).set(data).where(eq(flightpathDeliverables.id, id)).returning();
+    return deliverable;
+  }
+
+  async deleteDeliverable(id: string): Promise<void> {
+    await db.delete(flightpathDeliverables).where(eq(flightpathDeliverables.id, id));
+  }
+
+  async getProjectCheckpoints(timelineId: string): Promise<ProjectCheckpoint[]> {
+    return db.select().from(projectCheckpoints).where(eq(projectCheckpoints.timelineId, timelineId));
+  }
+
+  async getProjectCheckpointsByStage(timelineId: string, stageId: string): Promise<ProjectCheckpoint[]> {
+    return db.select().from(projectCheckpoints).where(and(eq(projectCheckpoints.timelineId, timelineId), eq(projectCheckpoints.stageId, stageId)));
+  }
+
+  async createProjectCheckpoint(data: InsertProjectCheckpoint): Promise<ProjectCheckpoint> {
+    const [checkpoint] = await db.insert(projectCheckpoints).values(data).returning();
+    return checkpoint;
+  }
+
+  async updateProjectCheckpoint(id: string, data: Partial<InsertProjectCheckpoint>): Promise<ProjectCheckpoint | undefined> {
+    const [checkpoint] = await db.update(projectCheckpoints).set(data).where(eq(projectCheckpoints.id, id)).returning();
+    return checkpoint;
+  }
+
+  async deleteProjectCheckpoint(id: string): Promise<void> {
+    await db.delete(projectCheckpoints).where(eq(projectCheckpoints.id, id));
+  }
+
+  async getProjectGates(timelineId: string): Promise<ProjectGate[]> {
+    return db.select().from(projectGates).where(eq(projectGates.timelineId, timelineId));
+  }
+
+  async getProjectGate(timelineId: string, stageId: string): Promise<ProjectGate | undefined> {
+    const [gate] = await db.select().from(projectGates).where(and(eq(projectGates.timelineId, timelineId), eq(projectGates.stageId, stageId)));
+    return gate;
+  }
+
+  async createProjectGate(data: InsertProjectGate): Promise<ProjectGate> {
+    const [gate] = await db.insert(projectGates).values(data).returning();
+    return gate;
+  }
+
+  async updateProjectGate(id: string, data: Partial<InsertProjectGate>): Promise<ProjectGate | undefined> {
+    const [gate] = await db.update(projectGates).set(data).where(eq(projectGates.id, id)).returning();
+    return gate;
   }
 }
 

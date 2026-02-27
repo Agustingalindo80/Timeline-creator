@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Helmet } from "react-helmet-async";
-import { Shield, List, Plus, X, GripVertical, RotateCcw, Users, CreditCard, Edit3, Trash2, Save, ChevronDown, ChevronRight, Calendar, Paintbrush, Upload, ImageIcon } from "lucide-react";
+import { Shield, List, Plus, X, GripVertical, RotateCcw, Users, CreditCard, Edit3, Trash2, Save, ChevronDown, ChevronRight, Calendar, Paintbrush, Upload, ImageIcon, Compass, ChevronUp } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -23,7 +24,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAppTitle } from "@/hooks/use-app-title";
 import { Label } from "@/components/ui/label";
-import type { AppSettings, FieldOption, TeamMember, RateCard, AllocationWithProject, TimelineWithMilestones, BrandingConfig } from "@shared/schema";
+import type { AppSettings, FieldOption, TeamMember, RateCard, AllocationWithProject, TimelineWithMilestones, BrandingConfig, FlightpathStage, FlightpathDeliverable } from "@shared/schema";
 import {
   DEFAULT_TASK_STATUSES,
   DEFAULT_TASK_HEALTH,
@@ -1496,6 +1497,221 @@ function BrandingManager() {
   );
 }
 
+type StageWithDeliverables = FlightpathStage & { deliverables: FlightpathDeliverable[] };
+
+function FlightPathManager() {
+  const { toast } = useToast();
+  const [expandedStage, setExpandedStage] = useState<string | null>(null);
+  const [editingStage, setEditingStage] = useState<string | null>(null);
+  const [editData, setEditData] = useState<Partial<FlightpathStage>>({});
+
+  const { data: stages = [], isLoading } = useQuery<StageWithDeliverables[]>({
+    queryKey: ["/api/flightpath-stages"],
+  });
+
+  const updateStageMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      await apiRequest("PATCH", `/api/flightpath-stages/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/flightpath-stages"] });
+      toast({ title: "Stage updated" });
+      setEditingStage(null);
+    },
+  });
+
+  const deleteDeliverableMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/flightpath-deliverables/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/flightpath-stages"] });
+      toast({ title: "Deliverable deleted" });
+    },
+  });
+
+  if (isLoading) return <Skeleton className="h-40 w-full" />;
+
+  return (
+    <div>
+      <div className="mb-6">
+        <h2 className="text-base font-semibold mb-1 flex items-center gap-2">
+          <Compass className="w-4 h-4" />
+          FlightPath Governance Framework
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Configure the governance stages, deliverables, and RACI matrices that define your project lifecycle.
+        </p>
+      </div>
+
+      {stages.length === 0 ? (
+        <Card className="p-6 text-center">
+          <p className="text-sm text-muted-foreground">No stages configured. Stages will be automatically seeded on next server restart.</p>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {stages.sort((a, b) => a.sortOrder - b.sortOrder).map(stage => {
+            const isExpanded = expandedStage === stage.id;
+            const isEditing = editingStage === stage.id;
+
+            return (
+              <Card key={stage.id} className="overflow-hidden" data-testid={`flightpath-stage-${stage.stageNumber}`}>
+                <div
+                  className="p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => !isEditing && setExpandedStage(isExpanded ? null : stage.id)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                      <div>
+                        <h3 className="text-sm font-semibold" data-testid={`text-stage-name-${stage.stageNumber}`}>
+                          Stage {stage.stageNumber}: {stage.name}
+                        </h3>
+                        <p className="text-xs text-muted-foreground">{stage.goal}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="text-xs">{stage.deliverables.length} deliverables</Badge>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingStage(stage.id);
+                          setEditData({
+                            name: stage.name,
+                            goal: stage.goal,
+                            description: stage.description || "",
+                            gateName: stage.gateName,
+                            gateDescription: stage.gateDescription || "",
+                            playbookPurpose: stage.playbookPurpose || "",
+                            playbookExitBundle: stage.playbookExitBundle || "",
+                          });
+                          setExpandedStage(stage.id);
+                        }}
+                        data-testid={`button-edit-stage-${stage.stageNumber}`}
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {isExpanded && (
+                  <div className="border-t px-4 pb-4">
+                    {isEditing ? (
+                      <div className="pt-4 space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label className="text-xs">Name</Label>
+                            <Input value={editData.name || ""} onChange={e => setEditData(d => ({...d, name: e.target.value}))} />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Goal</Label>
+                            <Input value={editData.goal || ""} onChange={e => setEditData(d => ({...d, goal: e.target.value}))} />
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="text-xs">Description</Label>
+                          <Input value={editData.description || ""} onChange={e => setEditData(d => ({...d, description: e.target.value}))} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label className="text-xs">Gate Name</Label>
+                            <Input value={editData.gateName || ""} onChange={e => setEditData(d => ({...d, gateName: e.target.value}))} />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Gate Description</Label>
+                            <Input value={editData.gateDescription || ""} onChange={e => setEditData(d => ({...d, gateDescription: e.target.value}))} />
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="text-xs">Playbook Purpose</Label>
+                          <Input value={editData.playbookPurpose || ""} onChange={e => setEditData(d => ({...d, playbookPurpose: e.target.value}))} />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Exit Bundle</Label>
+                          <Input value={editData.playbookExitBundle || ""} onChange={e => setEditData(d => ({...d, playbookExitBundle: e.target.value}))} />
+                        </div>
+                        <div className="flex gap-2 justify-end">
+                          <Button size="sm" variant="ghost" onClick={() => setEditingStage(null)}><X className="w-3.5 h-3.5 mr-1" /> Cancel</Button>
+                          <Button size="sm" onClick={() => updateStageMutation.mutate({ id: stage.id, data: editData })} disabled={updateStageMutation.isPending}>
+                            <Save className="w-3.5 h-3.5 mr-1" /> Save
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="pt-4 space-y-4">
+                        {stage.description && (
+                          <div className="text-xs"><span className="font-medium">Description:</span> {stage.description}</div>
+                        )}
+                        <div className="grid grid-cols-2 gap-4 text-xs">
+                          <div><span className="font-medium">Gate:</span> {stage.gateName}</div>
+                          {stage.gateDescription && <div><span className="font-medium">Gate Criteria:</span> {stage.gateDescription}</div>}
+                        </div>
+                        {stage.playbookPurpose && (
+                          <div className="text-xs"><span className="font-medium">Playbook Purpose:</span> {stage.playbookPurpose}</div>
+                        )}
+                        {stage.playbookExitBundle && (
+                          <div className="text-xs"><span className="font-medium">Exit Bundle:</span> {stage.playbookExitBundle}</div>
+                        )}
+
+                        <div>
+                          <h4 className="text-xs font-semibold mb-2">Deliverables ({stage.deliverables.length})</h4>
+                          <div className="space-y-2">
+                            {stage.deliverables.sort((a, b) => a.sortOrder - b.sortOrder).map((del, idx) => (
+                              <Card key={del.id} className="p-3" data-testid={`deliverable-${del.id}`}>
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-medium">{idx + 1}. {del.name}</p>
+                                    {del.description && <p className="text-xs text-muted-foreground mt-0.5">{del.description}</p>}
+                                    {del.raciData && Object.keys(del.raciData).length > 0 && (
+                                      <div className="mt-2 border rounded overflow-hidden">
+                                        <table className="w-full text-xs">
+                                          <thead>
+                                            <tr className="bg-muted">
+                                              <th className="text-left px-2 py-1 font-medium">Role</th>
+                                              <th className="text-left px-2 py-1 font-medium">RACI</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {Object.entries(del.raciData).map(([role, resp]) => (
+                                              <tr key={role} className="border-t">
+                                                <td className="px-2 py-0.5 text-xs">{role}</td>
+                                                <td className="px-2 py-0.5"><Badge variant="secondary" className="text-xs">{resp}</Badge></td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    )}
+                                  </div>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    onClick={() => deleteDeliverableMutation.mutate(del.id)}
+                                    data-testid={`button-delete-deliverable-${del.id}`}
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              </Card>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Admin() {
   const { toast } = useToast();
   const appTitle = useAppTitle("Settings");
@@ -1685,6 +1901,7 @@ export default function Admin() {
             <TabsTrigger value="team_members" data-testid="tab-settings-team-members">Team Members</TabsTrigger>
             <TabsTrigger value="rate_cards" data-testid="tab-settings-rate-cards">Rate Cards</TabsTrigger>
             <TabsTrigger value="field_options" data-testid="tab-settings-field-options">Field Options</TabsTrigger>
+            <TabsTrigger value="flightpath" data-testid="tab-settings-flightpath">FlightPath</TabsTrigger>
           </TabsList>
 
           <TabsContent value="general">
@@ -1783,6 +2000,10 @@ export default function Admin() {
                 ))}
               </Tabs>
             )}
+          </TabsContent>
+
+          <TabsContent value="flightpath">
+            <FlightPathManager />
           </TabsContent>
         </Tabs>
       </div>
