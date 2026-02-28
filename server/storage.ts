@@ -1,4 +1,4 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { db } from "./db";
 import {
   clients,
@@ -19,6 +19,7 @@ import {
   flightpathDeliverables,
   projectCheckpoints,
   projectGates,
+  workstreamResources,
   type BrandingConfig,
   type InsertBranding,
   type Client,
@@ -59,6 +60,8 @@ import {
   type InsertProjectCheckpoint,
   type ProjectGate,
   type InsertProjectGate,
+  type WorkstreamResource,
+  type InsertWorkstreamResource,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -146,6 +149,11 @@ export interface IStorage {
   getProjectGate(timelineId: string, stageId: string): Promise<ProjectGate | undefined>;
   createProjectGate(data: InsertProjectGate): Promise<ProjectGate>;
   updateProjectGate(id: string, data: Partial<InsertProjectGate>): Promise<ProjectGate | undefined>;
+  getWorkstreamResources(taskId: string): Promise<WorkstreamResource[]>;
+  getWorkstreamResourcesByTimeline(timelineId: string): Promise<WorkstreamResource[]>;
+  createWorkstreamResource(data: InsertWorkstreamResource): Promise<WorkstreamResource>;
+  updateWorkstreamResource(id: string, data: Partial<InsertWorkstreamResource>): Promise<WorkstreamResource | undefined>;
+  deleteWorkstreamResource(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -694,6 +702,31 @@ export class DatabaseStorage implements IStorage {
   async updateProjectGate(id: string, data: Partial<InsertProjectGate>): Promise<ProjectGate | undefined> {
     const [gate] = await db.update(projectGates).set(data).where(eq(projectGates.id, id)).returning();
     return gate;
+  }
+
+  async getWorkstreamResources(taskId: string): Promise<WorkstreamResource[]> {
+    return db.select().from(workstreamResources).where(eq(workstreamResources.taskId, taskId));
+  }
+
+  async getWorkstreamResourcesByTimeline(timelineId: string): Promise<WorkstreamResource[]> {
+    const timelineTasks = await db.select({ id: tasks.id }).from(tasks).where(eq(tasks.timelineId, timelineId));
+    const taskIds = timelineTasks.map(t => t.id);
+    if (taskIds.length === 0) return [];
+    return db.select().from(workstreamResources).where(inArray(workstreamResources.taskId, taskIds));
+  }
+
+  async createWorkstreamResource(data: InsertWorkstreamResource): Promise<WorkstreamResource> {
+    const [resource] = await db.insert(workstreamResources).values(data).returning();
+    return resource;
+  }
+
+  async updateWorkstreamResource(id: string, data: Partial<InsertWorkstreamResource>): Promise<WorkstreamResource | undefined> {
+    const [resource] = await db.update(workstreamResources).set(data).where(eq(workstreamResources.id, id)).returning();
+    return resource;
+  }
+
+  async deleteWorkstreamResource(id: string): Promise<void> {
+    await db.delete(workstreamResources).where(eq(workstreamResources.id, id));
   }
 }
 

@@ -199,6 +199,7 @@ export const tasks = pgTable("tasks", {
   confidenceLevel: text("confidence_level"),
   taskType: text("task_type"),
   assignedRoleId: varchar("assigned_role_id"),
+  durationWeeks: numeric("duration_weeks", { precision: 5, scale: 1 }),
 });
 
 export const risks = pgTable("risks", {
@@ -264,6 +265,16 @@ export const allocations = pgTable("allocations", {
   startDate: text("start_date"),
   endDate: text("end_date"),
   status: text("status").notNull().default("active"),
+  notes: text("notes"),
+});
+
+export const workstreamResources = pgTable("workstream_resources", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  taskId: varchar("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
+  rateCardId: varchar("rate_card_id").notNull().references(() => rateCards.id),
+  teamMemberId: varchar("team_member_id").references(() => teamMembers.id),
+  hoursPerWeek: numeric("hours_per_week", { precision: 5, scale: 1 }).notNull(),
+  taskType: text("task_type"),
   notes: text("notes"),
 });
 
@@ -396,6 +407,8 @@ export type ProjectCheckpoint = typeof projectCheckpoints.$inferSelect;
 export type InsertProjectGate = z.infer<typeof insertProjectGateSchema>;
 export type ProjectGate = typeof projectGates.$inferSelect;
 
+export const insertWorkstreamResourceSchema = createInsertSchema(workstreamResources).omit({ id: true });
+
 export const insertBrandingSchema = createInsertSchema(brandingConfig).omit({ id: true });
 export type InsertBranding = z.infer<typeof insertBrandingSchema>;
 export type BrandingConfig = typeof brandingConfig.$inferSelect;
@@ -444,6 +457,8 @@ export type Allocation = typeof allocations.$inferSelect;
 export type AllocationWithProject = Allocation & { project: Timeline };
 export type AllocationWithTeamMember = Allocation & { teamMember: TeamMember };
 export type AllocationFull = Allocation & { teamMember: TeamMember; project: Timeline };
+export type InsertWorkstreamResource = z.infer<typeof insertWorkstreamResourceSchema>;
+export type WorkstreamResource = typeof workstreamResources.$inferSelect;
 export type InsertTimesheetEntry = z.infer<typeof insertTimesheetEntrySchema>;
 export type TimesheetEntry = typeof timesheetEntries.$inferSelect;
 export type InsertProgressEntry = z.infer<typeof insertProgressEntrySchema>;

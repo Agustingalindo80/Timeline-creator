@@ -594,7 +594,7 @@ export async function registerRoutes(
   // ADD task to timeline
   app.post("/api/timelines/:id/tasks", async (req, res) => {
     try {
-      const { title, description, startDate, endDate, actualStartDate, actualEndDate, color, sortOrder, status, health, itemType, parentTaskId, estimatedHours, confidenceLevel, taskType, assignedRoleId } = req.body;
+      const { title, description, startDate, endDate, actualStartDate, actualEndDate, color, sortOrder, status, health, itemType, parentTaskId, estimatedHours, confidenceLevel, taskType, assignedRoleId, durationWeeks } = req.body;
       if (!title) {
         return res.status(400).json({ message: "Title is required" });
       }
@@ -638,6 +638,7 @@ export async function registerRoutes(
         confidenceLevel: confidenceLevel || null,
         taskType: taskType || null,
         assignedRoleId: assignedRoleId || null,
+        durationWeeks: durationWeeks || null,
       });
 
       if (parentTaskId) {
@@ -653,7 +654,7 @@ export async function registerRoutes(
   // UPDATE task
   app.patch("/api/tasks/:id", async (req, res) => {
     try {
-      const { title, description, startDate, endDate, actualStartDate, actualEndDate, color, percentComplete, sortOrder, status, health, itemType, parentTaskId, estimatedHours, confidenceLevel, taskType, assignedRoleId } = req.body;
+      const { title, description, startDate, endDate, actualStartDate, actualEndDate, color, percentComplete, sortOrder, status, health, itemType, parentTaskId, estimatedHours, confidenceLevel, taskType, assignedRoleId, durationWeeks } = req.body;
       const updates: any = {};
       if (title !== undefined) updates.title = title;
       if (description !== undefined) updates.description = description;
@@ -672,6 +673,7 @@ export async function registerRoutes(
       if (confidenceLevel !== undefined) updates.confidenceLevel = confidenceLevel;
       if (taskType !== undefined) updates.taskType = taskType;
       if (assignedRoleId !== undefined) updates.assignedRoleId = assignedRoleId;
+      if (durationWeeks !== undefined) updates.durationWeeks = durationWeeks;
 
       const currentTask = await storage.getTask(req.params.id);
       if (currentTask) {
@@ -1920,6 +1922,60 @@ Respond ONLY with valid JSON:
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
+  // ── Workstream Resources CRUD ──
+
+  app.get("/api/tasks/:taskId/resources", async (req, res) => {
+    try {
+      const resources = await storage.getWorkstreamResources(req.params.taskId);
+      res.json(resources);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.post("/api/tasks/:taskId/resources", async (req, res) => {
+    try {
+      const { rateCardId, teamMemberId, hoursPerWeek, taskType, notes } = req.body;
+      if (!rateCardId) return res.status(400).json({ message: "Rate card is required" });
+      if (!hoursPerWeek && hoursPerWeek !== 0) return res.status(400).json({ message: "Hours per week is required" });
+      const resource = await storage.createWorkstreamResource({
+        taskId: req.params.taskId,
+        rateCardId,
+        teamMemberId: teamMemberId || null,
+        hoursPerWeek: String(hoursPerWeek),
+        taskType: taskType || null,
+        notes: notes || null,
+      });
+      res.status(201).json(resource);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.patch("/api/workstream-resources/:id", async (req, res) => {
+    try {
+      const updates: any = {};
+      if (req.body.rateCardId !== undefined) updates.rateCardId = req.body.rateCardId;
+      if (req.body.teamMemberId !== undefined) updates.teamMemberId = req.body.teamMemberId;
+      if (req.body.hoursPerWeek !== undefined) updates.hoursPerWeek = String(req.body.hoursPerWeek);
+      if (req.body.taskType !== undefined) updates.taskType = req.body.taskType;
+      if (req.body.notes !== undefined) updates.notes = req.body.notes;
+      const resource = await storage.updateWorkstreamResource(req.params.id, updates);
+      if (!resource) return res.status(404).json({ message: "Resource not found" });
+      res.json(resource);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.delete("/api/workstream-resources/:id", async (req, res) => {
+    try {
+      await storage.deleteWorkstreamResource(req.params.id);
+      res.json({ success: true });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.get("/api/timelines/:timelineId/workstream-resources", async (req, res) => {
+    try {
+      const resources = await storage.getWorkstreamResourcesByTimeline(req.params.timelineId);
+      res.json(resources);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
   // ── Opportunities CRUD ──
 
   app.get("/api/opportunities", async (req, res) => {
@@ -2095,6 +2151,7 @@ Respond ONLY with valid JSON:
           confidenceLevel: phase.confidenceLevel,
           taskType: phase.taskType,
           assignedRoleId: phase.assignedRoleId,
+          durationWeeks: phase.durationWeeks,
         });
         taskIdMap.set(phase.id, newPhase.id);
       }
@@ -2118,8 +2175,26 @@ Respond ONLY with valid JSON:
           confidenceLevel: ws.confidenceLevel,
           taskType: ws.taskType,
           assignedRoleId: ws.assignedRoleId,
+          durationWeeks: ws.durationWeeks,
         });
         taskIdMap.set(ws.id, newWs.id);
+      }
+
+      let resourcesCopied = 0;
+      const taskIdEntries = Array.from(taskIdMap.entries());
+      for (const [oldTaskId, newTaskId] of taskIdEntries) {
+        const resources = await storage.getWorkstreamResources(oldTaskId);
+        for (const resource of resources) {
+          await storage.createWorkstreamResource({
+            taskId: newTaskId,
+            rateCardId: resource.rateCardId,
+            teamMemberId: resource.teamMemberId,
+            hoursPerWeek: resource.hoursPerWeek,
+            taskType: resource.taskType,
+            notes: resource.notes,
+          });
+          resourcesCopied++;
+        }
       }
 
       const oppTeamMembers = await storage.getProjectTeamMembers(opp.id);
@@ -2194,6 +2269,7 @@ Respond ONLY with valid JSON:
         project: fullProject,
         summary: {
           tasksCreated: taskIdMap.size,
+          resourcesCopied,
           teamMembersCopied: oppTeamMembers.length,
           allocationsCopied: oppAllocations.length,
           raidItemsCopied: oppRisks.length,

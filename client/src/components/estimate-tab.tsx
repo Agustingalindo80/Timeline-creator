@@ -25,10 +25,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Plus, Trash2, ChevronDown, ChevronRight, Edit3, Calculator, TrendingUp, Clock, DollarSign } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronRight, Edit3, Calculator, TrendingUp, Clock, DollarSign, Users } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { TimelineWithMilestones, Task, RateCard } from "@shared/schema";
+import type { TimelineWithMilestones, Task, RateCard, WorkstreamResource, TeamMember } from "@shared/schema";
 
 interface EstimateTabProps {
   timeline: TimelineWithMilestones;
@@ -50,21 +50,42 @@ const CONFIDENCE_LEVELS = [
 export function EstimateTab({ timeline }: EstimateTabProps) {
   const { toast } = useToast();
   const [expandedPhases, setExpandedPhases] = useState<Set<string>>(new Set());
+  const [expandedWorkstreams, setExpandedWorkstreams] = useState<Set<string>>(new Set());
   const [addPhaseOpen, setAddPhaseOpen] = useState(false);
   const [addWorkstreamOpen, setAddWorkstreamOpen] = useState(false);
   const [editTaskOpen, setEditTaskOpen] = useState(false);
+  const [addResourceOpen, setAddResourceOpen] = useState(false);
+  const [editResourceOpen, setEditResourceOpen] = useState(false);
   const [selectedParentPhase, setSelectedParentPhase] = useState<string | null>(null);
+  const [selectedWorkstreamId, setSelectedWorkstreamId] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [editingResource, setEditingResource] = useState<WorkstreamResource | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState("");
-  const [newTaskHours, setNewTaskHours] = useState("");
-  const [newTaskType, setNewTaskType] = useState("technical");
+  const [newTaskDuration, setNewTaskDuration] = useState("");
   const [newTaskConfidence, setNewTaskConfidence] = useState("medium");
-  const [newTaskRoleId, setNewTaskRoleId] = useState<string>("");
+  const [newResRoleId, setNewResRoleId] = useState("");
+  const [newResHoursPerWeek, setNewResHoursPerWeek] = useState("");
+  const [newResTaskType, setNewResTaskType] = useState("technical");
+  const [newResTeamMemberId, setNewResTeamMemberId] = useState("");
+  const [newResNotes, setNewResNotes] = useState("");
   const [localRiskPercent, setLocalRiskPercent] = useState(0);
   const [localBufferPercent, setLocalBufferPercent] = useState(0);
 
   const { data: allRateCards = [] } = useQuery<RateCard[]>({
     queryKey: ["/api/rate-cards"],
+  });
+
+  const { data: allResources = [] } = useQuery<WorkstreamResource[]>({
+    queryKey: ["/api/timelines", timeline.id, "workstream-resources"],
+    queryFn: async () => {
+      const res = await fetch(`/api/timelines/${timeline.id}/workstream-resources`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  const { data: teamMembers = [] } = useQuery<TeamMember[]>({
+    queryKey: ["/api/team-members"],
   });
 
   const rateCards = timeline.region
@@ -77,6 +98,15 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
 
   const togglePhase = (id: string) => {
     setExpandedPhases(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleWorkstream = (id: string) => {
+    setExpandedWorkstreams(prev => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -114,6 +144,7 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/opportunities", timeline.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/timelines", timeline.id, "workstream-resources"] });
       toast({ title: "Task deleted" });
     },
   });
@@ -128,16 +159,49 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
     },
   });
 
+  const createResourceMutation = useMutation({
+    mutationFn: async ({ taskId, data }: { taskId: string; data: any }) => {
+      const res = await apiRequest("POST", `/api/tasks/${taskId}/resources`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/timelines", timeline.id, "workstream-resources"] });
+      toast({ title: "Resource added" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error adding resource", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const updateResourceMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const res = await apiRequest("PATCH", `/api/workstream-resources/${id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/timelines", timeline.id, "workstream-resources"] });
+      toast({ title: "Resource updated" });
+    },
+  });
+
+  const deleteResourceMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/workstream-resources/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/timelines", timeline.id, "workstream-resources"] });
+      toast({ title: "Resource removed" });
+    },
+  });
+
   const handleAddPhase = () => {
     if (!newTaskTitle.trim()) return;
     createTaskMutation.mutate({
       title: newTaskTitle.trim(),
       itemType: "phase",
       sortOrder: phases.length,
-      estimatedHours: newTaskHours ? parseFloat(newTaskHours) : null,
     });
     setNewTaskTitle("");
-    setNewTaskHours("");
     setAddPhaseOpen(false);
   };
 
@@ -149,31 +213,23 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
       itemType: "workstream",
       parentTaskId: selectedParentPhase,
       sortOrder: childCount,
-      estimatedHours: newTaskHours ? parseFloat(newTaskHours) : null,
-      taskType: newTaskType,
+      durationWeeks: newTaskDuration ? parseFloat(newTaskDuration) : null,
       confidenceLevel: newTaskConfidence,
-      assignedRoleId: newTaskRoleId === "none" ? null : newTaskRoleId || null,
     });
     setNewTaskTitle("");
-    setNewTaskHours("");
-    setNewTaskType("technical");
+    setNewTaskDuration("");
     setNewTaskConfidence("medium");
-    setNewTaskRoleId("");
     setAddWorkstreamOpen(false);
   };
 
   const handleEditTask = () => {
     if (!editingTask || !newTaskTitle.trim()) return;
-    updateTaskMutation.mutate({
-      id: editingTask.id,
-      data: {
-        title: newTaskTitle.trim(),
-        estimatedHours: newTaskHours ? newTaskHours : null,
-        taskType: newTaskType || null,
-        confidenceLevel: newTaskConfidence || null,
-        assignedRoleId: newTaskRoleId === "none" ? null : newTaskRoleId || null,
-      },
-    });
+    const data: any = { title: newTaskTitle.trim() };
+    if (editingTask.itemType === "workstream") {
+      data.durationWeeks = newTaskDuration ? newTaskDuration : null;
+      data.confidenceLevel = newTaskConfidence || null;
+    }
+    updateTaskMutation.mutate({ id: editingTask.id, data });
     setEditingTask(null);
     setEditTaskOpen(false);
   };
@@ -181,11 +237,61 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
   const openEditDialog = (task: Task) => {
     setEditingTask(task);
     setNewTaskTitle(task.title);
-    setNewTaskHours(task.estimatedHours?.toString() || "");
-    setNewTaskType(task.taskType || "technical");
+    setNewTaskDuration(task.durationWeeks?.toString() || "");
     setNewTaskConfidence(task.confidenceLevel || "medium");
-    setNewTaskRoleId(task.assignedRoleId || "");
     setEditTaskOpen(true);
+  };
+
+  const openAddResourceDialog = (workstreamId: string) => {
+    setSelectedWorkstreamId(workstreamId);
+    setNewResRoleId("");
+    setNewResHoursPerWeek("");
+    setNewResTaskType("technical");
+    setNewResTeamMemberId("");
+    setNewResNotes("");
+    setAddResourceOpen(true);
+  };
+
+  const openEditResourceDialog = (resource: WorkstreamResource) => {
+    setEditingResource(resource);
+    setNewResRoleId(resource.rateCardId);
+    setNewResHoursPerWeek(resource.hoursPerWeek?.toString() || "");
+    setNewResTaskType(resource.taskType || "technical");
+    setNewResTeamMemberId(resource.teamMemberId || "");
+    setNewResNotes(resource.notes || "");
+    setEditResourceOpen(true);
+  };
+
+  const handleAddResource = () => {
+    if (!selectedWorkstreamId || !newResRoleId || !newResHoursPerWeek) return;
+    createResourceMutation.mutate({
+      taskId: selectedWorkstreamId,
+      data: {
+        taskId: selectedWorkstreamId,
+        rateCardId: newResRoleId,
+        hoursPerWeek: newResHoursPerWeek,
+        taskType: newResTaskType,
+        teamMemberId: newResTeamMemberId === "none" || !newResTeamMemberId ? null : newResTeamMemberId,
+        notes: newResNotes || null,
+      },
+    });
+    setAddResourceOpen(false);
+  };
+
+  const handleEditResource = () => {
+    if (!editingResource) return;
+    updateResourceMutation.mutate({
+      id: editingResource.id,
+      data: {
+        rateCardId: newResRoleId,
+        hoursPerWeek: newResHoursPerWeek,
+        taskType: newResTaskType,
+        teamMemberId: newResTeamMemberId === "none" || !newResTeamMemberId ? null : newResTeamMemberId,
+        notes: newResNotes || null,
+      },
+    });
+    setEditingResource(null);
+    setEditResourceOpen(false);
   };
 
   const getRateCard = (roleId: string | null | undefined): RateCard | undefined => {
@@ -193,23 +299,59 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
     return allRateCards.find(r => r.id === roleId);
   };
 
-  const getTaskCost = (task: Task): number => {
-    const hours = parseFloat(task.estimatedHours || "0") || 0;
-    const rc = getRateCard(task.assignedRoleId);
+  const getResourcesForWorkstream = (wsId: string): WorkstreamResource[] => {
+    return allResources.filter(r => r.taskId === wsId);
+  };
+
+  const getWorkstreamHours = (ws: Task): number => {
+    const duration = parseFloat(ws.durationWeeks || "0") || 0;
+    const resources = getResourcesForWorkstream(ws.id);
+    if (resources.length > 0) {
+      return resources.reduce((sum, r) => {
+        const hpw = parseFloat(r.hoursPerWeek || "0") || 0;
+        return sum + (hpw * duration);
+      }, 0);
+    }
+    return parseFloat(ws.estimatedHours || "0") || 0;
+  };
+
+  const getWorkstreamCost = (ws: Task): number => {
+    const duration = parseFloat(ws.durationWeeks || "0") || 0;
+    const resources = getResourcesForWorkstream(ws.id);
+    if (resources.length > 0) {
+      return resources.reduce((sum, r) => {
+        const hpw = parseFloat(r.hoursPerWeek || "0") || 0;
+        const rc = getRateCard(r.rateCardId);
+        const rate = parseFloat(rc?.costRate || "0") || 0;
+        return sum + (hpw * duration * rate);
+      }, 0);
+    }
+    const hours = parseFloat(ws.estimatedHours || "0") || 0;
+    const rc = getRateCard(ws.assignedRoleId);
     const rate = parseFloat(rc?.costRate || "0") || 0;
     return hours * rate;
   };
 
-  const getTaskRevenue = (task: Task): number => {
-    const hours = parseFloat(task.estimatedHours || "0") || 0;
-    const rc = getRateCard(task.assignedRoleId);
+  const getWorkstreamRevenue = (ws: Task): number => {
+    const duration = parseFloat(ws.durationWeeks || "0") || 0;
+    const resources = getResourcesForWorkstream(ws.id);
+    if (resources.length > 0) {
+      return resources.reduce((sum, r) => {
+        const hpw = parseFloat(r.hoursPerWeek || "0") || 0;
+        const rc = getRateCard(r.rateCardId);
+        const rate = parseFloat(rc?.billRate || "0") || 0;
+        return sum + (hpw * duration * rate);
+      }, 0);
+    }
+    const hours = parseFloat(ws.estimatedHours || "0") || 0;
+    const rc = getRateCard(ws.assignedRoleId);
     const rate = parseFloat(rc?.billRate || "0") || 0;
     return hours * rate;
   };
 
-  const totalHours = workstreams.reduce((sum, ws) => sum + (parseFloat(ws.estimatedHours || "0") || 0), 0);
-  const baseCost = workstreams.reduce((sum, ws) => sum + getTaskCost(ws), 0);
-  const baseRevenue = workstreams.reduce((sum, ws) => sum + getTaskRevenue(ws), 0);
+  const totalHours = workstreams.reduce((sum, ws) => sum + getWorkstreamHours(ws), 0);
+  const baseCost = workstreams.reduce((sum, ws) => sum + getWorkstreamCost(ws), 0);
+  const baseRevenue = workstreams.reduce((sum, ws) => sum + getWorkstreamRevenue(ws), 0);
   const serverRiskPercent = parseFloat(timeline.riskFactorPercent || "0") || 0;
   const serverBufferPercent = parseFloat(timeline.bufferPercent || "0") || 0;
 
@@ -225,13 +367,24 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
   const bufferedCost = riskAdjustedCost * (1 + localBufferPercent / 100);
   const grossMargin = baseRevenue > 0 ? ((baseRevenue - bufferedCost) / baseRevenue) * 100 : 0;
 
-  const hoursByRole = workstreams.reduce((acc, ws) => {
-    const rc = getRateCard(ws.assignedRoleId);
-    const role = rc?.name || rc?.role || "Unassigned";
-    const hours = parseFloat(ws.estimatedHours || "0") || 0;
-    acc[role] = (acc[role] || 0) + hours;
-    return acc;
-  }, {} as Record<string, number>);
+  const hoursByRole: Record<string, number> = {};
+  workstreams.forEach(ws => {
+    const duration = parseFloat(ws.durationWeeks || "0") || 0;
+    const resources = getResourcesForWorkstream(ws.id);
+    if (resources.length > 0) {
+      resources.forEach(r => {
+        const rc = getRateCard(r.rateCardId);
+        const role = rc?.name || rc?.role || "Unassigned";
+        const hpw = parseFloat(r.hoursPerWeek || "0") || 0;
+        hoursByRole[role] = (hoursByRole[role] || 0) + (hpw * duration);
+      });
+    } else {
+      const rc = getRateCard(ws.assignedRoleId);
+      const role = rc?.name || rc?.role || "Unassigned";
+      const hours = parseFloat(ws.estimatedHours || "0") || 0;
+      hoursByRole[role] = (hoursByRole[role] || 0) + hours;
+    }
+  });
 
   const confidenceCounts = workstreams.reduce((acc, ws) => {
     const level = ws.confidenceLevel || "unset";
@@ -250,13 +403,159 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
   const getPhaseHours = (phaseId: string): number => {
     return workstreams
       .filter(ws => ws.parentTaskId === phaseId)
-      .reduce((sum, ws) => sum + (parseFloat(ws.estimatedHours || "0") || 0), 0);
+      .reduce((sum, ws) => sum + getWorkstreamHours(ws), 0);
   };
 
   const getPhaseCost = (phaseId: string): number => {
     return workstreams
       .filter(ws => ws.parentTaskId === phaseId)
-      .reduce((sum, ws) => sum + getTaskCost(ws), 0);
+      .reduce((sum, ws) => sum + getWorkstreamCost(ws), 0);
+  };
+
+  const renderResourceRow = (resource: WorkstreamResource, ws: Task) => {
+    const rc = getRateCard(resource.rateCardId);
+    const hpw = parseFloat(resource.hoursPerWeek || "0") || 0;
+    const duration = parseFloat(ws.durationWeeks || "0") || 0;
+    const totalHrs = hpw * duration;
+    const costRate = parseFloat(rc?.costRate || "0") || 0;
+    const totalCost = totalHrs * costRate;
+    const taskTypeLabel = TASK_TYPES.find(t => t.value === resource.taskType)?.label;
+    const tm = resource.teamMemberId ? teamMembers.find(m => m.id === resource.teamMemberId) : null;
+
+    return (
+      <div key={resource.id} className="flex items-center gap-3 px-4 py-2 border-t bg-muted/10 hover:bg-muted/20 transition-colors" data-testid={`resource-row-${resource.id}`}>
+        <div className="w-8" />
+        <Users className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium truncate">
+            {rc?.name || rc?.role || "Unknown Role"}
+          </div>
+          <div className="flex items-center gap-2 mt-0.5">
+            {taskTypeLabel && <Badge variant="outline" className="text-[10px] px-1.5 py-0">{taskTypeLabel}</Badge>}
+            <span className="text-[10px] text-muted-foreground">{hpw}h/wk × {duration} wks</span>
+            {tm && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{tm.name}</Badge>}
+          </div>
+        </div>
+        <div className="text-right text-sm shrink-0">
+          <div className="font-medium">{totalHrs.toLocaleString()}h</div>
+          <div className="text-xs text-muted-foreground">${totalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+        </div>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => openEditResourceDialog(resource)} data-testid={`button-edit-resource-${resource.id}`}>
+            <Edit3 className="w-3 h-3" />
+          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" data-testid={`button-delete-resource-${resource.id}`}>
+                <Trash2 className="w-3 h-3" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Remove Resource</AlertDialogTitle>
+                <AlertDialogDescription>Remove this resource assignment? This cannot be undone.</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={() => deleteResourceMutation.mutate(resource.id)}>Remove</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      </div>
+    );
+  };
+
+  const renderResourceDialog = (isEdit: boolean) => {
+    const open = isEdit ? editResourceOpen : addResourceOpen;
+    const setOpen = isEdit ? setEditResourceOpen : setAddResourceOpen;
+    const handleSave = isEdit ? handleEditResource : handleAddResource;
+    const title = isEdit ? "Edit Resource" : "Add Resource";
+
+    return (
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{title}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium mb-1 block">Role (Rate Card)</label>
+              {rateCards.length === 0 ? (
+                <div className="text-xs text-muted-foreground border rounded-md p-2.5 bg-muted/30">
+                  No rate cards found{timeline.region ? ` for region "${timeline.region}"` : ""}. Add rate cards in <a href="/settings" className="underline text-primary">Settings → Rate Cards</a>.
+                </div>
+              ) : (
+                <Select value={newResRoleId} onValueChange={setNewResRoleId}>
+                  <SelectTrigger data-testid="select-resource-role">
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {rateCards.map(rc => (
+                      <SelectItem key={rc.id} value={rc.id}>
+                        {rc.name || rc.role || rc.id}
+                        {rc.costRate ? ` · $${rc.costRate}/hr` : ""}
+                        {rc.billRate ? ` → $${rc.billRate}/hr` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium mb-1 block">Hours per Week</label>
+                <Input
+                  type="number"
+                  placeholder="e.g., 40"
+                  value={newResHoursPerWeek}
+                  onChange={e => setNewResHoursPerWeek(e.target.value)}
+                  data-testid="input-resource-hours"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Task Type</label>
+                <Select value={newResTaskType} onValueChange={setNewResTaskType}>
+                  <SelectTrigger data-testid="select-resource-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TASK_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Team Member (Optional)</label>
+              <Select value={newResTeamMemberId || "none"} onValueChange={setNewResTeamMemberId}>
+                <SelectTrigger data-testid="select-resource-member">
+                  <SelectValue placeholder="Assign later" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Assign later</SelectItem>
+                  {teamMembers.map(tm => (
+                    <SelectItem key={tm.id} value={tm.id}>{tm.name}{tm.role ? ` (${tm.role})` : ""}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Notes</label>
+              <Input
+                placeholder="Optional notes"
+                value={newResNotes}
+                onChange={e => setNewResNotes(e.target.value)}
+                data-testid="input-resource-notes"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button onClick={handleSave} disabled={!newResRoleId || !newResHoursPerWeek} data-testid="button-save-resource">Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
   };
 
   return (
@@ -345,7 +644,7 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
                       variant="ghost"
                       size="icon"
                       className="h-7 w-7"
-                      onClick={e => { e.stopPropagation(); setSelectedParentPhase(phase.id); setNewTaskTitle(""); setNewTaskHours(""); setAddWorkstreamOpen(true); }}
+                      onClick={e => { e.stopPropagation(); setSelectedParentPhase(phase.id); setNewTaskTitle(""); setNewTaskDuration(""); setAddWorkstreamOpen(true); }}
                       data-testid={`button-add-workstream-${phase.id}`}
                     >
                       <Plus className="w-3.5 h-3.5" />
@@ -382,49 +681,71 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
                       </div>
                     )}
                     {children.map(ws => {
-                      const rc = getRateCard(ws.assignedRoleId);
-                      const wsHours = parseFloat(ws.estimatedHours || "0") || 0;
-                      const wsCost = getTaskCost(ws);
+                      const wsResources = getResourcesForWorkstream(ws.id);
+                      const wsHours = getWorkstreamHours(ws);
+                      const wsCost = getWorkstreamCost(ws);
                       const confLevel = CONFIDENCE_LEVELS.find(c => c.value === ws.confidenceLevel);
-                      const taskTypeLabel = TASK_TYPES.find(t => t.value === ws.taskType)?.label;
+                      const duration = parseFloat(ws.durationWeeks || "0") || 0;
+                      const wsExpanded = expandedWorkstreams.has(ws.id);
 
                       return (
-                        <div key={ws.id} className="flex items-center gap-3 px-4 py-3 border-t hover:bg-muted/30 transition-colors" data-testid={`workstream-row-${ws.id}`}>
-                          <div className="w-4" />
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium truncate">{ws.title}</div>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              {taskTypeLabel && <Badge variant="outline" className="text-[10px] px-1.5 py-0">{taskTypeLabel}</Badge>}
-                              {rc && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{rc.name || rc.role}</Badge>}
-                              {confLevel && <Badge className={`text-[10px] px-1.5 py-0 ${confLevel.color} border-0`}>{confLevel.label}</Badge>}
+                        <div key={ws.id}>
+                          <div
+                            className="flex items-center gap-3 px-4 py-3 border-t hover:bg-muted/30 transition-colors cursor-pointer"
+                            onClick={() => toggleWorkstream(ws.id)}
+                            data-testid={`workstream-row-${ws.id}`}
+                          >
+                            <div className="w-4">
+                              {wsExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium truncate">{ws.title}</div>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                {duration > 0 && <Badge variant="outline" className="text-[10px] px-1.5 py-0">{duration} wks</Badge>}
+                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{wsResources.length} resource{wsResources.length !== 1 ? "s" : ""}</Badge>
+                                {confLevel && <Badge className={`text-[10px] px-1.5 py-0 ${confLevel.color} border-0`}>{confLevel.label}</Badge>}
+                              </div>
+                            </div>
+                            <div className="text-right text-sm shrink-0">
+                              <div className="font-medium">{wsHours.toLocaleString()}h</div>
+                              <div className="text-xs text-muted-foreground">${wsCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={e => { e.stopPropagation(); openAddResourceDialog(ws.id); }} data-testid={`button-add-resource-${ws.id}`}>
+                                <Plus className="w-3.5 h-3.5" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={e => { e.stopPropagation(); openEditDialog(ws); }} data-testid={`button-edit-workstream-${ws.id}`}>
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={e => e.stopPropagation()} data-testid={`button-delete-workstream-${ws.id}`}>
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete Workstream</AlertDialogTitle>
+                                    <AlertDialogDescription>Delete "{ws.title}" and all its resource assignments? This cannot be undone.</AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => deleteTaskMutation.mutate(ws.id)}>Delete</AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
                             </div>
                           </div>
-                          <div className="text-right text-sm shrink-0">
-                            <div className="font-medium">{wsHours}h</div>
-                            <div className="text-xs text-muted-foreground">${wsCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditDialog(ws)} data-testid={`button-edit-workstream-${ws.id}`}>
-                              <Edit3 className="w-3.5 h-3.5" />
-                            </Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" data-testid={`button-delete-workstream-${ws.id}`}>
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete Workstream</AlertDialogTitle>
-                                  <AlertDialogDescription>Delete "{ws.title}"? This cannot be undone.</AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => deleteTaskMutation.mutate(ws.id)}>Delete</AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
+                          {wsExpanded && (
+                            <div>
+                              {wsResources.length === 0 && (
+                                <div className="px-4 py-3 border-t bg-muted/10 text-sm text-muted-foreground text-center">
+                                  No resources assigned. Click + on the workstream to add a resource.
+                                </div>
+                              )}
+                              {wsResources.map(r => renderResourceRow(r, ws))}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -504,7 +825,7 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               {Object.entries(hoursByRole).length === 0 && (
-                <div className="text-muted-foreground text-center py-2">No workstreams with roles assigned</div>
+                <div className="text-muted-foreground text-center py-2">No resources assigned</div>
               )}
               {Object.entries(hoursByRole).sort((a, b) => b[1] - a[1]).map(([role, hours]) => (
                 <div key={role} className="flex justify-between">
@@ -571,28 +892,15 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
             />
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium mb-1 block">Estimated Hours</label>
+                <label className="text-sm font-medium mb-1 block">Duration (Weeks)</label>
                 <Input
                   type="number"
-                  placeholder="Hours"
-                  value={newTaskHours}
-                  onChange={e => setNewTaskHours(e.target.value)}
-                  data-testid="input-workstream-hours"
+                  placeholder="e.g., 4"
+                  value={newTaskDuration}
+                  onChange={e => setNewTaskDuration(e.target.value)}
+                  data-testid="input-workstream-duration"
                 />
               </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">Task Type</label>
-                <Select value={newTaskType} onValueChange={setNewTaskType}>
-                  <SelectTrigger data-testid="select-task-type">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TASK_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium mb-1 block">Confidence</label>
                 <Select value={newTaskConfidence} onValueChange={setNewTaskConfidence}>
@@ -603,30 +911,6 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
                     {CONFIDENCE_LEVELS.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">Role (Rate Card)</label>
-                {rateCards.length === 0 ? (
-                  <div className="text-xs text-muted-foreground border rounded-md p-2.5 bg-muted/30">
-                    No rate cards found{timeline.region ? ` for region "${timeline.region}"` : ""}. Add rate cards in <a href="/settings" className="underline text-primary">Settings → Rate Cards</a>.
-                  </div>
-                ) : (
-                  <Select value={newTaskRoleId} onValueChange={setNewTaskRoleId}>
-                    <SelectTrigger data-testid="select-role">
-                      <SelectValue placeholder="Select role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No role</SelectItem>
-                      {rateCards.map(rc => (
-                        <SelectItem key={rc.id} value={rc.id}>
-                          {rc.name || rc.role || rc.id}
-                          {rc.costRate ? ` · $${rc.costRate}/hr` : ""}
-                          {rc.billRate ? ` → $${rc.billRate}/hr` : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
               </div>
             </div>
           </div>
@@ -650,62 +934,27 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
               data-testid="input-edit-task-name"
             />
             {editingTask?.itemType === "workstream" && (
-              <>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium mb-1 block">Estimated Hours</label>
-                    <Input
-                      type="number"
-                      placeholder="Hours"
-                      value={newTaskHours}
-                      onChange={e => setNewTaskHours(e.target.value)}
-                      data-testid="input-edit-hours"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium mb-1 block">Task Type</label>
-                    <Select value={newTaskType} onValueChange={setNewTaskType}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {TASK_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Duration (Weeks)</label>
+                  <Input
+                    type="number"
+                    placeholder="e.g., 4"
+                    value={newTaskDuration}
+                    onChange={e => setNewTaskDuration(e.target.value)}
+                    data-testid="input-edit-duration"
+                  />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium mb-1 block">Confidence</label>
-                    <Select value={newTaskConfidence} onValueChange={setNewTaskConfidence}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {CONFIDENCE_LEVELS.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium mb-1 block">Role (Rate Card)</label>
-                    {rateCards.length === 0 ? (
-                      <div className="text-xs text-muted-foreground border rounded-md p-2.5 bg-muted/30">
-                        No rate cards found{timeline.region ? ` for region "${timeline.region}"` : ""}. Add rate cards in <a href="/settings" className="underline text-primary">Settings → Rate Cards</a>.
-                      </div>
-                    ) : (
-                      <Select value={newTaskRoleId} onValueChange={setNewTaskRoleId}>
-                        <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">No role</SelectItem>
-                          {rateCards.map(rc => (
-                            <SelectItem key={rc.id} value={rc.id}>
-                              {rc.name || rc.role || rc.id}
-                              {rc.costRate ? ` · $${rc.costRate}/hr` : ""}
-                              {rc.billRate ? ` → $${rc.billRate}/hr` : ""}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </div>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Confidence</label>
+                  <Select value={newTaskConfidence} onValueChange={setNewTaskConfidence}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {CONFIDENCE_LEVELS.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
-              </>
+              </div>
             )}
           </div>
           <DialogFooter>
@@ -714,6 +963,9 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {renderResourceDialog(false)}
+      {renderResourceDialog(true)}
     </div>
   );
 }
