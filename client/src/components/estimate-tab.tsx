@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,6 +60,8 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
   const [newTaskType, setNewTaskType] = useState("technical");
   const [newTaskConfidence, setNewTaskConfidence] = useState("medium");
   const [newTaskRoleId, setNewTaskRoleId] = useState<string>("");
+  const [localRiskPercent, setLocalRiskPercent] = useState(0);
+  const [localBufferPercent, setLocalBufferPercent] = useState(0);
 
   const { data: allRateCards = [] } = useQuery<RateCard[]>({
     queryKey: ["/api/rate-cards"],
@@ -208,10 +210,19 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
   const totalHours = workstreams.reduce((sum, ws) => sum + (parseFloat(ws.estimatedHours || "0") || 0), 0);
   const baseCost = workstreams.reduce((sum, ws) => sum + getTaskCost(ws), 0);
   const baseRevenue = workstreams.reduce((sum, ws) => sum + getTaskRevenue(ws), 0);
-  const riskPercent = parseFloat(timeline.riskFactorPercent || "0") || 0;
-  const bufferPercent = parseFloat(timeline.bufferPercent || "0") || 0;
-  const riskAdjustedCost = baseCost * (1 + riskPercent / 100);
-  const bufferedCost = riskAdjustedCost * (1 + bufferPercent / 100);
+  const serverRiskPercent = parseFloat(timeline.riskFactorPercent || "0") || 0;
+  const serverBufferPercent = parseFloat(timeline.bufferPercent || "0") || 0;
+
+  useEffect(() => {
+    setLocalRiskPercent(serverRiskPercent);
+  }, [serverRiskPercent]);
+
+  useEffect(() => {
+    setLocalBufferPercent(serverBufferPercent);
+  }, [serverBufferPercent]);
+
+  const riskAdjustedCost = baseCost * (1 + localRiskPercent / 100);
+  const bufferedCost = riskAdjustedCost * (1 + localBufferPercent / 100);
   const grossMargin = baseRevenue > 0 ? ((baseRevenue - bufferedCost) / baseRevenue) * 100 : 0;
 
   const hoursByRole = workstreams.reduce((acc, ws) => {
@@ -442,12 +453,13 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
               <div className="space-y-1">
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Risk Factor</span>
-                  <span className="font-medium">{riskPercent}%</span>
+                  <span className="font-medium">{localRiskPercent}%</span>
                 </div>
                 <Slider
-                  value={[riskPercent]}
+                  value={[localRiskPercent]}
                   max={50}
                   step={1}
+                  onValueChange={(v) => setLocalRiskPercent(v[0])}
                   onValueCommit={(v) => updateOppMutation.mutate({ riskFactorPercent: v[0].toString() })}
                   data-testid="slider-risk-factor"
                 />
@@ -459,12 +471,13 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
               <div className="space-y-1">
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Buffer</span>
-                  <span className="font-medium">{bufferPercent}%</span>
+                  <span className="font-medium">{localBufferPercent}%</span>
                 </div>
                 <Slider
-                  value={[bufferPercent]}
+                  value={[localBufferPercent]}
                   max={30}
                   step={1}
+                  onValueChange={(v) => setLocalBufferPercent(v[0])}
                   onValueCommit={(v) => updateOppMutation.mutate({ bufferPercent: v[0].toString() })}
                   data-testid="slider-buffer"
                 />
