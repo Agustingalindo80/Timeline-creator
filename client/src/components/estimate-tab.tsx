@@ -61,9 +61,13 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
   const [newTaskConfidence, setNewTaskConfidence] = useState("medium");
   const [newTaskRoleId, setNewTaskRoleId] = useState<string>("");
 
-  const { data: rateCards = [] } = useQuery<RateCard[]>({
+  const { data: allRateCards = [] } = useQuery<RateCard[]>({
     queryKey: ["/api/rate-cards"],
   });
+
+  const rateCards = timeline.region
+    ? allRateCards.filter(rc => rc.region === timeline.region)
+    : allRateCards;
 
   const tasks = timeline.tasks || [];
   const phases = tasks.filter(t => t.itemType === "phase").sort((a, b) => a.sortOrder - b.sortOrder);
@@ -184,7 +188,7 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
 
   const getRateCard = (roleId: string | null | undefined): RateCard | undefined => {
     if (!roleId) return undefined;
-    return rateCards.find(r => r.id === roleId);
+    return allRateCards.find(r => r.id === roleId);
   };
 
   const getTaskCost = (task: Task): number => {
@@ -589,15 +593,27 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
               </div>
               <div>
                 <label className="text-sm font-medium mb-1 block">Role (Rate Card)</label>
-                <Select value={newTaskRoleId} onValueChange={setNewTaskRoleId}>
-                  <SelectTrigger data-testid="select-role">
-                    <SelectValue placeholder="Select role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No role</SelectItem>
-                    {rateCards.map(rc => <SelectItem key={rc.id} value={rc.id}>{rc.name || rc.role || rc.id}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                {rateCards.length === 0 ? (
+                  <div className="text-xs text-muted-foreground border rounded-md p-2.5 bg-muted/30">
+                    No rate cards found{timeline.region ? ` for region "${timeline.region}"` : ""}. Add rate cards in <a href="/settings" className="underline text-primary">Settings → Rate Cards</a>.
+                  </div>
+                ) : (
+                  <Select value={newTaskRoleId} onValueChange={setNewTaskRoleId}>
+                    <SelectTrigger data-testid="select-role">
+                      <SelectValue placeholder="Select role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No role</SelectItem>
+                      {rateCards.map(rc => (
+                        <SelectItem key={rc.id} value={rc.id}>
+                          {rc.name || rc.role || rc.id}
+                          {rc.costRate ? ` · $${rc.costRate}/hr` : ""}
+                          {rc.billRate ? ` → $${rc.billRate}/hr` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             </div>
           </div>
@@ -655,13 +671,25 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
                   </div>
                   <div>
                     <label className="text-sm font-medium mb-1 block">Role (Rate Card)</label>
-                    <Select value={newTaskRoleId} onValueChange={setNewTaskRoleId}>
-                      <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">No role</SelectItem>
-                        {rateCards.map(rc => <SelectItem key={rc.id} value={rc.id}>{rc.name || rc.role || rc.id}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    {rateCards.length === 0 ? (
+                      <div className="text-xs text-muted-foreground border rounded-md p-2.5 bg-muted/30">
+                        No rate cards found{timeline.region ? ` for region "${timeline.region}"` : ""}. Add rate cards in <a href="/settings" className="underline text-primary">Settings → Rate Cards</a>.
+                      </div>
+                    ) : (
+                      <Select value={newTaskRoleId} onValueChange={setNewTaskRoleId}>
+                        <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">No role</SelectItem>
+                          {rateCards.map(rc => (
+                            <SelectItem key={rc.id} value={rc.id}>
+                              {rc.name || rc.role || rc.id}
+                              {rc.costRate ? ` · $${rc.costRate}/hr` : ""}
+                              {rc.billRate ? ` → $${rc.billRate}/hr` : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                   </div>
                 </div>
               </>
