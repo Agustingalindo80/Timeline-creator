@@ -1,5 +1,6 @@
-import { LayoutDashboard, FolderKanban, Settings, Building2, Users, UserCheck, CalendarRange, Clock, LogOut, Info, Bot } from "lucide-react";
+import { LayoutDashboard, FolderKanban, Settings, Building2, Users, UserCheck, CalendarRange, Clock, LogOut, Info, Bot, Target } from "lucide-react";
 import { Link, useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import {
   Sidebar,
   SidebarContent,
@@ -15,10 +16,16 @@ import {
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useBranding } from "@/components/branding-provider";
 import { useAuth } from "@/hooks/use-auth";
+import type { AppSettings } from "@shared/schema";
 
-const navItems = [
+const baseNavItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "FlightPath Coach", url: "/chat", icon: Bot },
+];
+
+const opportunitiesNavItem = { title: "Opportunities", url: "/opportunities", icon: Target };
+
+const remainingNavItems = [
   { title: "Clients", url: "/clients", icon: Building2 },
   { title: "Contacts", url: "/contacts", icon: Users },
   { title: "Projects", url: "/projects", icon: FolderKanban },
@@ -33,6 +40,18 @@ export function AppSidebar() {
   const [location] = useLocation();
   const { branding } = useBranding();
   const { user } = useAuth();
+
+  const { data: settings } = useQuery<AppSettings>({
+    queryKey: ["/api/settings"],
+  });
+
+  const opportunitiesEnabled = settings?.opportunitiesEnabled !== false;
+
+  const navItems = [
+    ...baseNavItems,
+    ...(opportunitiesEnabled ? [opportunitiesNavItem] : []),
+    ...remainingNavItems,
+  ];
 
   const isActive = (url: string) => {
     if (url === "/") return location === "/";

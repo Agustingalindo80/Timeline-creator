@@ -24,6 +24,8 @@ import AllocationsPage from "@/pages/allocations";
 import TimesheetsPage from "@/pages/timesheets";
 import AboutPage from "@/pages/about";
 import ChatPage from "@/pages/chat";
+import OpportunitiesPage from "@/pages/opportunities";
+import OpportunityDetail from "@/pages/opportunity-detail";
 import Landing from "@/pages/landing";
 import NotFound from "@/pages/not-found";
 
@@ -41,6 +43,8 @@ function Router() {
       <Route path="/team-members" component={TeamMembersList} />
       <Route path="/allocations" component={AllocationsPage} />
       <Route path="/timesheets" component={TimesheetsPage} />
+      <Route path="/opportunities" component={OpportunitiesPage} />
+      <Route path="/opportunities/:id" component={OpportunityDetail} />
       <Route path="/about" component={AboutPage} />
       <Route path="/chat" component={ChatPage} />
       <Route path="/admin" component={Admin} />

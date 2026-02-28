@@ -44,6 +44,7 @@ function getWeightedCompletion(tasks: Task[]): number | null {
   let totalWeight = 0;
   let weightedSum = 0;
   for (const task of tasks) {
+    if (!task.startDate || !task.endDate) continue;
     const start = dateToMonths(task.startDate);
     const end = dateToMonths(task.endDate);
     const duration = Math.max(end - start, 1);

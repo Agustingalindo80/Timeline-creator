@@ -1242,11 +1242,11 @@ export default function TimelineDetail() {
     setEditingMilestoneId(null);
   };
 
-  const startEditingTask = (t: { id: string; title: string; startDate: string; endDate: string; actualStartDate: string | null; actualEndDate: string | null; description: string | null; percentComplete: number; status: string; health: string; itemType: string; parentTaskId: string | null }) => {
+  const startEditingTask = (t: { id: string; title: string; startDate: string | null; endDate: string | null; actualStartDate: string | null; actualEndDate: string | null; description: string | null; percentComplete: number; status: string; health: string; itemType: string; parentTaskId: string | null }) => {
     setEditingTaskId(t.id);
     setEditTTitle(t.title);
-    setEditTStart(t.startDate);
-    setEditTEnd(t.endDate);
+    setEditTStart(t.startDate || "");
+    setEditTEnd(t.endDate || "");
     setEditTActualStart(t.actualStartDate || "");
     setEditTActualEnd(t.actualEndDate || "");
     setEditTDesc(t.description || "");
@@ -1706,9 +1706,11 @@ export default function TimelineDetail() {
                   return parent ? <Badge variant="outline" className="text-xs text-muted-foreground">↳ {parent.title}</Badge> : null;
                 })()}
               </div>
+              {(t.startDate || t.endDate) && (
               <p className="text-xs text-muted-foreground">
-                Planned: {t.startDate} — {t.endDate}
+                Planned: {t.startDate || "—"} — {t.endDate || "—"}
               </p>
+              )}
               {(t.actualStartDate || t.actualEndDate) && (
                 <p className="text-xs text-muted-foreground">
                   Actual: {t.actualStartDate || "—"} — {t.actualEndDate || "—"}
@@ -1798,6 +1800,13 @@ export default function TimelineDetail() {
               <h1 className="text-lg font-semibold" data-testid="text-timeline-title">
                 {timeline.title}
               </h1>
+              {timeline.sourceOpportunityId && (
+                <Link href={`/opportunities/${timeline.sourceOpportunityId}`}>
+                  <Badge variant="outline" className="gap-1 text-xs cursor-pointer hover:bg-muted" data-testid="badge-source-opportunity">
+                    From Opportunity
+                  </Badge>
+                </Link>
+              )}
               {!editing && (
                 <Button
                   size="icon"
@@ -2429,11 +2438,9 @@ export default function TimelineDetail() {
             <TabsTrigger value="governance" data-testid="tab-governance">
               Governance
             </TabsTrigger>
-            {settings?.riskRegisterEnabled && (
-              <TabsTrigger value="raid-log" data-testid="tab-raid-log">
-                RAID Log
-              </TabsTrigger>
-            )}
+            <TabsTrigger value="raid-log" data-testid="tab-raid-log">
+              RAID Log
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="milestones">
@@ -2664,11 +2671,9 @@ export default function TimelineDetail() {
             />
           </TabsContent>
 
-          {settings?.riskRegisterEnabled && (
-            <TabsContent value="raid-log">
-              <RaidLog timelineId={timeline.id} />
-            </TabsContent>
-          )}
+          <TabsContent value="raid-log">
+            <RaidLog timelineId={timeline.id} />
+          </TabsContent>
         </Tabs>
       </main>
     </div>

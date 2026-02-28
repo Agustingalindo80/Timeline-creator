@@ -154,6 +154,15 @@ export const timelines = pgTable("timelines", {
   docRepositoryType: text("doc_repository_type"),
   docRepositoryUrl: text("doc_repository_url"),
   docRepositoryFolderId: text("doc_repository_folder_id"),
+  recordType: text("record_type").notNull().default("project"),
+  estimatedRevenue: numeric("estimated_revenue", { precision: 12, scale: 2 }),
+  riskFactorPercent: numeric("risk_factor_percent", { precision: 5, scale: 2 }),
+  bufferPercent: numeric("buffer_percent", { precision: 5, scale: 2 }),
+  opportunityStatus: text("opportunity_status"),
+  sourceOpportunityId: varchar("source_opportunity_id"),
+  convertedAt: text("converted_at"),
+  salesforceClouds: text("salesforce_clouds"),
+  currency: text("currency").notNull().default("USD"),
 });
 
 export const milestones = pgTable("milestones", {
@@ -175,8 +184,8 @@ export const tasks = pgTable("tasks", {
   timelineId: varchar("timeline_id").notNull().references(() => timelines.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   description: text("description"),
-  startDate: text("start_date").notNull(),
-  endDate: text("end_date").notNull(),
+  startDate: text("start_date"),
+  endDate: text("end_date"),
   actualStartDate: text("actual_start_date"),
   actualEndDate: text("actual_end_date"),
   color: text("color"),
@@ -186,6 +195,10 @@ export const tasks = pgTable("tasks", {
   health: text("health").notNull().default("green"),
   itemType: text("item_type").notNull().default("workstream"),
   parentTaskId: varchar("parent_task_id"),
+  estimatedHours: numeric("estimated_hours", { precision: 8, scale: 2 }),
+  confidenceLevel: text("confidence_level"),
+  taskType: text("task_type"),
+  assignedRoleId: varchar("assigned_role_id"),
 });
 
 export const risks = pgTable("risks", {
@@ -257,6 +270,7 @@ export const allocations = pgTable("allocations", {
 export const appSettings = pgTable("app_settings", {
   id: varchar("id").primaryKey().default("app"),
   riskRegisterEnabled: boolean("risk_register_enabled").notNull().default(false),
+  opportunitiesEnabled: boolean("opportunities_enabled").notNull().default(true),
   taskStatuses: jsonb("task_statuses").$type<FieldOption[]>(),
   taskHealthOptions: jsonb("task_health_options").$type<FieldOption[]>(),
   taskItemTypes: jsonb("task_item_types").$type<FieldOption[]>(),

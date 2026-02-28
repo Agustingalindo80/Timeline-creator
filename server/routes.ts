@@ -139,7 +139,7 @@ async function recalcPhaseProgress(phaseId: string) {
   let allComplete = true;
 
   for (const child of children) {
-    const dur = Math.max(1, parseDateToNum(child.endDate) - parseDateToNum(child.startDate));
+    const dur = (child.startDate && child.endDate) ? Math.max(1, parseDateToNum(child.endDate) - parseDateToNum(child.startDate)) : 1;
     totalWeight += dur;
     weightedSum += child.percentComplete * dur;
     if (child.status === "in_progress") anyInProgress = true;
@@ -594,14 +594,19 @@ export async function registerRoutes(
   // ADD task to timeline
   app.post("/api/timelines/:id/tasks", async (req, res) => {
     try {
-      const { title, description, startDate, endDate, actualStartDate, actualEndDate, color, sortOrder, status, health, itemType, parentTaskId } = req.body;
-      if (!title || !startDate || !endDate) {
-        return res.status(400).json({ message: "Title, start date, and end date are required" });
+      const { title, description, startDate, endDate, actualStartDate, actualEndDate, color, sortOrder, status, health, itemType, parentTaskId, estimatedHours, confidenceLevel, taskType, assignedRoleId } = req.body;
+      if (!title) {
+        return res.status(400).json({ message: "Title is required" });
       }
 
-      if (parentTaskId && (itemType || "workstream") === "workstream") {
+      const parentTimeline = await storage.getTimeline(req.params.id);
+      if (parentTimeline && parentTimeline.recordType === "project" && (!startDate || !endDate)) {
+        return res.status(400).json({ message: "Start date and end date are required for project tasks" });
+      }
+
+      if (startDate && endDate && parentTaskId && (itemType || "workstream") === "workstream") {
         const parentPhase = await storage.getTask(parentTaskId);
-        if (parentPhase) {
+        if (parentPhase && parentPhase.startDate && parentPhase.endDate) {
           const phaseStart = parseDateToNum(parentPhase.startDate);
           const phaseEnd = parseDateToNum(parentPhase.endDate);
           const wsStart = parseDateToNum(startDate);
@@ -618,8 +623,8 @@ export async function registerRoutes(
         timelineId: req.params.id,
         title,
         description: description || null,
-        startDate,
-        endDate,
+        startDate: startDate || null,
+        endDate: endDate || null,
         actualStartDate: actualStartDate || null,
         actualEndDate: actualEndDate || null,
         color: color || null,
@@ -629,6 +634,10 @@ export async function registerRoutes(
         health: health || "green",
         itemType: itemType || "workstream",
         parentTaskId: parentTaskId || null,
+        estimatedHours: estimatedHours || null,
+        confidenceLevel: confidenceLevel || null,
+        taskType: taskType || null,
+        assignedRoleId: assignedRoleId || null,
       });
 
       if (parentTaskId) {
@@ -644,7 +653,7 @@ export async function registerRoutes(
   // UPDATE task
   app.patch("/api/tasks/:id", async (req, res) => {
     try {
-      const { title, description, startDate, endDate, actualStartDate, actualEndDate, color, percentComplete, sortOrder, status, health, itemType, parentTaskId } = req.body;
+      const { title, description, startDate, endDate, actualStartDate, actualEndDate, color, percentComplete, sortOrder, status, health, itemType, parentTaskId, estimatedHours, confidenceLevel, taskType, assignedRoleId } = req.body;
       const updates: any = {};
       if (title !== undefined) updates.title = title;
       if (description !== undefined) updates.description = description;
@@ -659,16 +668,22 @@ export async function registerRoutes(
       if (health !== undefined) updates.health = health;
       if (itemType !== undefined) updates.itemType = itemType;
       if (parentTaskId !== undefined) updates.parentTaskId = parentTaskId;
+      if (estimatedHours !== undefined) updates.estimatedHours = estimatedHours;
+      if (confidenceLevel !== undefined) updates.confidenceLevel = confidenceLevel;
+      if (taskType !== undefined) updates.taskType = taskType;
+      if (assignedRoleId !== undefined) updates.assignedRoleId = assignedRoleId;
 
       const currentTask = await storage.getTask(req.params.id);
       if (currentTask) {
         const resolvedParentId = parentTaskId !== undefined ? parentTaskId : currentTask.parentTaskId;
         const resolvedType = itemType !== undefined ? itemType : currentTask.itemType;
-        if (resolvedParentId && resolvedType === "workstream") {
+        const resolvedStartDate = startDate !== undefined ? startDate : currentTask.startDate;
+        const resolvedEndDate = endDate !== undefined ? endDate : currentTask.endDate;
+        if (resolvedParentId && resolvedType === "workstream" && resolvedStartDate && resolvedEndDate) {
           const parentPhase = await storage.getTask(resolvedParentId);
-          if (parentPhase) {
-            const wsStart = parseDateToNum(startDate !== undefined ? startDate : currentTask.startDate);
-            const wsEnd = parseDateToNum(endDate !== undefined ? endDate : currentTask.endDate);
+          if (parentPhase && parentPhase.startDate && parentPhase.endDate) {
+            const wsStart = parseDateToNum(resolvedStartDate);
+            const wsEnd = parseDateToNum(resolvedEndDate);
             const phaseStart = parseDateToNum(parentPhase.startDate);
             const phaseEnd = parseDateToNum(parentPhase.endDate);
             if (wsStart < phaseStart || wsEnd > phaseEnd) {
@@ -1243,7 +1258,7 @@ export async function registerRoutes(
     try {
       const updates: any = {};
       const fields = [
-        "riskRegisterEnabled", "taskStatuses", "taskHealthOptions", "taskItemTypes",
+        "riskRegisterEnabled", "opportunitiesEnabled", "taskStatuses", "taskHealthOptions", "taskItemTypes",
         "riskProbabilities", "riskImpacts", "riskStatuses", "projectTypes",
         "engagementModels", "clients", "contactRoles", "industries", "projectStatuses",
         "teamMemberRoles", "regions", "dateFormats",
@@ -1902,6 +1917,289 @@ Respond ONLY with valid JSON:
 
       const reply = response.choices[0]?.message?.content || "I'm sorry, I couldn't generate a response.";
       res.json({ response: reply });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  // ── Opportunities CRUD ──
+
+  app.get("/api/opportunities", async (req, res) => {
+    try {
+      const opportunities = await storage.getTimelines("opportunity");
+      res.json(opportunities);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.post("/api/opportunities", async (req, res) => {
+    try {
+      const { title, description, color, clientId, region, salesforceClouds, currency, engagementModel, projectType } = req.body;
+      if (!title || !title.trim()) return res.status(400).json({ message: "Title is required" });
+
+      const opp = await storage.createTimeline({
+        title: title.trim(),
+        description: description || null,
+        color: color || "#8b5cf6",
+        clientId: clientId || null,
+        region: region || null,
+        salesforceClouds: salesforceClouds || null,
+        currency: currency || "USD",
+        engagementModel: engagementModel || null,
+        projectType: projectType || null,
+        recordType: "opportunity",
+        opportunityStatus: "qualifying",
+        projectStatus: "not_started",
+      });
+
+      const allStages = await storage.getFlightpathStages();
+      const stage0 = allStages.sort((a, b) => a.stageNumber - b.stageNumber).find(s => s.stageNumber === 0);
+      if (stage0) {
+        await storage.updateTimeline(opp.id, { flightpathStageId: stage0.id });
+        const deliverables = await storage.getStageDeliverables(stage0.id);
+        for (const d of deliverables.sort((a, b) => a.sortOrder - b.sortOrder)) {
+          await storage.createProjectCheckpoint({
+            timelineId: opp.id,
+            stageId: stage0.id,
+            deliverableId: d.id,
+            checkpointName: d.name,
+            completed: false,
+          });
+        }
+      }
+
+      const full = await storage.getTimeline(opp.id);
+      res.status(201).json(full);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.get("/api/opportunities/:id", async (req, res) => {
+    try {
+      const opp = await storage.getTimeline(req.params.id);
+      if (!opp) return res.status(404).json({ message: "Opportunity not found" });
+      if (opp.recordType !== "opportunity") return res.status(404).json({ message: "Not an opportunity" });
+      res.json(opp);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.patch("/api/opportunities/:id", async (req, res) => {
+    try {
+      const existing = await storage.getTimeline(req.params.id);
+      if (!existing) return res.status(404).json({ message: "Opportunity not found" });
+      if (existing.recordType !== "opportunity") return res.status(404).json({ message: "Not an opportunity" });
+
+      const updates: any = {};
+      const oppFields = [
+        "title", "description", "color", "clientId", "region", "salesforceClouds",
+        "currency", "engagementModel", "projectType", "approvedBudget", "estimatedRevenue",
+        "riskFactorPercent", "bufferPercent", "opportunityStatus", "startDate", "endDate",
+        "docRepositoryType", "docRepositoryUrl", "dateFormat",
+        "healthOverall", "scopeHealth", "budgetHealth", "teamHealth",
+      ];
+      for (const field of oppFields) {
+        if (req.body[field] !== undefined) updates[field] = req.body[field];
+      }
+
+      if (req.body.docRepositoryUrl !== undefined) {
+        const url = req.body.docRepositoryUrl;
+        if (url && req.body.docRepositoryType === "google_drive") {
+          updates.docRepositoryFolderId = extractFolderIdFromUrl(url);
+        } else if (!url) {
+          updates.docRepositoryFolderId = null;
+        }
+      }
+
+      if (updates.estimatedRevenue !== undefined && updates.approvedBudget !== undefined) {
+        const revenue = parseFloat(updates.estimatedRevenue) || 0;
+        const cost = parseFloat(updates.approvedBudget) || 0;
+        if (revenue > 0) {
+          updates.grossMargin = (((revenue - cost) / revenue) * 100).toFixed(2);
+        }
+      }
+
+      const updated = await storage.updateTimeline(req.params.id, updates);
+      res.json(updated);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.delete("/api/opportunities/:id", async (req, res) => {
+    try {
+      const existing = await storage.getTimeline(req.params.id);
+      if (!existing) return res.status(404).json({ message: "Opportunity not found" });
+      if (existing.recordType !== "opportunity") return res.status(404).json({ message: "Not an opportunity" });
+      await storage.deleteTimeline(req.params.id);
+      res.status(204).send();
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  // ── Convert Opportunity to Project ──
+  app.post("/api/opportunities/:id/convert", async (req, res) => {
+    try {
+      const opp = await storage.getTimeline(req.params.id);
+      if (!opp) return res.status(404).json({ message: "Opportunity not found" });
+      if (opp.recordType !== "opportunity") return res.status(400).json({ message: "Not an opportunity" });
+
+      const allStages = await storage.getFlightpathStages();
+      const sortedStages = allStages.sort((a, b) => a.stageNumber - b.stageNumber);
+      const stage0 = sortedStages.find(s => s.stageNumber === 0);
+      const stage1 = sortedStages.find(s => s.stageNumber === 1);
+
+      if (stage0 && opp.flightpathStageId === stage0.id) {
+        const gates = await storage.getProjectGates(req.params.id);
+        const stage0Gate = gates.find(g => g.stageId === stage0.id);
+        if (!stage0Gate || (stage0Gate.status !== "passed" && stage0Gate.status !== "exception")) {
+          return res.status(400).json({ message: "Stage 0 gate must be passed or have an approved exception before converting to a project" });
+        }
+      }
+
+      const project = await storage.createTimeline({
+        title: opp.title,
+        description: opp.description,
+        color: opp.color,
+        clientId: opp.clientId,
+        region: opp.region,
+        dateFormat: opp.dateFormat,
+        engagementModel: opp.engagementModel,
+        projectType: opp.projectType,
+        approvedBudget: opp.approvedBudget,
+        estimatedRevenue: opp.estimatedRevenue,
+        grossMargin: opp.grossMargin,
+        riskFactorPercent: opp.riskFactorPercent,
+        bufferPercent: opp.bufferPercent,
+        startDate: opp.startDate,
+        endDate: opp.endDate,
+        currency: opp.currency,
+        docRepositoryType: opp.docRepositoryType,
+        docRepositoryUrl: opp.docRepositoryUrl,
+        docRepositoryFolderId: opp.docRepositoryFolderId,
+        recordType: "project",
+        projectStatus: "not_started",
+        sourceOpportunityId: opp.id,
+        flightpathStageId: stage1?.id || null,
+      });
+
+      const oppTasks = opp.tasks || [];
+      const taskIdMap = new Map<string, string>();
+
+      const phases = oppTasks.filter(t => t.itemType === "phase").sort((a, b) => a.sortOrder - b.sortOrder);
+      for (const phase of phases) {
+        const newPhase = await storage.createTask({
+          timelineId: project.id,
+          title: phase.title,
+          description: phase.description,
+          startDate: phase.startDate,
+          endDate: phase.endDate,
+          color: phase.color,
+          sortOrder: phase.sortOrder,
+          status: "not_started",
+          health: "green",
+          itemType: "phase",
+          estimatedHours: phase.estimatedHours,
+          confidenceLevel: phase.confidenceLevel,
+          taskType: phase.taskType,
+          assignedRoleId: phase.assignedRoleId,
+        });
+        taskIdMap.set(phase.id, newPhase.id);
+      }
+
+      const workstreams = oppTasks.filter(t => t.itemType === "workstream").sort((a, b) => a.sortOrder - b.sortOrder);
+      for (const ws of workstreams) {
+        const newParentId = ws.parentTaskId ? taskIdMap.get(ws.parentTaskId) || null : null;
+        const newWs = await storage.createTask({
+          timelineId: project.id,
+          title: ws.title,
+          description: ws.description,
+          startDate: ws.startDate,
+          endDate: ws.endDate,
+          color: ws.color,
+          sortOrder: ws.sortOrder,
+          status: "not_started",
+          health: "green",
+          itemType: "workstream",
+          parentTaskId: newParentId,
+          estimatedHours: ws.estimatedHours,
+          confidenceLevel: ws.confidenceLevel,
+          taskType: ws.taskType,
+          assignedRoleId: ws.assignedRoleId,
+        });
+        taskIdMap.set(ws.id, newWs.id);
+      }
+
+      const oppTeamMembers = await storage.getProjectTeamMembers(opp.id);
+      for (const ptm of oppTeamMembers) {
+        await storage.createProjectTeamMember({
+          timelineId: project.id,
+          teamMemberId: ptm.teamMemberId,
+          rateCardId: ptm.rateCardId,
+          monthlyCost: ptm.monthlyCost,
+          hourlyCost: ptm.hourlyCost,
+          allocation: ptm.allocation,
+          startDate: ptm.startDate,
+          endDate: ptm.endDate,
+        });
+      }
+
+      const oppAllocations = await storage.getAllocationsByTimeline(opp.id);
+      for (const alloc of oppAllocations) {
+        await storage.createAllocation({
+          teamMemberId: alloc.teamMemberId,
+          timelineId: project.id,
+          weeklyHours: alloc.weeklyHours,
+          startDate: alloc.startDate,
+          endDate: alloc.endDate,
+          status: alloc.status,
+          notes: alloc.notes,
+        });
+      }
+
+      const oppRisks = await storage.getRisks(opp.id);
+      for (const risk of oppRisks) {
+        await storage.createRisk({
+          timelineId: project.id,
+          title: risk.title,
+          description: risk.description,
+          category: risk.category,
+          owner: risk.owner,
+          probability: risk.probability,
+          impact: risk.impact,
+          mitigation: risk.mitigation,
+          contingency: risk.contingency,
+          status: risk.status,
+          dueDate: risk.dueDate,
+          itemType: risk.itemType,
+          raisedDate: risk.raisedDate,
+          dependencySource: risk.dependencySource,
+          requiredByDate: risk.requiredByDate,
+          validationCriteria: risk.validationCriteria,
+        });
+      }
+
+      if (stage1) {
+        const deliverables = await storage.getStageDeliverables(stage1.id);
+        for (const d of deliverables.sort((a, b) => a.sortOrder - b.sortOrder)) {
+          await storage.createProjectCheckpoint({
+            timelineId: project.id,
+            stageId: stage1.id,
+            deliverableId: d.id,
+            checkpointName: d.name,
+            completed: false,
+          });
+        }
+      }
+
+      await storage.updateTimeline(opp.id, {
+        opportunityStatus: "won",
+        convertedAt: new Date().toISOString(),
+      });
+
+      const fullProject = await storage.getTimeline(project.id);
+      res.status(201).json({
+        project: fullProject,
+        summary: {
+          tasksCreated: taskIdMap.size,
+          teamMembersCopied: oppTeamMembers.length,
+          allocationsCopied: oppAllocations.length,
+          raidItemsCopied: oppRisks.length,
+          governanceStage: stage1 ? `Stage 1: ${stage1.name}` : "None",
+        },
+      });
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 

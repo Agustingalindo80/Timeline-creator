@@ -1925,18 +1925,18 @@ export default function Admin() {
                 <Card className="p-5">
                   <div className="flex items-center justify-between gap-4">
                     <div>
-                      <h3 className="text-sm font-medium" data-testid="text-risk-register-label">Risk Register</h3>
+                      <h3 className="text-sm font-medium" data-testid="text-opportunities-label">Opportunities</h3>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        Enable the risk register feature on all projects. When enabled, each project will have a Risk Register tab for tracking project risks, their probability, impact, and mitigation strategies.
+                        Enable the Opportunities module for pre-sales tracking. When enabled, users can create opportunities with Stage 0 governance, build estimates, and convert won opportunities to delivery projects. When disabled, projects use a simplified Stage 0 checklist.
                       </p>
                     </div>
                     <Switch
-                      checked={settings?.riskRegisterEnabled ?? false}
+                      checked={settings?.opportunitiesEnabled ?? true}
                       onCheckedChange={(checked) =>
-                        updateMutation.mutate({ riskRegisterEnabled: checked })
+                        updateMutation.mutate({ opportunitiesEnabled: checked })
                       }
                       disabled={updateMutation.isPending}
-                      data-testid="switch-risk-register"
+                      data-testid="switch-opportunities"
                     />
                   </div>
                 </Card>

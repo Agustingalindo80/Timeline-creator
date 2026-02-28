@@ -36,9 +36,10 @@ interface GovernanceTabProps {
   timelineId: string;
   currentStageId: string | null;
   onStageChange: (stageId: string) => void;
+  opportunityMode?: boolean;
 }
 
-export function GovernanceTab({ timelineId, currentStageId, onStageChange }: GovernanceTabProps) {
+export function GovernanceTab({ timelineId, currentStageId, onStageChange, opportunityMode = false }: GovernanceTabProps) {
   const { toast } = useToast();
   const [selectedStageId, setSelectedStageId] = useState<string | null>(null);
   const [expandedRaci, setExpandedRaci] = useState<string | null>(null);
@@ -49,7 +50,7 @@ export function GovernanceTab({ timelineId, currentStageId, onStageChange }: Gov
   const [showRepoConfig, setShowRepoConfig] = useState(false);
 
   const { data: timeline } = useQuery<TimelineWithMilestones>({
-    queryKey: ["/api/timelines", timelineId],
+    queryKey: [opportunityMode ? "/api/opportunities" : "/api/timelines", timelineId],
   });
 
   const { data: stages = [], isLoading: stagesLoading } = useQuery<StageWithDeliverables[]>({
@@ -73,11 +74,18 @@ export function GovernanceTab({ timelineId, currentStageId, onStageChange }: Gov
     enabled: !!(timeline?.docRepositoryType && timeline?.docRepositoryFolderId),
   });
 
+  const displayStages = opportunityMode ? stages.filter(s => s.stageNumber === 0) : stages;
+
   useEffect(() => {
-    if (!selectedStageId && stages.length > 0) {
-      setSelectedStageId(currentStageId || stages[0]?.id || null);
+    if (!selectedStageId && displayStages.length > 0) {
+      if (opportunityMode) {
+        const stage0 = displayStages.find(s => s.stageNumber === 0);
+        setSelectedStageId(stage0?.id || null);
+      } else {
+        setSelectedStageId(currentStageId || displayStages[0]?.id || null);
+      }
     }
-  }, [stages, currentStageId, selectedStageId]);
+  }, [displayStages, currentStageId, selectedStageId, opportunityMode]);
 
   useEffect(() => {
     if (timeline) {
@@ -368,45 +376,47 @@ export function GovernanceTab({ timelineId, currentStageId, onStageChange }: Gov
         )}
       </Card>
 
-      <div className="flex items-center gap-2 overflow-x-auto pb-2" data-testid="stage-stepper">
-        {stages.map((stage, idx) => {
-          const isCompleted = currentStageIndex > idx;
-          const isCurrent = stage.id === currentStageId;
-          const isSelected = stage.id === selectedStageId;
-          const stageGateLocal = gates.find(g => g.stageId === stage.id);
+      {!opportunityMode && (
+        <div className="flex items-center gap-2 overflow-x-auto pb-2" data-testid="stage-stepper">
+          {stages.map((stage, idx) => {
+            const isCompleted = currentStageIndex > idx;
+            const isCurrent = stage.id === currentStageId;
+            const isSelected = stage.id === selectedStageId;
+            const stageGateLocal = gates.find(g => g.stageId === stage.id);
 
-          return (
-            <div key={stage.id} className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={() => setSelectedStageId(stage.id)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors text-left ${
-                  isSelected ? "border-primary bg-primary/5 ring-1 ring-primary" :
-                  isCompleted ? "border-green-300 bg-green-50 dark:bg-green-950 dark:border-green-800" :
-                  isCurrent ? "border-blue-300 bg-blue-50 dark:bg-blue-950 dark:border-blue-800" :
-                  "border-border hover:bg-muted"
-                }`}
-                data-testid={`stage-step-${stage.stageNumber}`}
-              >
-                {isCompleted ? (
-                  <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
-                ) : isCurrent ? (
-                  <div className="w-5 h-5 rounded-full border-2 border-blue-500 flex items-center justify-center shrink-0">
-                    <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+            return (
+              <div key={stage.id} className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => setSelectedStageId(stage.id)}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors text-left ${
+                    isSelected ? "border-primary bg-primary/5 ring-1 ring-primary" :
+                    isCompleted ? "border-green-300 bg-green-50 dark:bg-green-950 dark:border-green-800" :
+                    isCurrent ? "border-blue-300 bg-blue-50 dark:bg-blue-950 dark:border-blue-800" :
+                    "border-border hover:bg-muted"
+                  }`}
+                  data-testid={`stage-step-${stage.stageNumber}`}
+                >
+                  {isCompleted ? (
+                    <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
+                  ) : isCurrent ? (
+                    <div className="w-5 h-5 rounded-full border-2 border-blue-500 flex items-center justify-center shrink-0">
+                      <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+                    </div>
+                  ) : (
+                    <Circle className="w-5 h-5 text-muted-foreground shrink-0" />
+                  )}
+                  <div>
+                    <p className="text-xs font-medium">Stage {stage.stageNumber}</p>
+                    <p className="text-xs text-muted-foreground truncate max-w-[120px]">{stage.name}</p>
                   </div>
-                ) : (
-                  <Circle className="w-5 h-5 text-muted-foreground shrink-0" />
-                )}
-                <div>
-                  <p className="text-xs font-medium">Stage {stage.stageNumber}</p>
-                  <p className="text-xs text-muted-foreground truncate max-w-[120px]">{stage.name}</p>
-                </div>
-                {stageGateLocal && <span className="shrink-0">{gateStatusIcon(stageGateLocal.status)}</span>}
-              </button>
-              {idx < stages.length - 1 && <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0" />}
-            </div>
-          );
-        })}
-      </div>
+                  {stageGateLocal && <span className="shrink-0">{gateStatusIcon(stageGateLocal.status)}</span>}
+                </button>
+                {idx < stages.length - 1 && <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0" />}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {selectedStage && (
         <>
@@ -762,7 +772,7 @@ export function GovernanceTab({ timelineId, currentStageId, onStageChange }: Gov
                 {evaluateMutation.isPending ? "Evaluating..." : "Request Gate Evaluation"}
               </Button>
 
-              {(stageGate?.status === "passed" || stageGate?.status === "exception") && nextStage && (
+              {!opportunityMode && (stageGate?.status === "passed" || stageGate?.status === "exception") && nextStage && (
                 <Button
                   size="sm"
                   variant="default"

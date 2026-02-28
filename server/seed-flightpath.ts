@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { flightpathStages, flightpathDeliverables } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 interface DeliverableData {
   name: string;
@@ -25,29 +25,21 @@ interface StageData {
 const STAGES: StageData[] = [
   {
     stageNumber: 0,
-    name: "Value Framing",
-    goal: "Turn a sales pursuit into an investment-grade initiative",
-    description: "Establish the business case, define measurable outcomes, identify stakeholders, and prepare a governed path to Stage 1.",
-    gateName: "Gate 1: Value Approval",
-    gateDescription: "Outcomes + KPIs agreed and measurable; Baseline method defined; Sponsor commits time/resources/governance; Phasing + in/out scope explicit; Major risks/deps have owners; Stage 1 kickoff scheduled with named participants",
-    playbookPurpose: "Clear outcomes, measurable KPIs, realistic options, governed path to Stage 1",
-    playbookExitBundle: "Value Narrative, Business Outcomes Pack, Baseline/Measurement Plan, Option Set A/B, Assumptions/Dependencies/Risks log, ROM Estimate, Governance Proposal, Stage 1 Readiness Plan",
+    name: "Pre-Sales Value + Scope Lock",
+    goal: "Convert business intent into a sellable, executable, protectable commitment",
+    description: "Produce SOW-ready scope, validate delivery feasibility, and complete the Sales→Delivery handoff. Primary owners: Pre-Sales Engineers + AE (Sales). Control function: Delivery Leadership.",
+    gateName: "Gate 1: Commercial & Operational Authorization",
+    gateDescription: "Client signed SOW (commercial authorization); Sales→Delivery handoff completed (operational authorization); Delivery Lead accepts ownership (explicit, not implied); Key assumptions/risks logged and owned",
+    playbookPurpose: "SOW-ready scope package, delivery feasibility validation, internal handoff pack, client approval",
+    playbookExitBundle: "Deal Context & Value Summary, Scope Definition Pack, Solution Approach, Delivery Feasibility Review, Statement of Work, Sales→Delivery Handoff Pack",
     sortOrder: 0,
     deliverables: [
-      { name: "Value Narrative (1-2 pages)", description: "Articulates the strategic value proposition and investment thesis", raciData: { "Sales Owner (AE)": "A/R", "Pre-Sales": "R", "Delivery Lead": "C", "Solution Architect": "C", "BA Lead": "C", "PM": "I", "Finance": "C", "Customer Sponsor": "A", "Customer PO": "C", "Customer IT/EA": "I", "Data Owner": "I", "Change": "C" }, sortOrder: 0 },
-      { name: "Business Outcomes Pack (3-7 outcomes)", description: "Defines 3-7 measurable business outcomes the initiative will deliver", raciData: { "Sales Owner (AE)": "A", "Pre-Sales": "C", "Delivery Lead": "C", "Solution Architect": "C", "BA Lead": "R", "PM": "C", "Finance": "I", "Customer Sponsor": "A", "Customer PO": "R", "Customer IT/EA": "C", "Data Owner": "C", "Change": "C" }, sortOrder: 1 },
-      { name: "KPI Definitions + Targets", description: "Quantified KPIs with baseline and target values for each outcome", raciData: { "Sales Owner (AE)": "A", "Pre-Sales": "C", "Solution Architect": "C", "BA Lead": "R", "PM": "C", "Finance": "I", "Customer Sponsor": "A", "Customer PO": "R", "Customer IT/EA": "C", "Data Owner": "R", "Change": "C" }, sortOrder: 2 },
-      { name: "Baseline Method + Data Sources", description: "How baselines will be measured and which data sources will be used", raciData: { "Sales Owner (AE)": "I", "Pre-Sales": "C", "Solution Architect": "C", "BA Lead": "C", "PM": "C", "Finance": "I", "Customer Sponsor": "A", "Customer PO": "C", "Customer IT/EA": "C", "Data Owner": "A/R", "Change": "C" }, sortOrder: 3 },
-      { name: "Scope Boundaries (in/out) + MVP hypothesis", description: "Explicit in/out scope definition with MVP hypothesis", raciData: { "Sales Owner (AE)": "A", "Pre-Sales": "R", "Delivery Lead": "R", "Solution Architect": "C", "BA Lead": "R", "PM": "C", "Finance": "C", "Customer Sponsor": "A", "Customer PO": "R", "Customer IT/EA": "C", "Data Owner": "I", "Change": "C" }, sortOrder: 4 },
-      { name: "Option Set (A/B) with tradeoffs & phasing", description: "At least two delivery options with cost/benefit tradeoffs", raciData: { "Sales Owner (AE)": "A", "Pre-Sales": "R", "Delivery Lead": "R", "Solution Architect": "R", "BA Lead": "C", "PM": "C", "Finance": "C", "Customer Sponsor": "A", "Customer PO": "C", "Customer IT/EA": "C", "Data Owner": "I", "Change": "C" }, sortOrder: 5 },
-      { name: "High-Level Architecture + Integration/Env overview", description: "Solution architecture, integration points, and environment landscape", raciData: { "Sales Owner (AE)": "I", "Pre-Sales": "C", "Solution Architect": "A/R", "BA Lead": "C", "PM": "I", "Finance": "I", "Customer Sponsor": "I", "Customer PO": "I", "Customer IT/EA": "C/R", "Data Owner": "C", "Change": "I" }, sortOrder: 6 },
-      { name: "Assumptions, Dependencies, Constraints log", description: "Initial RAID log capturing known assumptions, dependencies, and constraints", raciData: { "Sales Owner (AE)": "C", "Pre-Sales": "C", "Delivery Lead": "A/R", "Solution Architect": "R", "BA Lead": "R", "PM": "R", "Finance": "C", "Customer Sponsor": "I", "Customer PO": "C", "Customer IT/EA": "C", "Data Owner": "C", "Change": "C" }, sortOrder: 7 },
-      { name: "High-level Estimate (ROM) + commercial model", description: "Rough order of magnitude estimate with commercial/pricing model", raciData: { "Sales Owner (AE)": "A", "Pre-Sales": "R", "Delivery Lead": "R", "Solution Architect": "C", "BA Lead": "C", "PM": "C", "Finance": "A/R", "Customer Sponsor": "I", "Customer PO": "I", "Customer IT/EA": "C", "Data Owner": "I", "Change": "I" }, sortOrder: 8 },
-      { name: "Delivery Approach (waves, timeline, quality gates)", description: "Proposed delivery methodology, wave structure, and quality gates", raciData: { "Sales Owner (AE)": "I", "Pre-Sales": "C", "Delivery Lead": "A/R", "Solution Architect": "R", "BA Lead": "C", "PM": "R", "Finance": "I", "Customer Sponsor": "I", "Customer PO": "I", "Customer IT/EA": "C", "Data Owner": "I", "Change": "C" }, sortOrder: 9 },
-      { name: "Governance Proposal (cadence, forums, roles)", description: "Governance structure including meeting cadence, decision forums, and role definitions", raciData: { "Sales Owner (AE)": "C", "Pre-Sales": "I", "Delivery Lead": "A/R", "Solution Architect": "C", "BA Lead": "C", "PM": "R", "Finance": "I", "Customer Sponsor": "A", "Customer PO": "C", "Customer IT/EA": "C", "Data Owner": "I", "Change": "C" }, sortOrder: 10 },
-      { name: "Adoption Risk Snapshot + early enablement approach", description: "Assessment of adoption risks and initial enablement strategy", raciData: { "Sales Owner (AE)": "I", "Pre-Sales": "C", "Delivery Lead": "C", "Solution Architect": "I", "BA Lead": "C", "PM": "C", "Finance": "I", "Customer Sponsor": "A", "Customer PO": "C", "Customer IT/EA": "I", "Data Owner": "I", "Change": "A/R" }, sortOrder: 11 },
-      { name: "Stage 1 Readiness Plan", description: "Plan to prepare for structured initiation including resource needs and timeline", raciData: { "Sales Owner (AE)": "A", "Pre-Sales": "C", "Delivery Lead": "R", "Solution Architect": "C", "BA Lead": "R", "PM": "A/R", "Finance": "I", "Customer Sponsor": "C", "Customer PO": "C", "Customer IT/EA": "C", "Data Owner": "C", "Change": "C" }, sortOrder: 12 },
-      { name: "Gate 1 Decision Package", description: "Compiled package of all Stage 0 deliverables for gate review", raciData: { "Sales Owner (AE)": "A/R", "Pre-Sales": "R", "Delivery Lead": "R", "Solution Architect": "C", "BA Lead": "R", "PM": "R", "Finance": "C", "Customer Sponsor": "A", "Customer PO": "I", "Customer IT/EA": "I", "Data Owner": "I", "Change": "I" }, sortOrder: 13 },
+      { name: "Deal Context & Value Summary", description: "Business problem, why now, expected outcomes — used to align sponsor and justify investment. Lightweight document (1-2 pages).", raciData: { "Sales Owner (AE)": "A/R", "Pre-Sales": "R", "Delivery Lead": "C", "Solution Architect": "C", "PM": "I" }, sortOrder: 0 },
+      { name: "Scope Definition Pack (SOW-grade)", description: "In/out scope, assumptions, dependencies, constraints, phasing approach (MVP/Wave 1), clear exclusions, acceptance approach — what 'done' means.", raciData: { "Pre-Sales": "R", "Sales Owner (AE)": "A", "Delivery Lead": "C", "Solution Architect": "C", "BA Lead": "C" }, sortOrder: 1 },
+      { name: "Solution Approach", description: "Target architecture, major integrations, environment approach. Non-functional constraints: security, compliance, data.", raciData: { "Pre-Sales": "R", "Solution Architect": "A/R", "Delivery Lead": "C", "Customer IT/EA": "C" }, sortOrder: 2 },
+      { name: "Delivery Feasibility Review", description: "Internal Delivery Leadership review: delivery approach, risks, resourcing assumptions, timeline realism. 'Approved to sell' checkpoint.", raciData: { "Delivery Lead": "A/R", "Pre-Sales": "C", "Solution Architect": "C", "Sales Owner (AE)": "I", "PM": "I" }, sortOrder: 3 },
+      { name: "Statement of Work (SOW)", description: "Robust scope protection, commercial structure, timeline guardrails. Change control mechanism and acceptance language.", raciData: { "Sales Owner (AE)": "A/R", "Pre-Sales": "C", "Delivery Lead": "C", "Finance": "C" }, sortOrder: 4 },
+      { name: "Sales → Delivery Handoff Pack", description: "Deal snapshot, what was sold, commercial terms impacting delivery, assumptions/dependencies/constraints, risks and known unknowns, solution outline, staffing expectations, first 2 weeks plan.", raciData: { "Sales Owner (AE)": "R", "Pre-Sales": "R", "Delivery Lead": "A", "PM": "C", "Solution Architect": "C" }, sortOrder: 5 },
     ],
   },
   {
@@ -136,10 +128,52 @@ const STAGES: StageData[] = [
   },
 ];
 
+const SEED_VERSION = 2;
+
+export async function reseedStage0(tenantId: string = "default"): Promise<void> {
+  const existing = await db.select().from(flightpathStages).where(
+    and(eq(flightpathStages.tenantId, tenantId), eq(flightpathStages.stageNumber, 0))
+  );
+  if (existing.length === 0) return;
+
+  const stage0 = existing[0];
+  const stage0Data = STAGES.find(s => s.stageNumber === 0)!;
+
+  await db.delete(flightpathDeliverables).where(eq(flightpathDeliverables.stageId, stage0.id));
+
+  await db.update(flightpathStages).set({
+    name: stage0Data.name,
+    goal: stage0Data.goal,
+    description: stage0Data.description,
+    gateName: stage0Data.gateName,
+    gateDescription: stage0Data.gateDescription,
+    playbookPurpose: stage0Data.playbookPurpose,
+    playbookExitBundle: stage0Data.playbookExitBundle,
+  }).where(eq(flightpathStages.id, stage0.id));
+
+  for (const del of stage0Data.deliverables) {
+    await db.insert(flightpathDeliverables).values({
+      stageId: stage0.id,
+      name: del.name,
+      description: del.description,
+      raciData: del.raciData,
+      sortOrder: del.sortOrder,
+    });
+  }
+
+  console.log(`Stage 0 re-seeded with ${stage0Data.deliverables.length} pre-sales deliverables for tenant "${tenantId}"`);
+}
+
 export async function seedFlightpathData(tenantId: string = "default"): Promise<void> {
   const existing = await db.select().from(flightpathStages).where(eq(flightpathStages.tenantId, tenantId));
   if (existing.length > 0) {
-    console.log(`FlightPath stages already seeded for tenant "${tenantId}"`);
+    const stage0 = existing.find(s => s.stageNumber === 0);
+    if (stage0 && stage0.name !== "Pre-Sales Value + Scope Lock") {
+      console.log(`Updating Stage 0 to pre-sales format for tenant "${tenantId}"...`);
+      await reseedStage0(tenantId);
+    } else {
+      console.log(`FlightPath stages already seeded for tenant "${tenantId}"`);
+    }
     return;
   }
 

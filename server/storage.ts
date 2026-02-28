@@ -74,7 +74,7 @@ export interface IStorage {
   createContact(data: InsertContact): Promise<Contact>;
   updateContact(id: string, data: Partial<InsertContact>): Promise<Contact | undefined>;
   deleteContact(id: string): Promise<void>;
-  getTimelines(): Promise<TimelineWithMilestones[]>;
+  getTimelines(recordType?: string): Promise<TimelineWithMilestones[]>;
   getTimeline(id: string): Promise<TimelineWithMilestones | undefined>;
   createTimeline(data: InsertTimeline): Promise<Timeline>;
   updateTimeline(id: string, data: Partial<InsertTimeline>): Promise<Timeline | undefined>;
@@ -227,8 +227,9 @@ export class DatabaseStorage implements IStorage {
     await db.delete(contacts).where(eq(contacts.id, id));
   }
 
-  async getTimelines(): Promise<TimelineWithMilestones[]> {
-    const allTimelines = await db.select().from(timelines);
+  async getTimelines(recordType?: string): Promise<TimelineWithMilestones[]> {
+    const filterType = recordType || "project";
+    const allTimelines = await db.select().from(timelines).where(eq(timelines.recordType, filterType));
     const allMilestones = await db.select().from(milestones);
     const allTasks = await db.select().from(tasks);
 
@@ -448,7 +449,7 @@ export class DatabaseStorage implements IStorage {
     if (settings) return settings;
     const [created] = await db
       .insert(appSettings)
-      .values({ id: "app", riskRegisterEnabled: false })
+      .values({ id: "app", riskRegisterEnabled: false, opportunitiesEnabled: true })
       .returning();
     return created;
   }

@@ -83,8 +83,8 @@ export function TimelineView({ milestones, tasks, timelineColor, showTasks = tru
     if (m.actualDate) allDateNums.push(parseDateToNum(m.actualDate));
   });
   sortedTasks.forEach((t) => {
-    allDateNums.push(parseDateToNum(t.startDate));
-    allDateNums.push(parseDateToNum(t.endDate));
+    if (t.startDate) allDateNums.push(parseDateToNum(t.startDate));
+    if (t.endDate) allDateNums.push(parseDateToNum(t.endDate));
     if (t.actualStartDate) allDateNums.push(parseDateToNum(t.actualStartDate));
     if (t.actualEndDate) allDateNums.push(parseDateToNum(t.actualEndDate));
   });
@@ -200,10 +200,10 @@ export function TimelineView({ milestones, tasks, timelineColor, showTasks = tru
                 });
                 orphanWorkstreams.forEach((ws) => orderedTasks.push({ task: ws, isChild: false }));
 
-                return orderedTasks.map(({ task, isChild }) => {
+                return orderedTasks.filter(({ task }) => task.startDate && task.endDate).map(({ task, isChild }) => {
                   const barColor = task.color || timelineColor;
-                  const startPct = pct(task.startDate);
-                  const endPct = pct(task.endDate);
+                  const startPct = pct(task.startDate!);
+                  const endPct = pct(task.endDate!);
                   const barWidth = Math.max(endPct - startPct, 2);
                   const isPhase = task.itemType === "phase";
 
