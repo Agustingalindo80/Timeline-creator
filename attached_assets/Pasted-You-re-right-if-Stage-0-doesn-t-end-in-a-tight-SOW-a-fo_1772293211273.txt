@@ -1,0 +1,148 @@
+You’re right — if Stage 0 doesn’t end in a **tight SOW + a formal Sales→Delivery handoff**, you don’t have “Value Framing.” You have pre-sales chatter that becomes delivery pain.
+
+Here’s how I’d **reframe Stage 0 for FlightPath** so it matches real partner operations (Salesforce SI reality) and sets you up to build the SOW + handoff templates next.
+
+---
+
+## Updated Stage 0 — Pre-Sales Value + Scope Lock
+
+**Primary owners:** Pre-Sales Engineers + AE (Sales)
+**Control function:** Delivery Leadership (audit / scope alignment / feasibility)
+**Main purpose:** Convert business intent into a **sellable, executable, protectable** commitment.
+
+### Stage 0 outcomes (must exist)
+
+1. **SOW-ready scope package** (what we’re actually committing to)
+2. **Delivery feasibility validation** (Delivery Leadership signs “this is executable”)
+3. **Internal handoff pack** (Sales → Delivery)
+4. **Client approval** (SOW signature) → triggers Stage 1 initiation
+
+---
+
+## Stage 0 deliverables (revised)
+
+Think of Stage 0 as producing **SOW inputs**, not internal discovery docs.
+
+### D1 — Deal Context & Value Summary (lightweight)
+
+* Business problem, why now, expected outcomes (not deep KPI work yet)
+* Used to align sponsor + justify investment
+
+### D2 — Scope Definition Pack (SOW-grade)
+
+* In/Out scope, assumptions, dependencies, constraints
+* Phasing approach (MVP/Wave 1), clear exclusions
+* Acceptance approach (what “done” means)
+
+### D3 — Solution Approach (pre-sales architecture level)
+
+* Target architecture, major integrations, environment approach
+* Non-functional constraints (security, compliance, data)
+
+### D4 — Delivery Feasibility Review (internal audit)
+
+* Delivery Leadership review: delivery approach, risks, resourcing assumptions, timeline realism
+* “Approved to sell” checkpoint
+
+### D5 — SOW (the formal output)
+
+* Robust scope protection, commercial structure, timeline guardrails
+* Change control mechanism and acceptance language
+* We’ll build the SOW template later as you said
+
+### D6 — Sales → Delivery Handoff Pack (the real Stage 0 → Stage 1 bridge)
+
+This is the **internal contract**. Without it, Stage 1 starts blind.
+
+---
+
+## Gate change: Stage 0 → Stage 1 = “SOW Signed + Handoff Completed”
+
+### Gate 1 (redefined) — Commercial & Operational Authorization
+
+**PASS only if:**
+
+1. **Client signed SOW** (commercial authorization)
+2. **Sales→Delivery handoff completed** (operational authorization)
+3. **Delivery Lead accepts ownership** (explicit, not implied)
+4. **Key assumptions/risks logged** and owned
+
+This is the right gate for consulting reality.
+
+---
+
+## Sales → Delivery Handoff process (what it must contain)
+
+This is the piece you said is “most important internally.” Agreed.
+
+### Handoff Pack sections (minimum viable)
+
+1. **Deal snapshot**
+
+   * Client objectives, sponsor, stakeholders, timeline drivers
+2. **What was sold**
+
+   * Scope boundaries, phases, deliverables, acceptance approach
+3. **Commercial terms that impact delivery**
+
+   * FP/T&M model, change control, SLAs, milestones, invoicing triggers
+4. **Assumptions + dependencies + constraints**
+
+   * Especially client responsibilities and access lead times
+5. **Risks and “known unknowns”**
+
+   * What could break the plan and how we’ll mitigate
+6. **Solution outline**
+
+   * Architecture highlights, integrations, data, environments
+7. **Staffing expectations**
+
+   * Named roles (even if not named people), ramp plan, client SME commitments
+8. **First 2 weeks plan**
+
+   * Kickoff agenda, workshop plan, access checklist, decision calendar
+
+### Handoff ritual (don’t skip this)
+
+* 60–90 min meeting with **AE + Pre-Sales + Delivery Lead + Architect + PM (if assigned)**
+* Output: **Delivery Lead signs acceptance** + lists any immediate risks/conditions
+
+---
+
+## How this impacts the templates we already started
+
+Your earlier Stage 0 templates were “delivery framework friendly,” but for a partner business the Stage 0 set must be **pre-sales oriented**.
+
+So we should do this in two steps:
+
+### Step 1 — Replace / re-scope Stage 0 templates
+
+* Convert Value Narrative → **Deal Context & Value Summary** (shorter, sales-friendly)
+* Convert Outcomes Pack → **Outcome Intent** (still useful, but not heavy)
+* Keep Scope Boundaries and Feasibility Snapshot (these are essential for SOW)
+* Add **Handoff Pack Template** (new, mandatory)
+* Gate 1 package becomes **SOW + Handoff Completion Pack**
+
+### Step 2 — Build the SOW template later (as planned)
+
+When we do SOW, it becomes its own deliverable kit with strong scope/timeline protection.
+
+---
+
+## What I recommend we build next (starting now)
+
+Since you want to start building actual templates and you clarified the real Stage 0 exit, the next two templates to create are:
+
+1. **Sales → Delivery Handoff Pack (A1 Template + A2 Checklist)**
+2. **Gate 1: SOW Signed + Handoff Complete (A1 Package + A2 Checklist)**
+
+Those two instantly make FlightPath “real” for your consulting operation.
+
+If you say “go,” I’ll generate:
+
+* `FP-S0-D06-A1 Sales→Delivery Handoff Pack (Template)`
+* `FP-S0-D06-A2 Sales→Delivery Handoff Pack (Checklist)`
+* `FP-S0-D07-A1 Gate 1 Commercial & Operational Authorization Package (Template)`
+* `FP-S0-D07-A2 Gate 1 PASS Checklist (Updated)`
+
+…and we’ll keep the rest of Stage 0 aligned to “SOW inputs,” not delivery discovery.

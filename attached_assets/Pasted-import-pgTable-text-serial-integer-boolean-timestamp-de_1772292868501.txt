@@ -1,0 +1,464 @@
+import {
+  pgTable,
+  text,
+  serial,
+  integer,
+  boolean,
+  timestamp,
+  decimal,
+  unique,
+} from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod";
+import { relations } from "drizzle-orm";
+
+// Export Chat Models from Integration
+export * from "./models/chat";
+
+// === TABLE DEFINITIONS ===
+
+// Regions for rate cards (US, Caribbean, LATAM, etc.)
+export const regions = pgTable("regions", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(), // e.g., "US", "Caribbean", "LATAM"
+  description: text("description"),
+  currency: text("currency").default("USD"), // Default currency for this region
+  isDefault: boolean("is_default").default(false), // Mark one region as default
+});
+
+// Roles (e.g., "Salesforce Administrator", "Developer")
+export const roles = pgTable("roles", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  description: text("description"),
+  costRate: decimal("cost_rate", { precision: 10, scale: 2 }), // Default cost rate (legacy/fallback)
+  billRate: decimal("bill_rate", { precision: 10, scale: 2 }), // Default bill rate (legacy/fallback)
+});
+
+// Regional rate cards - rates per role per region
+export const roleRegionRates = pgTable(
+  "role_region_rates",
+  {
+    id: serial("id").primaryKey(),
+    roleId: integer("role_id")
+      .references(() => roles.id)
+      .notNull(),
+    regionId: integer("region_id")
+      .references(() => regions.id)
+      .notNull(),
+    costRate: decimal("cost_rate", { precision: 10, scale: 2 }).notNull(),
+    billRate: decimal("bill_rate", { precision: 10, scale: 2 }).notNull(),
+  },
+  (table) => ({
+    roleRegionUnique: unique().on(table.roleId, table.regionId),
+  }),
+);
+
+// Phases (e.g., "Discovery", "Build")
+export const phases = pgTable("phases", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(), // e.g., "Discovery", "Build"
+  description: text("description"),
+  order: integer("order").notNull(), // Display order
+});
+
+// Salesforce Cloud options for project scoping
+export const SALESFORCE_CLOUDS = [
+  {
+    id: "sales-cloud",
+    name: "Sales Cloud",
+    description: "CRM, leads, opportunities, accounts",
+  },
+  {
+    id: "service-cloud",
+    name: "Service Cloud",
+    description: "Cases, knowledge, omnichannel support",
+  },
+  {
+    id: "marketing-cloud",
+    name: "Marketing Cloud",
+    description: "Email, journeys, automation",
+  },
+  {
+    id: "experience-cloud",
+    name: "Experience Cloud",
+    description: "Portals, communities, sites",
+  },
+  {
+    id: "commerce-cloud",
+    name: "Commerce Cloud",
+    description: "B2B/B2C ecommerce",
+  },
+  {
+    id: "data-cloud",
+    name: "Data Cloud",
+    description: "CDP, unified profiles, segments",
+  },
+  {
+    id: "revenue-cloud",
+    name: "Revenue Cloud",
+    description: "CPQ, billing, subscriptions",
+  },
+  {
+    id: "field-service",
+    name: "Field Service",
+    description: "Mobile workforce, scheduling",
+  },
+  { id: "health-cloud", name: "Health Cloud", description: "Healthcare CRM" },
+  {
+    id: "financial-services",
+    name: "Financial Services Cloud",
+    description: "Banking, insurance, wealth",
+  },
+  {
+    id: "nonprofit-cloud",
+    name: "Nonprofit Cloud",
+    description: "Fundraising, programs, grants",
+  },
+  {
+    id: "education-cloud",
+    name: "Education Cloud",
+    description: "Student lifecycle, admissions",
+  },
+  {
+    id: "mulesoft",
+    name: "MuleSoft",
+    description: "API-led integration, Anypoint Platform, data migrations",
+  },
+] as const;
+
+// Project status options
+export const PROJECT_STATUSES = [
+  { id: "draft", name: "Draft", description: "Initial project creation" },
+  {
+    id: "estimated",
+    name: "Estimated",
+    description: "AI estimation completed",
+  },
+  {
+    id: "in_negotiation",
+    name: "In Negotiation",
+    description: "Under client review",
+  },
+  { id: "closed_won", name: "Closed-Won", description: "Project approved" },
+  {
+    id: "closed_lost",
+    name: "Closed-Lost",
+    description: "Project not approved",
+  },
+  { id: "inactive", name: "Inactive", description: "Archived or on hold" },
+] as const;
+
+// Task type options for role distribution
+export const TASK_TYPES = [
+  {
+    id: "pm",
+    name: "Project Management",
+    description: "Planning, coordination, status",
+  },
+  {
+    id: "functional",
+    name: "Functional",
+    description: "Requirements, config, testing",
+  },
+  {
+    id: "technical",
+    name: "Technical",
+    description: "Development, integrations, code",
+  },
+  {
+    id: "qa",
+    name: "Quality Assurance",
+    description: "Testing, validation, UAT",
+  },
+] as const;
+
+// Task level for Epic/Story hierarchy
+export const TASK_LEVELS = [
+  { id: "epic", name: "Epic", description: "High-level feature group" },
+  { id: "story", name: "User Story", description: "Implementable work item" },
+] as const;
+
+// Output language options for AI-generated content
+export const OUTPUT_LANGUAGES = [
+  { id: "en", name: "English", nativeName: "English" },
+  { id: "es", name: "Spanish", nativeName: "Español" },
+  { id: "pt", name: "Portuguese", nativeName: "Português" },
+  { id: "fr", name: "French", nativeName: "Français" },
+  { id: "de", name: "German", nativeName: "Deutsch" },
+  { id: "it", name: "Italian", nativeName: "Italiano" },
+  { id: "zh", name: "Chinese", nativeName: "中文" },
+  { id: "ja", name: "Japanese", nativeName: "日本語" },
+  { id: "ko", name: "Korean", nativeName: "한국어" },
+] as const;
+
+// Access role options for user authentication
+export const ACCESS_ROLES = [
+  { id: "admin", name: "Admin", description: "Full access to all features" },
+  { id: "readonly", name: "Read Only", description: "View-only access" },
+] as const;
+
+// Projects
+export const projects = pgTable("projects", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  status: text("status").default("draft"), // draft, estimated, in_negotiation, closed_won, closed_lost
+  currency: text("currency").default("USD"), // Currency code (USD, EUR, MXN, etc.)
+  regionId: integer("region_id").references(() => regions.id), // Regional rate card to use
+  outputLanguage: text("output_language").default("en"), // Language for AI-generated content
+  salesforceClouds: text("salesforce_clouds").array(), // Array of cloud IDs
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  // AI inputs
+  scopeDescription: text("scope_description"),
+  estimatedTotalHours: integer("estimated_total_hours"),
+  estimatedCost: decimal("estimated_cost", { precision: 12, scale: 2 }),
+  estimatedRevenue: decimal("estimated_revenue", { precision: 12, scale: 2 }),
+  // Variable management - Risk and Buffer percentages
+  riskFactorPercent: decimal("risk_factor_percent", {
+    precision: 5,
+    scale: 2,
+  }).default("10"), // Default 10%
+  bufferPercent: decimal("buffer_percent", { precision: 5, scale: 2 }).default(
+    "5",
+  ), // Default 5%
+});
+
+// Tasks (The estimation line items)
+export const tasks = pgTable("tasks", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").references(() => projects.id),
+  phaseId: integer("phase_id").references(() => phases.id),
+  roleId: integer("role_id").references(() => roles.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  estimatedHours: integer("estimated_hours").notNull(),
+  confidenceLevel: text("confidence_level"), // "high", "medium", "low"
+  aiGenerated: boolean("ai_generated").default(false),
+  // Task type for role distribution
+  taskType: text("task_type").default("functional"), // pm, functional, technical, qa
+  // Epic/Story hierarchy
+  taskLevel: text("task_level").default("story"), // epic, story
+  parentTaskId: integer("parent_task_id"), // Reference to parent epic (self-referential)
+  // Timeline/Gantt fields
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  dependencies: text("dependencies").array(), // Array of task IDs this depends on
+});
+
+// Project Resource Allocations - track how many of each role are assigned to a project
+export const projectResourceAllocations = pgTable(
+  "project_resource_allocations",
+  {
+    id: serial("id").primaryKey(),
+    projectId: integer("project_id")
+      .references(() => projects.id)
+      .notNull(),
+    roleId: integer("role_id")
+      .references(() => roles.id)
+      .notNull(),
+    resourceCount: integer("resource_count").notNull().default(1), // Number of people assigned
+  },
+  (table) => ({
+    projectRoleUnique: unique().on(table.projectId, table.roleId),
+  }),
+);
+
+// Resources - actual team members (people)
+export const resources = pgTable("resources", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email"),
+  roleId: integer("role_id")
+    .references(() => roles.id)
+    .notNull(),
+  costRate: decimal("cost_rate", { precision: 10, scale: 2 }).notNull(), // Individual cost rate
+  isActive: boolean("is_active").default(true),
+  // Authentication fields
+  accessEnabled: boolean("access_enabled").default(false), // Whether user can log in
+  passwordHash: text("password_hash"), // Hashed password for login
+  accessRole: text("access_role").default("readonly"), // "admin" or "readonly"
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Project Team Members - link resources to projects with optional cost rate override
+export const projectTeamMembers = pgTable(
+  "project_team_members",
+  {
+    id: serial("id").primaryKey(),
+    projectId: integer("project_id")
+      .references(() => projects.id)
+      .notNull(),
+    resourceId: integer("resource_id")
+      .references(() => resources.id)
+      .notNull(),
+    costRateOverride: decimal("cost_rate_override", {
+      precision: 10,
+      scale: 2,
+    }), // Override resource's default cost rate
+    startDate: timestamp("start_date"),
+    endDate: timestamp("end_date"),
+    notes: text("notes"),
+  },
+  (table) => ({
+    projectResourceUnique: unique().on(table.projectId, table.resourceId),
+  }),
+);
+
+// === RELATIONS ===
+export const projectsRelations = relations(projects, ({ many }) => ({
+  tasks: many(tasks),
+  resourceAllocations: many(projectResourceAllocations),
+  teamMembers: many(projectTeamMembers),
+}));
+
+export const resourcesRelations = relations(resources, ({ one, many }) => ({
+  role: one(roles, {
+    fields: [resources.roleId],
+    references: [roles.id],
+  }),
+  projectAssignments: many(projectTeamMembers),
+}));
+
+export const projectTeamMembersRelations = relations(
+  projectTeamMembers,
+  ({ one }) => ({
+    project: one(projects, {
+      fields: [projectTeamMembers.projectId],
+      references: [projects.id],
+    }),
+    resource: one(resources, {
+      fields: [projectTeamMembers.resourceId],
+      references: [resources.id],
+    }),
+  }),
+);
+
+export const tasksRelations = relations(tasks, ({ one }) => ({
+  project: one(projects, {
+    fields: [tasks.projectId],
+    references: [projects.id],
+  }),
+  phase: one(phases, {
+    fields: [tasks.phaseId],
+    references: [phases.id],
+  }),
+  role: one(roles, {
+    fields: [tasks.roleId],
+    references: [roles.id],
+  }),
+}));
+
+export const phasesRelations = relations(phases, ({ many }) => ({
+  tasks: many(tasks),
+}));
+
+export const rolesRelations = relations(roles, ({ many }) => ({
+  tasks: many(tasks),
+  regionRates: many(roleRegionRates),
+  resources: many(resources),
+}));
+
+export const regionsRelations = relations(regions, ({ many }) => ({
+  projects: many(projects),
+  roleRates: many(roleRegionRates),
+}));
+
+export const roleRegionRatesRelations = relations(
+  roleRegionRates,
+  ({ one }) => ({
+    role: one(roles, {
+      fields: [roleRegionRates.roleId],
+      references: [roles.id],
+    }),
+    region: one(regions, {
+      fields: [roleRegionRates.regionId],
+      references: [regions.id],
+    }),
+  }),
+);
+
+export const projectResourceAllocationsRelations = relations(
+  projectResourceAllocations,
+  ({ one }) => ({
+    project: one(projects, {
+      fields: [projectResourceAllocations.projectId],
+      references: [projects.id],
+    }),
+    role: one(roles, {
+      fields: [projectResourceAllocations.roleId],
+      references: [roles.id],
+    }),
+  }),
+);
+
+// === SCHEMA CREATION ===
+
+export const insertProjectSchema = createInsertSchema(projects).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  estimatedTotalHours: true,
+  estimatedCost: true,
+});
+
+export const insertTaskSchema = createInsertSchema(tasks).omit({
+  id: true,
+});
+
+export const insertRoleSchema = createInsertSchema(roles).omit({ id: true });
+export const insertPhaseSchema = createInsertSchema(phases).omit({ id: true });
+export const insertRegionSchema = createInsertSchema(regions).omit({
+  id: true,
+});
+export const insertRoleRegionRateSchema = createInsertSchema(
+  roleRegionRates,
+).omit({ id: true });
+export const insertProjectResourceAllocationSchema = createInsertSchema(
+  projectResourceAllocations,
+).omit({ id: true });
+export const insertResourceSchema = createInsertSchema(resources).omit({
+  id: true,
+  createdAt: true,
+  passwordHash: true,
+});
+export const insertProjectTeamMemberSchema = createInsertSchema(
+  projectTeamMembers,
+).omit({ id: true });
+
+// === EXPLICIT TYPES ===
+
+export type Role = typeof roles.$inferSelect;
+export type Phase = typeof phases.$inferSelect;
+export type Project = typeof projects.$inferSelect;
+export type Task = typeof tasks.$inferSelect;
+export type Region = typeof regions.$inferSelect;
+export type RoleRegionRate = typeof roleRegionRates.$inferSelect;
+export type ProjectResourceAllocation =
+  typeof projectResourceAllocations.$inferSelect;
+export type Resource = typeof resources.$inferSelect;
+export type ProjectTeamMember = typeof projectTeamMembers.$inferSelect;
+export type InsertRegion = z.infer<typeof insertRegionSchema>;
+export type InsertRoleRegionRate = z.infer<typeof insertRoleRegionRateSchema>;
+export type InsertProjectResourceAllocation = z.infer<
+  typeof insertProjectResourceAllocationSchema
+>;
+export type InsertResource = z.infer<typeof insertResourceSchema>;
+export type InsertProjectTeamMember = z.infer<
+  typeof insertProjectTeamMemberSchema
+>;
+
+export type InsertProject = z.infer<typeof insertProjectSchema>;
+export type InsertTask = z.infer<typeof insertTaskSchema>;
+
+// API Types
+export type CreateProjectRequest = InsertProject;
+export type UpdateProjectRequest = Partial<InsertProject>;
+export type CreateTaskRequest = InsertTask;
+export type UpdateTaskRequest = Partial<InsertTask>;
+
+// For AI Generation Request
+export interface GenerateEstimationRequest {
+  scopeDescription: string;
+}
