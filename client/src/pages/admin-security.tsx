@@ -1,8 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Helmet } from "react-helmet-async";
-import { Shield, Plus, X, UserCog, ScrollText, Grid3X3, Check, Edit3, Trash2, Link2, Unlink, ArrowLeft, ChevronRight, User } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Shield, Plus, X, UserCog, ScrollText, Grid3X3, Check, Edit3, Trash2, Link2, Unlink, ArrowLeft, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -577,41 +576,127 @@ function UserDetailView({
     },
   });
 
+  const startEditing = () => {
+    setEditFirstName(user.firstName || "");
+    setEditLastName(user.lastName || "");
+    setEditEmail(user.email || "");
+    setEditing(true);
+  };
+
+  const initials = [user.firstName, user.lastName]
+    .filter(Boolean)
+    .map(n => n!.charAt(0).toUpperCase())
+    .join("") || "?";
+
   return (
     <div data-testid="user-detail-view">
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={onBack}
-        className="mb-4 gap-1"
-        data-testid="button-back-to-users"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Back to Users
-      </Button>
+      <div className="flex items-center gap-2 mb-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onBack}
+          data-testid="button-back-to-users"
+        >
+          <ArrowLeft className="w-4 h-4 mr-1" /> Users
+        </Button>
+      </div>
 
-      <div className="flex items-start gap-4 mb-6" data-testid="user-detail-header">
-        <Avatar className="w-12 h-12">
-          {user.profileImageUrl && <AvatarImage src={user.profileImageUrl} alt={fullName} />}
-          <AvatarFallback>
-            <User className="w-6 h-6 text-muted-foreground" />
-          </AvatarFallback>
-        </Avatar>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-xl font-semibold" data-testid="text-user-detail-name">{fullName}</h1>
-          <p className="text-sm text-muted-foreground" data-testid="text-user-detail-email">{user.email || "No email"}</p>
-          <div className="flex flex-wrap items-center gap-2 mt-2">
-            {user.teamMember ? (
-              <Badge variant="secondary" className="text-xs gap-1" data-testid="badge-linked-tm">
-                <Link2 className="w-3 h-3" />
-                Linked to {user.teamMember.name}
-              </Badge>
+      <div className="flex items-start justify-between gap-4 mb-6" data-testid="user-detail-header">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-xl font-bold text-primary shrink-0">
+            {user.profileImageUrl ? (
+              <img src={user.profileImageUrl} alt={fullName} className="w-14 h-14 rounded-full object-cover" />
             ) : (
-              <span className="text-xs text-muted-foreground" data-testid="text-no-linked-tm">No linked team member</span>
+              initials
             )}
           </div>
+          <div>
+            <h1 className="text-xl font-semibold" data-testid="text-user-detail-name">{fullName}</h1>
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
+              {user.email && (
+                <span className="text-sm text-muted-foreground" data-testid="text-user-detail-email">{user.email}</span>
+              )}
+              {user.teamMember ? (
+                <Badge variant="secondary" data-testid="badge-linked-tm">
+                  <Link2 className="w-3 h-3 mr-1" />
+                  {user.teamMember.name}
+                </Badge>
+              ) : (
+                <Badge variant="secondary" className="text-muted-foreground" data-testid="text-no-linked-tm">No Team Member</Badge>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {!editing ? (
+            <Button variant="outline" size="sm" onClick={startEditing} data-testid="button-edit-user">
+              <Edit3 className="w-3.5 h-3.5 mr-1" /> Edit
+            </Button>
+          ) : (
+            <>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setEditing(false)}
+                disabled={updateUserMutation.isPending}
+                data-testid="button-cancel-edit"
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => updateUserMutation.mutate({ firstName: editFirstName, lastName: editLastName, email: editEmail })}
+                disabled={updateUserMutation.isPending}
+                data-testid="button-save-user"
+              >
+                <Check className="w-3.5 h-3.5 mr-1" />
+                {updateUserMutation.isPending ? "Saving..." : "Save"}
+              </Button>
+            </>
+          )}
         </div>
       </div>
+
+      {editing && (
+        <div className="border rounded-md p-4 mb-6 bg-muted/30 space-y-3" data-testid="form-edit-user">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div>
+              <Label>First Name</Label>
+              <Input
+                value={editFirstName}
+                onChange={(e) => setEditFirstName(e.target.value)}
+                placeholder="First name"
+                data-testid="input-user-firstname"
+              />
+            </div>
+            <div>
+              <Label>Last Name</Label>
+              <Input
+                value={editLastName}
+                onChange={(e) => setEditLastName(e.target.value)}
+                placeholder="Last name"
+                data-testid="input-user-lastname"
+              />
+            </div>
+            <div>
+              <Label>Email</Label>
+              <Input
+                type="email"
+                value={editEmail}
+                onChange={(e) => setEditEmail(e.target.value)}
+                placeholder="Email address"
+                data-testid="input-user-email"
+              />
+            </div>
+          </div>
+          {user.teamMember && (
+            <p className="text-xs text-muted-foreground flex items-center gap-1 flex-wrap">
+              <Link2 className="w-3 h-3" />
+              Changes will be synced to linked team member: {user.teamMember.name}
+            </p>
+          )}
+        </div>
+      )}
 
       <Tabs defaultValue="details" className="w-full">
         <TabsList className="mb-4">
@@ -622,203 +707,109 @@ function UserDetailView({
         <TabsContent value="details">
           <div className="space-y-6">
             <div>
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold" data-testid="heading-user-info">User Information</h3>
-                {!editing ? (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      setEditFirstName(user.firstName || "");
-                      setEditLastName(user.lastName || "");
-                      setEditEmail(user.email || "");
-                      setEditing(true);
-                    }}
-                    data-testid="button-edit-user"
-                  >
-                    <Edit3 className="w-3.5 h-3.5 mr-1" />
-                    Edit
-                  </Button>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() => updateUserMutation.mutate({ firstName: editFirstName, lastName: editLastName, email: editEmail })}
-                      disabled={updateUserMutation.isPending}
-                      data-testid="button-save-user"
-                    >
-                      <Check className="w-3.5 h-3.5 mr-1" />
-                      {updateUserMutation.isPending ? "Saving..." : "Save"}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setEditing(false)}
-                      disabled={updateUserMutation.isPending}
-                      data-testid="button-cancel-edit"
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                )}
-              </div>
-              {editing ? (
-                <Card className="card-elevated">
-                  <CardContent className="pt-4 pb-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      <div>
-                        <Label className="text-xs text-muted-foreground mb-1.5 block">First Name</Label>
-                        <Input
-                          value={editFirstName}
-                          onChange={(e) => setEditFirstName(e.target.value)}
-                          placeholder="First name"
-                          data-testid="input-user-firstname"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs text-muted-foreground mb-1.5 block">Last Name</Label>
-                        <Input
-                          value={editLastName}
-                          onChange={(e) => setEditLastName(e.target.value)}
-                          placeholder="Last name"
-                          data-testid="input-user-lastname"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs text-muted-foreground mb-1.5 block">Email</Label>
-                        <Input
-                          type="email"
-                          value={editEmail}
-                          onChange={(e) => setEditEmail(e.target.value)}
-                          placeholder="Email address"
-                          data-testid="input-user-email"
-                        />
-                      </div>
-                    </div>
-                    {user.teamMember && (
-                      <p className="text-xs text-muted-foreground mt-3 flex items-center gap-1">
-                        <Link2 className="w-3 h-3" />
-                        Changes will be synced to linked team member: {user.teamMember.name}
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <Card>
-                    <CardContent className="pt-4 pb-4">
-                      <div className="text-xs text-muted-foreground mb-1">First Name</div>
-                      <div className="text-sm font-medium" data-testid="text-user-firstname">{user.firstName || "—"}</div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="pt-4 pb-4">
-                      <div className="text-xs text-muted-foreground mb-1">Last Name</div>
-                      <div className="text-sm font-medium" data-testid="text-user-lastname">{user.lastName || "—"}</div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="pt-4 pb-4">
-                      <div className="text-xs text-muted-foreground mb-1">Email</div>
-                      <div className="text-sm font-medium" data-testid="text-user-email">{user.email || "—"}</div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="pt-4 pb-4">
-                      <div className="text-xs text-muted-foreground mb-1">Created</div>
-                      <div className="text-sm font-medium" data-testid="text-user-created">{user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "—"}</div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="pt-4 pb-4">
-                      <div className="text-xs text-muted-foreground mb-1">Last Updated</div>
-                      <div className="text-sm font-medium" data-testid="text-user-updated">{user.updatedAt ? new Date(user.updatedAt).toLocaleDateString() : "—"}</div>
-                    </CardContent>
-                  </Card>
+              <h3 className="text-sm font-semibold mb-3" data-testid="heading-user-info">User Information</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4">
+                <div>
+                  <div className="text-xs text-muted-foreground mb-0.5">First Name</div>
+                  <div className="text-sm font-medium" data-testid="text-user-firstname">{user.firstName || "—"}</div>
                 </div>
-              )}
+                <div>
+                  <div className="text-xs text-muted-foreground mb-0.5">Last Name</div>
+                  <div className="text-sm font-medium" data-testid="text-user-lastname">{user.lastName || "—"}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground mb-0.5">Email</div>
+                  <div className="text-sm font-medium" data-testid="text-user-email">{user.email || "—"}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground mb-0.5">Created</div>
+                  <div className="text-sm font-medium" data-testid="text-user-created">{user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "—"}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground mb-0.5">Last Updated</div>
+                  <div className="text-sm font-medium" data-testid="text-user-updated">{user.updatedAt ? new Date(user.updatedAt).toLocaleDateString() : "—"}</div>
+                </div>
+              </div>
             </div>
 
             <div>
               <h3 className="text-sm font-semibold mb-3" data-testid="heading-team-member-link">Team Member Link</h3>
-              <Card className="card-elevated overflow-visible">
-                <CardContent className="pt-4 pb-4">
-                  {user.teamMember ? (
-                    <div className="flex items-center justify-between flex-wrap gap-3">
-                      <div>
-                        <div className="text-sm font-medium" data-testid="text-linked-tm-name">{user.teamMember.name}</div>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          This user is linked to a team member for record-level access and resource tracking.
-                        </p>
-                      </div>
+              <div className="border rounded-md p-4 bg-muted/30">
+                {user.teamMember ? (
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div>
+                      <div className="text-sm font-medium" data-testid="text-linked-tm-name">{user.teamMember.name}</div>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Linked for record-level access and resource tracking.
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => unlinkTeamMemberMutation.mutate()}
+                      disabled={unlinkTeamMemberMutation.isPending}
+                      data-testid="button-unlink-tm"
+                    >
+                      <Unlink className="w-3.5 h-3.5 mr-1" />
+                      {unlinkTeamMemberMutation.isPending ? "Unlinking..." : "Unlink"}
+                    </Button>
+                  </div>
+                ) : linkingTm ? (
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground">Select a team member to link to this user.</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Select value={selectedTeamMemberId} onValueChange={setSelectedTeamMemberId}>
+                        <SelectTrigger className="w-64" data-testid="select-link-tm">
+                          <SelectValue placeholder="Select team member..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableTeamMembers.map((tm) => (
+                            <SelectItem key={tm.id} value={tm.id} data-testid={`select-item-tm-${tm.id}`}>
+                              {tm.name}{tm.email ? ` (${tm.email})` : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <Button
                         size="sm"
-                        variant="outline"
-                        onClick={() => unlinkTeamMemberMutation.mutate()}
-                        disabled={unlinkTeamMemberMutation.isPending}
-                        data-testid="button-unlink-tm"
+                        onClick={() => {
+                          if (selectedTeamMemberId) linkTeamMemberMutation.mutate(selectedTeamMemberId);
+                        }}
+                        disabled={!selectedTeamMemberId || linkTeamMemberMutation.isPending}
+                        data-testid="button-confirm-link-tm"
                       >
-                        <Unlink className="w-3.5 h-3.5 mr-1" />
-                        {unlinkTeamMemberMutation.isPending ? "Unlinking..." : "Unlink"}
+                        {linkTeamMemberMutation.isPending ? "Linking..." : "Link"}
                       </Button>
-                    </div>
-                  ) : linkingTm ? (
-                    <div className="space-y-3">
-                      <p className="text-sm text-muted-foreground">Select a team member to link to this user.</p>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Select value={selectedTeamMemberId} onValueChange={setSelectedTeamMemberId}>
-                          <SelectTrigger className="w-64" data-testid="select-link-tm">
-                            <SelectValue placeholder="Select team member..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {availableTeamMembers.map((tm) => (
-                              <SelectItem key={tm.id} value={tm.id} data-testid={`select-item-tm-${tm.id}`}>
-                                {tm.name}{tm.email ? ` (${tm.email})` : ""}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Button
-                          size="sm"
-                          onClick={() => {
-                            if (selectedTeamMemberId) linkTeamMemberMutation.mutate(selectedTeamMemberId);
-                          }}
-                          disabled={!selectedTeamMemberId || linkTeamMemberMutation.isPending}
-                          data-testid="button-confirm-link-tm"
-                        >
-                          {linkTeamMemberMutation.isPending ? "Linking..." : "Link"}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => { setLinkingTm(false); setSelectedTeamMemberId(""); }}
-                          data-testid="button-cancel-link-tm"
-                        >
-                          Cancel
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between flex-wrap gap-3">
-                      <div>
-                        <div className="text-sm text-muted-foreground">Not linked</div>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          Link a team member to enable record-level access filtering and resource tracking.
-                        </p>
-                      </div>
                       <Button
                         size="sm"
-                        variant="outline"
-                        onClick={() => setLinkingTm(true)}
-                        data-testid="button-link-tm"
+                        variant="ghost"
+                        onClick={() => { setLinkingTm(false); setSelectedTeamMemberId(""); }}
+                        data-testid="button-cancel-link-tm"
                       >
-                        <Link2 className="w-3.5 h-3.5 mr-1" />
-                        Link Team Member
+                        Cancel
                       </Button>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div>
+                      <div className="text-sm text-muted-foreground">Not linked</div>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Link a team member to enable record-level access filtering and resource tracking.
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setLinkingTm(true)}
+                      data-testid="button-link-tm"
+                    >
+                      <Link2 className="w-3.5 h-3.5 mr-1" />
+                      Link Team Member
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </TabsContent>
@@ -832,75 +823,67 @@ function UserDetailView({
                   {user.orgRoles.map((role) => {
                     const roleDetail = roles.find(r => r.id === role.roleId);
                     return (
-                      <Card key={role.roleId} data-testid={`card-role-${role.roleId}`}>
-                        <CardContent className="pt-3 pb-3 flex items-center justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-sm font-medium" data-testid={`text-role-name-${role.roleId}`}>{role.roleName}</span>
-                              {roleDetail?.isSystem && (
-                                <Badge variant="outline" className="text-[10px]">System</Badge>
-                              )}
-                            </div>
-                            {roleDetail?.description && (
-                              <p className="text-xs text-muted-foreground mt-0.5">{roleDetail.description}</p>
+                      <div key={role.roleId} className="border rounded-md p-3 flex items-center justify-between gap-3" data-testid={`card-role-${role.roleId}`}>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-medium" data-testid={`text-role-name-${role.roleId}`}>{role.roleName}</span>
+                            {roleDetail?.isSystem && (
+                              <Badge variant="outline" className="text-[10px]">System</Badge>
                             )}
                           </div>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => removeRoleMutation.mutate(role.roleId)}
-                            disabled={removeRoleMutation.isPending}
-                            data-testid={`button-remove-role-${role.roleId}`}
-                          >
-                            <X className="w-3.5 h-3.5 mr-1" />
-                            Remove
-                          </Button>
-                        </CardContent>
-                      </Card>
+                          {roleDetail?.description && (
+                            <p className="text-xs text-muted-foreground mt-0.5">{roleDetail.description}</p>
+                          )}
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => removeRoleMutation.mutate(role.roleId)}
+                          disabled={removeRoleMutation.isPending}
+                          data-testid={`button-remove-role-${role.roleId}`}
+                        >
+                          <X className="w-3.5 h-3.5 mr-1" />
+                          Remove
+                        </Button>
+                      </div>
                     );
                   })}
                 </div>
               ) : (
-                <Card>
-                  <CardContent className="pt-6 pb-6 text-center">
-                    <p className="text-sm text-muted-foreground" data-testid="text-no-roles">No roles assigned to this user.</p>
-                  </CardContent>
-                </Card>
+                <div className="border rounded-md p-6 text-center">
+                  <p className="text-sm text-muted-foreground" data-testid="text-no-roles">No roles assigned to this user.</p>
+                </div>
               )}
             </div>
 
             {availableRoles.length > 0 && (
               <div>
                 <h3 className="text-sm font-semibold mb-3" data-testid="heading-add-role">Add Role</h3>
-                <Card className="card-elevated overflow-visible">
-                  <CardContent className="pt-4 pb-4">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Select value={selectedRoleId} onValueChange={setSelectedRoleId}>
-                        <SelectTrigger className="w-64" data-testid="select-assign-role">
-                          <SelectValue placeholder="Select a role to assign..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableRoles.map((r) => (
-                            <SelectItem key={r.id} value={r.id} data-testid={`select-item-role-${r.id}`}>
-                              {r.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          if (selectedRoleId) assignRoleMutation.mutate({ roleId: selectedRoleId });
-                        }}
-                        disabled={!selectedRoleId || assignRoleMutation.isPending}
-                        data-testid="button-assign-role"
-                      >
-                        <Plus className="w-3.5 h-3.5 mr-1" />
-                        {assignRoleMutation.isPending ? "Assigning..." : "Assign Role"}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Select value={selectedRoleId} onValueChange={setSelectedRoleId}>
+                    <SelectTrigger className="w-64" data-testid="select-assign-role">
+                      <SelectValue placeholder="Select a role to assign..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableRoles.map((r) => (
+                        <SelectItem key={r.id} value={r.id} data-testid={`select-item-role-${r.id}`}>
+                          {r.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      if (selectedRoleId) assignRoleMutation.mutate({ roleId: selectedRoleId });
+                    }}
+                    disabled={!selectedRoleId || assignRoleMutation.isPending}
+                    data-testid="button-assign-role"
+                  >
+                    <Plus className="w-3.5 h-3.5 mr-1" />
+                    {assignRoleMutation.isPending ? "Assigning..." : "Assign Role"}
+                  </Button>
+                </div>
               </div>
             )}
           </div>
