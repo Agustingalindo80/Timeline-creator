@@ -14,7 +14,7 @@ interface PermissionCacheEntry {
   expiry: number;
 }
 
-const CACHE_TTL_MS = 60_000;
+const CACHE_TTL_MS = 10_000;
 const orgPermCache = new Map<string, PermissionCacheEntry>();
 const objectPermCache = new Map<string, PermissionCacheEntry>();
 
@@ -87,15 +87,6 @@ export async function getUserObjectPermissions(
   }
 
   const roles = assignments.map(a => a.objectRole);
-  const permRows = await db
-    .select({ permissionKey: objectRolePermissions.permissionKey })
-    .from(objectRolePermissions)
-    .where(
-      roles.length === 1
-        ? eq(objectRolePermissions.objectRole, roles[0])
-        : eq(objectRolePermissions.objectRole, roles[0])
-    );
-
   const allPermRows = [];
   for (const role of roles) {
     const rows = await db
@@ -144,6 +135,16 @@ export async function hasAnyPermission(
 ): Promise<boolean> {
   const perms = await getEffectivePermissions(userId, tenantId, objectType, objectId);
   return permissionKeys.some(k => perms.has(k));
+}
+
+export async function hasGlobalRecordAccess(userId: string, tenantId: string): Promise<boolean> {
+  const perms = await getUserOrgPermissions(userId, tenantId);
+  return perms.has("record.global_access");
+}
+
+export async function getUserModulePermissions(userId: string, tenantId: string): Promise<string[]> {
+  const perms = await getUserOrgPermissions(userId, tenantId);
+  return Array.from(perms).filter(p => p.startsWith("module."));
 }
 
 export async function getLinkedTeamMemberId(userId: string): Promise<string | null> {

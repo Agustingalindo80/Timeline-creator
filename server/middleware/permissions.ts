@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import { hasAnyPermission, hasPermission } from "../rbac";
+import { hasAnyPermission, hasPermission, hasGlobalRecordAccess, getUserOrgPermissions } from "../rbac";
 import { db } from "../db";
 import { auditLog } from "@shared/schema";
 
@@ -72,6 +72,32 @@ export function requirePermission(...permissionKeys: string[]) {
     } catch (err) {
       console.error("Permission check error:", err);
       return res.status(500).json({ message: "Permission check failed" });
+    }
+  };
+}
+
+export function requireModuleAccess(moduleKey: string) {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    const userId = extractUserId(req);
+    if (!userId) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+
+    const tenantId = "default";
+    const permKey = `module.${moduleKey}`;
+
+    try {
+      const perms = await getUserOrgPermissions(userId, tenantId);
+      if (!perms.has(permKey)) {
+        return res.status(403).json({
+          message: `Access denied: ${moduleKey} module`,
+          required: permKey,
+        });
+      }
+      next();
+    } catch (err) {
+      console.error("Module access check error:", err);
+      return res.status(500).json({ message: "Module access check failed" });
     }
   };
 }

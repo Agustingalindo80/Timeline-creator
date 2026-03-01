@@ -194,6 +194,17 @@ export interface IStorage {
   createEvmSnapshot(data: InsertEvmSnapshot): Promise<EvmSnapshot>;
   deleteEvmSnapshot(id: string): Promise<void>;
   getLatestEvmSnapshot(timelineId: string): Promise<EvmSnapshot | undefined>;
+  getAssignedTimelineIds(teamMemberId: string): Promise<string[]>;
+  getTimelinesByIds(ids: string[], recordType?: string): Promise<TimelineWithMilestones[]>;
+  getClientsByTimelineIds(timelineIds: string[]): Promise<Client[]>;
+  getContactsByClientIds(clientIds: string[]): Promise<Contact[]>;
+  getTeamMembersByTimelineIds(timelineIds: string[]): Promise<TeamMember[]>;
+  createOrgRole(data: { tenantId: string; name: string; description?: string; isSystem?: boolean }): Promise<OrgRole>;
+  updateOrgRole(id: string, data: { name?: string; description?: string }): Promise<OrgRole | undefined>;
+  deleteOrgRole(id: string): Promise<void>;
+  getOrgRolePermissions(roleId: string, tenantId: string): Promise<string[]>;
+  setOrgRolePermissions(roleId: string, tenantId: string, permissionKeys: string[]): Promise<void>;
+  getOrgRoleUserCount(roleId: string, tenantId: string): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -995,6 +1006,118 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(evmSnapshots.weekEnding))
       .limit(1);
     return snapshot;
+  }
+
+  async getAssignedTimelineIds(teamMemberId: string): Promise<string[]> {
+    const ptmRows = await db.select({ timelineId: projectTeamMembers.timelineId })
+      .from(projectTeamMembers)
+      .where(eq(projectTeamMembers.teamMemberId, teamMemberId));
+    const allocRows = await db.select({ timelineId: allocations.timelineId })
+      .from(allocations)
+      .where(eq(allocations.teamMemberId, teamMemberId));
+    const idSet = new Set([
+      ...ptmRows.map(r => r.timelineId),
+      ...allocRows.map(r => r.timelineId),
+    ]);
+    return Array.from(idSet);
+  }
+
+  async getTimelinesByIds(ids: string[], recordType?: string): Promise<TimelineWithMilestones[]> {
+    if (ids.length === 0) return [];
+    const allTimelines = await db.select().from(timelines).where(inArray(timelines.id, ids));
+    const filtered = recordType ? allTimelines.filter(t => t.recordType === recordType) : allTimelines;
+    const allMilestones = ids.length > 0 ? await db.select().from(milestones).where(inArray(milestones.timelineId, ids)) : [];
+    return filtered.map(t => ({
+      ...t,
+      milestones: allMilestones.filter(m => m.timelineId === t.id),
+    }));
+  }
+
+  async getClientsByTimelineIds(timelineIds: string[]): Promise<Client[]> {
+    if (timelineIds.length === 0) return [];
+    const rows = await db.select({ clientId: timelines.clientId })
+      .from(timelines)
+      .where(inArray(timelines.id, timelineIds));
+    const clientIds = [...new Set(rows.map(r => r.clientId).filter(Boolean))] as string[];
+    if (clientIds.length === 0) return [];
+    return db.select().from(clients).where(inArray(clients.id, clientIds));
+  }
+
+  async getContactsByClientIds(clientIds: string[]): Promise<Contact[]> {
+    if (clientIds.length === 0) return [];
+    return db.select().from(contacts).where(inArray(contacts.clientId, clientIds));
+  }
+
+  async getTeamMembersByTimelineIds(timelineIds: string[]): Promise<TeamMember[]> {
+    if (timelineIds.length === 0) return [];
+    const ptmRows = await db.select({ teamMemberId: projectTeamMembers.teamMemberId })
+      .from(projectTeamMembers)
+      .where(inArray(projectTeamMembers.timelineId, timelineIds));
+    const allocRows = await db.select({ teamMemberId: allocations.teamMemberId })
+      .from(allocations)
+      .where(inArray(allocations.timelineId, timelineIds));
+    const tmIds = [...new Set([
+      ...ptmRows.map(r => r.teamMemberId),
+      ...allocRows.map(r => r.teamMemberId),
+    ])].filter(Boolean) as string[];
+    if (tmIds.length === 0) return [];
+    return db.select().from(teamMembers).where(inArray(teamMembers.id, tmIds));
+  }
+
+  async createOrgRole(data: { tenantId: string; name: string; description?: string; isSystem?: boolean }): Promise<OrgRole> {
+    const [role] = await db.insert(orgRoles).values({
+      tenantId: data.tenantId,
+      name: data.name,
+      description: data.description || null,
+      isSystem: data.isSystem ?? false,
+    }).returning();
+    return role;
+  }
+
+  async updateOrgRole(id: string, data: { name?: string; description?: string }): Promise<OrgRole | undefined> {
+    const [role] = await db.update(orgRoles)
+      .set(data)
+      .where(eq(orgRoles.id, id))
+      .returning();
+    return role;
+  }
+
+  async deleteOrgRole(id: string): Promise<void> {
+    await db.delete(orgRoles).where(eq(orgRoles.id, id));
+  }
+
+  async getOrgRolePermissions(roleId: string, tenantId: string): Promise<string[]> {
+    const rows = await db.select({ permissionKey: orgRolePermissions.permissionKey })
+      .from(orgRolePermissions)
+      .where(and(
+        eq(orgRolePermissions.roleId, roleId),
+        eq(orgRolePermissions.tenantId, tenantId),
+      ));
+    return rows.map(r => r.permissionKey);
+  }
+
+  async setOrgRolePermissions(roleId: string, tenantId: string, permissionKeys: string[]): Promise<void> {
+    await db.delete(orgRolePermissions).where(and(
+      eq(orgRolePermissions.roleId, roleId),
+      eq(orgRolePermissions.tenantId, tenantId),
+    ));
+    for (const permKey of permissionKeys) {
+      await db.insert(orgRolePermissions).values({
+        tenantId,
+        roleId,
+        permissionKey: permKey,
+      }).onConflictDoNothing();
+    }
+  }
+
+  async getOrgRoleUserCount(roleId: string, tenantId: string): Promise<number> {
+    const rows = await db.select({ userId: userOrgRoles.userId })
+      .from(userOrgRoles)
+      .where(and(
+        eq(userOrgRoles.roleId, roleId),
+        eq(userOrgRoles.tenantId, tenantId),
+      ));
+    return rows.length;
   }
 }
 

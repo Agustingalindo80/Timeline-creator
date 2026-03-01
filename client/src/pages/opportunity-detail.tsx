@@ -45,7 +45,6 @@ import { useAppTitle } from "@/hooks/use-app-title";
 import { EstimateTab } from "@/components/estimate-tab";
 import { GovernanceTab } from "@/components/governance-tab";
 import { RaidLog } from "@/components/raid-log";
-import { TeamAccessSection } from "@/components/team-access-section";
 import type { TimelineWithMilestones, Client, AppSettings, FlightpathStage, ProjectGate } from "@shared/schema";
 import { DEFAULT_REGIONS, DEFAULT_ENGAGEMENT_MODELS, DEFAULT_PROJECT_TYPES } from "@shared/schema";
 
@@ -497,9 +496,6 @@ export default function OpportunityDetail() {
             <TabsTrigger value="raid" className="gap-1.5 data-[state=active]:shadow-sm" data-testid="tab-raid">
               <AlertTriangle className="w-3.5 h-3.5" /> RAID Log
             </TabsTrigger>
-            <TabsTrigger value="team-access" className="gap-1.5 data-[state=active]:shadow-sm" data-testid="tab-team-access">
-              <Users className="w-3.5 h-3.5" /> Team & Access
-            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="estimate">
@@ -518,9 +514,6 @@ export default function OpportunityDetail() {
             <RaidLog timelineId={opp.id} />
           </TabsContent>
 
-          <TabsContent value="team-access">
-            <TeamAccessSection objectType="opportunity" objectId={opp.id} />
-          </TabsContent>
         </Tabs>
 
         <AlertDialog open={convertDialogOpen} onOpenChange={setConvertDialogOpen}>

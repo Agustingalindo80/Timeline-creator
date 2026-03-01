@@ -8,6 +8,7 @@ export const orgRoles = pgTable("org_roles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   tenantId: text("tenant_id").notNull().default("default"),
   name: text("name").notNull(),
+  description: text("description"),
   isSystem: boolean("is_system").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -87,16 +88,47 @@ export type ObjectRolePermission = typeof objectRolePermissions.$inferSelect;
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 export type AuditLog = typeof auditLog.$inferSelect;
 
-export const SYSTEM_ORG_ROLES = [
-  { name: "Org Owner", isSystem: true },
-  { name: "Org Admin", isSystem: true },
-  { name: "PMO Lead", isSystem: true },
-  { name: "Finance", isSystem: true },
-  { name: "Delivery Ops", isSystem: true },
-  { name: "Member", isSystem: true },
+export const MODULE_KEYS = [
+  "dashboard",
+  "coach",
+  "projects",
+  "opportunities",
+  "clients",
+  "contacts",
+  "allocations",
+  "timesheets",
+  "team_members",
+  "admin",
 ] as const;
+export type ModuleKey = typeof MODULE_KEYS[number];
+
+export const MODULE_LABELS: Record<ModuleKey, string> = {
+  dashboard: "Dashboard",
+  coach: "FlightPath Coach",
+  projects: "Projects",
+  opportunities: "Opportunities",
+  clients: "Clients",
+  contacts: "Contacts",
+  allocations: "Allocations",
+  timesheets: "Timesheets",
+  team_members: "Team Members",
+  admin: "Admin",
+};
 
 export const ALL_PERMISSIONS = [
+  { key: "module.dashboard", description: "Access the dashboard", category: "module" },
+  { key: "module.coach", description: "Access FlightPath Coach", category: "module" },
+  { key: "module.projects", description: "Access the Projects module", category: "module" },
+  { key: "module.opportunities", description: "Access the Opportunities module", category: "module" },
+  { key: "module.clients", description: "Access the Clients module", category: "module" },
+  { key: "module.contacts", description: "Access the Contacts module", category: "module" },
+  { key: "module.allocations", description: "Access the Allocations module", category: "module" },
+  { key: "module.timesheets", description: "Access the Timesheets module", category: "module" },
+  { key: "module.team_members", description: "Access the Team Members module", category: "module" },
+  { key: "module.admin", description: "Access the Admin / Settings area", category: "module" },
+
+  { key: "record.global_access", description: "See all records regardless of assignment (bypass record-level filtering)", category: "access" },
+
   { key: "users.manage", description: "Manage users and role assignments", category: "admin" },
   { key: "roles.manage", description: "Manage role definitions", category: "admin" },
   { key: "org.settings.manage", description: "Manage organization settings, branding, integrations", category: "admin" },
@@ -134,29 +166,96 @@ export const ALL_PERMISSIONS = [
   { key: "portfolio.view", description: "View all projects/opportunities across the portfolio", category: "reporting" },
 ] as const;
 
+export const PERMISSION_CATEGORIES = [
+  { key: "module", label: "Module Access" },
+  { key: "access", label: "Record Access" },
+  { key: "admin", label: "Administration" },
+  { key: "commercial", label: "Commercial" },
+  { key: "governance", label: "Governance" },
+  { key: "delivery", label: "Delivery" },
+  { key: "risk", label: "Risk" },
+  { key: "reporting", label: "Reporting" },
+] as const;
+
+export const SYSTEM_ORG_ROLES = [
+  { name: "Global Admin", description: "Full access to all modules, all records, and all permissions", isSystem: true },
+  { name: "Org Admin", description: "Full module access with global records — cannot override gates or approve pricing", isSystem: true },
+  { name: "PMO Lead", description: "Portfolio oversight with global record access across delivery modules", isSystem: true },
+  { name: "Finance", description: "Financial oversight with global access to projects, opportunities, and clients", isSystem: true },
+  { name: "Delivery Lead", description: "Delivery management with global record access across projects and teams", isSystem: true },
+  { name: "Project Manager", description: "Manages assigned projects — sees only projects they are allocated to", isSystem: true },
+  { name: "Contributor", description: "Team member on assigned projects — can view projects and submit timesheets", isSystem: true },
+  { name: "Timesheet Only", description: "Can only access timesheets for assigned projects", isSystem: true },
+  { name: "Member", description: "Baseline login role — dashboard access only", isSystem: true },
+] as const;
+
+const ALL_PERM_KEYS = ALL_PERMISSIONS.map(p => p.key);
+
 export const SYSTEM_ROLE_PERMISSIONS: Record<string, string[]> = {
-  "Org Owner": ALL_PERMISSIONS.map(p => p.key),
-  "Org Admin": ALL_PERMISSIONS.filter(p => p.key !== "gate.override" && p.key !== "pricing.approve").map(p => p.key),
+  "Global Admin": [...ALL_PERM_KEYS],
+
+  "Org Admin": ALL_PERM_KEYS.filter(k => k !== "gate.override" && k !== "pricing.approve"),
+
   "PMO Lead": [
+    "module.dashboard", "module.projects", "module.clients", "module.allocations",
+    "module.timesheets", "module.team_members", "module.admin", "module.coach",
+    "record.global_access",
     "opp.view", "estimate.view", "rates.view",
     "gate.review", "gate.approve", "artifacts.manage", "raci.manage",
-    "project.view",
+    "project.view", "project.create",
+    "timesheet.approve",
     "raid.view", "raid.edit", "health.view", "health.edit",
     "reports.view", "reports.export", "portfolio.view",
+    "users.manage", "roles.manage",
   ],
+
   "Finance": [
+    "module.dashboard", "module.projects", "module.opportunities", "module.clients", "module.admin",
+    "record.global_access",
     "opp.view", "estimate.view", "rates.view", "rates.edit", "pricing.approve",
     "project.view",
     "reports.view", "reports.export", "portfolio.view",
   ],
-  "Delivery Ops": [
-    "opp.view", "estimate.view",
-    "artifacts.manage", "raci.manage",
-    "project.view",
-    "raid.view", "health.view",
+
+  "Delivery Lead": [
+    "module.dashboard", "module.projects", "module.clients", "module.allocations",
+    "module.timesheets", "module.team_members", "module.coach",
+    "record.global_access",
+    "opp.view", "opp.edit", "estimate.view", "estimate.edit",
+    "gate.review", "gate.submit", "gate.approve", "artifacts.manage",
+    "project.view", "project.edit", "project.create",
+    "timesheet.approve",
+    "raid.view", "raid.edit", "health.view", "health.edit",
     "reports.view", "portfolio.view",
   ],
-  "Member": [],
+
+  "Project Manager": [
+    "module.dashboard", "module.projects", "module.timesheets", "module.allocations", "module.coach",
+    "gate.submit", "gate.review", "artifacts.manage",
+    "project.view", "project.edit",
+    "timesheet.submit", "timesheet.approve",
+    "raid.view", "raid.edit", "health.view", "health.edit",
+    "estimate.view",
+    "reports.view",
+  ],
+
+  "Contributor": [
+    "module.dashboard", "module.projects", "module.timesheets",
+    "project.view",
+    "timesheet.submit",
+    "raid.view",
+    "health.view",
+    "estimate.view",
+  ],
+
+  "Timesheet Only": [
+    "module.dashboard", "module.timesheets",
+    "timesheet.submit",
+  ],
+
+  "Member": [
+    "module.dashboard",
+  ],
 };
 
 export const OBJECT_ROLE_PERMISSIONS: Record<string, string[]> = {

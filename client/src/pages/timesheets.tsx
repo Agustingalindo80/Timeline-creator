@@ -85,6 +85,18 @@ export default function TimesheetsPage() {
   const [newRowTaskId, setNewRowTaskId] = useState<string>("");
   const [pendingRows, setPendingRows] = useState<TimesheetRow[]>([]);
 
+  const { data: myModules } = useQuery<{ modules: string[]; isGlobalAccess: boolean; teamMemberId: string | null }>({
+    queryKey: ["/api/rbac/my-modules"],
+  });
+
+  const isGlobalAccess = myModules?.isGlobalAccess ?? true;
+
+  useEffect(() => {
+    if (myModules && !myModules.isGlobalAccess && myModules.teamMemberId && !selectedTeamMemberId) {
+      setSelectedTeamMemberId(myModules.teamMemberId);
+    }
+  }, [myModules, selectedTeamMemberId]);
+
   const hasPortfolioView = hasPermission("portfolio.view");
 
   const weekDays = useMemo(() => getWeekDays(weekEnding), [weekEnding]);
@@ -112,9 +124,9 @@ export default function TimesheetsPage() {
 
   const allocatedProjects = useMemo(() => {
     const byAllocation = projects.filter(p => allocatedProjectIds.has(p.id));
-    if (hasPortfolioView) return byAllocation;
+    if (isGlobalAccess || hasPortfolioView) return byAllocation;
     return byAllocation.filter(p => userAssignedProjectIds.has(p.id));
-  }, [projects, allocatedProjectIds, hasPortfolioView, userAssignedProjectIds]);
+  }, [projects, allocatedProjectIds, isGlobalAccess, hasPortfolioView, userAssignedProjectIds]);
 
   const { data: entriesRaw = [], isLoading: entriesLoading } = useQuery<TimesheetEntry[]>({
     queryKey: ["/api/timesheets", { teamMemberId: selectedTeamMemberId, weekEnding }],
@@ -373,21 +385,30 @@ export default function TimesheetsPage() {
         </div>
 
         <div className="flex items-center gap-4 flex-wrap">
-          <div className="w-64">
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Team Member</label>
-            <Select value={selectedTeamMemberId} onValueChange={(v) => { setSelectedTeamMemberId(v); setEditingCells({}); setPendingRows([]); }} data-testid="select-team-member">
-              <SelectTrigger data-testid="select-team-member-trigger">
-                <SelectValue placeholder="Select team member" />
-              </SelectTrigger>
-              <SelectContent>
-                {allTeamMembers.map((tm) => (
-                  <SelectItem key={tm.id} value={tm.id} data-testid={`select-tm-${tm.id}`}>
-                    {tm.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {isGlobalAccess ? (
+            <div className="w-64" data-testid="container-team-member-selector">
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Team Member</label>
+              <Select value={selectedTeamMemberId} onValueChange={(v) => { setSelectedTeamMemberId(v); setEditingCells({}); setPendingRows([]); }} data-testid="select-team-member">
+                <SelectTrigger data-testid="select-team-member-trigger">
+                  <SelectValue placeholder="Select team member" />
+                </SelectTrigger>
+                <SelectContent>
+                  {allTeamMembers.map((tm) => (
+                    <SelectItem key={tm.id} value={tm.id} data-testid={`select-tm-${tm.id}`}>
+                      {tm.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
+            <div className="w-64" data-testid="container-team-member-readonly">
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Team Member</label>
+              <div className="flex items-center h-9 px-3 rounded-md border bg-muted text-sm" data-testid="text-team-member-name">
+                {allTeamMembers.find(tm => tm.id === selectedTeamMemberId)?.name || "Loading..."}
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1 block">&nbsp;</label>

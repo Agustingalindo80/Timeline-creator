@@ -11,8 +11,8 @@ import { listFilesInFolder, getFileMetadata, getFileContent, extractFolderIdFrom
 import { storage } from "./storage";
 import { seedFlightpathData } from "./seed-flightpath";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
-import { requirePermission } from "./middleware/permissions";
-import { getEffectivePermissions, invalidatePermissionCache } from "./rbac";
+import { requirePermission, requireModuleAccess } from "./middleware/permissions";
+import { getEffectivePermissions, invalidatePermissionCache, hasGlobalRecordAccess, getLinkedTeamMemberId, getUserModulePermissions } from "./rbac";
 import { ALL_PERMISSIONS } from "@shared/schema";
 import { calculateEVMForWeek } from "./evm-engine";
 
@@ -182,6 +182,42 @@ export async function registerRoutes(
     return isAuthenticated(req, res, next);
   });
 
+  function extractUserId(req: any): string | null {
+    const user = req.user;
+    if (!user) return null;
+    return user?.claims?.sub || user?.id || null;
+  }
+
+  async function getRecordAccessContext(req: any): Promise<{
+    userId: string;
+    isGlobal: boolean;
+    teamMemberId: string | null;
+    assignedTimelineIds: string[];
+  } | null> {
+    const userId = extractUserId(req);
+    if (!userId) return null;
+    const isGlobal = await hasGlobalRecordAccess(userId, "default");
+    if (isGlobal) {
+      return { userId, isGlobal: true, teamMemberId: null, assignedTimelineIds: [] };
+    }
+    const teamMemberId = await getLinkedTeamMemberId(userId);
+    const assignedTimelineIds = teamMemberId
+      ? await storage.getAssignedTimelineIds(teamMemberId)
+      : [];
+    return { userId, isGlobal: false, teamMemberId, assignedTimelineIds };
+  }
+
+  async function checkTimelineAccess(req: any, res: any, timelineId: string): Promise<boolean> {
+    const ctx = await getRecordAccessContext(req);
+    if (!ctx) { res.status(401).json({ message: "Authentication required" }); return false; }
+    if (ctx.isGlobal) return true;
+    if (!ctx.assignedTimelineIds.includes(timelineId)) {
+      res.status(403).json({ message: "You don't have access to this project" });
+      return false;
+    }
+    return true;
+  }
+
   // --- BRANDING ROUTES ---
 
   app.get("/api/branding", async (_req, res) => {
@@ -193,7 +229,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/branding", requirePermission("org.settings.manage"), async (req, res) => {
+  app.patch("/api/branding", requireModuleAccess("admin"), requirePermission("org.settings.manage"), async (req, res) => {
     try {
       const fields = [
         "appName", "logoUrl", "faviconUrl", "primaryColor",
@@ -210,7 +246,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/branding/logo", requirePermission("org.settings.manage"), upload.single("file"), async (req, res) => {
+  app.post("/api/branding/logo", requireModuleAccess("admin"), requirePermission("org.settings.manage"), upload.single("file"), async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ message: "No file uploaded" });
       const ext = path.extname(req.file.originalname) || ".png";
@@ -224,7 +260,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/branding/favicon", requirePermission("org.settings.manage"), upload.single("file"), async (req, res) => {
+  app.post("/api/branding/favicon", requireModuleAccess("admin"), requirePermission("org.settings.manage"), upload.single("file"), async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ message: "No file uploaded" });
       const ext = path.extname(req.file.originalname) || ".png";
@@ -240,9 +276,15 @@ export async function registerRoutes(
 
   // --- CLIENT ROUTES ---
 
-  app.get("/api/clients", async (_req, res) => {
+  app.get("/api/clients", async (req, res) => {
     try {
-      const clients = await storage.getClients();
+      const ctx = await getRecordAccessContext(req);
+      if (!ctx) return res.status(401).json({ message: "Authentication required" });
+      if (ctx.isGlobal) {
+        const clients = await storage.getClients();
+        return res.json(clients);
+      }
+      const clients = await storage.getClientsByTimelineIds(ctx.assignedTimelineIds);
       res.json(clients);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -251,6 +293,14 @@ export async function registerRoutes(
 
   app.get("/api/clients/:id", async (req, res) => {
     try {
+      const ctx = await getRecordAccessContext(req);
+      if (!ctx) return res.status(401).json({ message: "Authentication required" });
+      if (!ctx.isGlobal) {
+        const accessibleClients = await storage.getClientsByTimelineIds(ctx.assignedTimelineIds);
+        if (!accessibleClients.some(c => c.id === req.params.id)) {
+          return res.status(403).json({ message: "You don't have access to this client" });
+        }
+      }
       const client = await storage.getClientWithProjects(req.params.id);
       if (!client) return res.status(404).json({ message: "Client not found" });
       res.json(client);
@@ -259,7 +309,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/clients", async (req, res) => {
+  app.post("/api/clients", requireModuleAccess("clients"), async (req, res) => {
     try {
       const { name, industry, contactPhone, website, address, notes, status } = req.body;
       if (!name || !name.trim()) {
@@ -280,7 +330,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/clients/:id", async (req, res) => {
+  app.patch("/api/clients/:id", requireModuleAccess("clients"), async (req, res) => {
     try {
       const { name, industry, contactPhone, website, address, notes, status } = req.body;
       const updates: any = {};
@@ -300,7 +350,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/clients/:id", async (req, res) => {
+  app.delete("/api/clients/:id", requireModuleAccess("clients"), async (req, res) => {
     try {
       await storage.deleteClient(req.params.id);
       res.json({ success: true });
@@ -311,13 +361,33 @@ export async function registerRoutes(
 
   // --- CONTACT ROUTES ---
 
-  app.get("/api/contacts", async (_req, res) => {
-    const allContacts = await storage.getAllContacts();
-    res.json(allContacts);
+  app.get("/api/contacts", async (req, res) => {
+    try {
+      const ctx = await getRecordAccessContext(req);
+      if (!ctx) return res.status(401).json({ message: "Authentication required" });
+      if (ctx.isGlobal) {
+        const allContacts = await storage.getAllContacts();
+        return res.json(allContacts);
+      }
+      const accessibleClients = await storage.getClientsByTimelineIds(ctx.assignedTimelineIds);
+      const clientIds = accessibleClients.map(c => c.id);
+      const contacts = await storage.getContactsByClientIds(clientIds);
+      res.json(contacts);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
   });
 
   app.get("/api/clients/:clientId/contacts", async (req, res) => {
     try {
+      const ctx = await getRecordAccessContext(req);
+      if (!ctx) return res.status(401).json({ message: "Authentication required" });
+      if (!ctx.isGlobal) {
+        const accessibleClients = await storage.getClientsByTimelineIds(ctx.assignedTimelineIds);
+        if (!accessibleClients.some(c => c.id === req.params.clientId)) {
+          return res.status(403).json({ message: "You don't have access to this client's contacts" });
+        }
+      }
       const contacts = await storage.getContacts(req.params.clientId);
       res.json(contacts);
     } catch (err: any) {
@@ -325,7 +395,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/clients/:clientId/contacts", async (req, res) => {
+  app.post("/api/clients/:clientId/contacts", requireModuleAccess("contacts"), async (req, res) => {
     try {
       const { firstName, lastName, email, phone, role, isLegalRepresentative } = req.body;
       if (!firstName?.trim() || !lastName?.trim()) {
@@ -346,7 +416,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/contacts/:id", async (req, res) => {
+  app.patch("/api/contacts/:id", requireModuleAccess("contacts"), async (req, res) => {
     try {
       const { firstName, lastName, email, phone, role, isLegalRepresentative } = req.body;
       const updates: any = {};
@@ -365,7 +435,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/contacts/:id", async (req, res) => {
+  app.delete("/api/contacts/:id", requireModuleAccess("contacts"), async (req, res) => {
     try {
       await storage.deleteContact(req.params.id);
       res.json({ success: true });
@@ -376,19 +446,28 @@ export async function registerRoutes(
 
   // --- TIMELINE ROUTES ---
 
-  // GET all timelines
-  app.get("/api/timelines", async (_req, res) => {
+  app.get("/api/timelines", async (req, res) => {
     try {
-      const timelines = await storage.getTimelines();
+      const ctx = await getRecordAccessContext(req);
+      if (!ctx) return res.status(401).json({ message: "Authentication required" });
+      if (ctx.isGlobal) {
+        const timelines = await storage.getTimelines();
+        return res.json(timelines);
+      }
+      const timelines = await storage.getTimelinesByIds(ctx.assignedTimelineIds, "project");
       res.json(timelines);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
     }
   });
 
-  // GET single timeline
   app.get("/api/timelines/:id", async (req, res) => {
     try {
+      const ctx = await getRecordAccessContext(req);
+      if (!ctx) return res.status(401).json({ message: "Authentication required" });
+      if (!ctx.isGlobal && !ctx.assignedTimelineIds.includes(req.params.id)) {
+        return res.status(403).json({ message: "You don't have access to this project" });
+      }
       const timeline = await storage.getTimeline(req.params.id);
       if (!timeline) return res.status(404).json({ message: "Timeline not found" });
       res.json(timeline);
@@ -513,9 +592,9 @@ export async function registerRoutes(
     }
   });
 
-  // ADD milestone to timeline
-  app.post("/api/timelines/:id/milestones", async (req, res) => {
+  app.post("/api/timelines/:id/milestones", requireModuleAccess("projects"), async (req, res) => {
     try {
+      if (!(await checkTimelineAccess(req, res, req.params.id))) return;
       const { title, description, date, actualDate, color, icon, sortOrder, isFinancialObligation, amount } = req.body;
       if (!title || !date) {
         return res.status(400).json({ message: "Title and date are required" });
@@ -588,6 +667,7 @@ export async function registerRoutes(
 
   app.get("/api/timelines/:id/tasks", async (req, res) => {
     try {
+      if (!(await checkTimelineAccess(req, res, req.params.id))) return;
       const taskList = await storage.getTasksByTimeline(req.params.id);
       res.json(taskList);
     } catch (error: any) {
@@ -596,7 +676,7 @@ export async function registerRoutes(
   });
 
   // ADD task to timeline
-  app.post("/api/timelines/:id/tasks", async (req, res) => {
+  app.post("/api/timelines/:id/tasks", requireModuleAccess("projects"), async (req, res) => {
     try {
       const { title, description, startDate, endDate, actualStartDate, actualEndDate, color, sortOrder, status, health, itemType, parentTaskId, estimatedHours, confidenceLevel, taskType, assignedRoleId, durationWeeks } = req.body;
       if (!title) {
@@ -735,6 +815,18 @@ export async function registerRoutes(
   app.get("/api/timesheets", async (req, res) => {
     try {
       const { timelineId, teamMemberId, weekEnding } = req.query;
+      const ctx = await getRecordAccessContext(req);
+      if (!ctx) return res.status(401).json({ message: "Authentication required" });
+
+      if (!ctx.isGlobal) {
+        const entries = await storage.getTimesheetEntries({
+          timelineId: timelineId as string | undefined,
+          teamMemberId: ctx.teamMemberId || undefined,
+          weekEnding: weekEnding as string | undefined,
+        });
+        return res.json(entries);
+      }
+
       const entries = await storage.getTimesheetEntries({
         timelineId: timelineId as string | undefined,
         teamMemberId: teamMemberId as string | undefined,
@@ -748,6 +840,7 @@ export async function registerRoutes(
 
   app.get("/api/timelines/:id/timesheets", async (req, res) => {
     try {
+      if (!(await checkTimelineAccess(req, res, req.params.id))) return;
       const { weekEnding, teamMemberId } = req.query;
       const entries = await storage.getTimesheetEntries({
         timelineId: req.params.id,
@@ -819,6 +912,7 @@ export async function registerRoutes(
 
   app.get("/api/timelines/:id/progress", async (req, res) => {
     try {
+      if (!(await checkTimelineAccess(req, res, req.params.id))) return;
       const { weekEnding, taskId } = req.query;
       const entries = await storage.getProgressEntries({
         timelineId: req.params.id,
@@ -831,8 +925,9 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/timelines/:id/progress", async (req, res) => {
+  app.post("/api/timelines/:id/progress", requireModuleAccess("projects"), async (req, res) => {
     try {
+      if (!(await checkTimelineAccess(req, res, req.params.id))) return;
       const { taskId, weekEnding, percentComplete, notes } = req.body;
       if (!taskId || !weekEnding || percentComplete === undefined) {
         return res.status(400).json({ message: "taskId, weekEnding, and percentComplete are required" });
@@ -907,6 +1002,7 @@ export async function registerRoutes(
   // GET risks for timeline
   app.get("/api/timelines/:id/risks", async (req, res) => {
     try {
+      if (!(await checkTimelineAccess(req, res, req.params.id))) return;
       const risks = await storage.getRisks(req.params.id);
       res.json(risks);
     } catch (err: any) {
@@ -979,9 +1075,15 @@ export async function registerRoutes(
 
   // --- TEAM MEMBER ROUTES ---
 
-  app.get("/api/team-members", async (_req, res) => {
+  app.get("/api/team-members", async (req, res) => {
     try {
-      const members = await storage.getTeamMembers();
+      const ctx = await getRecordAccessContext(req);
+      if (!ctx) return res.status(401).json({ message: "Authentication required" });
+      if (ctx.isGlobal) {
+        const members = await storage.getTeamMembers();
+        return res.json(members);
+      }
+      const members = await storage.getTeamMembersByTimelineIds(ctx.assignedTimelineIds);
       res.json(members);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -998,7 +1100,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/team-members", async (req, res) => {
+  app.post("/api/team-members", requireModuleAccess("team_members"), async (req, res) => {
     try {
       const { name, email, role, department, monthlyCost, hourlyCost } = req.body;
       if (!name?.trim()) return res.status(400).json({ message: "Name is required" });
@@ -1016,7 +1118,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/team-members/:id", async (req, res) => {
+  app.patch("/api/team-members/:id", requireModuleAccess("team_members"), async (req, res) => {
     try {
       const { name, email, role, department, monthlyCost, hourlyCost } = req.body;
       const updates: any = {};
@@ -1034,7 +1136,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/team-members/:id", async (req, res) => {
+  app.delete("/api/team-members/:id", requireModuleAccess("team_members"), async (req, res) => {
     try {
       await storage.deleteTeamMember(req.params.id);
       res.json({ success: true });
@@ -1101,6 +1203,7 @@ export async function registerRoutes(
 
   app.get("/api/timelines/:id/team", async (req, res) => {
     try {
+      if (!(await checkTimelineAccess(req, res, req.params.id))) return;
       const members = await storage.getProjectTeamMembers(req.params.id);
       res.json(members);
     } catch (err: any) {
@@ -1108,8 +1211,9 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/timelines/:id/team", async (req, res) => {
+  app.post("/api/timelines/:id/team", requireModuleAccess("projects"), async (req, res) => {
     try {
+      if (!(await checkTimelineAccess(req, res, req.params.id))) return;
       const { teamMemberId, rateCardId, monthlyCost, hourlyCost, allocation, startDate, endDate } = req.body;
       const parentTimeline = await storage.getTimeline(req.params.id);
       if (parentTimeline && parentTimeline.recordType === "project" && !teamMemberId) {
@@ -1134,8 +1238,9 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/timelines/:id/team/sync-from-estimate", async (req, res) => {
+  app.post("/api/timelines/:id/team/sync-from-estimate", requireModuleAccess("projects"), async (req, res) => {
     try {
+      if (!(await checkTimelineAccess(req, res, req.params.id))) return;
       const timelineId = req.params.id;
       const timeline = await storage.getTimeline(timelineId);
       if (!timeline) return res.status(404).json({ message: "Timeline not found" });
@@ -1268,6 +1373,7 @@ export async function registerRoutes(
   // GET allocations for a timeline/project (with team member details)
   app.get("/api/timelines/:id/allocations", async (req, res) => {
     try {
+      if (!(await checkTimelineAccess(req, res, req.params.id))) return;
       const allocs = await storage.getAllocationsByTimeline(req.params.id);
       res.json(allocs);
     } catch (err: any) {
@@ -1275,11 +1381,19 @@ export async function registerRoutes(
     }
   });
 
-  // GET all allocations (with team member and project details)
   app.get("/api/allocations", async (req, res) => {
     try {
+      const ctx = await getRecordAccessContext(req);
+      if (!ctx) return res.status(401).json({ message: "Authentication required" });
       const allocs = await storage.getAllAllAllocations();
-      res.json(allocs);
+      if (ctx.isGlobal) {
+        return res.json(allocs);
+      }
+      const filtered = allocs.filter(a =>
+        (ctx.teamMemberId && a.teamMemberId === ctx.teamMemberId) ||
+        ctx.assignedTimelineIds.includes(a.timelineId)
+      );
+      res.json(filtered);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
     }
@@ -1369,7 +1483,7 @@ export async function registerRoutes(
   });
 
   // UPDATE app settings
-  app.patch("/api/settings", requirePermission("org.settings.manage"), async (req, res) => {
+  app.patch("/api/settings", requireModuleAccess("admin"), requirePermission("org.settings.manage"), async (req, res) => {
     try {
       const updates: any = {};
       const fields = [
@@ -1690,6 +1804,7 @@ export async function registerRoutes(
   // ── Project Checkpoints ──
   app.get("/api/timelines/:id/checkpoints", async (req, res) => {
     try {
+      if (!(await checkTimelineAccess(req, res, req.params.id))) return;
       const stageId = req.query.stageId as string | undefined;
       const checkpoints = stageId
         ? await storage.getProjectCheckpointsByStage(req.params.id, stageId)
@@ -1698,8 +1813,9 @@ export async function registerRoutes(
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
-  app.post("/api/timelines/:id/checkpoints", async (req, res) => {
+  app.post("/api/timelines/:id/checkpoints", requireModuleAccess("projects"), async (req, res) => {
     try {
+      if (!(await checkTimelineAccess(req, res, req.params.id))) return;
       const checkpoint = await storage.createProjectCheckpoint({ ...req.body, timelineId: req.params.id });
       res.status(201).json(checkpoint);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
@@ -1723,13 +1839,15 @@ export async function registerRoutes(
   // ── Project Gates ──
   app.get("/api/timelines/:id/gates", async (req, res) => {
     try {
+      if (!(await checkTimelineAccess(req, res, req.params.id))) return;
       const gates = await storage.getProjectGates(req.params.id);
       res.json(gates);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
-  app.post("/api/timelines/:id/gates", async (req, res) => {
+  app.post("/api/timelines/:id/gates", requireModuleAccess("projects"), async (req, res) => {
     try {
+      if (!(await checkTimelineAccess(req, res, req.params.id))) return;
       const gate = await storage.createProjectGate({ ...req.body, timelineId: req.params.id });
       res.status(201).json(gate);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
@@ -1744,8 +1862,9 @@ export async function registerRoutes(
   });
 
   // ── Stage initialization: auto-create checkpoints from deliverables ──
-  app.post("/api/timelines/:id/initialize-stage", async (req, res) => {
+  app.post("/api/timelines/:id/initialize-stage", requireModuleAccess("projects"), async (req, res) => {
     try {
+      if (!(await checkTimelineAccess(req, res, req.params.id))) return;
       const { stageId } = req.body;
       if (!stageId) return res.status(400).json({ message: "stageId is required" });
 
@@ -2012,6 +2131,7 @@ Respond ONLY with valid JSON in this exact format:
 
   app.get("/api/timelines/:id/artifacts", async (req, res) => {
     try {
+      if (!(await checkTimelineAccess(req, res, req.params.id))) return;
       const timeline = await storage.getTimeline(req.params.id);
       if (!timeline) return res.status(404).json({ message: "Timeline not found" });
 
@@ -2028,8 +2148,9 @@ Respond ONLY with valid JSON in this exact format:
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
-  app.post("/api/timelines/:id/link-artifact", async (req, res) => {
+  app.post("/api/timelines/:id/link-artifact", requireModuleAccess("projects"), async (req, res) => {
     try {
+      if (!(await checkTimelineAccess(req, res, req.params.id))) return;
       const { checkpointId, fileId, fileName, fileUrl } = req.body;
       if (!checkpointId || !fileName) {
         return res.status(400).json({ message: "checkpointId and fileName are required" });
@@ -2049,8 +2170,9 @@ Respond ONLY with valid JSON in this exact format:
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
-  app.delete("/api/timelines/:id/unlink-artifact", async (req, res) => {
+  app.delete("/api/timelines/:id/unlink-artifact", requireModuleAccess("projects"), async (req, res) => {
     try {
+      if (!(await checkTimelineAccess(req, res, req.params.id))) return;
       const { checkpointId } = req.body;
       if (!checkpointId) return res.status(400).json({ message: "checkpointId is required" });
 
@@ -2068,8 +2190,9 @@ Respond ONLY with valid JSON in this exact format:
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
-  app.post("/api/timelines/:id/verify-artifacts", async (req, res) => {
+  app.post("/api/timelines/:id/verify-artifacts", requireModuleAccess("projects"), async (req, res) => {
     try {
+      if (!(await checkTimelineAccess(req, res, req.params.id))) return;
       const { stageId } = req.body;
       if (!stageId) return res.status(400).json({ message: "stageId is required" });
 
@@ -2310,7 +2433,13 @@ Respond ONLY with valid JSON:
 
   app.get("/api/opportunities", async (req, res) => {
     try {
-      const opportunities = await storage.getTimelines("opportunity");
+      const ctx = await getRecordAccessContext(req);
+      if (!ctx) return res.status(401).json({ message: "Authentication required" });
+      if (ctx.isGlobal) {
+        const opportunities = await storage.getTimelines("opportunity");
+        return res.json(opportunities);
+      }
+      const opportunities = await storage.getTimelinesByIds(ctx.assignedTimelineIds, "opportunity");
       res.json(opportunities);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
@@ -2358,6 +2487,11 @@ Respond ONLY with valid JSON:
 
   app.get("/api/opportunities/:id", async (req, res) => {
     try {
+      const ctx = await getRecordAccessContext(req);
+      if (!ctx) return res.status(401).json({ message: "Authentication required" });
+      if (!ctx.isGlobal && !ctx.assignedTimelineIds.includes(req.params.id)) {
+        return res.status(403).json({ message: "You don't have access to this opportunity" });
+      }
       const opp = await storage.getTimeline(req.params.id);
       if (!opp) return res.status(404).json({ message: "Opportunity not found" });
       if (opp.recordType !== "opportunity") return res.status(404).json({ message: "Not an opportunity" });
@@ -2619,14 +2753,14 @@ Respond ONLY with valid JSON:
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
-  app.get("/api/rbac/users", requirePermission("users.manage"), async (_req, res) => {
+  app.get("/api/rbac/users", requireModuleAccess("admin"), requirePermission("users.manage"), async (_req, res) => {
     try {
       const usersList = await storage.getUsersByTenant("default");
       res.json(usersList);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
-  app.post("/api/rbac/users/:userId/roles", requirePermission("roles.manage"), async (req, res) => {
+  app.post("/api/rbac/users/:userId/roles", requireModuleAccess("admin"), requirePermission("roles.manage"), async (req, res) => {
     try {
       const { roleId } = req.body;
       if (!roleId) return res.status(400).json({ message: "roleId is required" });
@@ -2636,7 +2770,7 @@ Respond ONLY with valid JSON:
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
-  app.delete("/api/rbac/users/:userId/roles/:roleId", requirePermission("roles.manage"), async (req, res) => {
+  app.delete("/api/rbac/users/:userId/roles/:roleId", requireModuleAccess("admin"), requirePermission("roles.manage"), async (req, res) => {
     try {
       await storage.removeUserOrgRole(req.params.userId as string, req.params.roleId as string, "default");
       invalidatePermissionCache(req.params.userId as string);
@@ -2691,6 +2825,82 @@ Respond ONLY with valid JSON:
       if (!userId) return res.status(401).json({ message: "Authentication required" });
       const assignments = await storage.getObjectAssignmentsByUser(userId, "default");
       res.json(assignments);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.get("/api/rbac/my-modules", async (req, res) => {
+    try {
+      const user = (req as any).user;
+      const userId = user?.claims?.sub || user?.id;
+      if (!userId) return res.status(401).json({ message: "Authentication required" });
+      const modules = await getUserModulePermissions(userId, "default");
+      const isGlobal = await hasGlobalRecordAccess(userId, "default");
+      const teamMemberId = await getLinkedTeamMemberId(userId);
+      res.json({ modules, isGlobalAccess: isGlobal, teamMemberId });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.post("/api/rbac/roles", requireModuleAccess("admin"), requirePermission("roles.manage"), async (req, res) => {
+    try {
+      const { name, description, permissions } = req.body;
+      if (!name || !name.trim()) return res.status(400).json({ message: "Name is required" });
+      const role = await storage.createOrgRole({
+        tenantId: "default",
+        name: name.trim(),
+        description: description || null,
+        isSystem: false,
+      });
+      if (permissions && Array.isArray(permissions)) {
+        await storage.setOrgRolePermissions(role.id, "default", permissions);
+      }
+      invalidatePermissionCache();
+      res.json(role);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.patch("/api/rbac/roles/:id", requireModuleAccess("admin"), requirePermission("roles.manage"), async (req, res) => {
+    try {
+      const { name, description, permissions } = req.body;
+      const existingRoles = await storage.getOrgRoles("default");
+      const role = existingRoles.find(r => r.id === req.params.id);
+      if (!role) return res.status(404).json({ message: "Role not found" });
+      if (role.isSystem && name && name !== role.name) {
+        return res.status(400).json({ message: "Cannot rename system roles" });
+      }
+      const updateData: any = {};
+      if (name && !role.isSystem) updateData.name = name.trim();
+      if (description !== undefined) updateData.description = description;
+      if (Object.keys(updateData).length > 0) {
+        await storage.updateOrgRole(req.params.id, updateData);
+      }
+      if (permissions && Array.isArray(permissions)) {
+        await storage.setOrgRolePermissions(req.params.id, "default", permissions);
+      }
+      invalidatePermissionCache();
+      const updated = await storage.getOrgRoles("default");
+      const result = updated.find(r => r.id === req.params.id);
+      res.json(result);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.delete("/api/rbac/roles/:id", requireModuleAccess("admin"), requirePermission("roles.manage"), async (req, res) => {
+    try {
+      const existingRoles = await storage.getOrgRoles("default");
+      const role = existingRoles.find(r => r.id === req.params.id);
+      if (!role) return res.status(404).json({ message: "Role not found" });
+      if (role.isSystem) return res.status(400).json({ message: "Cannot delete system roles" });
+      const userCount = await storage.getOrgRoleUserCount(req.params.id, "default");
+      if (userCount > 0) return res.status(400).json({ message: `Cannot delete role with ${userCount} assigned user(s). Remove assignments first.` });
+      await storage.deleteOrgRole(req.params.id);
+      invalidatePermissionCache();
+      res.json({ success: true });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.get("/api/rbac/roles/:id/permissions", async (req, res) => {
+    try {
+      const permissions = await storage.getOrgRolePermissions(req.params.id, "default");
+      res.json({ permissions });
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
@@ -2765,6 +2975,7 @@ Respond ONLY with valid JSON:
 
   app.get("/api/timelines/:id/evm-snapshots", async (req, res) => {
     try {
+      if (!(await checkTimelineAccess(req, res, req.params.id))) return;
       const snapshots = await storage.getEvmSnapshots(req.params.id);
       res.json(snapshots);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
@@ -2802,7 +3013,7 @@ Respond ONLY with valid JSON:
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
-  app.get("/api/audit-log", requirePermission("org.settings.manage"), async (req, res) => {
+  app.get("/api/audit-log", requireModuleAccess("admin"), requirePermission("org.settings.manage"), async (req, res) => {
     try {
       const limit = parseInt(req.query.limit as string) || 100;
       const offset = parseInt(req.query.offset as string) || 0;
