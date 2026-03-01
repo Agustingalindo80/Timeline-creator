@@ -920,6 +920,7 @@ function EVMTab({ timelineId, tasks, approvedBudget }: { timelineId: string; tas
                   }}
                 />
                 <YAxis
+                  width={80}
                   tickFormatter={(val: number) => `$${val.toLocaleString()}`}
                 />
                 <RechartsTooltip
@@ -952,17 +953,25 @@ function EVMTab({ timelineId, tasks, approvedBudget }: { timelineId: string; tas
       )}
 
       {(() => {
-        const trendData = evmSnapshots.map(snap => ({
-          week: snap.weekEnding,
-          spi: parseFloat(snap.spiValue || "0"),
-          cpi: parseFloat(snap.cpiValue || "0"),
-        }));
-        const hasCurrentSnap = evmSnapshots.some(s => s.weekEnding === currentWeekEnding);
-        if (!hasCurrentSnap) {
-          trendData.push({ week: currentWeekEnding, spi, cpi });
-        }
-        trendData.sort((a, b) => a.week.localeCompare(b.week));
-        if (trendData.length < 2) return null;
+        const snapshotMap = new Map<string, { spi: number; cpi: number }>();
+        evmSnapshots.forEach(snap => {
+          snapshotMap.set(snap.weekEnding, {
+            spi: parseFloat(snap.spiValue || "0"),
+            cpi: parseFloat(snap.cpiValue || "0"),
+          });
+        });
+        const trendData: { week: string; spi: number; cpi: number }[] = [];
+        weeklyData.forEach(row => {
+          const frozen = snapshotMap.get(row.week);
+          if (frozen) {
+            trendData.push({ week: row.week, spi: frozen.spi, cpi: frozen.cpi });
+          } else if (row.pv > 0 || row.ac > 0) {
+            const weekSpi = row.pv > 0 ? row.ev / row.pv : 0;
+            const weekCpi = row.ac > 0 ? row.ev / row.ac : 0;
+            trendData.push({ week: row.week, spi: weekSpi, cpi: weekCpi });
+          }
+        });
+        if (trendData.length < 1) return null;
         return (
           <Card data-testid="chart-evm-performance">
             <CardContent className="pt-4 pb-4">
