@@ -14,6 +14,7 @@ import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integra
 import { requirePermission } from "./middleware/permissions";
 import { getEffectivePermissions, invalidatePermissionCache } from "./rbac";
 import { ALL_PERMISSIONS } from "@shared/schema";
+import { calculateEVMForWeek } from "./evm-engine";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
@@ -1804,6 +1805,57 @@ export async function registerRoutes(
       }
 
       const updated = await storage.updateTimeline(req.params.id, { flightpathStageId: nextStageId });
+
+      try {
+        const now = new Date();
+        const day = now.getDay();
+        const diff = day === 0 ? 0 : 7 - day;
+        const weekEndDate = new Date(now);
+        weekEndDate.setDate(weekEndDate.getDate() + diff);
+        const weekEnding = weekEndDate.toISOString().slice(0, 10);
+
+        const currentStage = sortedStages.find(s => s.id === timeline.flightpathStageId);
+        const stageName = currentStage ? `Stage ${currentStage.stageNumber}` : "Stage";
+
+        const evmResult = await calculateEVMForWeek(req.params.id, weekEnding);
+        await storage.createEvmSnapshot({
+          tenantId: "default",
+          timelineId: req.params.id,
+          weekEnding,
+          mode: "gate_freeze",
+          bac: String(evmResult.bac),
+          plannedValue: String(evmResult.plannedValue),
+          actualCost: String(evmResult.actualCost),
+          earnedValue: String(evmResult.earnedValue),
+          scheduleVariance: String(evmResult.scheduleVariance),
+          costVariance: String(evmResult.costVariance),
+          spiValue: String(evmResult.spiValue),
+          cpiValue: String(evmResult.cpiValue),
+          eacValue: String(evmResult.eacValue),
+          etcValue: String(evmResult.etcValue),
+          vacValue: String(evmResult.vacValue),
+          weeklyPv: String(evmResult.weeklyPv),
+          weeklyAc: String(evmResult.weeklyAc),
+          weeklyEv: String(evmResult.weeklyEv),
+          workstreamBreakdown: evmResult.workstreamBreakdown,
+          inputsHash: evmResult.inputsHash,
+          notes: `Auto-generated on ${stageName} gate approval`,
+          generatedBy: (req as any).user?.id || null,
+          generatedAt: new Date().toISOString(),
+        });
+
+        await storage.createAuditEntry({
+          tenantId: "default",
+          actorUserId: (req as any).user?.id || "system",
+          action: "evm.snapshot_generated",
+          objectType: "project",
+          objectId: req.params.id,
+          metadata: { weekEnding, mode: "gate_freeze", stageName },
+        });
+      } catch (evmErr: any) {
+        console.error("Gate auto-freeze EVM snapshot failed (non-blocking):", evmErr.message);
+      }
+
       res.json(updated);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
@@ -2657,6 +2709,95 @@ Respond ONLY with valid JSON:
       const member = await storage.getTeamMember(req.params.id);
       if (!member) return res.status(404).json({ message: "Team member not found" });
       await storage.unlinkTeamMemberFromUser(req.params.id);
+      res.json({ success: true });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  // ── EVM Snapshots ──
+  app.post("/api/timelines/:id/freeze-week", requirePermission("project.edit"), async (req, res) => {
+    try {
+      const { weekEnding, notes } = req.body;
+      if (!weekEnding) return res.status(400).json({ message: "weekEnding is required" });
+
+      const timeline = await storage.getTimeline(req.params.id);
+      if (!timeline) return res.status(404).json({ message: "Timeline not found" });
+
+      const evmResult = await calculateEVMForWeek(req.params.id, weekEnding);
+
+      const snapshot = await storage.createEvmSnapshot({
+        tenantId: "default",
+        timelineId: req.params.id,
+        weekEnding,
+        mode: "manual_freeze",
+        bac: String(evmResult.bac),
+        plannedValue: String(evmResult.plannedValue),
+        actualCost: String(evmResult.actualCost),
+        earnedValue: String(evmResult.earnedValue),
+        scheduleVariance: String(evmResult.scheduleVariance),
+        costVariance: String(evmResult.costVariance),
+        spiValue: String(evmResult.spiValue),
+        cpiValue: String(evmResult.cpiValue),
+        eacValue: String(evmResult.eacValue),
+        etcValue: String(evmResult.etcValue),
+        vacValue: String(evmResult.vacValue),
+        weeklyPv: String(evmResult.weeklyPv),
+        weeklyAc: String(evmResult.weeklyAc),
+        weeklyEv: String(evmResult.weeklyEv),
+        workstreamBreakdown: evmResult.workstreamBreakdown,
+        inputsHash: evmResult.inputsHash,
+        notes: notes || null,
+        generatedBy: (req as any).user?.id || null,
+        generatedAt: new Date().toISOString(),
+      });
+
+      await storage.createAuditEntry({
+        tenantId: "default",
+        actorUserId: (req as any).user?.id || "system",
+        action: "evm.snapshot_generated",
+        objectType: "project",
+        objectId: req.params.id,
+        metadata: { weekEnding, version: snapshot.version, mode: "manual_freeze" },
+      });
+
+      res.json(snapshot);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.get("/api/timelines/:id/evm-snapshots", async (req, res) => {
+    try {
+      const snapshots = await storage.getEvmSnapshots(req.params.id);
+      res.json(snapshots);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.get("/api/timelines/:id/evm-snapshots/:weekEnding", async (req, res) => {
+    try {
+      const snapshot = await storage.getEvmSnapshot(req.params.id, req.params.weekEnding);
+      if (!snapshot) return res.status(404).json({ message: "Snapshot not found" });
+      res.json(snapshot);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.get("/api/timelines/:id/evm-snapshots/:weekEnding/versions", async (req, res) => {
+    try {
+      const versions = await storage.getEvmSnapshotAllVersions(req.params.id, req.params.weekEnding);
+      res.json(versions);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.delete("/api/timelines/:id/evm-snapshots/:snapshotId", requirePermission("org.settings.manage"), async (req, res) => {
+    try {
+      await storage.deleteEvmSnapshot(req.params.snapshotId);
+
+      await storage.createAuditEntry({
+        tenantId: "default",
+        actorUserId: (req as any).user?.id || "system",
+        action: "evm.snapshot_deleted",
+        objectType: "project",
+        objectId: req.params.id,
+        metadata: { snapshotId: req.params.snapshotId },
+      });
+
       res.json({ success: true });
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });

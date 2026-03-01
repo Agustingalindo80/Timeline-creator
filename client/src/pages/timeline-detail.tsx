@@ -21,6 +21,11 @@ import {
   BarChart3,
   Clock,
   ShieldCheck,
+  Snowflake,
+  ArrowUp,
+  ArrowDown,
+  ArrowRight,
+  Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -28,6 +33,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -55,7 +62,7 @@ import { RaidLog } from "@/components/raid-log";
 import { GovernanceTab } from "@/components/governance-tab";
 import { TeamAccessSection } from "@/components/team-access-section";
 import { formatDateForProject, parseDateToISO } from "@/lib/date-format";
-import type { TimelineWithMilestones, AppSettings, FieldOption, Client, AllocationWithTeamMember, Task, ProgressEntry, TimesheetEntry, ProjectTeamMemberWithDetails, TeamMember, FlightpathStage } from "@shared/schema";
+import type { TimelineWithMilestones, AppSettings, FieldOption, Client, AllocationWithTeamMember, Task, ProgressEntry, TimesheetEntry, ProjectTeamMemberWithDetails, TeamMember, FlightpathStage, EvmSnapshot } from "@shared/schema";
 import {
   DEFAULT_TASK_STATUSES,
   DEFAULT_TASK_HEALTH,
@@ -730,6 +737,39 @@ function EVMTab({ timelineId, tasks, approvedBudget }: { timelineId: string; tas
   const cpi = ac > 0 ? ev / ac : 0;
   const eac = cpi > 0 ? bac / cpi : 0;
   const etc = eac - ac;
+  const vac = bac - eac;
+
+  const { data: evmSnapshots = [], isLoading: snapshotsLoading } = useQuery<EvmSnapshot[]>({
+    queryKey: ["/api/timelines", timelineId, "evm-snapshots"],
+    queryFn: async () => {
+      const res = await fetch(`/api/timelines/${timelineId}/evm-snapshots`);
+      if (!res.ok) throw new Error("Failed to fetch EVM snapshots");
+      return res.json();
+    },
+  });
+
+  const currentWeekEnding = weeklyData.length > 0 ? weeklyData[weeklyData.length - 1].week : getWeekEnding(new Date());
+  const currentWeekSnapshot = evmSnapshots.find(s => s.weekEnding === currentWeekEnding);
+
+  const [freezeDialogOpen, setFreezeDialogOpen] = useState(false);
+  const [freezeNotes, setFreezeNotes] = useState("");
+  const { toast } = useToast();
+
+  const freezeWeekMutation = useMutation({
+    mutationFn: async ({ weekEnding, notes }: { weekEnding: string; notes?: string }) => {
+      const res = await apiRequest("POST", `/api/timelines/${timelineId}/freeze-week`, { weekEnding, notes });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/timelines", timelineId, "evm-snapshots"] });
+      toast({ title: "Week frozen", description: `EVM snapshot saved for ${currentWeekEnding}` });
+      setFreezeDialogOpen(false);
+      setFreezeNotes("");
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed to freeze week", description: err.message, variant: "destructive" });
+    },
+  });
 
   const getIndicatorColor = (value: number) => {
     if (value >= 1.0) return "text-green-600 dark:text-green-400";
@@ -846,6 +886,82 @@ function EVMTab({ timelineId, tasks, approvedBudget }: { timelineId: string; tas
             <div className="text-[10px] text-muted-foreground">Estimate to Complete</div>
           </CardContent>
         </Card>
+        <Card data-testid="evm-card-vac">
+          <CardContent className="pt-3 pb-3">
+            <div className="metric-label">VAC</div>
+            <div className={`metric-value tabular-nums ${vac >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>${fmt(vac)}</div>
+            <div className="text-[10px] text-muted-foreground">Variance at Completion</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-semibold">Current Period: {currentWeekEnding}</h3>
+          {currentWeekSnapshot && (
+            <Badge variant="outline" className="text-xs gap-1" data-testid="badge-week-frozen">
+              <Snowflake className="w-3 h-3" />
+              Frozen v{currentWeekSnapshot.version}
+            </Badge>
+          )}
+        </div>
+        <AlertDialog open={freezeDialogOpen} onOpenChange={setFreezeDialogOpen}>
+          <AlertDialogTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1"
+              data-testid={currentWeekSnapshot ? "button-refreeze-week" : "button-freeze-week"}
+            >
+              <Snowflake className="w-3.5 h-3.5" />
+              {currentWeekSnapshot ? "Re-freeze Week" : "Freeze Week"}
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {currentWeekSnapshot ? `Re-freeze Week (v${currentWeekSnapshot.version + 1})` : "Freeze Week"}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {currentWeekSnapshot
+                  ? `This will create revision v${currentWeekSnapshot.version + 1}, superseding v${currentWeekSnapshot.version}.`
+                  : `Freeze the EVM snapshot for week ending ${currentWeekEnding}. This captures current metrics as a permanent record.`}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="space-y-3 py-2">
+              <div className="grid grid-cols-4 gap-2 text-xs">
+                <div><span className="text-muted-foreground">BAC:</span> ${fmt(bac)}</div>
+                <div><span className="text-muted-foreground">PV:</span> ${fmt(pv)}</div>
+                <div><span className="text-muted-foreground">AC:</span> ${fmt(ac)}</div>
+                <div><span className="text-muted-foreground">EV:</span> ${fmt(ev)}</div>
+                <div><span className="text-muted-foreground">SPI:</span> {spi.toFixed(2)}</div>
+                <div><span className="text-muted-foreground">CPI:</span> {cpi.toFixed(2)}</div>
+                <div><span className="text-muted-foreground">VAC:</span> ${fmt(vac)}</div>
+              </div>
+              <Textarea
+                placeholder="Optional notes (e.g., 'Re-frozen after late timesheets')"
+                value={freezeNotes}
+                onChange={e => setFreezeNotes(e.target.value)}
+                className="text-sm"
+                rows={2}
+                data-testid="input-freeze-notes"
+              />
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <Button
+                onClick={(e) => {
+                  e.preventDefault();
+                  freezeWeekMutation.mutate({ weekEnding: currentWeekEnding, notes: freezeNotes || undefined });
+                }}
+                disabled={freezeWeekMutation.isPending}
+                data-testid="button-confirm-freeze"
+              >
+                {freezeWeekMutation.isPending ? "Freezing..." : "Confirm Freeze"}
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
 
       {weeklyData.length > 0 && (
@@ -880,6 +996,94 @@ function EVMTab({ timelineId, tasks, approvedBudget }: { timelineId: string; tas
                 })}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {evmSnapshots.length > 0 && (
+        <div data-testid="table-evm-history">
+          <h3 className="text-sm font-semibold mb-3">EVM History (Frozen Snapshots)</h3>
+          <div className="border rounded-lg overflow-auto max-h-[400px]">
+            <TooltipProvider>
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50 sticky top-0">
+                  <tr>
+                    <th className="p-2 text-left font-medium">Week Ending</th>
+                    <th className="p-2 text-center font-medium">Ver</th>
+                    <th className="p-2 text-center font-medium">Mode</th>
+                    <th className="p-2 text-right font-medium">BAC</th>
+                    <th className="p-2 text-right font-medium">PV</th>
+                    <th className="p-2 text-right font-medium">AC</th>
+                    <th className="p-2 text-right font-medium">EV</th>
+                    <th className="p-2 text-right font-medium">SPI</th>
+                    <th className="p-2 text-right font-medium">CPI</th>
+                    <th className="p-2 text-right font-medium">SV</th>
+                    <th className="p-2 text-right font-medium">CV</th>
+                    <th className="p-2 text-right font-medium">EAC</th>
+                    <th className="p-2 text-right font-medium">VAC</th>
+                    <th className="p-2 text-center font-medium"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...evmSnapshots].reverse().map((snap, idx) => {
+                    const prevSnap = [...evmSnapshots].reverse()[idx + 1];
+                    const snapSpi = parseFloat(snap.spiValue || "0");
+                    const snapCpi = parseFloat(snap.cpiValue || "0");
+                    const prevSpi = prevSnap ? parseFloat(prevSnap.spiValue || "0") : null;
+                    const prevCpi = prevSnap ? parseFloat(prevSnap.cpiValue || "0") : null;
+
+                    const spiArrow = prevSpi !== null ? (snapSpi > prevSpi ? <ArrowUp className="w-3 h-3 text-green-500 inline" /> : snapSpi < prevSpi ? <ArrowDown className="w-3 h-3 text-red-500 inline" /> : <ArrowRight className="w-3 h-3 text-muted-foreground inline" />) : null;
+                    const cpiArrow = prevCpi !== null ? (snapCpi > prevCpi ? <ArrowUp className="w-3 h-3 text-green-500 inline" /> : snapCpi < prevCpi ? <ArrowDown className="w-3 h-3 text-red-500 inline" /> : <ArrowRight className="w-3 h-3 text-muted-foreground inline" />) : null;
+
+                    const snapSv = parseFloat(snap.scheduleVariance || "0");
+                    const snapCv = parseFloat(snap.costVariance || "0");
+                    const snapVac = parseFloat(snap.vacValue || "0");
+
+                    return (
+                      <tr key={snap.id} className="border-t" data-testid={`evm-snapshot-row-${snap.weekEnding}`}>
+                        <td className="p-2 font-mono text-xs">{snap.weekEnding}</td>
+                        <td className="p-2 text-center text-xs">v{snap.version}</td>
+                        <td className="p-2 text-center">
+                          {snap.mode === "gate_freeze" ? (
+                            <Badge variant="outline" className="text-[10px] gap-0.5 px-1 py-0" data-testid="badge-gate-freeze">
+                              <ShieldCheck className="w-2.5 h-2.5" /> Gate
+                            </Badge>
+                          ) : (
+                            <Snowflake className="w-3 h-3 text-blue-400 mx-auto" />
+                          )}
+                        </td>
+                        <td className="p-2 text-right font-mono text-xs">${fmt(parseFloat(snap.bac || "0"))}</td>
+                        <td className="p-2 text-right font-mono text-xs">${fmt(parseFloat(snap.plannedValue || "0"))}</td>
+                        <td className="p-2 text-right font-mono text-xs">${fmt(parseFloat(snap.actualCost || "0"))}</td>
+                        <td className="p-2 text-right font-mono text-xs">${fmt(parseFloat(snap.earnedValue || "0"))}</td>
+                        <td className={`p-2 text-right font-mono text-xs ${getIndicatorColor(snapSpi)}`}>
+                          {snapSpi.toFixed(2)} {spiArrow}
+                        </td>
+                        <td className={`p-2 text-right font-mono text-xs ${getIndicatorColor(snapCpi)}`}>
+                          {snapCpi.toFixed(2)} {cpiArrow}
+                        </td>
+                        <td className={`p-2 text-right font-mono text-xs ${snapSv >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>${fmt(snapSv)}</td>
+                        <td className={`p-2 text-right font-mono text-xs ${snapCv >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>${fmt(snapCv)}</td>
+                        <td className="p-2 text-right font-mono text-xs">${fmt(parseFloat(snap.eacValue || "0"))}</td>
+                        <td className={`p-2 text-right font-mono text-xs ${snapVac >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>${fmt(snapVac)}</td>
+                        <td className="p-2 text-center">
+                          {snap.notes && (
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <Info className="w-3 h-3 text-muted-foreground" />
+                              </TooltipTrigger>
+                              <TooltipContent side="left" className="max-w-xs">
+                                <p className="text-xs">{snap.notes}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </TooltipProvider>
           </div>
         </div>
       )}

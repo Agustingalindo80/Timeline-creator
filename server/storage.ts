@@ -27,6 +27,7 @@ import {
   objectAssignments,
   objectRolePermissions,
   auditLog,
+  evmSnapshots,
   users,
   type BrandingConfig,
   type InsertBranding,
@@ -76,6 +77,8 @@ import {
   type InsertAuditLog,
   type AuditLog,
   type User,
+  type EvmSnapshot,
+  type InsertEvmSnapshot,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -185,6 +188,12 @@ export interface IStorage {
   unlinkTeamMemberFromUser(teamMemberId: string): Promise<void>;
   getTeamMemberByUserId(userId: string): Promise<TeamMember | undefined>;
   createUserFromTeamMember(email: string, teamMemberId: string): Promise<User>;
+  getEvmSnapshots(timelineId: string): Promise<EvmSnapshot[]>;
+  getEvmSnapshotAllVersions(timelineId: string, weekEnding: string): Promise<EvmSnapshot[]>;
+  getEvmSnapshot(timelineId: string, weekEnding: string): Promise<EvmSnapshot | undefined>;
+  createEvmSnapshot(data: InsertEvmSnapshot): Promise<EvmSnapshot>;
+  deleteEvmSnapshot(id: string): Promise<void>;
+  getLatestEvmSnapshot(timelineId: string): Promise<EvmSnapshot | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -923,6 +932,69 @@ export class DatabaseStorage implements IStorage {
     }
 
     return user;
+  }
+
+  async getEvmSnapshots(timelineId: string): Promise<EvmSnapshot[]> {
+    return db.select().from(evmSnapshots)
+      .where(and(eq(evmSnapshots.timelineId, timelineId), eq(evmSnapshots.isCurrent, true)))
+      .orderBy(evmSnapshots.weekEnding);
+  }
+
+  async getEvmSnapshotAllVersions(timelineId: string, weekEnding: string): Promise<EvmSnapshot[]> {
+    return db.select().from(evmSnapshots)
+      .where(and(eq(evmSnapshots.timelineId, timelineId), eq(evmSnapshots.weekEnding, weekEnding)))
+      .orderBy(desc(evmSnapshots.version));
+  }
+
+  async getEvmSnapshot(timelineId: string, weekEnding: string): Promise<EvmSnapshot | undefined> {
+    const [snapshot] = await db.select().from(evmSnapshots)
+      .where(and(
+        eq(evmSnapshots.timelineId, timelineId),
+        eq(evmSnapshots.weekEnding, weekEnding),
+        eq(evmSnapshots.isCurrent, true),
+      ));
+    return snapshot;
+  }
+
+  async createEvmSnapshot(data: InsertEvmSnapshot): Promise<EvmSnapshot> {
+    const existing = await db.select().from(evmSnapshots)
+      .where(and(
+        eq(evmSnapshots.timelineId, data.timelineId),
+        eq(evmSnapshots.weekEnding, data.weekEnding),
+        eq(evmSnapshots.isCurrent, true),
+      ));
+
+    let nextVersion = 1;
+    if (existing.length > 0) {
+      const maxVersion = Math.max(...existing.map(e => e.version));
+      nextVersion = maxVersion + 1;
+      await db.update(evmSnapshots)
+        .set({ isCurrent: false })
+        .where(and(
+          eq(evmSnapshots.timelineId, data.timelineId),
+          eq(evmSnapshots.weekEnding, data.weekEnding),
+          eq(evmSnapshots.isCurrent, true),
+        ));
+    }
+
+    const [snapshot] = await db.insert(evmSnapshots).values({
+      ...data,
+      version: nextVersion,
+      isCurrent: true,
+    }).returning();
+    return snapshot;
+  }
+
+  async deleteEvmSnapshot(id: string): Promise<void> {
+    await db.delete(evmSnapshots).where(eq(evmSnapshots.id, id));
+  }
+
+  async getLatestEvmSnapshot(timelineId: string): Promise<EvmSnapshot | undefined> {
+    const [snapshot] = await db.select().from(evmSnapshots)
+      .where(and(eq(evmSnapshots.timelineId, timelineId), eq(evmSnapshots.isCurrent, true)))
+      .orderBy(desc(evmSnapshots.weekEnding))
+      .limit(1);
+    return snapshot;
   }
 }
 

@@ -335,6 +335,44 @@ export const progressEntries = pgTable("progress_entries", {
   notes: text("notes"),
 });
 
+export type EvmWorkstreamBreakdownItem = {
+  taskId: string;
+  taskTitle: string;
+  phaseTitle: string | null;
+  percentComplete: number;
+  budget: number;
+  ev: number;
+};
+
+export const evmSnapshots = pgTable("evm_snapshots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: text("tenant_id").notNull().default("default"),
+  timelineId: varchar("timeline_id").notNull().references(() => timelines.id, { onDelete: "cascade" }),
+  weekEnding: text("week_ending").notNull(),
+  version: integer("version").notNull().default(1),
+  isCurrent: boolean("is_current").notNull().default(true),
+  mode: text("mode").notNull().default("manual_freeze"),
+  bac: numeric("bac", { precision: 12, scale: 2 }),
+  plannedValue: numeric("planned_value", { precision: 12, scale: 2 }),
+  actualCost: numeric("actual_cost", { precision: 12, scale: 2 }),
+  earnedValue: numeric("earned_value", { precision: 12, scale: 2 }),
+  scheduleVariance: numeric("schedule_variance", { precision: 12, scale: 2 }),
+  costVariance: numeric("cost_variance", { precision: 12, scale: 2 }),
+  spiValue: numeric("spi_value", { precision: 6, scale: 4 }),
+  cpiValue: numeric("cpi_value", { precision: 6, scale: 4 }),
+  eacValue: numeric("eac_value", { precision: 12, scale: 2 }),
+  etcValue: numeric("etc_value", { precision: 12, scale: 2 }),
+  vacValue: numeric("vac_value", { precision: 12, scale: 2 }),
+  weeklyPv: numeric("weekly_pv", { precision: 12, scale: 2 }),
+  weeklyAc: numeric("weekly_ac", { precision: 12, scale: 2 }),
+  weeklyEv: numeric("weekly_ev", { precision: 12, scale: 2 }),
+  workstreamBreakdown: jsonb("workstream_breakdown").$type<EvmWorkstreamBreakdownItem[]>(),
+  inputsHash: text("inputs_hash"),
+  notes: text("notes"),
+  generatedBy: varchar("generated_by"),
+  generatedAt: text("generated_at"),
+});
+
 export const flightpathStages = pgTable("flightpath_stages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   tenantId: text("tenant_id").notNull().default("default"),
@@ -409,6 +447,10 @@ export type InsertProjectCheckpoint = z.infer<typeof insertProjectCheckpointSche
 export type ProjectCheckpoint = typeof projectCheckpoints.$inferSelect;
 export type InsertProjectGate = z.infer<typeof insertProjectGateSchema>;
 export type ProjectGate = typeof projectGates.$inferSelect;
+
+export const insertEvmSnapshotSchema = createInsertSchema(evmSnapshots).omit({ id: true });
+export type InsertEvmSnapshot = z.infer<typeof insertEvmSnapshotSchema>;
+export type EvmSnapshot = typeof evmSnapshots.$inferSelect;
 
 export const insertWorkstreamResourceSchema = createInsertSchema(workstreamResources).omit({ id: true });
 
