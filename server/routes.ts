@@ -2778,6 +2778,27 @@ Respond ONLY with valid JSON:
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
+  app.patch("/api/rbac/users/:userId", requireModuleAccess("admin"), requirePermission("users.manage"), async (req, res) => {
+    try {
+      const { firstName, lastName, email } = req.body;
+      const updated = await storage.updateUserDemographics(req.params.userId as string, { firstName, lastName, email });
+      if (!updated) return res.status(404).json({ message: "User not found" });
+
+      const tm = await storage.getTeamMemberByUserId(req.params.userId as string);
+      if (tm) {
+        const syncData: Record<string, any> = {};
+        const newName = [firstName ?? updated.firstName, lastName ?? updated.lastName].filter(Boolean).join(" ");
+        if (newName) syncData.name = newName;
+        if (email !== undefined) syncData.email = email;
+        if (Object.keys(syncData).length > 0) {
+          await storage.updateTeamMember(tm.id, syncData);
+        }
+      }
+
+      res.json(updated);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
   app.post("/api/rbac/users/:userId/link-team-member", requireModuleAccess("admin"), requirePermission("users.manage"), async (req, res) => {
     try {
       const { teamMemberId } = req.body;

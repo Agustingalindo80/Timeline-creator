@@ -184,6 +184,7 @@ export interface IStorage {
   getAuditLog(tenantId: string, filters?: { action?: string; limit?: number; offset?: number }): Promise<AuditLog[]>;
   createAuditEntry(entry: InsertAuditLog): Promise<AuditLog>;
   getUsersByTenant(tenantId: string): Promise<(User & { orgRoles?: OrgRole[]; teamMember?: TeamMember | null })[]>;
+  updateUserDemographics(userId: string, data: { firstName?: string; lastName?: string; email?: string }): Promise<User | undefined>;
   linkTeamMemberToUser(teamMemberId: string, userId: string): Promise<void>;
   unlinkTeamMemberFromUser(teamMemberId: string): Promise<void>;
   getTeamMemberByUserId(userId: string): Promise<TeamMember | undefined>;
@@ -896,6 +897,16 @@ export class DatabaseStorage implements IStorage {
         teamMember: memberByUserIdMap.get(u.id) || null,
       };
     });
+  }
+
+  async updateUserDemographics(userId: string, data: { firstName?: string; lastName?: string; email?: string }): Promise<User | undefined> {
+    const updateData: Record<string, any> = {};
+    if (data.firstName !== undefined) updateData.firstName = data.firstName;
+    if (data.lastName !== undefined) updateData.lastName = data.lastName;
+    if (data.email !== undefined) updateData.email = data.email;
+    updateData.updatedAt = new Date();
+    const [updated] = await db.update(users).set(updateData).where(eq(users.id, userId)).returning();
+    return updated;
   }
 
   async linkTeamMemberToUser(teamMemberId: string, userId: string): Promise<void> {

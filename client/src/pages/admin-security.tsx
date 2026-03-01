@@ -503,9 +503,28 @@ function UserDetailView({
   const [selectedRoleId, setSelectedRoleId] = useState<string>("");
   const [selectedTeamMemberId, setSelectedTeamMemberId] = useState<string>("");
   const [linkingTm, setLinkingTm] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editFirstName, setEditFirstName] = useState(user.firstName || "");
+  const [editLastName, setEditLastName] = useState(user.lastName || "");
+  const [editEmail, setEditEmail] = useState(user.email || "");
 
   const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ") || "Unknown User";
   const availableRoles = roles.filter(r => !user.orgRoles.some(ur => ur.roleId === r.id));
+
+  const updateUserMutation = useMutation({
+    mutationFn: async (data: { firstName: string; lastName: string; email: string }) => {
+      await apiRequest("PATCH", `/api/rbac/users/${user.id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/rbac/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/team-members"] });
+      toast({ title: "User updated", description: user.teamMember ? "Changes synced to linked team member." : undefined });
+      setEditing(false);
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed to update user", description: err.message, variant: "destructive" });
+    },
+  });
 
   const assignRoleMutation = useMutation({
     mutationFn: async ({ roleId }: { roleId: string }) => {
@@ -603,39 +622,121 @@ function UserDetailView({
         <TabsContent value="details">
           <div className="space-y-6">
             <div>
-              <h3 className="text-sm font-semibold mb-3" data-testid="heading-user-info">User Information</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <Card>
-                  <CardContent className="pt-4 pb-4">
-                    <div className="text-xs text-muted-foreground mb-1">First Name</div>
-                    <div className="text-sm font-medium" data-testid="text-user-firstname">{user.firstName || "—"}</div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-4 pb-4">
-                    <div className="text-xs text-muted-foreground mb-1">Last Name</div>
-                    <div className="text-sm font-medium" data-testid="text-user-lastname">{user.lastName || "—"}</div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-4 pb-4">
-                    <div className="text-xs text-muted-foreground mb-1">Email</div>
-                    <div className="text-sm font-medium" data-testid="text-user-email">{user.email || "—"}</div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-4 pb-4">
-                    <div className="text-xs text-muted-foreground mb-1">Created</div>
-                    <div className="text-sm font-medium" data-testid="text-user-created">{user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "—"}</div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-4 pb-4">
-                    <div className="text-xs text-muted-foreground mb-1">Last Updated</div>
-                    <div className="text-sm font-medium" data-testid="text-user-updated">{user.updatedAt ? new Date(user.updatedAt).toLocaleDateString() : "—"}</div>
-                  </CardContent>
-                </Card>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold" data-testid="heading-user-info">User Information</h3>
+                {!editing ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setEditFirstName(user.firstName || "");
+                      setEditLastName(user.lastName || "");
+                      setEditEmail(user.email || "");
+                      setEditing(true);
+                    }}
+                    data-testid="button-edit-user"
+                  >
+                    <Edit3 className="w-3.5 h-3.5 mr-1" />
+                    Edit
+                  </Button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => updateUserMutation.mutate({ firstName: editFirstName, lastName: editLastName, email: editEmail })}
+                      disabled={updateUserMutation.isPending}
+                      data-testid="button-save-user"
+                    >
+                      <Check className="w-3.5 h-3.5 mr-1" />
+                      {updateUserMutation.isPending ? "Saving..." : "Save"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setEditing(false)}
+                      disabled={updateUserMutation.isPending}
+                      data-testid="button-cancel-edit"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                )}
               </div>
+              {editing ? (
+                <Card className="card-elevated">
+                  <CardContent className="pt-4 pb-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div>
+                        <Label className="text-xs text-muted-foreground mb-1.5 block">First Name</Label>
+                        <Input
+                          value={editFirstName}
+                          onChange={(e) => setEditFirstName(e.target.value)}
+                          placeholder="First name"
+                          data-testid="input-user-firstname"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground mb-1.5 block">Last Name</Label>
+                        <Input
+                          value={editLastName}
+                          onChange={(e) => setEditLastName(e.target.value)}
+                          placeholder="Last name"
+                          data-testid="input-user-lastname"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground mb-1.5 block">Email</Label>
+                        <Input
+                          type="email"
+                          value={editEmail}
+                          onChange={(e) => setEditEmail(e.target.value)}
+                          placeholder="Email address"
+                          data-testid="input-user-email"
+                        />
+                      </div>
+                    </div>
+                    {user.teamMember && (
+                      <p className="text-xs text-muted-foreground mt-3 flex items-center gap-1">
+                        <Link2 className="w-3 h-3" />
+                        Changes will be synced to linked team member: {user.teamMember.name}
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <Card>
+                    <CardContent className="pt-4 pb-4">
+                      <div className="text-xs text-muted-foreground mb-1">First Name</div>
+                      <div className="text-sm font-medium" data-testid="text-user-firstname">{user.firstName || "—"}</div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-4 pb-4">
+                      <div className="text-xs text-muted-foreground mb-1">Last Name</div>
+                      <div className="text-sm font-medium" data-testid="text-user-lastname">{user.lastName || "—"}</div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-4 pb-4">
+                      <div className="text-xs text-muted-foreground mb-1">Email</div>
+                      <div className="text-sm font-medium" data-testid="text-user-email">{user.email || "—"}</div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-4 pb-4">
+                      <div className="text-xs text-muted-foreground mb-1">Created</div>
+                      <div className="text-sm font-medium" data-testid="text-user-created">{user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "—"}</div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-4 pb-4">
+                      <div className="text-xs text-muted-foreground mb-1">Last Updated</div>
+                      <div className="text-sm font-medium" data-testid="text-user-updated">{user.updatedAt ? new Date(user.updatedAt).toLocaleDateString() : "—"}</div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
             </div>
 
             <div>
