@@ -1,0 +1,234 @@
+You’re in much better shape than the first version (tenantId everywhere, indexes/uniques, timestamps, FK coverage). The remaining technical debt is mostly in **type rigor**, **date/time correctness**, **tenant isolation hardening**, and **billing limits/entitlements**. Here’s the best-practices review with a blunt “fix next vs later” list.
+
+---
+
+## Highest-risk technical debt (fix next)
+
+### 1) You still store many dates as `text`
+
+Even though you added `timestamp` columns for createdAt/updatedAt, most domain dates are still `text`:
+
+* `timelines.startDate`, `endDate`, `convertedAt`
+* `milestones.date`, `actualDate`
+* `tasks.startDate`, `endDate`, `actualStartDate`, `actualEndDate`
+* `risks.dueDate`, `raisedDate`, `resolvedDate`, `validatedDate`, `requiredByDate`
+* `timesheet_entries.weekEnding`, `dayDate`
+* `progress_entries.weekEnding`
+* `evm_snapshots.weekEnding`, `generatedAt`
+* `project_gates.approvedAt`, `project_checkpoints.completedAt`, `artifactVerifiedAt`
+
+**Why it’s debt:** sorting and filtering becomes inconsistent; reporting/EVM will drift; you can’t use date indexes effectively; timezone becomes “whatever string format was saved”.
+
+**Recommendation**
+
+* Use `date` for day-level fields (weekEnding, milestone date, due dates)
+* Use `timestamp({ withTimezone: true })` for event moments (approvedAt, generatedAt)
+* Keep a single timezone source per tenant (tenant settings) for snapshot scheduling/reporting.
+
+**Immediate target list**
+
+* `weekEnding` fields (timesheets, progress, evm)
+* milestone `date/actualDate`
+* gate/checkpoint approval timestamps
+
+---
+
+### 2) Tenant enforcement is still “by convention”
+
+You’re storing `tenantId`, but most FKs do **not** enforce `(tenantId, id)` consistency. Example:
+
+* `timelines.clientId` references `clients.id` only (not tenant-scoped)
+  This allows cross-tenant linking if a bug passes the wrong id.
+
+**Recommendation (hardening)**
+Enforce tenant integrity at the DB layer:
+
+**Option A (best): composite primary keys**
+
+* Make PKs `(tenantId, id)` and reference composite keys everywhere
+* Heavier migration, but bulletproof
+
+**Option B (practical): add tenantId to FKs + composite unique**
+
+* Add `unique(tenantId, id)` on parent tables
+* In child tables store both `tenantId` and `parentTenantId`? (ugly)
+* Or use triggers to validate tenantId matches referenced rows (workable)
+
+If you’re moving fast, do Option B with triggers. If you’re building a real multi-tenant SaaS, Option A is the clean end-state.
+
+---
+
+### 3) “default” tenantId defaults are a footgun
+
+Almost every table defaults `tenantId` to `"default"`. That’s dangerous if any code path forgets to set tenantId.
+
+**Recommendation**
+
+* Remove default `"default"` from tenantId columns (make it required)
+* Only allow “default tenant” in dev seed scripts, not schema defaults
+
+This prevents silent data leakage into a shared tenant.
+
+---
+
+## Medium-risk debt (should schedule)
+
+### 4) Enums are still stored as `text`
+
+You still have text fields for:
+
+* statuses, health, recordType, engagementModel, billableType, gate status, etc.
+
+You added Zod defaults/refinements in places, which helps, but DB still accepts bad values.
+
+**Recommendation**
+
+* Convert to `pgEnum` (Drizzle supports it) OR add `CHECK` constraints.
+  Minimum high-value:
+* `timelines.recordType` (`project|opportunity`)
+* `project_gates.status` (`pending|in_review|approved|rejected`)
+* `health` fields (`green|amber|red`)
+* `percentComplete` already constrained via Zod; still consider DB check 0–100
+
+---
+
+### 5) Tenant settings tables: IDs are fixed strings, which is awkward
+
+`app_settings.id` defaults to `"app"` and `branding_config.id` defaults to `"default"`.
+
+That’s fine if you enforce **unique per tenant**, but you currently have `id` as PK. That means:
+
+* You can’t have multiple rows per tenant (ok)
+* But you also can’t have multiple tenants unless the PK includes tenantId or you always insert only one row total (this is a common bug).
+
+**Recommendation**
+Make PK composite or change PK to tenantId:
+
+* `app_settings`: make `tenantId` the primary key
+* `branding_config`: make `tenantId` the primary key
+  Or at least add `unique(tenantId)` and stop using a global PK string.
+
+---
+
+### 6) Contacts unique constraint: null email edge case
+
+`unique(clientId, email)` will allow multiple rows with `email = null` (Postgres treats nulls as distinct). That might be fine, but if you expect one contact per email, you should also:
+
+* normalize casing (`lower(email)`)
+* consider uniqueness on `(clientId, lower(email))` (needs expression index)
+
+**Recommendation**
+If email matters operationally: add a stored `emailNormalized` column.
+
+---
+
+### 7) Financial semantics still ambiguous
+
+`grossMargin` is checked 0–100, implying percent, but the name is ambiguous.
+
+**Recommendation**
+Rename:
+
+* `grossMarginPercent` (numeric 5,2)
+  And separate:
+* `grossMarginAmount` (numeric 12,2) if needed later
+
+Also: your `tenants.plan`, `maxUsers`, `maxProjects`, etc. exist, but you’ll want an explicit **subscription/entitlements** layer (since you already designed pricing). Don’t keep scaling quotas only in tenants table long-term.
+
+---
+
+## Low-risk but important “polish” debt
+
+### 8) Missing “soft delete” strategy
+
+If you delete a client/timeline you cascade delete everything. For audit/governance, you might want soft deletes.
+
+**Recommendation**
+Add `deletedAt` (timestamp) to top-level entities:
+
+* clients, timelines, team_members, rate_cards
+  Then filter in queries. Keep hard deletes for dev only.
+
+---
+
+### 9) `createdBy` fields lack FKs
+
+Many tables have `createdBy` but it’s just `varchar`.
+
+**Recommendation**
+Reference `users.id` with `onDelete: set null`:
+
+* tenants.createdBy, timelines.createdBy, milestones.createdBy, tasks.createdBy, risks.createdBy, gates/checkpoints createdBy, etc.
+
+---
+
+### 10) Duplicate schema in the file
+
+Your pasted content includes the whole schema duplicated. Not a DB issue, but it’s technical debt in the codebase and will cause confusion.
+
+**Recommendation**
+Split into modules:
+
+* `models/tenants.ts`
+* `models/core.ts` (clients/timelines)
+* `models/resources.ts`
+* `models/governance.ts`
+* `models/evm.ts`
+  and re-export from `schema/index.ts`
+
+---
+
+## Very specific schema issues I’d fix
+
+### 11) tasks parentTaskId cascade delete is risky
+
+`parentTaskId` self-ref with `{ onDelete: "cascade" }` can wipe large structures if a parent is deleted.
+
+**Recommendation**
+Use `set null` on parent delete. If you want cascading, handle it in app logic with explicit confirmation.
+
+---
+
+### 12) project_checkpoints unique with nullable deliverableId
+
+You’ve got `unique(timelineId, stageId, deliverableId)` but `deliverableId` can be null. Postgres allows multiple nulls, so you can end up with many “custom checkpoints” with null deliverableId.
+
+**Recommendation**
+If you want uniqueness for custom checkpoints too:
+
+* make deliverableId not null (preferable), OR
+* add a second unique: `(timelineId, stageId, checkpointName)` and enforce naming uniqueness per stage
+
+---
+
+### 13) EVM “isCurrent” not enforced at DB layer
+
+You have unique (tenantId, timelineId, weekEnding, version) but not “only one current per week”.
+
+**Recommendation**
+Add partial unique index:
+
+* unique on `(tenantId, timelineId, weekEnding)` where `isCurrent = true`
+
+Drizzle doesn’t support partial uniques in pg-core directly in the same way; you can add it via raw SQL migration.
+
+---
+
+## What I would do next (prioritized list)
+
+1. Convert `weekEnding` + milestone dates + approvals to `date/timestamptz`
+2. Remove `tenantId` default `"default"` across tables
+3. Fix `app_settings` and `branding_config` PKs to be tenant-scoped properly
+4. Add partial unique for EVM `isCurrent`
+5. Add DB-level enums/check constraints for the most critical fields
+6. Add FKs for `createdBy` and normalize email uniqueness if needed
+7. Revisit tenant integrity enforcement (composite keys or triggers)
+
+---
+
+If you want, I’ll produce a concrete “migration plan” with:
+
+* exact column type changes (text → date/timestamptz)
+* recommended SQL migrations for partial unique indexes
+* suggested Drizzle `pgEnum` definitions for the critical status fields
+* and the least painful approach to harden tenant isolation without a full composite-PK refactor.
