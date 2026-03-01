@@ -65,7 +65,7 @@ const createOpportunitySchema = z.object({
 
 type CreateOpportunityForm = z.infer<typeof createOpportunitySchema>;
 
-type SortField = "title" | "client" | "region" | "status" | "approvedBudget" | "estimatedRevenue" | "grossMargin" | "salesforceClouds";
+type SortField = "title" | "client" | "region" | "status" | "approvedBudget" | "totalRunningCost" | "grossMargin" | "salesforceClouds";
 type SortDir = "asc" | "desc";
 
 interface ColumnFilters {
@@ -189,9 +189,9 @@ export default function OpportunitiesPage() {
             aVal = a.approvedBudget ? parseFloat(a.approvedBudget) : -1;
             bVal = b.approvedBudget ? parseFloat(b.approvedBudget) : -1;
             break;
-          case "estimatedRevenue":
-            aVal = a.estimatedRevenue ? parseFloat(a.estimatedRevenue) : -1;
-            bVal = b.estimatedRevenue ? parseFloat(b.estimatedRevenue) : -1;
+          case "totalRunningCost":
+            aVal = a.totalRunningCost ? parseFloat(a.totalRunningCost) : -1;
+            bVal = b.totalRunningCost ? parseFloat(b.totalRunningCost) : -1;
             break;
           case "grossMargin":
             aVal = a.grossMargin ? parseFloat(a.grossMargin) : -1;
@@ -488,8 +488,8 @@ export default function OpportunitiesPage() {
                   <SortHeader field="client" label="Client" />
                   <SortHeader field="region" label="Region" />
                   <SortHeader field="status" label="Status" align="center" />
-                  <SortHeader field="approvedBudget" label="Est. Cost" />
-                  <SortHeader field="estimatedRevenue" label="Est. Revenue" />
+                  <SortHeader field="approvedBudget" label="Buffered Price" />
+                  <SortHeader field="totalRunningCost" label="Base Cost" />
                   <SortHeader field="grossMargin" label="Margin" />
                   <SortHeader field="salesforceClouds" label="SF Clouds" />
                 </tr>
@@ -588,11 +588,11 @@ export default function OpportunitiesPage() {
                           {statusLabel}
                         </Badge>
                       </td>
-                      <td className="px-3 py-2.5 text-muted-foreground tabular-nums" data-testid={`text-cost-${opp.id}`}>
+                      <td className="px-3 py-2.5 text-muted-foreground tabular-nums" data-testid={`text-price-${opp.id}`}>
                         {formatCurrency(opp.approvedBudget)}
                       </td>
-                      <td className="px-3 py-2.5 text-muted-foreground tabular-nums" data-testid={`text-revenue-${opp.id}`}>
-                        {formatCurrency(opp.estimatedRevenue)}
+                      <td className="px-3 py-2.5 text-muted-foreground tabular-nums" data-testid={`text-cost-${opp.id}`}>
+                        {formatCurrency(opp.totalRunningCost)}
                       </td>
                       <td className="px-3 py-2.5 text-muted-foreground tabular-nums" data-testid={`text-margin-${opp.id}`}>
                         {formatMargin(opp.grossMargin)}

@@ -325,23 +325,23 @@ export default function OpportunityDetail() {
           )}
         </div>
 
-        {opp.approvedBudget && (
+        {(opp.approvedBudget || opp.totalRunningCost) && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Card>
               <CardContent className="pt-3 pb-3">
-                <div className="text-xs text-muted-foreground">Estimated Cost</div>
-                <div className="text-lg font-semibold" data-testid="text-opp-cost">${parseFloat(opp.approvedBudget || "0").toLocaleString()}</div>
+                <div className="text-xs text-muted-foreground">Buffered Price</div>
+                <div className="text-lg font-semibold" data-testid="text-opp-price">${parseFloat(opp.approvedBudget || "0").toLocaleString()}</div>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-3 pb-3">
-                <div className="text-xs text-muted-foreground">Revenue</div>
-                <div className="text-lg font-semibold" data-testid="text-opp-revenue">${parseFloat(opp.estimatedRevenue || "0").toLocaleString()}</div>
+                <div className="text-xs text-muted-foreground">Base Cost</div>
+                <div className="text-lg font-semibold" data-testid="text-opp-cost">${parseFloat(opp.totalRunningCost || "0").toLocaleString()}</div>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-3 pb-3">
-                <div className="text-xs text-muted-foreground">Margin</div>
+                <div className="text-xs text-muted-foreground">Gross Margin</div>
                 <div className={`text-lg font-semibold ${parseFloat(opp.grossMargin || "0") >= 30 ? "text-green-600" : parseFloat(opp.grossMargin || "0") >= 15 ? "text-amber-600" : "text-red-600"}`} data-testid="text-opp-margin">
                   {parseFloat(opp.grossMargin || "0").toFixed(1)}%
                 </div>

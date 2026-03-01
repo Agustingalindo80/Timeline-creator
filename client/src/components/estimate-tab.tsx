@@ -448,6 +448,8 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
     updateOppMutation.mutate({
       approvedBudget: bufferedPrice.toFixed(2),
       estimatedRevenue: bufferedPrice.toFixed(2),
+      totalRunningCost: baseCost.toFixed(2),
+      grossMargin: grossMargin.toFixed(2),
     });
     toast({ title: "Financials synced to opportunity" });
   };

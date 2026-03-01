@@ -2320,6 +2320,7 @@ Respond ONLY with valid JSON:
       const oppFields = [
         "title", "description", "color", "clientId", "region", "salesforceClouds",
         "currency", "engagementModel", "projectType", "approvedBudget", "estimatedRevenue",
+        "totalRunningCost", "grossMargin",
         "riskFactorPercent", "bufferPercent", "opportunityStatus", "startDate", "endDate",
         "docRepositoryType", "docRepositoryUrl", "dateFormat",
         "healthOverall", "scopeHealth", "budgetHealth", "teamHealth",
@@ -2337,7 +2338,7 @@ Respond ONLY with valid JSON:
         }
       }
 
-      if (updates.estimatedRevenue !== undefined && updates.approvedBudget !== undefined) {
+      if (updates.grossMargin === undefined && updates.estimatedRevenue !== undefined && updates.approvedBudget !== undefined) {
         const revenue = parseFloat(updates.estimatedRevenue) || 0;
         const cost = parseFloat(updates.approvedBudget) || 0;
         if (revenue > 0) {
