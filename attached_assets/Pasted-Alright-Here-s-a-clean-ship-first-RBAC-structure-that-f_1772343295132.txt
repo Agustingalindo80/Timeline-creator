@@ -1,0 +1,232 @@
+Alright. Here’s a clean, ship-first RBAC structure that fits your product (pre-sales → delivery → PMO) without turning into an enterprise IAM project.
+
+RBAC goals (what we’re optimizing for)
+	•	Project confidentiality (who can see which opportunity/project)
+	•	Separation of duties (Sales vs Delivery vs Finance approvals)
+	•	Gate integrity (who can submit vs approve vs override)
+	•	Multi-tenant safe by default (tenantId boundary + role assignments scoped)
+	•	Simple enough to implement fast (RBAC now, ABAC later if needed)
+
+⸻
+
+1) Core RBAC model: roles + scopes
+
+Use three layers:
+
+A) Organization roles (tenant-wide)
+
+These determine global administration and portfolio visibility.
+	•	Org Owner: billing, global settings, full access
+	•	Org Admin: manage users, roles, templates, integrations
+	•	PMO Lead: portfolio visibility, reporting, governance oversight
+	•	Finance: rates, cost models, margin, approval on commercial fields
+	•	Delivery Ops: governance templates, RACI templates, standard artifacts
+	•	Member: default baseline, must be granted project access
+
+B) Workspace access (optional if you need separation)
+
+If you plan multiple business units or regions under one tenant (Salesforce BU vs Custom Dev BU), add:
+	•	Workspace Admin
+	•	Workspace Viewer
+
+If not needed yet, skip. Keep it simple.
+
+C) Project / Opportunity roles (object-scoped)
+
+These are assigned per opportunity/project and drive the day-to-day permissions.
+	•	Account Executive (AE)
+	•	Sales Engineer (SE)
+	•	Delivery Lead (DL)
+	•	Project Manager (PM)
+	•	Team Member (Contributor)
+	•	Executive Viewer (read-only, KPIs + status packs)
+	•	Client Stakeholder (optional later; external sharing)
+
+Important design decision:
+Treat Opportunity and Project as two object types but share the same “assignment” mechanism.
+
+⸻
+
+2) Permission system: keep it readable
+
+Use permission bundles (not hundreds of one-off toggles). Your app features map naturally to bundles:
+
+Permission bundles
+
+Identity & Admin
+	•	users.manage
+	•	roles.manage
+	•	org.settings.manage
+	•	integrations.manage
+
+Commercial / Estimation
+	•	opp.create
+	•	opp.view
+	•	opp.edit
+	•	estimate.view
+	•	estimate.edit
+	•	rates.view
+	•	rates.edit
+	•	pricing.approve (Finance)
+
+Governance / Gates
+	•	gate.submit (request approval)
+	•	gate.review (comment, request changes)
+	•	gate.approve
+	•	gate.override (rare; Owner/PMO)
+	•	artifacts.manage (upload/link/validate)
+	•	raci.manage (templates)
+
+Delivery Execution
+	•	project.create
+	•	project.view
+	•	project.edit
+	•	workplan.manage (if you have internal tasks)
+	•	timesheet.submit
+	•	timesheet.approve
+
+Risk & Health
+	•	raid.view
+	•	raid.edit
+	•	health.view
+	•	health.edit
+
+Reporting
+	•	reports.view
+	•	reports.export (PDF packs)
+	•	portfolio.view (cross-project visibility)
+
+This is enough to cover v1 without chaos.
+
+⸻
+
+3) Role-to-permission mapping (v1 default)
+
+Here’s a pragmatic default. Adjust later with “custom roles”.
+
+Org-wide roles
+	•	Org Owner: everything including overrides
+	•	Org Admin: everything except commercial approval + override (optional)
+	•	PMO Lead: portfolio.view + gate.review/approve + reporting; can’t edit rates by default
+	•	Finance: rates.* + pricing.approve + view portfolio financials
+	•	Delivery Ops: templates + governance setup + artifact standards
+	•	Member: no cross-project access unless assigned
+
+Project / Opportunity roles
+	•	AE: opp.view/edit, estimate.view (maybe edit limited), submit gate; cannot approve gates
+	•	SE: estimate.edit, artifacts.manage, submit gates; cannot approve gates
+	•	Delivery Lead: convert-to-project, estimate.edit (scope), gate.review, raid.edit, health.edit
+	•	PM: project.edit, timesheet.approve (team), raid.edit, health.edit, gate.submit/review (not approve unless policy)
+	•	Contributor: timesheet.submit, update progress, raid.edit (limited)
+	•	Executive Viewer: view only + export (optional)
+
+⸻
+
+4) Approval policy rules (this matters more than RBAC)
+
+RBAC answers “who is allowed.” Governance needs “who must.”
+
+Implement Gate Policies per stage like:
+	•	Stage 0 (Pre-Sales) gate approval requires: Finance OR PMO Lead + Delivery Lead
+	•	Stage 1 (Kickoff) gate approval requires: Delivery Lead + PMO Lead
+	•	Stage 2+ (Delivery gates) require: PM + Delivery Lead (PMO optional)
+	•	Override allowed only by: Org Owner + PMO Lead (and log it)
+
+This prevents “PM approves their own gate” nonsense.
+
+⸻
+
+5) Data model (PostgreSQL) — minimal but scalable
+
+You’ll want:
+	•	RBAC at tenant level
+	•	assignments at object level (opp/project)
+	•	permissions resolved via roles
+
+Tables
+
+org_role
+	•	id, tenant_id, name, is_system, created_at
+
+org_permission
+	•	key (PK) — e.g. gate.approve
+	•	description
+
+org_role_permission
+	•	tenant_id, role_id, permission_key
+
+user_org_role
+	•	tenant_id, user_id, role_id
+
+object_assignment (for opp/project)
+	•	id
+	•	tenant_id
+	•	object_type (opportunity | project)
+	•	object_id
+	•	user_id
+	•	object_role (enum: AE, SE, PM, DL, etc.)
+	•	created_at
+
+object_role_permission (system table, not per tenant unless you want customization)
+	•	object_role
+	•	permission_key
+
+audit_log (don’t skip)
+	•	id, tenant_id, actor_user_id
+	•	action (e.g., gate.approved, gate.overridden)
+	•	object_type, object_id
+	•	metadata JSONB
+	•	created_at
+
+That’s it for v1 RBAC.
+
+⸻
+
+6) Permission resolution algorithm (fast and deterministic)
+
+When a request comes in:
+	1.	Validate tenant_id boundary.
+	2.	Load user’s org roles → permissions set A
+	3.	If request is for a project/opportunity: load object role assignment → permissions set B
+	4.	Union = allowed permissions
+	5.	Enforce any gate policy (approval quorum) separately
+	6.	Write audit log for sensitive actions
+
+Cache user permission sets per tenant for performance.
+
+⸻
+
+7) UI/UX structure (to avoid role chaos)
+
+Admin screens (v1)
+	•	Users list
+	•	Assign org role
+	•	Assign access to opportunities/projects (add members + object role)
+	•	Basic “Role matrix” read-only view (who can do what)
+
+In-app guardrails
+	•	Hide buttons if no permission
+	•	But also enforce on API (never trust UI)
+	•	Add “Why can’t I?” tooltips showing required role/permission
+
+⸻
+
+8) What I would ship in 2 iterations
+
+Iteration 1 (must-have)
+	•	Org roles + object assignments
+	•	Permission checks on API routes
+	•	Gate approval policy + audit log
+	•	Basic admin UI to assign roles
+
+Iteration 2 (high leverage)
+	•	Custom roles (clone system role, edit permissions)
+	•	Project-level confidentiality defaults (private unless assigned)
+	•	Export restrictions (only Exec/PMO)
+
+⸻
+
+If you want, next I’ll give you:
+	•	the exact permission list (final keys)
+	•	a Drizzle ORM schema for these tables
+	•	and an Express middleware pattern for permission checks + audit logging.
