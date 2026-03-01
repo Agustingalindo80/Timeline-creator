@@ -9,11 +9,15 @@ import express from "express";
 import OpenAI from "openai";
 import { listFilesInFolder, getFileMetadata, getFileContent, extractFolderIdFromUrl } from "./google-drive";
 import { storage } from "./storage";
+import { db } from "./db";
 import { seedFlightpathData } from "./seed-flightpath";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import { requirePermission, requireModuleAccess } from "./middleware/permissions";
+import { tenantContext } from "./middleware/tenant";
+import { requireSuperAdmin } from "./middleware/superadmin";
 import { getEffectivePermissions, invalidatePermissionCache, hasGlobalRecordAccess, getLinkedTeamMemberId, getUserModulePermissions } from "./rbac";
-import { ALL_PERMISSIONS } from "@shared/schema";
+import { eq, and } from "drizzle-orm";
+import { ALL_PERMISSIONS, users, timelines, userOrgRoles } from "@shared/schema";
 import { calculateEVMForWeek } from "./evm-engine";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -182,6 +186,8 @@ export async function registerRoutes(
     return isAuthenticated(req, res, next);
   });
 
+  app.use(tenantContext());
+
   function extractUserId(req: any): string | null {
     const user = req.user;
     if (!user) return null;
@@ -196,7 +202,8 @@ export async function registerRoutes(
   } | null> {
     const userId = extractUserId(req);
     if (!userId) return null;
-    const isGlobal = await hasGlobalRecordAccess(userId, "default");
+    const tenantId = req.tenantId || "default";
+    const isGlobal = await hasGlobalRecordAccess(userId, tenantId);
     if (isGlobal) {
       return { userId, isGlobal: true, teamMemberId: null, assignedTimelineIds: [] };
     }
@@ -281,7 +288,7 @@ export async function registerRoutes(
       const ctx = await getRecordAccessContext(req);
       if (!ctx) return res.status(401).json({ message: "Authentication required" });
       if (ctx.isGlobal) {
-        const clients = await storage.getClients();
+        const clients = await storage.getClients(req.tenantId);
         return res.json(clients);
       }
       const clients = await storage.getClientsByTimelineIds(ctx.assignedTimelineIds);
@@ -366,7 +373,7 @@ export async function registerRoutes(
       const ctx = await getRecordAccessContext(req);
       if (!ctx) return res.status(401).json({ message: "Authentication required" });
       if (ctx.isGlobal) {
-        const allContacts = await storage.getAllContacts();
+        const allContacts = await storage.getAllContacts(req.tenantId);
         return res.json(allContacts);
       }
       const accessibleClients = await storage.getClientsByTimelineIds(ctx.assignedTimelineIds);
@@ -451,7 +458,7 @@ export async function registerRoutes(
       const ctx = await getRecordAccessContext(req);
       if (!ctx) return res.status(401).json({ message: "Authentication required" });
       if (ctx.isGlobal) {
-        const timelines = await storage.getTimelines();
+        const timelines = await storage.getTimelines("project", req.tenantId);
         return res.json(timelines);
       }
       const timelines = await storage.getTimelinesByIds(ctx.assignedTimelineIds, "project");
@@ -651,10 +658,9 @@ export async function registerRoutes(
   // DELETE milestone
   app.delete("/api/milestones/:id", async (req, res) => {
     try {
-      const { db } = await import("./db");
       const { milestones: milestonesTable } = await import("@shared/schema");
-      const { eq } = await import("drizzle-orm");
-      const [existing] = await db.select({ timelineId: milestonesTable.timelineId, isFinancialObligation: milestonesTable.isFinancialObligation }).from(milestonesTable).where(eq(milestonesTable.id, req.params.id));
+      const { eq: eqOp } = await import("drizzle-orm");
+      const [existing] = await db.select({ timelineId: milestonesTable.timelineId, isFinancialObligation: milestonesTable.isFinancialObligation }).from(milestonesTable).where(eqOp(milestonesTable.id, req.params.id));
       await storage.deleteMilestone(req.params.id);
       if (existing?.isFinancialObligation) {
         await recalcApprovedBudget(existing.timelineId);
@@ -1080,7 +1086,7 @@ export async function registerRoutes(
       const ctx = await getRecordAccessContext(req);
       if (!ctx) return res.status(401).json({ message: "Authentication required" });
       if (ctx.isGlobal) {
-        const members = await storage.getTeamMembers();
+        const members = await storage.getTeamMembers(req.tenantId);
         return res.json(members);
       }
       const members = await storage.getTeamMembersByTimelineIds(ctx.assignedTimelineIds);
@@ -1149,7 +1155,7 @@ export async function registerRoutes(
 
   app.get("/api/rate-cards", async (_req, res) => {
     try {
-      const cards = await storage.getRateCards();
+      const cards = await storage.getRateCards(req.tenantId);
       res.json(cards);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -1251,7 +1257,7 @@ export async function registerRoutes(
       const allResources = await storage.getWorkstreamResourcesByTimeline(timelineId);
       const allTasks = await storage.getTasksByTimeline(timelineId);
       const existingTeam = await storage.getProjectTeamMembers(timelineId);
-      const allRateCards = await storage.getRateCards();
+      const allRateCards = await storage.getRateCards(req.tenantId);
       const rateCardMap = new Map(allRateCards.map(rc => [rc.id, rc]));
       const taskMap = new Map(allTasks.map(t => [t.id, t]));
 
@@ -1385,7 +1391,7 @@ export async function registerRoutes(
     try {
       const ctx = await getRecordAccessContext(req);
       if (!ctx) return res.status(401).json({ message: "Authentication required" });
-      const allocs = await storage.getAllAllAllocations();
+      const allocs = await storage.getAllAllAllocations(req.tenantId);
       if (ctx.isGlobal) {
         return res.json(allocs);
       }
@@ -1505,7 +1511,7 @@ export async function registerRoutes(
 
   app.get("/api/estimate-template", async (req, res) => {
     try {
-      const allRateCards = await storage.getRateCards();
+      const allRateCards = await storage.getRateCards(req.tenantId);
       const templateData = [
         { Phase: "Discovery", Workstream: "Requirements Gathering", "Duration (Weeks)": 4, Confidence: "high", "Role / Rate Card": "Senior Developer", "Hours Per Week": 40, "Task Type": "Functional" },
         { Phase: "Discovery", Workstream: "Requirements Gathering", "Duration (Weeks)": 4, Confidence: "high", "Role / Rate Card": "Business Analyst", "Hours Per Week": 20, "Task Type": "Functional" },
@@ -1557,7 +1563,7 @@ export async function registerRoutes(
       const rows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: "" });
       if (rows.length === 0) return res.status(400).json({ message: "Template is empty" });
 
-      const allRateCards = await storage.getRateCards();
+      const allRateCards = await storage.getRateCards(req.tenantId);
       const rcByName = new Map<string, any>();
       for (const rc of allRateCards) {
         if (rc.name) rcByName.set(rc.name.toLowerCase().trim(), rc);
@@ -1737,7 +1743,7 @@ export async function registerRoutes(
   // ── FlightPath Stages ──
   app.get("/api/flightpath-stages", async (req, res) => {
     try {
-      const tenantId = (req.query.tenantId as string) || "default";
+      const tenantId = req.tenantId || "default";
       const stages = await storage.getFlightpathStages(tenantId);
       const sorted = stages.sort((a, b) => a.sortOrder - b.sortOrder);
       const result = [];
@@ -1938,7 +1944,7 @@ export async function registerRoutes(
 
         const evmResult = await calculateEVMForWeek(req.params.id, weekEnding);
         await storage.createEvmSnapshot({
-          tenantId: "default",
+          tenantId: req.tenantId || "default",
           timelineId: req.params.id,
           weekEnding,
           mode: "gate_freeze",
@@ -1964,7 +1970,7 @@ export async function registerRoutes(
         });
 
         await storage.createAuditEntry({
-          tenantId: "default",
+          tenantId: req.tenantId || "default",
           actorUserId: (req as any).user?.id || "system",
           action: "evm.snapshot_generated",
           objectType: "project",
@@ -2313,7 +2319,7 @@ Respond ONLY with valid JSON:
         return res.status(400).json({ message: "messages array is required" });
       }
 
-      const stages = await storage.getFlightpathStages("default");
+      const stages = await storage.getFlightpathStages(req.tenantId || "default");
       const sortedStages = stages.sort((a, b) => a.sortOrder - b.sortOrder);
       let frameworkContext = "You are the FlightPath Governance Coach — an AI assistant that helps project managers navigate the FlightPath governance framework.\n\n";
       frameworkContext += "## FlightPath Framework Overview\n";
@@ -2436,7 +2442,7 @@ Respond ONLY with valid JSON:
       const ctx = await getRecordAccessContext(req);
       if (!ctx) return res.status(401).json({ message: "Authentication required" });
       if (ctx.isGlobal) {
-        const opportunities = await storage.getTimelines("opportunity");
+        const opportunities = await storage.getTimelines("opportunity", req.tenantId);
         return res.json(opportunities);
       }
       const opportunities = await storage.getTimelinesByIds(ctx.assignedTimelineIds, "opportunity");
@@ -2748,14 +2754,14 @@ Respond ONLY with valid JSON:
 
   app.get("/api/rbac/roles", async (_req, res) => {
     try {
-      const roles = await storage.getOrgRoles("default");
+      const roles = await storage.getOrgRoles(req.tenantId || "default");
       res.json(roles);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
   app.get("/api/rbac/users", requireModuleAccess("admin"), requirePermission("users.manage"), async (_req, res) => {
     try {
-      const usersList = await storage.getUsersByTenant("default");
+      const usersList = await storage.getUsersByTenant(req.tenantId || "default");
       res.json(usersList);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
@@ -2764,7 +2770,7 @@ Respond ONLY with valid JSON:
     try {
       const { roleId } = req.body;
       if (!roleId) return res.status(400).json({ message: "roleId is required" });
-      await storage.assignUserOrgRole(req.params.userId as string, roleId, "default");
+      await storage.assignUserOrgRole(req.params.userId as string, roleId, req.tenantId || "default");
       invalidatePermissionCache(req.params.userId as string);
       res.json({ success: true });
     } catch (err: any) { res.status(500).json({ message: err.message }); }
@@ -2772,7 +2778,7 @@ Respond ONLY with valid JSON:
 
   app.delete("/api/rbac/users/:userId/roles/:roleId", requireModuleAccess("admin"), requirePermission("roles.manage"), async (req, res) => {
     try {
-      await storage.removeUserOrgRole(req.params.userId as string, req.params.roleId as string, "default");
+      await storage.removeUserOrgRole(req.params.userId as string, req.params.roleId as string, req.tenantId || "default");
       invalidatePermissionCache(req.params.userId as string);
       res.json({ success: true });
     } catch (err: any) { res.status(500).json({ message: err.message }); }
@@ -2821,7 +2827,7 @@ Respond ONLY with valid JSON:
 
   app.get("/api/rbac/objects/:objectType/:objectId/assignments", async (req, res) => {
     try {
-      const assignments = await storage.getObjectAssignments(req.params.objectType, req.params.objectId, "default");
+      const assignments = await storage.getObjectAssignments(req.params.objectType, req.params.objectId, req.tenantId || "default");
       res.json(assignments);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
@@ -2830,7 +2836,7 @@ Respond ONLY with valid JSON:
     try {
       const { userId, objectRole } = req.body;
       if (!userId || !objectRole) return res.status(400).json({ message: "userId and objectRole are required" });
-      const assignment = await storage.assignObjectRole(req.params.objectType as string, req.params.objectId as string, userId, objectRole, "default");
+      const assignment = await storage.assignObjectRole(req.params.objectType as string, req.params.objectId as string, userId, objectRole, req.tenantId || "default");
       invalidatePermissionCache(userId);
       res.json(assignment);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
@@ -2854,7 +2860,7 @@ Respond ONLY with valid JSON:
       const user = (req as any).user;
       const userId = user?.claims?.sub || user?.id;
       if (!userId) return res.status(401).json({ message: "Authentication required" });
-      const perms = await getEffectivePermissions(userId, "default");
+      const perms = await getEffectivePermissions(userId, req.tenantId || "default");
       res.json({ permissions: Array.from(perms) });
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
@@ -2864,7 +2870,7 @@ Respond ONLY with valid JSON:
       const user = (req as any).user;
       const userId = user?.claims?.sub || user?.id;
       if (!userId) return res.status(401).json({ message: "Authentication required" });
-      const assignments = await storage.getObjectAssignmentsByUser(userId, "default");
+      const assignments = await storage.getObjectAssignmentsByUser(userId, req.tenantId || "default");
       res.json(assignments);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
@@ -2874,8 +2880,8 @@ Respond ONLY with valid JSON:
       const user = (req as any).user;
       const userId = user?.claims?.sub || user?.id;
       if (!userId) return res.status(401).json({ message: "Authentication required" });
-      const modules = await getUserModulePermissions(userId, "default");
-      const isGlobal = await hasGlobalRecordAccess(userId, "default");
+      const modules = await getUserModulePermissions(userId, req.tenantId || "default");
+      const isGlobal = await hasGlobalRecordAccess(userId, req.tenantId || "default");
       const teamMemberId = await getLinkedTeamMemberId(userId);
       res.json({ modules, isGlobalAccess: isGlobal, teamMemberId });
     } catch (err: any) { res.status(500).json({ message: err.message }); }
@@ -2886,13 +2892,13 @@ Respond ONLY with valid JSON:
       const { name, description, permissions } = req.body;
       if (!name || !name.trim()) return res.status(400).json({ message: "Name is required" });
       const role = await storage.createOrgRole({
-        tenantId: "default",
+        tenantId: req.tenantId || "default",
         name: name.trim(),
         description: description || null,
         isSystem: false,
       });
       if (permissions && Array.isArray(permissions)) {
-        await storage.setOrgRolePermissions(role.id, "default", permissions);
+        await storage.setOrgRolePermissions(role.id, req.tenantId || "default", permissions);
       }
       invalidatePermissionCache();
       res.json(role);
@@ -2902,7 +2908,7 @@ Respond ONLY with valid JSON:
   app.patch("/api/rbac/roles/:id", requireModuleAccess("admin"), requirePermission("roles.manage"), async (req, res) => {
     try {
       const { name, description, permissions } = req.body;
-      const existingRoles = await storage.getOrgRoles("default");
+      const existingRoles = await storage.getOrgRoles(req.tenantId || "default");
       const role = existingRoles.find(r => r.id === req.params.id);
       if (!role) return res.status(404).json({ message: "Role not found" });
       if (role.isSystem && name && name !== role.name) {
@@ -2915,10 +2921,10 @@ Respond ONLY with valid JSON:
         await storage.updateOrgRole(req.params.id, updateData);
       }
       if (permissions && Array.isArray(permissions)) {
-        await storage.setOrgRolePermissions(req.params.id, "default", permissions);
+        await storage.setOrgRolePermissions(req.params.id, req.tenantId || "default", permissions);
       }
       invalidatePermissionCache();
-      const updated = await storage.getOrgRoles("default");
+      const updated = await storage.getOrgRoles(req.tenantId || "default");
       const result = updated.find(r => r.id === req.params.id);
       res.json(result);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
@@ -2926,11 +2932,11 @@ Respond ONLY with valid JSON:
 
   app.delete("/api/rbac/roles/:id", requireModuleAccess("admin"), requirePermission("roles.manage"), async (req, res) => {
     try {
-      const existingRoles = await storage.getOrgRoles("default");
+      const existingRoles = await storage.getOrgRoles(req.tenantId || "default");
       const role = existingRoles.find(r => r.id === req.params.id);
       if (!role) return res.status(404).json({ message: "Role not found" });
       if (role.isSystem) return res.status(400).json({ message: "Cannot delete system roles" });
-      const userCount = await storage.getOrgRoleUserCount(req.params.id, "default");
+      const userCount = await storage.getOrgRoleUserCount(req.params.id, req.tenantId || "default");
       if (userCount > 0) return res.status(400).json({ message: `Cannot delete role with ${userCount} assigned user(s). Remove assignments first.` });
       await storage.deleteOrgRole(req.params.id);
       invalidatePermissionCache();
@@ -2940,7 +2946,7 @@ Respond ONLY with valid JSON:
 
   app.get("/api/rbac/roles/:id/permissions", async (req, res) => {
     try {
-      const permissions = await storage.getOrgRolePermissions(req.params.id, "default");
+      const permissions = await storage.getOrgRolePermissions(req.params.id, req.tenantId || "default");
       res.json({ permissions });
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
@@ -2976,7 +2982,7 @@ Respond ONLY with valid JSON:
       const evmResult = await calculateEVMForWeek(req.params.id, weekEnding);
 
       const snapshot = await storage.createEvmSnapshot({
-        tenantId: "default",
+        tenantId: req.tenantId || "default",
         timelineId: req.params.id,
         weekEnding,
         mode: "manual_freeze",
@@ -3002,7 +3008,7 @@ Respond ONLY with valid JSON:
       });
 
       await storage.createAuditEntry({
-        tenantId: "default",
+        tenantId: req.tenantId || "default",
         actorUserId: (req as any).user?.id || "system",
         action: "evm.snapshot_generated",
         objectType: "project",
@@ -3042,7 +3048,7 @@ Respond ONLY with valid JSON:
       await storage.deleteEvmSnapshot(req.params.snapshotId);
 
       await storage.createAuditEntry({
-        tenantId: "default",
+        tenantId: req.tenantId || "default",
         actorUserId: (req as any).user?.id || "system",
         action: "evm.snapshot_deleted",
         objectType: "project",
@@ -3059,9 +3065,162 @@ Respond ONLY with valid JSON:
       const limit = parseInt(req.query.limit as string) || 100;
       const offset = parseInt(req.query.offset as string) || 0;
       const action = req.query.action as string | undefined;
-      const entries = await storage.getAuditLog("default", { action, limit, offset });
+      const entries = await storage.getAuditLog(req.tenantId || "default", { action, limit, offset });
       res.json(entries);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  // ── Tenant Switch ──
+  app.post("/api/tenant/switch", isAuthenticated, async (req, res) => {
+    try {
+      const userId = extractUserId(req);
+      if (!userId) return res.status(401).json({ message: "Authentication required" });
+      const { tenantId } = req.body;
+      if (!tenantId) return res.status(400).json({ message: "tenantId required" });
+      const tenant = await storage.getTenant(tenantId);
+      if (!tenant) return res.status(404).json({ message: "Tenant not found" });
+
+      const [userRecord] = await db.select({ isSuperAdmin: users.isSuperAdmin }).from(users).where(eq(users.id, userId)).limit(1);
+      if (!userRecord?.isSuperAdmin) {
+        const membership = await db.select({ tenantId: userOrgRoles.tenantId }).from(userOrgRoles)
+          .where(and(eq(userOrgRoles.userId, userId), eq(userOrgRoles.tenantId, tenantId))).limit(1);
+        if (membership.length === 0) return res.status(403).json({ message: "You do not have access to this tenant" });
+      }
+
+      (req.session as any).activeTenantId = tenantId;
+      res.json({ message: "Switched", tenantId });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.get("/api/tenant/current", isAuthenticated, async (req, res) => {
+    try {
+      const tenantId = req.tenantId || "default";
+      const tenant = await storage.getTenant(tenantId);
+      res.json({ tenantId, tenant: tenant || null });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.get("/api/tenant/my-tenants", isAuthenticated, async (req, res) => {
+    try {
+      const userId = extractUserId(req);
+      if (!userId) return res.status(401).json({ message: "Authentication required" });
+      const roles = await db.selectDistinct({ tenantId: userOrgRoles.tenantId })
+        .from(userOrgRoles)
+        .where(eq(userOrgRoles.userId, userId));
+      const tenantIds = roles.map(r => r.tenantId);
+      if (tenantIds.length === 0) return res.json([]);
+      const allTenants = await storage.getTenants();
+      const myTenants = allTenants.filter(t => tenantIds.includes(t.id));
+      res.json(myTenants);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  // ── Global Admin API (Super Admin only) ──
+  app.get("/api/global-admin/tenants", requireSuperAdmin(), async (req, res) => {
+    try {
+      const allTenants = await storage.getTenants();
+      const result = [];
+      for (const tenant of allTenants) {
+        const usage = await storage.getTenantUsage(tenant.id);
+        result.push({ ...tenant, ...usage });
+      }
+      res.json(result);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.post("/api/global-admin/tenants", requireSuperAdmin(), async (req, res) => {
+    try {
+      const { name, slug, plan, maxUsers, maxProjects, storageLimit, billingEmail } = req.body;
+      if (!name || !slug) return res.status(400).json({ message: "name and slug required" });
+      const existing = (await storage.getTenants()).find(t => t.slug === slug);
+      if (existing) return res.status(409).json({ message: "Slug already taken" });
+      const userId = extractUserId(req);
+      const tenant = await storage.createTenant({
+        name, slug,
+        plan: plan || "free",
+        maxUsers: maxUsers || 10,
+        maxProjects: maxProjects || 25,
+        storageLimit: storageLimit || 1024,
+        billingEmail: billingEmail || null,
+        createdBy: userId,
+      });
+      res.status(201).json(tenant);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.get("/api/global-admin/tenants/:id", requireSuperAdmin(), async (req, res) => {
+    try {
+      const tenant = await storage.getTenant(req.params.id);
+      if (!tenant) return res.status(404).json({ message: "Tenant not found" });
+      const usage = await storage.getTenantUsage(tenant.id);
+      res.json({ ...tenant, ...usage });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.patch("/api/global-admin/tenants/:id", requireSuperAdmin(), async (req, res) => {
+    try {
+      const { name, status, plan, maxUsers, maxProjects, storageLimit, billingEmail } = req.body;
+      const updated = await storage.updateTenant(req.params.id, {
+        ...(name !== undefined && { name }),
+        ...(status !== undefined && { status }),
+        ...(plan !== undefined && { plan }),
+        ...(maxUsers !== undefined && { maxUsers }),
+        ...(maxProjects !== undefined && { maxProjects }),
+        ...(storageLimit !== undefined && { storageLimit }),
+        ...(billingEmail !== undefined && { billingEmail }),
+      });
+      if (!updated) return res.status(404).json({ message: "Tenant not found" });
+      res.json(updated);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.delete("/api/global-admin/tenants/:id", requireSuperAdmin(), async (req, res) => {
+    try {
+      const updated = await storage.updateTenant(req.params.id, { status: "suspended" });
+      if (!updated) return res.status(404).json({ message: "Tenant not found" });
+      res.json({ message: "Tenant suspended", tenant: updated });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.get("/api/global-admin/tenants/:id/usage", requireSuperAdmin(), async (req, res) => {
+    try {
+      const tenant = await storage.getTenant(req.params.id);
+      if (!tenant) return res.status(404).json({ message: "Tenant not found" });
+      const usage = await storage.getTenantUsage(req.params.id);
+      res.json({ tenant, usage });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.get("/api/global-admin/tenants/:id/users", requireSuperAdmin(), async (req, res) => {
+    try {
+      const usersList = await storage.getUsersByTenant(req.params.id);
+      res.json(usersList);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.get("/api/global-admin/stats", requireSuperAdmin(), async (req, res) => {
+    try {
+      const allTenants = await storage.getTenants();
+      const allUsers = await db.select({ id: users.id }).from(users);
+      const allProjects = await db.select({ id: timelines.id }).from(timelines).where(eq(timelines.recordType, "project"));
+      const allOpportunities = await db.select({ id: timelines.id }).from(timelines).where(eq(timelines.recordType, "opportunity"));
+      res.json({
+        totalTenants: allTenants.length,
+        activeTenants: allTenants.filter(t => t.status === "active").length,
+        totalUsers: allUsers.length,
+        totalProjects: allProjects.length,
+        totalOpportunities: allOpportunities.length,
+      });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.get("/api/global-admin/check", async (req, res) => {
+    try {
+      const userId = extractUserId(req);
+      if (!userId) return res.json({ isSuperAdmin: false });
+      const [user] = await db.select({ isSuperAdmin: users.isSuperAdmin }).from(users).where(eq(users.id, userId));
+      res.json({ isSuperAdmin: user?.isSuperAdmin || false });
+    } catch (err: any) { res.json({ isSuperAdmin: false }); }
   });
 
   // ── Seed FlightPath on startup ──

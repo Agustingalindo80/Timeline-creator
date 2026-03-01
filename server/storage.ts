@@ -1,6 +1,7 @@
-import { eq, and, inArray, desc } from "drizzle-orm";
+import { eq, and, inArray, desc, sql, count } from "drizzle-orm";
 import { db } from "./db";
 import {
+  tenants,
   clients,
   contacts,
   timelines,
@@ -82,19 +83,19 @@ import {
 } from "@shared/schema";
 
 export interface IStorage {
-  getClients(): Promise<Client[]>;
+  getClients(tenantId?: string): Promise<Client[]>;
   getClient(id: string): Promise<Client | undefined>;
   getClientWithProjects(id: string): Promise<ClientWithProjects | undefined>;
   createClient(data: InsertClient): Promise<Client>;
   updateClient(id: string, data: Partial<InsertClient>): Promise<Client | undefined>;
   deleteClient(id: string): Promise<void>;
-  getAllContacts(): Promise<Contact[]>;
+  getAllContacts(tenantId?: string): Promise<Contact[]>;
   getContacts(clientId: string): Promise<Contact[]>;
   getContact(id: string): Promise<Contact | undefined>;
   createContact(data: InsertContact): Promise<Contact>;
   updateContact(id: string, data: Partial<InsertContact>): Promise<Contact | undefined>;
   deleteContact(id: string): Promise<void>;
-  getTimelines(recordType?: string): Promise<TimelineWithMilestones[]>;
+  getTimelines(recordType?: string, tenantId?: string): Promise<TimelineWithMilestones[]>;
   getTimeline(id: string): Promise<TimelineWithMilestones | undefined>;
   createTimeline(data: InsertTimeline): Promise<Timeline>;
   updateTimeline(id: string, data: Partial<InsertTimeline>): Promise<Timeline | undefined>;
@@ -112,12 +113,12 @@ export interface IStorage {
   createRisk(data: InsertRisk): Promise<Risk>;
   updateRisk(id: string, data: Partial<InsertRisk>): Promise<Risk | undefined>;
   deleteRisk(id: string): Promise<void>;
-  getTeamMembers(): Promise<TeamMember[]>;
+  getTeamMembers(tenantId?: string): Promise<TeamMember[]>;
   getTeamMember(id: string): Promise<TeamMember | undefined>;
   createTeamMember(data: InsertTeamMember): Promise<TeamMember>;
   updateTeamMember(id: string, data: Partial<InsertTeamMember>): Promise<TeamMember | undefined>;
   deleteTeamMember(id: string): Promise<void>;
-  getRateCards(): Promise<RateCard[]>;
+  getRateCards(tenantId?: string): Promise<RateCard[]>;
   getRateCard(id: string): Promise<RateCard | undefined>;
   createRateCard(data: InsertRateCard): Promise<RateCard>;
   updateRateCard(id: string, data: Partial<InsertRateCard>): Promise<RateCard | undefined>;
@@ -129,7 +130,7 @@ export interface IStorage {
   deleteProjectTeamMember(id: string): Promise<void>;
   getAllocation(id: string): Promise<Allocation | undefined>;
   getAllocations(teamMemberId: string): Promise<AllocationWithProject[]>;
-  getAllAllAllocations(): Promise<import("@shared/schema").AllocationFull[]>;
+  getAllAllAllocations(tenantId?: string): Promise<import("@shared/schema").AllocationFull[]>;
   getAllocationsByTimeline(timelineId: string): Promise<AllocationWithTeamMember[]>;
   createAllocation(data: InsertAllocation): Promise<Allocation>;
   updateAllocation(id: string, data: Partial<InsertAllocation>): Promise<Allocation | undefined>;
@@ -173,6 +174,12 @@ export interface IStorage {
   updateWorkstreamResource(id: string, data: Partial<InsertWorkstreamResource>): Promise<WorkstreamResource | undefined>;
   deleteWorkstreamResource(id: string): Promise<void>;
 
+  getTenants(): Promise<import("@shared/schema").Tenant[]>;
+  getTenant(id: string): Promise<import("@shared/schema").Tenant | undefined>;
+  createTenant(data: import("@shared/schema").InsertTenant): Promise<import("@shared/schema").Tenant>;
+  updateTenant(id: string, data: Partial<import("@shared/schema").InsertTenant>): Promise<import("@shared/schema").Tenant | undefined>;
+  getTenantUsage(tenantId: string): Promise<{ userCount: number; projectCount: number; opportunityCount: number }>;
+
   getOrgRoles(tenantId: string): Promise<OrgRole[]>;
   getUserOrgRoles(userId: string, tenantId: string): Promise<OrgRole[]>;
   assignUserOrgRole(userId: string, roleId: string, tenantId: string): Promise<void>;
@@ -209,7 +216,8 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  async getClients(): Promise<Client[]> {
+  async getClients(tenantId?: string): Promise<Client[]> {
+    if (tenantId) return db.select().from(clients).where(eq(clients.tenantId, tenantId));
     return db.select().from(clients);
   }
 
@@ -260,7 +268,8 @@ export class DatabaseStorage implements IStorage {
     await db.delete(clients).where(eq(clients.id, id));
   }
 
-  async getAllContacts(): Promise<Contact[]> {
+  async getAllContacts(tenantId?: string): Promise<Contact[]> {
+    if (tenantId) return db.select().from(contacts).where(eq(contacts.tenantId, tenantId));
     return db.select().from(contacts);
   }
 
@@ -287,9 +296,11 @@ export class DatabaseStorage implements IStorage {
     await db.delete(contacts).where(eq(contacts.id, id));
   }
 
-  async getTimelines(recordType?: string): Promise<TimelineWithMilestones[]> {
+  async getTimelines(recordType?: string, tenantId?: string): Promise<TimelineWithMilestones[]> {
     const filterType = recordType || "project";
-    const allTimelines = await db.select().from(timelines).where(eq(timelines.recordType, filterType));
+    const conditions = [eq(timelines.recordType, filterType)];
+    if (tenantId) conditions.push(eq(timelines.tenantId, tenantId));
+    const allTimelines = await db.select().from(timelines).where(and(...conditions));
     const allMilestones = await db.select().from(milestones);
     const allTasks = await db.select().from(tasks);
 
@@ -421,7 +432,8 @@ export class DatabaseStorage implements IStorage {
     await db.delete(risks).where(eq(risks.id, id));
   }
 
-  async getTeamMembers(): Promise<TeamMember[]> {
+  async getTeamMembers(tenantId?: string): Promise<TeamMember[]> {
+    if (tenantId) return db.select().from(teamMembers).where(eq(teamMembers.tenantId, tenantId));
     return db.select().from(teamMembers);
   }
 
@@ -445,7 +457,8 @@ export class DatabaseStorage implements IStorage {
     await db.delete(teamMembers).where(eq(teamMembers.id, id));
   }
 
-  async getRateCards(): Promise<RateCard[]> {
+  async getRateCards(tenantId?: string): Promise<RateCard[]> {
+    if (tenantId) return db.select().from(rateCards).where(eq(rateCards.tenantId, tenantId));
     return db.select().from(rateCards);
   }
 
@@ -528,8 +541,10 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async getAllAllAllocations(): Promise<import("@shared/schema").AllocationFull[]> {
-    const rows = await db.select().from(allocations);
+  async getAllAllAllocations(tenantId?: string): Promise<import("@shared/schema").AllocationFull[]> {
+    const rows = tenantId
+      ? await db.select().from(allocations).where(eq(allocations.tenantId, tenantId))
+      : await db.select().from(allocations);
     const result: import("@shared/schema").AllocationFull[] = [];
     for (const row of rows) {
       const [member] = await db.select().from(teamMembers).where(eq(teamMembers.id, row.teamMemberId));
@@ -1129,6 +1144,46 @@ export class DatabaseStorage implements IStorage {
         eq(userOrgRoles.tenantId, tenantId),
       ));
     return rows.length;
+  }
+
+  async getTenants(): Promise<import("@shared/schema").Tenant[]> {
+    return db.select().from(tenants);
+  }
+
+  async getTenant(id: string): Promise<import("@shared/schema").Tenant | undefined> {
+    const [tenant] = await db.select().from(tenants).where(eq(tenants.id, id));
+    return tenant;
+  }
+
+  async createTenant(data: import("@shared/schema").InsertTenant): Promise<import("@shared/schema").Tenant> {
+    const [tenant] = await db.insert(tenants).values(data).returning();
+    return tenant;
+  }
+
+  async updateTenant(id: string, data: Partial<import("@shared/schema").InsertTenant>): Promise<import("@shared/schema").Tenant | undefined> {
+    const [tenant] = await db.update(tenants).set({ ...data, updatedAt: new Date() }).where(eq(tenants.id, id)).returning();
+    return tenant;
+  }
+
+  async getTenantUsage(tenantId: string): Promise<{ userCount: number; projectCount: number; opportunityCount: number }> {
+    const userRows = await db.select({ userId: userOrgRoles.userId })
+      .from(userOrgRoles)
+      .where(eq(userOrgRoles.tenantId, tenantId));
+    const uniqueUsers = new Set(userRows.map(r => r.userId));
+
+    const projectRows = await db.select({ id: timelines.id })
+      .from(timelines)
+      .where(and(eq(timelines.tenantId, tenantId), eq(timelines.recordType, "project")));
+
+    const oppRows = await db.select({ id: timelines.id })
+      .from(timelines)
+      .where(and(eq(timelines.tenantId, tenantId), eq(timelines.recordType, "opportunity")));
+
+    return {
+      userCount: uniqueUsers.size,
+      projectCount: projectRows.length,
+      opportunityCount: oppRows.length,
+    };
   }
 }
 

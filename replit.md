@@ -56,6 +56,20 @@ The application uses a modern web stack with React, Vite, Tailwind CSS, and shad
   - **Team Member ↔ User Linking:** Admin can link/unlink team members to users from Security > Users detail view. API: `POST /api/rbac/users/:userId/link-team-member` and `/unlink-team-member`.
   - **Permission Cache:** 10-second TTL with explicit invalidation on role changes via API.
   - Audit logging for sensitive actions.
+- **Multi-Tenancy Architecture:**
+  - `tenants` table: id, name, slug (unique), status (active/suspended/trial), plan (free/pro/enterprise), maxUsers, maxProjects, storageLimit, billingEmail, timestamps.
+  - All 20+ core tables have `tenantId` column (default "default").
+  - `server/middleware/tenant.ts`: Derives `req.tenantId` from session → header → user_org_roles DB lookup → fallback "default".
+  - Storage layer methods accept optional `tenantId` for list queries (getClients, getTimelines, getTeamMembers, getRateCards, getAllContacts, getAllAllAllocations).
+  - All route handlers pass `req.tenantId` to storage/rbac calls — no hardcoded "default" in routes.
+  - Performance indexes on 13 key query patterns (timeline tenant+client, tasks timeline, timesheets, progress, EVM, etc.).
+- **Super Admin & Global Admin Console:**
+  - `users.isSuperAdmin` boolean — first user auto-promoted.
+  - `server/middleware/superadmin.ts`: Blocks non-super-admins from global admin endpoints.
+  - API: `GET/POST/PATCH/DELETE /api/global-admin/tenants`, `/tenants/:id/usage`, `/tenants/:id/users`, `/api/global-admin/stats`, `/api/global-admin/check`.
+  - UI: `/global-admin` page with Tenants tab (list→detail, create dialog, edit inline, suspend) and System tab (aggregate stats).
+  - Sidebar: "Super Admin" section with "Global Admin" link, visible only to super admins (via `/api/global-admin/check`).
+  - Tenant switching: `POST /api/tenant/switch`, `GET /api/tenant/current`, `GET /api/tenant/my-tenants`.
 
 ## External Dependencies
 - **React:** Frontend library.

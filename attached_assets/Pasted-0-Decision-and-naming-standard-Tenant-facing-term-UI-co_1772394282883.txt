@@ -1,0 +1,285 @@
+0) Decision and naming standard
+Tenant-facing term (UI copy)
+
+EN: Operating Model
+
+ES: Modelo Operativo
+
+PT: Modelo Operacional
+
+Internal technical naming (choose one)
+
+You have two paths:
+
+Path A (recommended now): “Alias, don’t rename yet”
+Keep DB tables as flightpath_* for now, but expose them in API/UI as “Operating Model”. Zero-risk migration.
+
+Path B (later): Full refactor rename
+Rename DB tables + code identifiers to governance_* / operating_model_*. Higher effort, more risk.
+
+Do Path A now and schedule Path B after you stabilize integrations.
+
+1) Update product terminology map (single source of truth)
+
+Create a small terminology.ts (frontend) and terminology.ts (backend) so you stop hardcoding strings.
+
+Frontend (React)
+
+Add src/config/terminology.ts:
+
+export const TERMS = {
+  operatingModel: {
+    en: "Operating Model",
+    es: "Modelo Operativo",
+    pt: "Modelo Operacional",
+  },
+  stage: {
+    en: "Stage",
+    es: "Etapa",
+    pt: "Etapa",
+  },
+  gate: {
+    en: "Gate",
+    es: "Puerta",
+    pt: "Gate", // many PT-BR orgs use "Gate"; or "Portão" if you want formal
+  },
+};
+
+Later, move this into i18n JSON keys (preferred). For now, this helps you migrate fast.
+
+2) Add tenant setting for “governance model name” (optional but powerful)
+
+Even if you standardize on Operating Model, letting tenants rename it (e.g., “Delivery Framework”) is a killer customization.
+
+DB (tenant-scoped settings)
+
+Add to your tenant settings table (whatever you now use, likely app_settings with tenantId):
+
+governanceModelLabel (text, nullable)
+
+Default value resolved as:
+
+If tenant set label → use it
+
+Else use locale default (“Operating Model” / “Modelo Operativo” / “Modelo Operacional”)
+
+This is a small change with big perceived customization.
+
+3) Backend: rename API payloads and routes (without breaking existing clients)
+Goal
+
+Expose “Operating Model” in endpoints and DTOs, but keep old endpoints temporarily.
+
+API strategy
+
+Keep existing endpoints: /api/flightpath/stages
+
+Add new canonical endpoints: /api/governance-model/stages (or /api/operating-model/stages)
+
+Internally both call the same service.
+
+Example route mapping
+
+GET /api/governance-model/stages → reads flightpath_stages
+
+POST /api/governance-model/stages
+
+GET /api/governance-model/deliverables
+
+Response shape (tenant-facing)
+
+Rename fields in response if needed, but simplest is:
+
+Keep DB field names (gateName, stageNumber)
+
+Only change UI labels.
+
+4) Frontend: replace all “FlightPath” strings in UI
+Where this usually exists
+
+Navigation labels
+
+Page titles
+
+Buttons (“Create FlightPath Stage”)
+
+Descriptions/help text
+
+Modals
+
+Report headings
+
+Process
+
+Global search in Replit for FlightPath, flightpath, FP, Stage 0 labels
+
+Replace UI text only:
+
+“FlightPath” → “Operating Model”
+
+“FlightPath Stage” → “Operating Model Stage”
+
+“FlightPath Coach” → “Governance Coach” or “Operating Model Coach”
+
+Rename the AI assistant in UI
+
+EN: Governance Coach
+
+ES: Asistente de Gobernanza
+
+PT: Assistente de Governança
+
+Keep “FlightPath” as an internal codename if you want, but not tenant-facing.
+
+5) i18n integration: add translations for the new terminology
+
+Since you’re already implementing tenant language selection:
+
+Add translation keys (recommended)
+
+In common.json:
+
+{
+  "operatingModel": "Operating Model",
+  "operatingModel_configure": "Configure Operating Model",
+  "operatingModel_stages": "Operating Model Stages",
+  "operatingModel_gates": "Gates",
+  "governanceCoach": "Governance Coach"
+}
+
+Spanish:
+
+{
+  "operatingModel": "Modelo Operativo",
+  "operatingModel_configure": "Configurar Modelo Operativo",
+  "operatingModel_stages": "Etapas del Modelo Operativo",
+  "operatingModel_gates": "Puertas",
+  "governanceCoach": "Asistente de Gobernanza"
+}
+
+Portuguese placeholders:
+
+{
+  "operatingModel": "Modelo Operacional",
+  "operatingModel_configure": "Configurar Modelo Operacional",
+  "operatingModel_stages": "Etapas do Modelo Operacional",
+  "operatingModel_gates": "Gates",
+  "governanceCoach": "Assistente de Governança"
+}
+
+Then update UI to use t('operatingModel') etc.
+
+6) Reporting/export: rename headings and section titles
+
+Your PDF packs should never show “FlightPath”.
+
+Update report sections
+
+“FlightPath Stage / Gate” → “Operating Model Stage / Gate”
+
+“Stage 0” stays as “Stage 0” (that’s structural), but the header changes:
+
+“Operating Model — Stage 0 Gate Status”
+
+Add locale formatting + label override
+
+Report renderer should receive:
+
+locale
+
+governanceModelLabel resolved from tenant settings
+
+7) Data seeding: seed templates with generic naming (not FlightPath)
+
+When a tenant is created:
+
+seed flightpath_stages and deliverables with the chosen language
+
+do not seed the word “FlightPath” anywhere in name, goal, gateName, descriptions
+
+If you already seeded old data:
+
+run a migration script to update records that contain “FlightPath” in text columns.
+
+8) AI prompts: remove FlightPath branding in tenant-facing responses
+
+Even if your internal system prompt calls it FlightPath, the AI output should align with tenant terminology.
+
+Add to every AI call:
+
+“In user-facing responses, refer to the governance lifecycle as: {Operating Model label}. Do not use the term FlightPath.”
+
+This is critical—AI will leak the trademark otherwise.
+
+9) Backward compatibility and rollout plan (safe)
+Release in 2 phases
+
+Phase 1 (safe switch)
+
+UI terminology changes
+
+API aliases if needed
+
+Reports updated
+
+AI language constraint
+
+No DB renames
+
+Phase 2 (refactor)
+
+Rename internal code identifiers (optional)
+
+DB table rename (optional) with views for compatibility:
+
+create views governance_stages → select from flightpath_stages
+
+10) Replit-specific execution checklist
+
+Because Replit deployments can bite you with environment drift:
+
+Branch/Deploy plan
+
+create a Replit branch for this change (or duplicate repl if you prefer)
+
+DB migrations
+
+add migration for governanceModelLabel and any locale fields
+
+run migration in staging DB first
+
+Seed scripts
+
+update tenant seed logic
+
+Smoke tests
+
+Create new tenant → choose Spanish → verify UI, reports, AI output
+
+Create tenant English → same
+
+Switch tenant locale in admin settings → UI updates
+
+Search for regressions
+
+global search “FlightPath” and confirm only internal docs/variables remain
+
+Production cut
+
+deploy backend + frontend together to avoid mixed wording
+
+11) What I’d name things in the UI (final suggestion)
+
+Sidebar: Operating Model
+
+Pages:
+
+Operating Model Builder
+
+Stages & Gates
+
+Deliverables & RACI
+
+AI: Governance Coach
+
+This reads clean in English and works well in ES/PT.

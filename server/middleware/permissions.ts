@@ -40,7 +40,7 @@ export function requirePermission(...permissionKeys: string[]) {
       return res.status(401).json({ message: "Authentication required" });
     }
 
-    const tenantId = "default";
+    const tenantId = req.tenantId || "default";
     const { objectType, objectId } = extractObjectContext(req);
 
     try {
@@ -83,7 +83,7 @@ export function requireModuleAccess(moduleKey: string) {
       return res.status(401).json({ message: "Authentication required" });
     }
 
-    const tenantId = "default";
+    const tenantId = req.tenantId || "default";
     const permKey = `module.${moduleKey}`;
 
     try {
@@ -109,7 +109,7 @@ export function requireObjectAccess(objectType: string) {
       return res.status(401).json({ message: "Authentication required" });
     }
 
-    const tenantId = "default";
+    const tenantId = req.tenantId || "default";
     const objectId = (req.params.id || req.params.objectId) as string | undefined;
     if (!objectId) {
       return next();

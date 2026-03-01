@@ -1,11 +1,31 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, jsonb, numeric } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, jsonb, numeric, timestamp, index, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { users } from "./models/auth";
 
 export * from "./models/auth";
 export * from "./models/chat";
 export * from "./models/rbac";
+
+export const tenants = pgTable("tenants", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  status: text("status").notNull().default("active"),
+  plan: text("plan").notNull().default("free"),
+  maxUsers: integer("max_users").notNull().default(10),
+  maxProjects: integer("max_projects").notNull().default(25),
+  storageLimit: integer("storage_limit").notNull().default(1024),
+  billingEmail: text("billing_email"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  createdBy: varchar("created_by"),
+});
+
+export const insertTenantSchema = createInsertSchema(tenants).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertTenant = z.infer<typeof insertTenantSchema>;
+export type Tenant = typeof tenants.$inferSelect;
 
 export const fieldOptionSchema = z.object({
   value: z.string(),
@@ -110,6 +130,7 @@ export const DEFAULT_DATE_FORMATS: FieldOption[] = [
 
 export const clients = pgTable("clients", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: text("tenant_id").notNull().default("default"),
   name: text("name").notNull(),
   industry: text("industry"),
   contactPhone: text("contact_phone"),
@@ -117,10 +138,13 @@ export const clients = pgTable("clients", {
   address: text("address"),
   notes: text("notes"),
   status: text("status").notNull().default("active"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const contacts = pgTable("contacts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: text("tenant_id").notNull().default("default"),
   clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
@@ -128,10 +152,15 @@ export const contacts = pgTable("contacts", {
   phone: text("phone"),
   role: text("role"),
   isLegalRepresentative: boolean("is_legal_representative").notNull().default(false),
-});
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  unique("contacts_client_email_uniq").on(table.clientId, table.email),
+]);
 
 export const timelines = pgTable("timelines", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: text("tenant_id").notNull().default("default"),
   title: text("title").notNull(),
   description: text("description"),
   color: text("color").notNull().default("#2563eb"),
@@ -142,7 +171,7 @@ export const timelines = pgTable("timelines", {
   projectType: text("project_type"),
   engagementModel: text("engagement_model"),
   client: text("client"),
-  clientId: varchar("client_id"),
+  clientId: varchar("client_id").references(() => clients.id, { onDelete: "set null" }),
   approvedBudget: numeric("approved_budget", { precision: 12, scale: 2 }),
   totalRunningCost: numeric("total_running_cost", { precision: 12, scale: 2 }),
   grossMargin: numeric("gross_margin", { precision: 5, scale: 2 }),
@@ -151,7 +180,7 @@ export const timelines = pgTable("timelines", {
   startDate: text("start_date"),
   endDate: text("end_date"),
   dateFormat: text("date_format"),
-  flightpathStageId: varchar("flightpath_stage_id"),
+  flightpathStageId: varchar("flightpath_stage_id").references(() => flightpathStages.id, { onDelete: "set null" }),
   docRepositoryType: text("doc_repository_type"),
   docRepositoryUrl: text("doc_repository_url"),
   docRepositoryFolderId: text("doc_repository_folder_id"),
@@ -164,10 +193,17 @@ export const timelines = pgTable("timelines", {
   convertedAt: text("converted_at"),
   salesforceClouds: text("salesforce_clouds"),
   currency: text("currency").notNull().default("USD"),
-});
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  createdBy: varchar("created_by"),
+}, (table) => [
+  index("idx_timelines_tenant_client").on(table.tenantId, table.clientId),
+  index("idx_timelines_tenant_record").on(table.tenantId, table.recordType),
+]);
 
 export const milestones = pgTable("milestones", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: text("tenant_id").notNull().default("default"),
   timelineId: varchar("timeline_id").notNull().references(() => timelines.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   description: text("description"),
@@ -178,10 +214,16 @@ export const milestones = pgTable("milestones", {
   sortOrder: integer("sort_order").notNull().default(0),
   isFinancialObligation: boolean("is_financial_obligation").notNull().default(false),
   amount: numeric("amount", { precision: 12, scale: 2 }),
-});
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  createdBy: varchar("created_by"),
+}, (table) => [
+  index("idx_milestones_timeline").on(table.timelineId, table.sortOrder),
+]);
 
 export const tasks = pgTable("tasks", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: text("tenant_id").notNull().default("default"),
   timelineId: varchar("timeline_id").notNull().references(() => timelines.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   description: text("description"),
@@ -195,16 +237,22 @@ export const tasks = pgTable("tasks", {
   status: text("status").notNull().default("not_started"),
   health: text("health").notNull().default("green"),
   itemType: text("item_type").notNull().default("workstream"),
-  parentTaskId: varchar("parent_task_id"),
+  parentTaskId: varchar("parent_task_id").references((): any => tasks.id, { onDelete: "cascade" }),
   estimatedHours: numeric("estimated_hours", { precision: 8, scale: 2 }),
   confidenceLevel: text("confidence_level"),
   taskType: text("task_type"),
   assignedRoleId: varchar("assigned_role_id"),
   durationWeeks: numeric("duration_weeks", { precision: 5, scale: 1 }),
-});
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  createdBy: varchar("created_by"),
+}, (table) => [
+  index("idx_tasks_timeline").on(table.timelineId, table.parentTaskId, table.sortOrder),
+]);
 
 export const risks = pgTable("risks", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: text("tenant_id").notNull().default("default"),
   timelineId: varchar("timeline_id").notNull().references(() => timelines.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   description: text("description"),
@@ -225,30 +273,43 @@ export const risks = pgTable("risks", {
   validatedDate: text("validated_date"),
   dependencySource: text("dependency_source"),
   requiredByDate: text("required_by_date"),
-});
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  createdBy: varchar("created_by"),
+}, (table) => [
+  index("idx_risks_timeline").on(table.timelineId),
+]);
 
 export const teamMembers = pgTable("team_members", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: text("tenant_id").notNull().default("default"),
   name: text("name").notNull(),
   email: text("email"),
   role: text("role"),
   department: text("department"),
   monthlyCost: numeric("monthly_cost", { precision: 10, scale: 2 }),
   hourlyCost: numeric("hourly_cost", { precision: 10, scale: 2 }),
-  userId: varchar("user_id"),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const rateCards = pgTable("rate_cards", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: text("tenant_id").notNull().default("default"),
   name: text("name").notNull(),
   role: text("role"),
   region: text("region"),
   costRate: numeric("cost_rate", { precision: 10, scale: 2 }),
   billRate: numeric("bill_rate", { precision: 10, scale: 2 }),
+  currency: text("currency").notNull().default("USD"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const projectTeamMembers = pgTable("project_team_members", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: text("tenant_id").notNull().default("default"),
   timelineId: varchar("timeline_id").notNull().references(() => timelines.id, { onDelete: "cascade" }),
   teamMemberId: varchar("team_member_id").references(() => teamMembers.id, { onDelete: "cascade" }),
   rateCardId: varchar("rate_card_id").references(() => rateCards.id),
@@ -257,10 +318,16 @@ export const projectTeamMembers = pgTable("project_team_members", {
   allocation: integer("allocation").notNull().default(100),
   startDate: text("start_date"),
   endDate: text("end_date"),
-});
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_ptm_timeline").on(table.timelineId),
+  index("idx_ptm_member").on(table.teamMemberId),
+]);
 
 export const allocations = pgTable("allocations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: text("tenant_id").notNull().default("default"),
   teamMemberId: varchar("team_member_id").notNull().references(() => teamMembers.id, { onDelete: "cascade" }),
   timelineId: varchar("timeline_id").notNull().references(() => timelines.id, { onDelete: "cascade" }),
   weeklyHours: numeric("weekly_hours", { precision: 5, scale: 1 }),
@@ -268,20 +335,28 @@ export const allocations = pgTable("allocations", {
   endDate: text("end_date"),
   status: text("status").notNull().default("active"),
   notes: text("notes"),
-});
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_alloc_member_timeline").on(table.teamMemberId, table.timelineId),
+]);
 
 export const workstreamResources = pgTable("workstream_resources", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: text("tenant_id").notNull().default("default"),
   taskId: varchar("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
   rateCardId: varchar("rate_card_id").notNull().references(() => rateCards.id),
   teamMemberId: varchar("team_member_id").references(() => teamMembers.id),
   hoursPerWeek: numeric("hours_per_week", { precision: 5, scale: 1 }).notNull(),
   taskType: text("task_type"),
   notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const appSettings = pgTable("app_settings", {
   id: varchar("id").primaryKey().default("app"),
+  tenantId: text("tenant_id").notNull().default("default"),
   riskRegisterEnabled: boolean("risk_register_enabled").notNull().default(false),
   opportunitiesEnabled: boolean("opportunities_enabled").notNull().default(true),
   taskStatuses: jsonb("task_statuses").$type<FieldOption[]>(),
@@ -300,10 +375,12 @@ export const appSettings = pgTable("app_settings", {
   regions: jsonb("regions").$type<FieldOption[]>(),
   dateFormats: jsonb("date_formats").$type<FieldOption[]>(),
   rbacMigrated: boolean("rbac_migrated").notNull().default(false),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const brandingConfig = pgTable("branding_config", {
   id: varchar("id").primaryKey().default("default"),
+  tenantId: text("tenant_id").notNull().default("default"),
   appName: text("app_name").notNull().default("Project High Level Planning"),
   logoUrl: text("logo_url"),
   faviconUrl: text("favicon_url"),
@@ -312,10 +389,12 @@ export const brandingConfig = pgTable("branding_config", {
   sidebarForegroundColor: text("sidebar_foreground_color"),
   sidebarAccentColor: text("sidebar_accent_color"),
   accentColor: text("accent_color"),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const timesheetEntries = pgTable("timesheet_entries", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: text("tenant_id").notNull().default("default"),
   timelineId: varchar("timeline_id").notNull().references(() => timelines.id, { onDelete: "cascade" }),
   teamMemberId: varchar("team_member_id").notNull().references(() => teamMembers.id, { onDelete: "cascade" }),
   taskId: varchar("task_id").references(() => tasks.id, { onDelete: "set null" }),
@@ -324,16 +403,27 @@ export const timesheetEntries = pgTable("timesheet_entries", {
   hours: numeric("hours", { precision: 6, scale: 2 }).notNull(),
   billableType: text("billable_type").notNull().default("billable"),
   notes: text("notes"),
-});
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_timesheet_timeline_week").on(table.timelineId, table.weekEnding),
+  index("idx_timesheet_member").on(table.teamMemberId),
+]);
 
 export const progressEntries = pgTable("progress_entries", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: text("tenant_id").notNull().default("default"),
   timelineId: varchar("timeline_id").notNull().references(() => timelines.id, { onDelete: "cascade" }),
   taskId: varchar("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
   weekEnding: text("week_ending").notNull(),
   percentComplete: integer("percent_complete").notNull().default(0),
   notes: text("notes"),
-});
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  unique("progress_timeline_task_week_uniq").on(table.timelineId, table.taskId, table.weekEnding),
+  index("idx_progress_timeline_week").on(table.timelineId, table.weekEnding),
+]);
 
 export type EvmWorkstreamBreakdownItem = {
   taskId: string;
@@ -371,7 +461,11 @@ export const evmSnapshots = pgTable("evm_snapshots", {
   notes: text("notes"),
   generatedBy: varchar("generated_by"),
   generatedAt: text("generated_at"),
-});
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  unique("evm_tenant_timeline_week_version_uniq").on(table.tenantId, table.timelineId, table.weekEnding, table.version),
+  index("idx_evm_timeline_week").on(table.tenantId, table.timelineId, table.weekEnding),
+]);
 
 export const flightpathStages = pgTable("flightpath_stages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -389,16 +483,20 @@ export const flightpathStages = pgTable("flightpath_stages", {
 
 export const flightpathDeliverables = pgTable("flightpath_deliverables", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: text("tenant_id").notNull().default("default"),
   stageId: varchar("stage_id").notNull().references(() => flightpathStages.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   description: text("description"),
   raciData: jsonb("raci_data").$type<Record<string, string>>(),
   sortOrder: integer("sort_order").notNull().default(0),
   expectedArtifactName: text("expected_artifact_name"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const projectCheckpoints = pgTable("project_checkpoints", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: text("tenant_id").notNull().default("default"),
   timelineId: varchar("timeline_id").notNull().references(() => timelines.id, { onDelete: "cascade" }),
   stageId: varchar("stage_id").notNull().references(() => flightpathStages.id, { onDelete: "cascade" }),
   deliverableId: varchar("deliverable_id").references(() => flightpathDeliverables.id, { onDelete: "set null" }),
@@ -414,10 +512,17 @@ export const projectCheckpoints = pgTable("project_checkpoints", {
   artifactVerified: boolean("artifact_verified").notNull().default(false),
   artifactVerifiedAt: text("artifact_verified_at"),
   artifactSummary: text("artifact_summary"),
-});
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  createdBy: varchar("created_by"),
+}, (table) => [
+  unique("checkpoint_timeline_stage_deliverable_uniq").on(table.timelineId, table.stageId, table.deliverableId),
+  index("idx_checkpoint_timeline_stage").on(table.timelineId, table.stageId),
+]);
 
 export const projectGates = pgTable("project_gates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: text("tenant_id").notNull().default("default"),
   timelineId: varchar("timeline_id").notNull().references(() => timelines.id, { onDelete: "cascade" }),
   stageId: varchar("stage_id").notNull().references(() => flightpathStages.id, { onDelete: "cascade" }),
   status: text("status").notNull().default("pending"),
@@ -432,12 +537,17 @@ export const projectGates = pgTable("project_gates", {
     evmFlags: string[];
     recommendations: string[];
   }>(),
-});
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  createdBy: varchar("created_by"),
+}, (table) => [
+  unique("gate_timeline_stage_uniq").on(table.timelineId, table.stageId),
+]);
 
 export const insertFlightpathStageSchema = createInsertSchema(flightpathStages).omit({ id: true });
-export const insertFlightpathDeliverableSchema = createInsertSchema(flightpathDeliverables).omit({ id: true });
-export const insertProjectCheckpointSchema = createInsertSchema(projectCheckpoints).omit({ id: true });
-export const insertProjectGateSchema = createInsertSchema(projectGates).omit({ id: true });
+export const insertFlightpathDeliverableSchema = createInsertSchema(flightpathDeliverables).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertProjectCheckpointSchema = createInsertSchema(projectCheckpoints).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertProjectGateSchema = createInsertSchema(projectGates).omit({ id: true, createdAt: true, updatedAt: true });
 
 export type InsertFlightpathStage = z.infer<typeof insertFlightpathStageSchema>;
 export type FlightpathStage = typeof flightpathStages.$inferSelect;
@@ -448,36 +558,61 @@ export type ProjectCheckpoint = typeof projectCheckpoints.$inferSelect;
 export type InsertProjectGate = z.infer<typeof insertProjectGateSchema>;
 export type ProjectGate = typeof projectGates.$inferSelect;
 
-export const insertEvmSnapshotSchema = createInsertSchema(evmSnapshots).omit({ id: true });
+export const insertEvmSnapshotSchema = createInsertSchema(evmSnapshots).omit({ id: true, createdAt: true });
 export type InsertEvmSnapshot = z.infer<typeof insertEvmSnapshotSchema>;
 export type EvmSnapshot = typeof evmSnapshots.$inferSelect;
 
-export const insertWorkstreamResourceSchema = createInsertSchema(workstreamResources).omit({ id: true });
+export const insertWorkstreamResourceSchema = createInsertSchema(workstreamResources).omit({ id: true, createdAt: true, updatedAt: true }).extend({
+  hoursPerWeek: z.string().refine((val) => {
+    const n = parseFloat(val);
+    return !isNaN(n) && n >= 0;
+  }, { message: "Hours per week must be 0 or greater" }),
+});
 
-export const insertBrandingSchema = createInsertSchema(brandingConfig).omit({ id: true });
+export const insertBrandingSchema = createInsertSchema(brandingConfig).omit({ id: true, updatedAt: true });
 export type InsertBranding = z.infer<typeof insertBrandingSchema>;
 export type BrandingConfig = typeof brandingConfig.$inferSelect;
 
-export const insertClientSchema = createInsertSchema(clients).omit({ id: true });
-export const insertContactSchema = createInsertSchema(contacts).omit({ id: true });
-export const insertTimelineSchema = createInsertSchema(timelines).omit({ id: true });
-export const insertMilestoneSchema = createInsertSchema(milestones).omit({ id: true });
-export const insertTaskSchema = createInsertSchema(tasks).omit({ id: true }).extend({
+export const insertClientSchema = createInsertSchema(clients).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertContactSchema = createInsertSchema(contacts).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertTimelineSchema = createInsertSchema(timelines).omit({ id: true, createdAt: true, updatedAt: true }).extend({
+  grossMargin: z.string().refine((val) => {
+    const n = parseFloat(val);
+    return !isNaN(n) && n >= 0 && n <= 100;
+  }, { message: "Gross margin must be between 0 and 100" }).optional().nullable(),
+});
+export const insertMilestoneSchema = createInsertSchema(milestones).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertTaskSchema = createInsertSchema(tasks).omit({ id: true, createdAt: true, updatedAt: true }).extend({
   status: z.string().default("not_started"),
   health: z.string().default("green"),
   itemType: z.string().default("workstream"),
+  percentComplete: z.number().min(0).max(100).default(0),
 });
-export const insertRiskSchema = createInsertSchema(risks).omit({ id: true }).extend({
+export const insertRiskSchema = createInsertSchema(risks).omit({ id: true, createdAt: true, updatedAt: true }).extend({
   probability: z.string().default("medium"),
   impact: z.string().default("medium"),
   status: z.string().default("open"),
 });
-export const insertTeamMemberSchema = createInsertSchema(teamMembers).omit({ id: true });
-export const insertRateCardSchema = createInsertSchema(rateCards).omit({ id: true });
-export const insertProjectTeamMemberSchema = createInsertSchema(projectTeamMembers).omit({ id: true });
-export const insertAllocationSchema = createInsertSchema(allocations).omit({ id: true });
-export const insertTimesheetEntrySchema = createInsertSchema(timesheetEntries).omit({ id: true });
-export const insertProgressEntrySchema = createInsertSchema(progressEntries).omit({ id: true });
+export const insertTeamMemberSchema = createInsertSchema(teamMembers).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertRateCardSchema = createInsertSchema(rateCards).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertProjectTeamMemberSchema = createInsertSchema(projectTeamMembers).omit({ id: true, createdAt: true, updatedAt: true }).extend({
+  allocation: z.number().min(0).max(100).default(100),
+});
+export const insertAllocationSchema = createInsertSchema(allocations).omit({ id: true, createdAt: true, updatedAt: true }).extend({
+  weeklyHours: z.string().refine((val) => {
+    const n = parseFloat(val);
+    return !isNaN(n) && n >= 0;
+  }, { message: "Weekly hours must be 0 or greater" }).optional(),
+});
+export const insertTimesheetEntrySchema = createInsertSchema(timesheetEntries).omit({ id: true, createdAt: true, updatedAt: true }).extend({
+  hours: z.string().refine((val) => {
+    const n = parseFloat(val);
+    return !isNaN(n) && n >= 0 && n <= 24;
+  }, { message: "Hours must be between 0 and 24" }),
+});
+export const insertProgressEntrySchema = createInsertSchema(progressEntries).omit({ id: true, createdAt: true, updatedAt: true }).extend({
+  percentComplete: z.number().min(0).max(100).default(0),
+});
 
 export type InsertClient = z.infer<typeof insertClientSchema>;
 export type Client = typeof clients.$inferSelect;

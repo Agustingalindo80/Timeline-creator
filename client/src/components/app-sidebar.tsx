@@ -1,6 +1,6 @@
-import { LayoutDashboard, FolderKanban, Settings, Building2, Users, UserCheck, CalendarRange, Clock, LogOut, Info, Bot, Target, Shield, ChevronRight } from "lucide-react";
+import { LayoutDashboard, FolderKanban, Settings, Building2, Users, UserCheck, CalendarRange, Clock, LogOut, Info, Bot, Target, Shield, ChevronRight, Globe, ChevronsUpDown } from "lucide-react";
 import { Link, useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   Sidebar,
   SidebarContent,
@@ -17,15 +17,30 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useBranding } from "@/components/branding-provider";
 import { useAuth } from "@/hooks/use-auth";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { AppSettings } from "@shared/schema";
 
 type MyModulesResponse = {
   modules: string[];
   isGlobalAccess: boolean;
   teamMemberId: string | null;
+};
+
+type TenantInfo = {
+  id: string;
+  name: string;
+  slug: string;
+  status: string;
+  plan: string;
+};
+
+type CurrentTenantResponse = {
+  tenantId: string;
+  tenant: TenantInfo | null;
 };
 
 export function AppSidebar() {
@@ -43,6 +58,33 @@ export function AppSidebar() {
     queryKey: ["/api/rbac/my-modules"],
     enabled: isAuthenticated,
   });
+
+  const { data: superAdminCheck } = useQuery<{ isSuperAdmin: boolean }>({
+    queryKey: ["/api/global-admin/check"],
+    enabled: isAuthenticated,
+  });
+
+  const { data: myTenants } = useQuery<TenantInfo[]>({
+    queryKey: ["/api/tenant/my-tenants"],
+    enabled: isAuthenticated,
+  });
+
+  const { data: currentTenant } = useQuery<CurrentTenantResponse>({
+    queryKey: ["/api/tenant/current"],
+    enabled: isAuthenticated,
+  });
+
+  const switchTenantMutation = useMutation({
+    mutationFn: async (tenantId: string) => {
+      await apiRequest("POST", "/api/tenant/switch", { tenantId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries();
+    },
+  });
+
+  const isSuperAdmin = superAdminCheck?.isSuperAdmin || false;
+  const showTenantPicker = (myTenants?.length ?? 0) > 1;
 
   const modules = new Set(myModules?.modules ?? []);
   const hasModule = (mod: string) => modules.has(`module.${mod}`);
@@ -138,6 +180,40 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="px-1">
+        {showTenantPicker && !isCollapsed && (
+          <div className="px-3 pb-1">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="flex items-center justify-between w-full px-2.5 py-1.5 text-[12px] font-medium rounded-md border border-border/50 bg-muted/30 hover:bg-muted/50 transition-colors text-foreground"
+                  data-testid="tenant-switcher"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Building2 className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+                    <span className="truncate">{currentTenant?.tenant?.name || "Default"}</span>
+                  </div>
+                  <ChevronsUpDown className="w-3.5 h-3.5 shrink-0 text-muted-foreground ml-1" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-[200px]">
+                {myTenants?.map((t) => (
+                  <DropdownMenuItem
+                    key={t.id}
+                    onClick={() => switchTenantMutation.mutate(t.id)}
+                    className={t.id === currentTenant?.tenantId ? "bg-accent" : ""}
+                    data-testid={`tenant-option-${t.slug}`}
+                  >
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-[13px] font-medium">{t.name}</span>
+                      <span className="text-[10px] text-muted-foreground capitalize">{t.plan}</span>
+                    </div>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
+
         {renderNavGroup("Core", coreItems)}
         {renderNavGroup("Workspace", workItems)}
         {renderNavGroup("Resources", resourceItems)}
@@ -193,6 +269,31 @@ export function AppSidebar() {
                 </SidebarGroupContent>
               </CollapsibleContent>
             </Collapsible>
+          </SidebarGroup>
+        )}
+
+        {isSuperAdmin && (
+          <SidebarGroup className="py-1">
+            <SidebarGroupLabel className="px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 mb-0.5">
+              Super Admin
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu className="gap-0.5">
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive("/global-admin")}
+                    className="h-8 px-3 gap-2.5 text-[13px] font-medium rounded-md"
+                    data-testid="nav-global-admin"
+                  >
+                    <Link href="/global-admin">
+                      <Globe className="w-4 h-4 shrink-0" />
+                      <span className="truncate">Global Admin</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
           </SidebarGroup>
         )}
       </SidebarContent>

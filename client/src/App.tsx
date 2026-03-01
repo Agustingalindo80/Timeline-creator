@@ -30,6 +30,7 @@ import AboutPage from "@/pages/about";
 import ChatPage from "@/pages/chat";
 import OpportunitiesPage from "@/pages/opportunities";
 import OpportunityDetail from "@/pages/opportunity-detail";
+import GlobalAdminPage from "@/pages/global-admin";
 import Landing from "@/pages/landing";
 import NotFound from "@/pages/not-found";
 
@@ -70,6 +71,43 @@ function ProtectedRoute({ requiredModule, children }: { requiredModule: string; 
   return <>{children}</>;
 }
 
+function SuperAdminRoute({ children }: { children: ReactNode }) {
+  const { data, isLoading } = useQuery<{ isSuperAdmin: boolean }>({
+    queryKey: ["/api/global-admin/check"],
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!data?.isSuperAdmin) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh] p-4" data-testid="access-denied-superadmin">
+        <Card className="max-w-md w-full">
+          <CardHeader className="flex flex-col items-center gap-2">
+            <ShieldX className="w-12 h-12 text-destructive" />
+            <CardTitle>Access Denied</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center gap-4">
+            <p className="text-muted-foreground text-center">
+              This section is restricted to super administrators only.
+            </p>
+            <Link href="/">
+              <Button data-testid="link-back-dashboard">Back to Dashboard</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}
+
 function Router() {
   return (
     <Switch>
@@ -91,6 +129,7 @@ function Router() {
       <Route path="/admin/security">{() => <ProtectedRoute requiredModule="module.admin"><AdminSecurity /></ProtectedRoute>}</Route>
       <Route path="/admin/settings">{() => <ProtectedRoute requiredModule="module.admin"><Admin /></ProtectedRoute>}</Route>
       <Route path="/admin"><Redirect to="/admin/settings" /></Route>
+      <Route path="/global-admin">{() => <SuperAdminRoute><GlobalAdminPage /></SuperAdminRoute>}</Route>
       <Route component={NotFound} />
     </Switch>
   );

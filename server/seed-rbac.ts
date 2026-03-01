@@ -177,7 +177,8 @@ export async function migrateExistingUsersToRBAC() {
           userId: user.id,
           roleId: adminRole.id,
         }).onConflictDoNothing();
-        console.log(`Assigned Global Admin to first user: ${user.email}`);
+        await db.update(users).set({ isSuperAdmin: true }).where(eq(users.id, user.id));
+        console.log(`Assigned Global Admin + Super Admin to first user: ${user.email}`);
       } else {
         await db.insert(userOrgRoles).values({
           tenantId: "default",
