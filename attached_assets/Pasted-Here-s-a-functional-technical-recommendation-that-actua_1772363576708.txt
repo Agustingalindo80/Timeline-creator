@@ -1,0 +1,179 @@
+Here’s a functional + technical recommendation that actually solves EVM history (and auditability) without turning your product into a data warehouse.
+
+Functional recommendation
+
+The rule
+
+EVM must be snapshot-based, not “live computed,” because:
+	•	project data changes (tasks get edited, rates change, timesheets are corrected)
+	•	you need trend lines and “what did we know then?” reporting
+	•	PMO and execs need consistency for decisions
+
+What you store
+
+Store weekly EVM snapshots per project, keyed by weekEnding, and treat them as the source of truth for:
+	•	CPI/SPI trends
+	•	EAC trend
+	•	variance narratives (“since last week”)
+	•	portfolio rollups
+
+What stays live
+
+Keep live EVM calculation for “today/current view,” but once a week (or on demand) you freeze a snapshot.
+
+Who triggers snapshots
+	•	Default: system-generated weekly (Sun 11:59pm tenant timezone, or Mon 6am)
+	•	Plus: manual “Freeze week” button (PMO/Delivery Lead) for closeout / SteerCo packs
+	•	Plus: auto-freeze when a gate is approved (optional but powerful: “Stage 1 approved” captures baseline moment)
+
+How you handle corrections
+
+Timesheets and plan data will be corrected after the week ends. You need a policy:
+	•	Allow re-freeze only for PMO/Owner
+	•	Don’t overwrite; create a revision (v2, v3) and mark the latest as “current”
+	•	Every freeze writes to audit_log with inputs used (hashes) for traceability
+
+That gives you integrity without blocking operational corrections.
+
+⸻
+
+Technical recommendation
+
+1) Add a dedicated EVM snapshot table (do this)
+
+Create project_evm_snapshots (or project_weekly_metrics if you prefer). This table is your history.
+
+Fields (minimum)
+	•	id (uuid)
+	•	tenantId
+	•	timelineId
+	•	weekEnding (date)  ✅ make this an actual date type
+	•	version (int, default 1)  ✅ revision tracking
+	•	isCurrent (bool, default true)  ✅ only one current per week
+	•	generatedAt (timestamp)
+	•	generatedBy (userId nullable for system)
+
+EVM numerics
+	•	bac (numeric)
+	•	pv (numeric)
+	•	ev (numeric)
+	•	ac (numeric)
+	•	cpi (numeric)
+	•	spi (numeric)
+	•	eac (numeric)
+	•	etc (numeric, optional)
+	•	vac (numeric, optional)
+	•	cv (numeric, optional)
+	•	sv (numeric, optional)
+
+Optional but high-value
+	•	assumptions (jsonb) – summary of what method was used (planned cost vs approvedBudget BAC, EV method, etc.)
+	•	inputsHash (text) – hash of key inputs (timesheets, tasks, rates) so you can prove why results changed
+	•	notes (text) – PMO comment on revision
+
+Constraints / indexes
+	•	Unique: (tenantId, timelineId, weekEnding, version)
+	•	Partial unique: (tenantId, timelineId, weekEnding) where isCurrent = true
+	•	Index: (tenantId, timelineId, weekEnding desc)
+
+This alone solves the “history concern.”
+
+⸻
+
+2) Add a baseline “freeze” concept for BAC/PV (strongly recommended)
+
+EVM is garbage if the baseline keeps moving.
+
+Right now your plan lives in:
+	•	tasks (planned dates, durations)
+	•	workstream_resources (planned hours/week & rateCard)
+	•	allocations / project_team_members (team plan)
+
+When those change, PV changes. That’s fine operationally, but you must preserve the baseline used for EVM.
+
+You have two options:
+
+Option A (fast, acceptable): store baseline values inside each snapshot
+When generating snapshot for weekEnding:
+	•	compute PV/EV using current plan
+	•	store PV/EV results + inputsHash
+	•	don’t try to rebuild the entire baseline
+
+Pros: minimal tables, easy.
+Cons: you can’t “replay” baseline fully; you only have the computed numbers.
+
+Option B (best practice): add a project baseline version + detail
+Add:
+	•	project_baselines (id, tenantId, timelineId, name, createdAt, createdBy, isActive)
+	•	project_baseline_tasks (baselineId, taskId, plannedStart, plannedEnd, plannedHours, plannedCost)
+	•	project_baseline_resources (baselineId, taskId, rateCardId, hoursPerWeek, costRate)
+
+Pros: true baseline integrity, PMO-grade.
+Cons: more work.
+
+My call: start with Option A now, then add Option B once you have traction.
+
+⸻
+
+3) Snapshot generation pipeline (how it runs)
+
+Implement one service function:
+
+generateEvmSnapshot(tenantId, timelineId, weekEnding, actorUserId|null, mode)
+
+Mode
+	•	scheduled (system)
+	•	manual_freeze
+	•	gate_freeze
+
+Algorithm (simple + consistent)
+	•	AC: sum(timesheet_entries.hours * team_members.hourlyCost) for that week and earlier depending on cumulative view
+	•	BAC: approvedBudget OR planned cost baseline (choose and document)
+	•	PV: planned cost up to weekEnding from tasks/workstream_resources schedule (or proportional spread)
+	•	EV: PV * weighted completion (from progress_entries by task, weighted by planned cost)
+	•	Compute derived metrics: CPI/SPI/EAC/etc.
+	•	Write snapshot row
+	•	Flip previous isCurrent=false for that week if revision
+	•	Write audit_log event evm.snapshot_generated with metadata including weekEnding, version, mode, inputsHash
+
+Key decision: cumulative vs period
+	•	Store both if you can: acPeriod, acCumulative etc.
+	•	If not, store cumulative and derive period by diffs.
+
+⸻
+
+4) Tie snapshots to reporting (this is the payoff)
+	•	The EVM dashboard default view should show:
+	•	current snapshot (latest weekEnding)
+	•	trend chart from last N snapshots
+	•	The Executive Status Pack uses the snapshot for the requested weekEnding.
+	•	The Portfolio Pack rolls up from snapshots (fast query, consistent).
+
+⸻
+
+5) Handling late timesheets and plan edits
+
+You’ll see 2 common issues:
+	1.	Timesheets posted late → AC changes
+	2.	Plan updated retroactively → PV/EV changes
+
+Your policy:
+	•	Scheduled snapshot runs Monday morning for prior week
+	•	Allow PMO to “Re-freeze” and create version 2
+	•	UI shows: “Week ending 2026-03-01 v2 (supersedes v1)”
+	•	Trend charts use isCurrent=true rows
+
+That keeps history and reality.
+
+⸻
+
+What I’d implement next week (minimum viable)
+	1.	project_evm_snapshots table + indexes
+	2.	Snapshot generator service + manual “Freeze Week” action
+	3.	Dashboard uses snapshots for charts (not live computed)
+	4.	Export packs read from snapshots
+	5.	Audit log entries on every freeze/re-freeze
+
+That’s the smallest set that fully solves the history concern.
+
+If you want, paste how you currently compute EVM today (even pseudocode), and I’ll tell you exactly what to persist, what to recompute, and how to keep it consistent across projects and opportunities.
