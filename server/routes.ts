@@ -1130,6 +1130,96 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/timelines/:id/team/sync-from-estimate", async (req, res) => {
+    try {
+      const timelineId = req.params.id;
+      const timeline = await storage.getTimeline(timelineId);
+      if (!timeline) return res.status(404).json({ message: "Timeline not found" });
+      if (timeline.recordType !== "opportunity") {
+        return res.status(400).json({ message: "Sync from estimate is only available for opportunities" });
+      }
+
+      const allResources = await storage.getWorkstreamResourcesByTimeline(timelineId);
+      const allTasks = await storage.getTasksByTimeline(timelineId);
+      const existingTeam = await storage.getProjectTeamMembers(timelineId);
+      const allRateCards = await storage.getRateCards();
+      const rateCardMap = new Map(allRateCards.map(rc => [rc.id, rc]));
+      const taskMap = new Map(allTasks.map(t => [t.id, t]));
+
+      const existingCountByCard: Record<string, number> = {};
+      for (const t of existingTeam) {
+        if (t.rateCardId) {
+          existingCountByCard[t.rateCardId] = (existingCountByCard[t.rateCardId] || 0) + 1;
+        }
+      }
+
+      const resourcesByCard: Record<string, Array<{ hoursPerWeek: string; taskId: string }>> = {};
+      for (const r of allResources) {
+        if (!resourcesByCard[r.rateCardId]) resourcesByCard[r.rateCardId] = [];
+        resourcesByCard[r.rateCardId].push({ hoursPerWeek: r.hoursPerWeek, taskId: r.taskId });
+      }
+
+      const created: any[] = [];
+      const FTE_HOURS = 40;
+
+      for (const [rateCardId, resources] of Object.entries(resourcesByCard)) {
+        const rc = rateCardMap.get(rateCardId);
+        if (!rc) continue;
+
+        const intervals: Array<{ start: number; end: number; hpw: number }> = [];
+        for (const r of resources) {
+          const ws = taskMap.get(r.taskId);
+          if (!ws) continue;
+          const startStr = ws.startDate;
+          const endStr = ws.endDate;
+          const start = startStr ? new Date(startStr).getTime() : 0;
+          const durationWeeks = parseFloat(ws.durationWeeks || "0") || 0;
+          const end = endStr ? new Date(endStr).getTime() : (start + durationWeeks * 7 * 24 * 60 * 60 * 1000);
+          intervals.push({ start, end, hpw: parseFloat(r.hoursPerWeek || "0") || 0 });
+        }
+
+        let requiredFTEs = 1;
+        if (intervals.length > 0) {
+          const events: Array<{ time: number; hpw: number }> = [];
+          for (const iv of intervals) {
+            events.push({ time: iv.start, hpw: iv.hpw });
+            events.push({ time: iv.end, hpw: -iv.hpw });
+          }
+          events.sort((a, b) => a.time - b.time || a.hpw - b.hpw);
+
+          let currentHpw = 0;
+          let peakHpw = 0;
+          for (const ev of events) {
+            currentHpw += ev.hpw;
+            peakHpw = Math.max(peakHpw, currentHpw);
+          }
+          requiredFTEs = Math.max(1, Math.ceil(peakHpw / FTE_HOURS));
+        }
+
+        const existingCount = existingCountByCard[rateCardId] || 0;
+        const toCreate = Math.max(0, requiredFTEs - existingCount);
+
+        for (let i = 0; i < toCreate; i++) {
+          const entry = await storage.createProjectTeamMember({
+            timelineId,
+            teamMemberId: null,
+            rateCardId,
+            monthlyCost: rc.costRate || null,
+            hourlyCost: rc.billRate || null,
+            allocation: 100,
+            startDate: null,
+            endDate: null,
+          });
+          created.push(entry);
+        }
+      }
+
+      res.json({ created: created.length, entries: created });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   app.patch("/api/project-team/:id", async (req, res) => {
     try {
       const { teamMemberId, rateCardId, monthlyCost, hourlyCost, allocation, startDate, endDate } = req.body;

@@ -363,9 +363,11 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
     setLocalBufferPercent(serverBufferPercent);
   }, [serverBufferPercent]);
 
-  const riskAdjustedCost = baseCost * (1 + localRiskPercent / 100);
-  const bufferedCost = riskAdjustedCost * (1 + localBufferPercent / 100);
-  const grossMargin = baseRevenue > 0 ? ((baseRevenue - bufferedCost) / baseRevenue) * 100 : 0;
+  const basePrice = baseRevenue;
+  const riskAdjustedPrice = basePrice * (1 + localRiskPercent / 100);
+  const bufferedPrice = riskAdjustedPrice * (1 + localBufferPercent / 100);
+  const expectedGM = basePrice > 0 ? ((basePrice - baseCost) / basePrice) * 100 : 0;
+  const grossMargin = bufferedPrice > 0 ? ((bufferedPrice - baseCost) / bufferedPrice) * 100 : 0;
 
   const hoursByRole: Record<string, number> = {};
   workstreams.forEach(ws => {
@@ -394,8 +396,8 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
 
   const syncFinancials = () => {
     updateOppMutation.mutate({
-      approvedBudget: bufferedCost.toFixed(2),
-      estimatedRevenue: baseRevenue.toFixed(2),
+      approvedBudget: bufferedPrice.toFixed(2),
+      estimatedRevenue: bufferedPrice.toFixed(2),
     });
     toast({ title: "Financials synced to opportunity" });
   };
@@ -412,13 +414,19 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
       .reduce((sum, ws) => sum + getWorkstreamCost(ws), 0);
   };
 
+  const getPhaseRevenue = (phaseId: string): number => {
+    return workstreams
+      .filter(ws => ws.parentTaskId === phaseId)
+      .reduce((sum, ws) => sum + getWorkstreamRevenue(ws), 0);
+  };
+
   const renderResourceRow = (resource: WorkstreamResource, ws: Task) => {
     const rc = getRateCard(resource.rateCardId);
     const hpw = parseFloat(resource.hoursPerWeek || "0") || 0;
     const duration = parseFloat(ws.durationWeeks || "0") || 0;
     const totalHrs = hpw * duration;
-    const costRate = parseFloat(rc?.costRate || "0") || 0;
-    const totalCost = totalHrs * costRate;
+    const billRate = parseFloat(rc?.billRate || "0") || 0;
+    const totalPrice = totalHrs * billRate;
     const taskTypeLabel = TASK_TYPES.find(t => t.value === resource.taskType)?.label;
     const tm = resource.teamMemberId ? teamMembers.find(m => m.id === resource.teamMemberId) : null;
 
@@ -438,7 +446,7 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
         </div>
         <div className="text-right text-sm shrink-0">
           <div className="font-medium">{totalHrs.toLocaleString()}h</div>
-          <div className="text-xs text-muted-foreground">${totalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+          <div className="text-xs text-muted-foreground">${totalPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
         </div>
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => openEditResourceDialog(resource)} data-testid={`button-edit-resource-${resource.id}`}>
@@ -570,32 +578,32 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
             <div className="text-2xl font-bold">{totalHours.toLocaleString()}</div>
           </CardContent>
         </Card>
-        <Card data-testid="card-base-cost">
+        <Card data-testid="card-base-price">
           <CardContent className="pt-4 pb-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
               <DollarSign className="w-4 h-4" />
-              Base Cost
+              Base Price
             </div>
-            <div className="text-2xl font-bold">${baseCost.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
+            <div className="text-2xl font-bold">${basePrice.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
           </CardContent>
         </Card>
-        <Card data-testid="card-revenue">
+        <Card data-testid="card-base-cost">
           <CardContent className="pt-4 pb-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
               <TrendingUp className="w-4 h-4" />
-              Revenue
+              Base Cost
             </div>
-            <div className="text-2xl font-bold">${baseRevenue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
+            <div className="text-2xl font-bold">${baseCost.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
           </CardContent>
         </Card>
         <Card data-testid="card-margin">
           <CardContent className="pt-4 pb-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
               <Calculator className="w-4 h-4" />
-              Gross Margin
+              Expected GM
             </div>
-            <div className={`text-2xl font-bold ${grossMargin >= 30 ? "text-green-600" : grossMargin >= 15 ? "text-amber-600" : "text-red-600"}`}>
-              {grossMargin.toFixed(1)}%
+            <div className={`text-2xl font-bold ${expectedGM >= 30 ? "text-green-600" : expectedGM >= 15 ? "text-amber-600" : "text-red-600"}`}>
+              {expectedGM.toFixed(1)}%
             </div>
           </CardContent>
         </Card>
@@ -620,7 +628,7 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
             const children = workstreams.filter(ws => ws.parentTaskId === phase.id);
             const expanded = expandedPhases.has(phase.id);
             const phaseHours = getPhaseHours(phase.id);
-            const phaseCost = getPhaseCost(phase.id);
+            const phasePrice = getPhaseRevenue(phase.id);
 
             return (
               <Card key={phase.id} data-testid={`card-phase-${phase.id}`}>
@@ -633,7 +641,7 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
                   <div className="flex-1 min-w-0">
                     <div className="font-medium truncate">{phase.title}</div>
                     <div className="text-xs text-muted-foreground">
-                      {children.length} workstream{children.length !== 1 ? "s" : ""} · {phaseHours.toLocaleString()} hrs · ${phaseCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      {children.length} workstream{children.length !== 1 ? "s" : ""} · {phaseHours.toLocaleString()} hrs · ${phasePrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -683,7 +691,7 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
                     {children.map(ws => {
                       const wsResources = getResourcesForWorkstream(ws.id);
                       const wsHours = getWorkstreamHours(ws);
-                      const wsCost = getWorkstreamCost(ws);
+                      const wsPrice = getWorkstreamRevenue(ws);
                       const confLevel = CONFIDENCE_LEVELS.find(c => c.value === ws.confidenceLevel);
                       const duration = parseFloat(ws.durationWeeks || "0") || 0;
                       const wsExpanded = expandedWorkstreams.has(ws.id);
@@ -708,7 +716,7 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
                             </div>
                             <div className="text-right text-sm shrink-0">
                               <div className="font-medium">{wsHours.toLocaleString()}h</div>
-                              <div className="text-xs text-muted-foreground">${wsCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                              <div className="text-xs text-muted-foreground">${wsPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
                             </div>
                             <div className="flex items-center gap-1">
                               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={e => { e.stopPropagation(); openAddResourceDialog(ws.id); }} data-testid={`button-add-resource-${ws.id}`}>
@@ -768,8 +776,8 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Base Cost</span>
-                <span className="font-medium">${baseCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                <span className="text-muted-foreground">Base Price</span>
+                <span className="font-medium">${basePrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
               </div>
               <div className="space-y-1">
                 <div className="flex justify-between items-center">
@@ -786,8 +794,8 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
                 />
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Risk-Adjusted Cost</span>
-                <span className="font-medium">${riskAdjustedCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                <span className="text-muted-foreground">Risk-Adjusted Price</span>
+                <span className="font-medium">${riskAdjustedPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
               </div>
               <div className="space-y-1">
                 <div className="flex justify-between items-center">
@@ -805,12 +813,12 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
               </div>
               <Separator />
               <div className="flex justify-between font-semibold">
-                <span>Buffered Cost</span>
-                <span>${bufferedCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                <span>Buffered Price</span>
+                <span>${bufferedPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
               </div>
-              <div className="flex justify-between font-semibold">
-                <span>Revenue</span>
-                <span>${baseRevenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Base Cost</span>
+                <span className="font-medium">${baseCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
               </div>
               <div className={`flex justify-between font-semibold ${grossMargin >= 30 ? "text-green-600" : grossMargin >= 15 ? "text-amber-600" : "text-red-600"}`}>
                 <span>Gross Margin</span>

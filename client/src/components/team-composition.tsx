@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Trash2, Save, DollarSign, UserCircle, Users } from "lucide-react";
+import { Plus, Trash2, Save, DollarSign, UserCircle, Users, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -98,6 +98,17 @@ export function TeamComposition({ timelineId, opportunityMode = false, region }:
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/timelines", timelineId, "team"] });
       toast({ title: opportunityMode ? "Role removed from opportunity" : "Team member removed from project" });
+    },
+  });
+
+  const syncFromEstimateMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/timelines/${timelineId}/team/sync-from-estimate`);
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/timelines", timelineId, "team"] });
+      toast({ title: data.created > 0 ? `${data.created} role(s) synced from estimate` : "Team is already in sync — no new roles to add" });
     },
   });
 
@@ -215,15 +226,29 @@ export function TeamComposition({ timelineId, opportunityMode = false, region }:
             </div>
           </div>
         </div>
-        <Button
-          size="sm"
-          onClick={() => setShowAddForm(!showAddForm)}
-          disabled={!canShowAddForm && !showAddForm}
-          data-testid="button-add-team-member"
-        >
-          <Plus className="w-4 h-4 mr-1" />
-          {opportunityMode ? "Add Role" : "Add Member"}
-        </Button>
+        <div className="flex items-center gap-2">
+          {opportunityMode && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => syncFromEstimateMutation.mutate()}
+              disabled={syncFromEstimateMutation.isPending}
+              data-testid="button-sync-from-estimate"
+            >
+              <RefreshCw className={`w-4 h-4 mr-1 ${syncFromEstimateMutation.isPending ? "animate-spin" : ""}`} />
+              {syncFromEstimateMutation.isPending ? "Syncing..." : "Sync from Estimate"}
+            </Button>
+          )}
+          <Button
+            size="sm"
+            onClick={() => setShowAddForm(!showAddForm)}
+            disabled={!canShowAddForm && !showAddForm}
+            data-testid="button-add-team-member"
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            {opportunityMode ? "Add Role" : "Add Member"}
+          </Button>
+        </div>
       </div>
 
       {!opportunityMode && allTeamMembers.length === 0 && (
