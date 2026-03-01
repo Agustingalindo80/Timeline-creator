@@ -46,6 +46,16 @@ The application uses a modern web stack. The frontend is built with React, Vite,
 - **Date Formatting:** Per-project date format setting.
 - **Branding & Theming:** Database-driven system for customizing app name, logo, favicon, and color scheme, supporting multi-tenancy.
 - **Authentication:** Replit Auth via OpenID Connect, with session storage in PostgreSQL.
+- **RBAC (Phase 2 — Complete):**
+  - **Three-layer model:** Org roles (Org Owner, Org Admin, PMO Lead, Finance, Delivery Ops, Member), Object roles (AE, SE, DL, PM, Contributor, Executive Viewer), and permission bundles controlling feature access.
+  - **User↔Team Member linkage:** `team_members.userId` (nullable FK to users) links login accounts to team member profiles. "App Access" toggle on team member form = single entry point.
+  - **Permission Engine:** `server/rbac.ts` resolves effective permissions (org + object), with in-memory cache (60s TTL). Middleware `server/middleware/permissions.ts` guards API routes.
+  - **Gate Approval Policy:** `server/gate-policy.ts` enforces stage-specific quorum (Stage 0: Finance/PMO Lead + DL, Stage 1: DL + PMO Lead, Stage 2+: PM + DL). Overrides require Org Owner or PMO Lead.
+  - **Audit Log:** Sensitive actions (gate.approve, gate.override, pricing.approve, settings changes) recorded in `audit_log` table.
+  - **Schema files:** `shared/models/rbac.ts` (tables + constants), `server/seed-rbac.ts` (seeding + migration)
+  - **Frontend:** `usePermissions()` hook, `<PermissionGuard>` component, Admin tabs (Users & Roles, Audit Log, Role Matrix), Team & Access sections on project/opportunity detail, timesheet scoping by assignment.
+  - **API endpoints:** `/api/rbac/roles`, `/api/rbac/users`, `/api/rbac/my-permissions`, `/api/rbac/my-assignments`, `/api/rbac/objects/:type/:id/assignments`, `/api/team-members/:id/enable-access`, `/api/team-members/:id/disable-access`, `/api/audit-log`
+  - **Bootstrap:** First login → Org Owner; existing users → Member; email-matched team members auto-linked.
 
 ## UI/Design System (Phase 1 Overhaul — Complete)
 - **Font:** Inter (previously Poppins) — tighter, more professional feel with condensed heading tracking

@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { usePermissions } from "@/hooks/use-permissions";
 import type {
   Timeline,
   Task,
@@ -75,6 +76,7 @@ interface TimesheetRow {
 
 export default function TimesheetsPage() {
   const { toast } = useToast();
+  const { hasPermission, assignments: userAssignments } = usePermissions();
   const [selectedTeamMemberId, setSelectedTeamMemberId] = useState<string>("");
   const [weekEnding, setWeekEnding] = useState<string>(() => formatDate(getWeekEnding(new Date())));
   const [editingCells, setEditingCells] = useState<Record<CellKey, string>>({});
@@ -82,6 +84,8 @@ export default function TimesheetsPage() {
   const [newRowProjectId, setNewRowProjectId] = useState<string>("");
   const [newRowTaskId, setNewRowTaskId] = useState<string>("");
   const [pendingRows, setPendingRows] = useState<TimesheetRow[]>([]);
+
+  const hasPortfolioView = hasPermission("portfolio.view");
 
   const weekDays = useMemo(() => getWeekDays(weekEnding), [weekEnding]);
 
@@ -102,9 +106,15 @@ export default function TimesheetsPage() {
     return new Set(memberAllocations.filter((a: any) => a.status === "active").map(a => a.timelineId));
   }, [memberAllocations]);
 
+  const userAssignedProjectIds = useMemo(() => {
+    return new Set(userAssignments.filter(a => a.objectType === "project").map(a => a.objectId));
+  }, [userAssignments]);
+
   const allocatedProjects = useMemo(() => {
-    return projects.filter(p => allocatedProjectIds.has(p.id));
-  }, [projects, allocatedProjectIds]);
+    const byAllocation = projects.filter(p => allocatedProjectIds.has(p.id));
+    if (hasPortfolioView) return byAllocation;
+    return byAllocation.filter(p => userAssignedProjectIds.has(p.id));
+  }, [projects, allocatedProjectIds, hasPortfolioView, userAssignedProjectIds]);
 
   const { data: entriesRaw = [], isLoading: entriesLoading } = useQuery<TimesheetEntry[]>({
     queryKey: ["/api/timesheets", { teamMemberId: selectedTeamMemberId, weekEnding }],
@@ -170,7 +180,7 @@ export default function TimesheetsPage() {
     const pids = new Set<string>();
     for (const r of existingRows) pids.add(r.projectId);
     if (newRowProjectId) pids.add(newRowProjectId);
-    return [...pids].sort();
+    return Array.from(pids).sort();
   }, [existingRows, newRowProjectId]);
 
   const taskQueryResults = useQueries({

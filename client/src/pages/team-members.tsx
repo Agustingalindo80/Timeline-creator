@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -63,6 +64,7 @@ export default function TeamMembers() {
   const [newDept, setNewDept] = useState("");
   const [newMonthlyCost, setNewMonthlyCost] = useState("");
   const [newHourlyCost, setNewHourlyCost] = useState("");
+  const [newAppAccess, setNewAppAccess] = useState(false);
 
   const { data: members = [], isLoading } = useQuery<TeamMember[]>({
     queryKey: ["/api/team-members"],
@@ -75,14 +77,20 @@ export default function TeamMembers() {
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
-      await apiRequest("POST", "/api/team-members", data);
+      const { enableAppAccess, ...memberData } = data;
+      const res = await apiRequest("POST", "/api/team-members", memberData);
+      const created = await res.json();
+      if (enableAppAccess && created.id) {
+        await apiRequest("POST", `/api/team-members/${created.id}/enable-access`);
+      }
+      return created;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/team-members"] });
       toast({ title: "Team member created" });
       setCreateOpen(false);
       setNewName(""); setNewEmail(""); setNewRole(""); setNewDept("");
-      setNewMonthlyCost(""); setNewHourlyCost("");
+      setNewMonthlyCost(""); setNewHourlyCost(""); setNewAppAccess(false);
     },
   });
 
@@ -234,8 +242,19 @@ export default function TeamMembers() {
                   <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Full name" data-testid="input-create-member-name" />
                 </div>
                 <div>
-                  <Label>Email</Label>
+                  <Label>Email {newAppAccess && "*"}</Label>
                   <Input value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="Email" data-testid="input-create-member-email" />
+                </div>
+                <div className="col-span-2 flex items-center gap-3">
+                  <Switch checked={newAppAccess} onCheckedChange={setNewAppAccess} data-testid="switch-app-access" />
+                  <div>
+                    <Label>App Access</Label>
+                    <p className="text-xs text-muted-foreground" data-testid="text-app-access-status">
+                      {newAppAccess
+                        ? "This person will be able to log in and access assigned projects"
+                        : "This person is tracked for estimation/allocation only"}
+                    </p>
+                  </div>
                 </div>
                 <div>
                   <Label>Role</Label>
@@ -259,7 +278,7 @@ export default function TeamMembers() {
               </div>
               <DialogFooter>
                 <Button variant="ghost" onClick={() => setCreateOpen(false)}>Cancel</Button>
-                <Button onClick={() => createMutation.mutate({ name: newName, email: newEmail || null, role: newRole || null, department: newDept || null, monthlyCost: newMonthlyCost || null, hourlyCost: newHourlyCost || null })} disabled={!newName.trim() || createMutation.isPending} data-testid="button-confirm-create-member">
+                <Button onClick={() => createMutation.mutate({ name: newName, email: newEmail || null, role: newRole || null, department: newDept || null, monthlyCost: newMonthlyCost || null, hourlyCost: newHourlyCost || null, enableAppAccess: newAppAccess })} disabled={!newName.trim() || (newAppAccess && !newEmail.trim()) || createMutation.isPending} data-testid="button-confirm-create-member">
                   {createMutation.isPending ? "Creating..." : "Create"}
                 </Button>
               </DialogFooter>
@@ -322,6 +341,7 @@ export default function TeamMembers() {
                     Hourly ($) <SortIcon field="hourlyCost" />
                   </button>
                 </th>
+                <th className="text-left px-3 py-2 table-header-cell">Access</th>
                 <th className="w-20 px-3 py-2"></th>
               </tr>
               {showFilters && (
@@ -343,13 +363,14 @@ export default function TeamMembers() {
                   <td className="p-1.5"></td>
                   <td className="p-1.5"></td>
                   <td className="p-1.5"></td>
+                  <td className="p-1.5"></td>
                 </tr>
               )}
             </thead>
             <tbody>
               {filteredMembers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-muted-foreground">
+                  <td colSpan={8} className="p-8 text-center text-muted-foreground">
                     {members.length === 0 ? (
                       <span className="flex flex-col items-center gap-2">
                         <Users className="w-7 h-7 text-muted-foreground/50" />
@@ -421,6 +442,13 @@ export default function TeamMembers() {
                           onChange={e => setFieldEdit(m.id, "hourlyCost", e.target.value || null)}
                           data-testid={`input-hourly-${m.id}`}
                         />
+                      </td>
+                      <td className="px-3 py-1.5">
+                        {m.userId ? (
+                          <Badge variant="default" className="text-[10px]" data-testid={`badge-app-access-${m.id}`}>App Access</Badge>
+                        ) : (
+                          <Badge variant="secondary" className="text-[10px] text-muted-foreground" data-testid={`badge-app-access-${m.id}`}>No Access</Badge>
+                        )}
                       </td>
                       <td className="px-3 py-1.5">
                         <div className="flex items-center gap-1 justify-end">

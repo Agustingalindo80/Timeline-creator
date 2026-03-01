@@ -19,6 +19,7 @@ import { Separator } from "@/components/ui/separator";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useBranding } from "@/components/branding-provider";
 import { useAuth } from "@/hooks/use-auth";
+import { usePermissions } from "@/hooks/use-permissions";
 import type { AppSettings } from "@shared/schema";
 
 const coreNavItems = [
@@ -52,11 +53,20 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
 
+  const { hasPermission } = usePermissions();
+
   const { data: settings } = useQuery<AppSettings>({
     queryKey: ["/api/settings"],
   });
 
   const opportunitiesEnabled = settings?.opportunitiesEnabled !== false;
+
+  const filteredSystemNavItems = systemNavItems.filter((item) => {
+    if (item.title === "Settings") {
+      return hasPermission("org.settings.manage");
+    }
+    return true;
+  });
 
   const isActive = (url: string) => {
     if (url === "/") return location === "/";
@@ -127,7 +137,7 @@ export function AppSidebar() {
         {renderNavGroup("Core", coreItems)}
         {renderNavGroup("Workspace", workNavItems)}
         {renderNavGroup("Resources", resourceNavItems)}
-        {renderNavGroup("System", systemNavItems)}
+        {filteredSystemNavItems.length > 0 && renderNavGroup("System", filteredSystemNavItems)}
       </SidebarContent>
 
       <SidebarFooter className="px-3 py-3">

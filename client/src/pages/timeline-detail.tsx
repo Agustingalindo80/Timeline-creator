@@ -53,6 +53,7 @@ import { TimelineView } from "@/components/timeline-view";
 import { ThemePicker } from "@/components/theme-picker";
 import { RaidLog } from "@/components/raid-log";
 import { GovernanceTab } from "@/components/governance-tab";
+import { TeamAccessSection } from "@/components/team-access-section";
 import { formatDateForProject, parseDateToISO } from "@/lib/date-format";
 import type { TimelineWithMilestones, AppSettings, FieldOption, Client, AllocationWithTeamMember, Task, ProgressEntry, TimesheetEntry, ProjectTeamMemberWithDetails, TeamMember, FlightpathStage } from "@shared/schema";
 import {
@@ -2488,6 +2489,9 @@ export default function TimelineDetail() {
             <TabsTrigger value="raid-log" data-testid="tab-raid-log">
               RAID Log
             </TabsTrigger>
+            <TabsTrigger value="team-access" data-testid="tab-team-access">
+              Team & Access
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="milestones">
@@ -2720,6 +2724,10 @@ export default function TimelineDetail() {
 
           <TabsContent value="raid-log">
             <RaidLog timelineId={timeline.id} />
+          </TabsContent>
+
+          <TabsContent value="team-access">
+            <TeamAccessSection objectType="project" objectId={timeline.id} />
           </TabsContent>
         </Tabs>
         </div>

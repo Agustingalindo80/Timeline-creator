@@ -1,4 +1,4 @@
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, desc } from "drizzle-orm";
 import { db } from "./db";
 import {
   clients,
@@ -20,6 +20,14 @@ import {
   projectCheckpoints,
   projectGates,
   workstreamResources,
+  orgRoles,
+  orgRolePermissions,
+  orgPermissions,
+  userOrgRoles,
+  objectAssignments,
+  objectRolePermissions,
+  auditLog,
+  users,
   type BrandingConfig,
   type InsertBranding,
   type Client,
@@ -62,6 +70,12 @@ import {
   type InsertProjectGate,
   type WorkstreamResource,
   type InsertWorkstreamResource,
+  type OrgRole,
+  type ObjectAssignment,
+  type InsertObjectAssignment,
+  type InsertAuditLog,
+  type AuditLog,
+  type User,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -155,6 +169,22 @@ export interface IStorage {
   createWorkstreamResource(data: InsertWorkstreamResource): Promise<WorkstreamResource>;
   updateWorkstreamResource(id: string, data: Partial<InsertWorkstreamResource>): Promise<WorkstreamResource | undefined>;
   deleteWorkstreamResource(id: string): Promise<void>;
+
+  getOrgRoles(tenantId: string): Promise<OrgRole[]>;
+  getUserOrgRoles(userId: string, tenantId: string): Promise<OrgRole[]>;
+  assignUserOrgRole(userId: string, roleId: string, tenantId: string): Promise<void>;
+  removeUserOrgRole(userId: string, roleId: string, tenantId: string): Promise<void>;
+  getObjectAssignments(objectType: string, objectId: string, tenantId: string): Promise<(ObjectAssignment & { user?: User | null; teamMember?: TeamMember | null })[]>;
+  getObjectAssignmentsByUser(userId: string, tenantId: string): Promise<ObjectAssignment[]>;
+  assignObjectRole(objectType: string, objectId: string, userId: string, objectRole: string, tenantId: string): Promise<ObjectAssignment>;
+  removeObjectAssignment(id: string): Promise<void>;
+  getAuditLog(tenantId: string, filters?: { action?: string; limit?: number; offset?: number }): Promise<AuditLog[]>;
+  createAuditEntry(entry: InsertAuditLog): Promise<AuditLog>;
+  getUsersByTenant(tenantId: string): Promise<(User & { orgRoles?: OrgRole[]; teamMember?: TeamMember | null })[]>;
+  linkTeamMemberToUser(teamMemberId: string, userId: string): Promise<void>;
+  unlinkTeamMemberFromUser(teamMemberId: string): Promise<void>;
+  getTeamMemberByUserId(userId: string): Promise<TeamMember | undefined>;
+  createUserFromTeamMember(email: string, teamMemberId: string): Promise<User>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -727,6 +757,172 @@ export class DatabaseStorage implements IStorage {
 
   async deleteWorkstreamResource(id: string): Promise<void> {
     await db.delete(workstreamResources).where(eq(workstreamResources.id, id));
+  }
+
+  async getOrgRoles(tenantId: string): Promise<OrgRole[]> {
+    return db.select().from(orgRoles).where(eq(orgRoles.tenantId, tenantId));
+  }
+
+  async getUserOrgRoles(userId: string, tenantId: string): Promise<OrgRole[]> {
+    const rows = await db
+      .select({ role: orgRoles })
+      .from(userOrgRoles)
+      .innerJoin(orgRoles, eq(orgRoles.id, userOrgRoles.roleId))
+      .where(and(
+        eq(userOrgRoles.userId, userId),
+        eq(userOrgRoles.tenantId, tenantId),
+      ));
+    return rows.map(r => r.role);
+  }
+
+  async assignUserOrgRole(userId: string, roleId: string, tenantId: string): Promise<void> {
+    await db.insert(userOrgRoles).values({ userId, roleId, tenantId }).onConflictDoNothing();
+  }
+
+  async removeUserOrgRole(userId: string, roleId: string, tenantId: string): Promise<void> {
+    await db.delete(userOrgRoles).where(and(
+      eq(userOrgRoles.userId, userId),
+      eq(userOrgRoles.roleId, roleId),
+      eq(userOrgRoles.tenantId, tenantId),
+    ));
+  }
+
+  async getObjectAssignments(objectType: string, objectId: string, tenantId: string): Promise<(ObjectAssignment & { user?: User | null; teamMember?: TeamMember | null })[]> {
+    const assignments = await db
+      .select()
+      .from(objectAssignments)
+      .where(and(
+        eq(objectAssignments.objectType, objectType),
+        eq(objectAssignments.objectId, objectId),
+        eq(objectAssignments.tenantId, tenantId),
+      ));
+
+    const allUsers = await db.select().from(users);
+    const allMembers = await db.select().from(teamMembers);
+    const userMap = new Map(allUsers.map(u => [u.id, u]));
+    const memberByUserIdMap = new Map(allMembers.filter(m => m.userId).map(m => [m.userId!, m]));
+
+    return assignments.map(a => ({
+      ...a,
+      user: userMap.get(a.userId) || null,
+      teamMember: memberByUserIdMap.get(a.userId) || null,
+    }));
+  }
+
+  async getObjectAssignmentsByUser(userId: string, tenantId: string): Promise<ObjectAssignment[]> {
+    return db
+      .select()
+      .from(objectAssignments)
+      .where(and(
+        eq(objectAssignments.userId, userId),
+        eq(objectAssignments.tenantId, tenantId),
+      ));
+  }
+
+  async assignObjectRole(objectType: string, objectId: string, userId: string, objectRole: string, tenantId: string): Promise<ObjectAssignment> {
+    const [assignment] = await db.insert(objectAssignments).values({
+      tenantId,
+      objectType,
+      objectId,
+      userId,
+      objectRole,
+    }).returning();
+    return assignment;
+  }
+
+  async removeObjectAssignment(id: string): Promise<void> {
+    await db.delete(objectAssignments).where(eq(objectAssignments.id, id));
+  }
+
+  async getAuditLog(tenantId: string, filters?: { action?: string; limit?: number; offset?: number }): Promise<AuditLog[]> {
+    const conditions = [eq(auditLog.tenantId, tenantId)];
+    if (filters?.action) conditions.push(eq(auditLog.action, filters.action));
+
+    const limit = filters?.limit || 100;
+    const offset = filters?.offset || 0;
+
+    return db
+      .select()
+      .from(auditLog)
+      .where(and(...conditions))
+      .orderBy(desc(auditLog.createdAt))
+      .limit(limit)
+      .offset(offset);
+  }
+
+  async createAuditEntry(entry: InsertAuditLog): Promise<AuditLog> {
+    const [row] = await db.insert(auditLog).values(entry).returning();
+    return row;
+  }
+
+  async getUsersByTenant(tenantId: string): Promise<(User & { orgRoles?: OrgRole[]; teamMember?: TeamMember | null })[]> {
+    const allUsers = await db.select().from(users);
+    const allRoleAssignments = await db
+      .select()
+      .from(userOrgRoles)
+      .where(eq(userOrgRoles.tenantId, tenantId));
+    const allRoles = await db.select().from(orgRoles).where(eq(orgRoles.tenantId, tenantId));
+    const allMembers = await db.select().from(teamMembers);
+
+    const roleMap = new Map(allRoles.map(r => [r.id, r]));
+    const memberByUserIdMap = new Map(allMembers.filter(m => m.userId).map(m => [m.userId!, m]));
+
+    return allUsers.map(u => {
+      const userRoleAssignments = allRoleAssignments.filter(ra => ra.userId === u.id);
+      const roles = userRoleAssignments.map(ra => roleMap.get(ra.roleId)).filter(Boolean) as OrgRole[];
+      return {
+        ...u,
+        orgRoles: roles,
+        teamMember: memberByUserIdMap.get(u.id) || null,
+      };
+    });
+  }
+
+  async linkTeamMemberToUser(teamMemberId: string, userId: string): Promise<void> {
+    await db.update(teamMembers).set({ userId }).where(eq(teamMembers.id, teamMemberId));
+  }
+
+  async unlinkTeamMemberFromUser(teamMemberId: string): Promise<void> {
+    await db.update(teamMembers).set({ userId: null }).where(eq(teamMembers.id, teamMemberId));
+  }
+
+  async getTeamMemberByUserId(userId: string): Promise<TeamMember | undefined> {
+    const [member] = await db.select().from(teamMembers).where(eq(teamMembers.userId, userId));
+    return member;
+  }
+
+  async createUserFromTeamMember(email: string, teamMemberId: string): Promise<User> {
+    const [existingUser] = await db.select().from(users).where(eq(users.email, email));
+
+    let user: User;
+    if (existingUser) {
+      user = existingUser;
+    } else {
+      const [member] = await db.select().from(teamMembers).where(eq(teamMembers.id, teamMemberId));
+      const nameParts = member?.name?.split(" ") || [];
+      const [created] = await db.insert(users).values({
+        email,
+        firstName: nameParts[0] || null,
+        lastName: nameParts.slice(1).join(" ") || null,
+      }).returning();
+      user = created;
+    }
+
+    await db.update(teamMembers).set({ userId: user.id }).where(eq(teamMembers.id, teamMemberId));
+
+    const memberRole = await db.select().from(orgRoles).where(and(
+      eq(orgRoles.name, "Member"),
+      eq(orgRoles.tenantId, "default"),
+    ));
+    if (memberRole.length > 0) {
+      await db.insert(userOrgRoles).values({
+        userId: user.id,
+        roleId: memberRole[0].id,
+        tenantId: "default",
+      }).onConflictDoNothing();
+    }
+
+    return user;
   }
 }
 

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
@@ -38,6 +39,7 @@ export default function TeamMemberDetail() {
   const [editDept, setEditDept] = useState("");
   const [editMonthlyCost, setEditMonthlyCost] = useState("");
   const [editHourlyCost, setEditHourlyCost] = useState("");
+  const [editAppAccess, setEditAppAccess] = useState(false);
 
   const { data: member, isLoading } = useQuery<TeamMember>({
     queryKey: ["/api/team-members", params.id],
@@ -63,7 +65,13 @@ export default function TeamMemberDetail() {
 
   const updateMutation = useMutation({
     mutationFn: async (data: any) => {
-      await apiRequest("PATCH", `/api/team-members/${params.id}`, data);
+      const { enableAppAccess, previouslyHadAccess, ...memberData } = data;
+      await apiRequest("PATCH", `/api/team-members/${params.id}`, memberData);
+      if (enableAppAccess && !previouslyHadAccess) {
+        await apiRequest("POST", `/api/team-members/${params.id}/enable-access`);
+      } else if (!enableAppAccess && previouslyHadAccess) {
+        await apiRequest("POST", `/api/team-members/${params.id}/disable-access`);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/team-members", params.id] });
@@ -92,6 +100,7 @@ export default function TeamMemberDetail() {
     setEditDept(member.department || "");
     setEditMonthlyCost(member.monthlyCost ?? "");
     setEditHourlyCost(member.hourlyCost ?? "");
+    setEditAppAccess(!!member.userId);
     setEditing(true);
   };
 
@@ -144,6 +153,11 @@ export default function TeamMemberDetail() {
             <div className="flex items-center gap-2 mt-1 flex-wrap">
               {member.role && <Badge variant="secondary" data-testid="badge-member-role">{getRoleLabel(member.role)}</Badge>}
               {member.department && <Badge variant="outline" data-testid="badge-member-dept">{member.department}</Badge>}
+              {member.userId ? (
+                <Badge variant="default" data-testid={`badge-app-access-${member.id}`}>App Access</Badge>
+              ) : (
+                <Badge variant="secondary" className="text-muted-foreground" data-testid={`badge-app-access-${member.id}`}>No Access</Badge>
+              )}
             </div>
           </div>
         </div>
@@ -183,8 +197,21 @@ export default function TeamMemberDetail() {
               <Input value={editName} onChange={e => setEditName(e.target.value)} data-testid="input-edit-name" />
             </div>
             <div>
-              <Label>Email</Label>
+              <Label>Email {editAppAccess && "*"}</Label>
               <Input value={editEmail} onChange={e => setEditEmail(e.target.value)} data-testid="input-edit-email" />
+            </div>
+            <div className="col-span-2 md:col-span-3 flex items-center gap-3">
+              <Switch checked={editAppAccess} onCheckedChange={setEditAppAccess} data-testid="switch-app-access" />
+              <div>
+                <Label>App Access</Label>
+                <p className="text-xs text-muted-foreground" data-testid="text-app-access-status">
+                  {member?.userId && editAppAccess
+                    ? "Linked to user account"
+                    : editAppAccess
+                      ? "This person will be able to log in and access assigned projects"
+                      : "This person is tracked for estimation/allocation only"}
+                </p>
+              </div>
             </div>
             <div>
               <Label>Role</Label>
@@ -208,7 +235,7 @@ export default function TeamMemberDetail() {
           </div>
           <div className="flex gap-2 justify-end">
             <Button variant="ghost" size="sm" onClick={() => setEditing(false)}>Cancel</Button>
-            <Button size="sm" onClick={() => updateMutation.mutate({ name: editName, email: editEmail || null, role: editRole || null, department: editDept || null, monthlyCost: editMonthlyCost || null, hourlyCost: editHourlyCost || null })} disabled={!editName.trim() || updateMutation.isPending} data-testid="button-save-member">
+            <Button size="sm" onClick={() => updateMutation.mutate({ name: editName, email: editEmail || null, role: editRole || null, department: editDept || null, monthlyCost: editMonthlyCost || null, hourlyCost: editHourlyCost || null, enableAppAccess: editAppAccess, previouslyHadAccess: !!member?.userId })} disabled={!editName.trim() || (editAppAccess && !editEmail.trim()) || updateMutation.isPending} data-testid="button-save-member">
               <Save className="w-3.5 h-3.5 mr-1" />
               {updateMutation.isPending ? "Saving..." : "Save"}
             </Button>

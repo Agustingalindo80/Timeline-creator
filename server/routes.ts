@@ -11,6 +11,9 @@ import { listFilesInFolder, getFileMetadata, getFileContent, extractFolderIdFrom
 import { storage } from "./storage";
 import { seedFlightpathData } from "./seed-flightpath";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
+import { requirePermission } from "./middleware/permissions";
+import { getEffectivePermissions, invalidatePermissionCache } from "./rbac";
+import { ALL_PERMISSIONS } from "@shared/schema";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
@@ -189,7 +192,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/branding", async (req, res) => {
+  app.patch("/api/branding", requirePermission("org.settings.manage"), async (req, res) => {
     try {
       const fields = [
         "appName", "logoUrl", "faviconUrl", "primaryColor",
@@ -206,7 +209,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/branding/logo", upload.single("file"), async (req, res) => {
+  app.post("/api/branding/logo", requirePermission("org.settings.manage"), upload.single("file"), async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ message: "No file uploaded" });
       const ext = path.extname(req.file.originalname) || ".png";
@@ -220,7 +223,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/branding/favicon", upload.single("file"), async (req, res) => {
+  app.post("/api/branding/favicon", requirePermission("org.settings.manage"), upload.single("file"), async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ message: "No file uploaded" });
       const ext = path.extname(req.file.originalname) || ".png";
@@ -409,7 +412,7 @@ export async function registerRoutes(
   });
 
   // CREATE timeline with milestones
-  app.post("/api/timelines", async (req, res) => {
+  app.post("/api/timelines", requirePermission("project.create"), async (req, res) => {
     try {
       const parsed = createTimelineBody.safeParse(req.body);
       if (!parsed.success) {
@@ -446,7 +449,7 @@ export async function registerRoutes(
   });
 
   // UPDATE timeline
-  app.patch("/api/timelines/:id", async (req, res) => {
+  app.patch("/api/timelines/:id", requirePermission("project.edit"), async (req, res) => {
     try {
       const updates: any = {};
       const timelineFields = [
@@ -500,7 +503,7 @@ export async function registerRoutes(
   });
 
   // DELETE timeline
-  app.delete("/api/timelines/:id", async (req, res) => {
+  app.delete("/api/timelines/:id", requirePermission("project.edit"), async (req, res) => {
     try {
       await storage.deleteTimeline(req.params.id);
       res.json({ success: true });
@@ -911,7 +914,7 @@ export async function registerRoutes(
   });
 
   // ADD risk to timeline
-  app.post("/api/timelines/:id/risks", async (req, res) => {
+  app.post("/api/timelines/:id/risks", requirePermission("raid.edit"), async (req, res) => {
     try {
       const { title, description, category, owner, probability, impact, mitigation, contingency, status, dueDate, sortOrder } = req.body;
       if (!title) {
@@ -939,7 +942,7 @@ export async function registerRoutes(
   });
 
   // UPDATE risk
-  app.patch("/api/risks/:id", async (req, res) => {
+  app.patch("/api/risks/:id", requirePermission("raid.edit"), async (req, res) => {
     try {
       const { title, description, category, owner, probability, impact, mitigation, contingency, status, dueDate, sortOrder } = req.body;
       const updates: any = {};
@@ -964,7 +967,7 @@ export async function registerRoutes(
   });
 
   // DELETE risk
-  app.delete("/api/risks/:id", async (req, res) => {
+  app.delete("/api/risks/:id", requirePermission("raid.edit"), async (req, res) => {
     try {
       await storage.deleteRisk(req.params.id);
       res.json({ success: true });
@@ -1050,7 +1053,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/rate-cards", async (req, res) => {
+  app.post("/api/rate-cards", requirePermission("rates.edit"), async (req, res) => {
     try {
       const { name, role, region, costRate, billRate } = req.body;
       if (!name?.trim()) return res.status(400).json({ message: "Name is required" });
@@ -1067,7 +1070,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/rate-cards/:id", async (req, res) => {
+  app.patch("/api/rate-cards/:id", requirePermission("rates.edit"), async (req, res) => {
     try {
       const { name, role, region, costRate, billRate } = req.body;
       const updates: any = {};
@@ -1084,7 +1087,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/rate-cards/:id", async (req, res) => {
+  app.delete("/api/rate-cards/:id", requirePermission("rates.edit"), async (req, res) => {
     try {
       await storage.deleteRateCard(req.params.id);
       res.json({ success: true });
@@ -1365,7 +1368,7 @@ export async function registerRoutes(
   });
 
   // UPDATE app settings
-  app.patch("/api/settings", async (req, res) => {
+  app.patch("/api/settings", requirePermission("org.settings.manage"), async (req, res) => {
     try {
       const updates: any = {};
       const fields = [
@@ -1425,7 +1428,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/timelines/:id/import-estimate", upload.single("file"), async (req, res) => {
+  app.post("/api/timelines/:id/import-estimate", requirePermission("estimate.edit"), upload.single("file"), async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ message: "No file uploaded" });
       const timelineId = req.params.id;
@@ -1731,7 +1734,7 @@ export async function registerRoutes(
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
-  app.patch("/api/gates/:id", async (req, res) => {
+  app.patch("/api/gates/:id", requirePermission("gate.approve"), async (req, res) => {
     try {
       const gate = await storage.updateProjectGate(req.params.id, req.body);
       if (!gate) return res.status(404).json({ message: "Gate not found" });
@@ -1768,7 +1771,7 @@ export async function registerRoutes(
   });
 
   // ── Advance Stage (gate-enforced) ──
-  app.post("/api/timelines/:id/advance-stage", async (req, res) => {
+  app.post("/api/timelines/:id/advance-stage", requirePermission("gate.submit"), async (req, res) => {
     try {
       const { nextStageId } = req.body;
       if (!nextStageId) return res.status(400).json({ message: "nextStageId is required" });
@@ -1806,7 +1809,7 @@ export async function registerRoutes(
   });
 
   // ── Gate Evaluator ──
-  app.post("/api/timelines/:id/evaluate-gate", async (req, res) => {
+  app.post("/api/timelines/:id/evaluate-gate", requirePermission("gate.submit"), async (req, res) => {
     try {
       const { stageId } = req.body;
       if (!stageId) return res.status(400).json({ message: "stageId is required" });
@@ -2206,7 +2209,7 @@ Respond ONLY with valid JSON:
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
-  app.post("/api/tasks/:taskId/resources", async (req, res) => {
+  app.post("/api/tasks/:taskId/resources", requirePermission("estimate.edit"), async (req, res) => {
     try {
       const { rateCardId, teamMemberId, hoursPerWeek, taskType, notes } = req.body;
       if (!rateCardId) return res.status(400).json({ message: "Rate card is required" });
@@ -2223,7 +2226,7 @@ Respond ONLY with valid JSON:
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
-  app.patch("/api/workstream-resources/:id", async (req, res) => {
+  app.patch("/api/workstream-resources/:id", requirePermission("estimate.edit"), async (req, res) => {
     try {
       const updates: any = {};
       if (req.body.rateCardId !== undefined) updates.rateCardId = req.body.rateCardId;
@@ -2237,7 +2240,7 @@ Respond ONLY with valid JSON:
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
-  app.delete("/api/workstream-resources/:id", async (req, res) => {
+  app.delete("/api/workstream-resources/:id", requirePermission("estimate.edit"), async (req, res) => {
     try {
       await storage.deleteWorkstreamResource(req.params.id);
       res.json({ success: true });
@@ -2260,7 +2263,7 @@ Respond ONLY with valid JSON:
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
-  app.post("/api/opportunities", async (req, res) => {
+  app.post("/api/opportunities", requirePermission("opp.create"), async (req, res) => {
     try {
       const { title, description, color, clientId, region, salesforceClouds, currency, engagementModel, projectType } = req.body;
       if (!title || !title.trim()) return res.status(400).json({ message: "Title is required" });
@@ -2310,7 +2313,7 @@ Respond ONLY with valid JSON:
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
-  app.patch("/api/opportunities/:id", async (req, res) => {
+  app.patch("/api/opportunities/:id", requirePermission("opp.edit"), async (req, res) => {
     try {
       const existing = await storage.getTimeline(req.params.id);
       if (!existing) return res.status(404).json({ message: "Opportunity not found" });
@@ -2351,7 +2354,7 @@ Respond ONLY with valid JSON:
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
-  app.delete("/api/opportunities/:id", async (req, res) => {
+  app.delete("/api/opportunities/:id", requirePermission("opp.edit"), async (req, res) => {
     try {
       const existing = await storage.getTimeline(req.params.id);
       if (!existing) return res.status(404).json({ message: "Opportunity not found" });
@@ -2552,6 +2555,119 @@ Respond ONLY with valid JSON:
           governanceStage: stage1 ? `Stage 1: ${stage1.name}` : "None",
         },
       });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  // ── RBAC API Routes ──
+
+  app.get("/api/rbac/roles", async (_req, res) => {
+    try {
+      const roles = await storage.getOrgRoles("default");
+      res.json(roles);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.get("/api/rbac/users", requirePermission("users.manage"), async (_req, res) => {
+    try {
+      const usersList = await storage.getUsersByTenant("default");
+      res.json(usersList);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.post("/api/rbac/users/:userId/roles", requirePermission("roles.manage"), async (req, res) => {
+    try {
+      const { roleId } = req.body;
+      if (!roleId) return res.status(400).json({ message: "roleId is required" });
+      await storage.assignUserOrgRole(req.params.userId as string, roleId, "default");
+      invalidatePermissionCache(req.params.userId as string);
+      res.json({ success: true });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.delete("/api/rbac/users/:userId/roles/:roleId", requirePermission("roles.manage"), async (req, res) => {
+    try {
+      await storage.removeUserOrgRole(req.params.userId as string, req.params.roleId as string, "default");
+      invalidatePermissionCache(req.params.userId as string);
+      res.json({ success: true });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.get("/api/rbac/objects/:objectType/:objectId/assignments", async (req, res) => {
+    try {
+      const assignments = await storage.getObjectAssignments(req.params.objectType, req.params.objectId, "default");
+      res.json(assignments);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.post("/api/rbac/objects/:objectType/:objectId/assignments", requirePermission("project.edit", "opp.edit"), async (req, res) => {
+    try {
+      const { userId, objectRole } = req.body;
+      if (!userId || !objectRole) return res.status(400).json({ message: "userId and objectRole are required" });
+      const assignment = await storage.assignObjectRole(req.params.objectType as string, req.params.objectId as string, userId, objectRole, "default");
+      invalidatePermissionCache(userId);
+      res.json(assignment);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.delete("/api/rbac/assignments/:assignmentId", requirePermission("project.edit"), async (req, res) => {
+    try {
+      await storage.removeObjectAssignment(req.params.assignmentId);
+      res.json({ success: true });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.get("/api/rbac/permissions", async (_req, res) => {
+    try {
+      res.json(ALL_PERMISSIONS);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.get("/api/rbac/my-permissions", async (req, res) => {
+    try {
+      const user = (req as any).user;
+      const userId = user?.claims?.sub || user?.id;
+      if (!userId) return res.status(401).json({ message: "Authentication required" });
+      const perms = await getEffectivePermissions(userId, "default");
+      res.json({ permissions: Array.from(perms) });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.get("/api/rbac/my-assignments", async (req, res) => {
+    try {
+      const user = (req as any).user;
+      const userId = user?.claims?.sub || user?.id;
+      if (!userId) return res.status(401).json({ message: "Authentication required" });
+      const assignments = await storage.getObjectAssignmentsByUser(userId, "default");
+      res.json(assignments);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.post("/api/team-members/:id/enable-access", requirePermission("users.manage"), async (req, res) => {
+    try {
+      const member = await storage.getTeamMember(req.params.id);
+      if (!member) return res.status(404).json({ message: "Team member not found" });
+      if (!member.email) return res.status(400).json({ message: "Team member has no email address" });
+      const user = await storage.createUserFromTeamMember(member.email, req.params.id);
+      res.json(user);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.post("/api/team-members/:id/disable-access", requirePermission("users.manage"), async (req, res) => {
+    try {
+      const member = await storage.getTeamMember(req.params.id);
+      if (!member) return res.status(404).json({ message: "Team member not found" });
+      await storage.unlinkTeamMemberFromUser(req.params.id);
+      res.json({ success: true });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.get("/api/audit-log", requirePermission("org.settings.manage"), async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 100;
+      const offset = parseInt(req.query.offset as string) || 0;
+      const action = req.query.action as string | undefined;
+      const entries = await storage.getAuditLog("default", { action, limit, offset });
+      res.json(entries);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 

@@ -5,6 +5,7 @@ import { z } from "zod";
 
 export * from "./models/auth";
 export * from "./models/chat";
+export * from "./models/rbac";
 
 export const fieldOptionSchema = z.object({
   value: z.string(),
@@ -234,6 +235,7 @@ export const teamMembers = pgTable("team_members", {
   department: text("department"),
   monthlyCost: numeric("monthly_cost", { precision: 10, scale: 2 }),
   hourlyCost: numeric("hourly_cost", { precision: 10, scale: 2 }),
+  userId: varchar("user_id"),
 });
 
 export const rateCards = pgTable("rate_cards", {
@@ -297,6 +299,7 @@ export const appSettings = pgTable("app_settings", {
   teamMemberRoles: jsonb("team_member_roles").$type<FieldOption[]>(),
   regions: jsonb("regions").$type<FieldOption[]>(),
   dateFormats: jsonb("date_formats").$type<FieldOption[]>(),
+  rbacMigrated: boolean("rbac_migrated").notNull().default(false),
 });
 
 export const brandingConfig = pgTable("branding_config", {
