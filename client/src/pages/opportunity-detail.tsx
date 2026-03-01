@@ -125,7 +125,7 @@ export default function OpportunityDetail() {
   });
 
   const { data: stages = [] } = useQuery<FlightpathStage[]>({
-    queryKey: ["/api/flightpath-stages"],
+    queryKey: ["/api/governance-model/stages"],
   });
 
   const { data: gates = [] } = useQuery<ProjectGate[]>({

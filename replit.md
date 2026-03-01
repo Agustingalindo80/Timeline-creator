@@ -37,8 +37,8 @@ The application uses a modern web stack with React, Vite, Tailwind CSS, and shad
 - **RAID Log:** Supports Risks, Assumptions, Issues, and Dependencies.
 - **Opportunities Module:** Pre-sales entity with a dedicated API, Estimate tab for financial roll-ups (price-driven model), and "Convert to Project" feature.
 - **Estimate Template Import/Export:** Functionality to download an Excel template and import estimates.
-- **FlightPath Governance Framework:** A 5-stage governance engine with deliverables, RACI matrices, and AI-evaluated gate criteria.
-- **FlightPath AI Coach:** Conversational chatbot powered by OpenAI, knowledgeable in the governance framework.
+- **Operating Model Governance Framework:** A 5-stage governance engine with deliverables, RACI matrices, and AI-evaluated gate criteria. Tenant-customizable label via `governanceModelLabel` in app settings (default: "Operating Model"). DB tables remain as `flightpath_*` (Path A). API available at both `/api/governance-model/*` (canonical) and `/api/flightpath-*` (backward compat). Frontend uses `/api/governance-model/*` endpoints. Terminology config at `client/src/config/terminology.ts` with i18n foundation (EN/ES/PT).
+- **Governance AI Coach:** Conversational chatbot powered by OpenAI, uses tenant's governance label in system prompt. Hook: `useGovernanceLabel()` from `client/src/hooks/use-governance-label.ts`.
 - **Document Repository Integration:** Links to Google Drive for artifact management with AI-powered verification.
 - **Team Composition:** Supports role-based assignments for opportunities and required team members for projects, with a "Sync from Estimate" feature.
 - **Resource Allocation:** Matrix view for team members' weekly hours.

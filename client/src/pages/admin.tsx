@@ -24,6 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAppTitle } from "@/hooks/use-app-title";
+import { useGovernanceLabel } from "@/hooks/use-governance-label";
 import { Label } from "@/components/ui/label";
 import { PermissionGuard } from "@/components/permission-guard";
 import type { AppSettings, FieldOption, TeamMember, RateCard, AllocationWithProject, TimelineWithMilestones, BrandingConfig, FlightpathStage, FlightpathDeliverable } from "@shared/schema";
@@ -1503,20 +1504,21 @@ type StageWithDeliverables = FlightpathStage & { deliverables: FlightpathDeliver
 
 function FlightPathManager() {
   const { toast } = useToast();
+  const { label: govLabel } = useGovernanceLabel();
   const [expandedStage, setExpandedStage] = useState<string | null>(null);
   const [editingStage, setEditingStage] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<FlightpathStage>>({});
 
   const { data: stages = [], isLoading } = useQuery<StageWithDeliverables[]>({
-    queryKey: ["/api/flightpath-stages"],
+    queryKey: ["/api/governance-model/stages"],
   });
 
   const updateStageMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      await apiRequest("PATCH", `/api/flightpath-stages/${id}`, data);
+      await apiRequest("PATCH", `/api/governance-model/stages/${id}`, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/flightpath-stages"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/governance-model/stages"] });
       toast({ title: "Stage updated" });
       setEditingStage(null);
     },
@@ -1524,10 +1526,10 @@ function FlightPathManager() {
 
   const deleteDeliverableMutation = useMutation({
     mutationFn: async (id: string) => {
-      await apiRequest("DELETE", `/api/flightpath-deliverables/${id}`);
+      await apiRequest("DELETE", `/api/governance-model/deliverables/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/flightpath-stages"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/governance-model/stages"] });
       toast({ title: "Deliverable deleted" });
     },
   });
@@ -1539,7 +1541,7 @@ function FlightPathManager() {
       <div className="mb-6">
         <h2 className="text-base font-semibold mb-1 flex items-center gap-2">
           <Compass className="w-4 h-4" />
-          FlightPath Governance Framework
+          {govLabel} Governance Framework
         </h2>
         <p className="text-sm text-muted-foreground">
           Configure the governance stages, deliverables, and RACI matrices that define your project lifecycle.
@@ -1904,7 +1906,7 @@ export default function Admin() {
             <TabsTrigger value="team_members" data-testid="tab-settings-team-members">Team Members</TabsTrigger>
             <TabsTrigger value="rate_cards" data-testid="tab-settings-rate-cards">Rate Cards</TabsTrigger>
             <TabsTrigger value="field_options" data-testid="tab-settings-field-options">Field Options</TabsTrigger>
-            <TabsTrigger value="flightpath" data-testid="tab-settings-flightpath">FlightPath</TabsTrigger>
+            <TabsTrigger value="flightpath" data-testid="tab-settings-flightpath">Operating Model</TabsTrigger>
           </TabsList>
 
           <TabsContent value="general">
@@ -1941,6 +1943,41 @@ export default function Admin() {
                       disabled={updateMutation.isPending}
                       data-testid="switch-opportunities"
                     />
+                  </div>
+                </Card>
+
+                <div className="mt-6 mb-4">
+                  <h2 className="text-base font-semibold mb-1 flex items-center gap-2">
+                    <Compass className="w-4 h-4" />
+                    Governance Terminology
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Customize the governance framework label used throughout the application.
+                  </p>
+                </div>
+
+                <Card className="p-5">
+                  <div className="space-y-3">
+                    <div>
+                      <Label htmlFor="governance-label" className="text-sm font-medium">Governance Model Label</Label>
+                      <p className="text-xs text-muted-foreground mt-0.5 mb-2">
+                        Override the default "Operating Model" label. Leave blank to use the default.
+                      </p>
+                      <div className="flex gap-2 max-w-md">
+                        <Input
+                          id="governance-label"
+                          placeholder="Operating Model"
+                          defaultValue={settings?.governanceModelLabel || ""}
+                          onBlur={(e) => {
+                            const val = e.target.value.trim() || null;
+                            if (val !== (settings?.governanceModelLabel || null)) {
+                              updateMutation.mutate({ governanceModelLabel: val });
+                            }
+                          }}
+                          data-testid="input-governance-label"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </Card>
               </div>

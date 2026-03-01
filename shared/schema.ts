@@ -375,6 +375,7 @@ export const appSettings = pgTable("app_settings", {
   regions: jsonb("regions").$type<FieldOption[]>(),
   dateFormats: jsonb("date_formats").$type<FieldOption[]>(),
   rbacMigrated: boolean("rbac_migrated").notNull().default(false),
+  governanceModelLabel: text("governance_model_label"),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 

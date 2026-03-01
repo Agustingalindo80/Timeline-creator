@@ -1807,6 +1807,65 @@ export async function registerRoutes(
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
+  // ── Governance Model API Aliases (canonical endpoints, same handlers) ──
+  app.get("/api/governance-model/stages", async (req, res) => {
+    try {
+      const tenantId = req.tenantId || "default";
+      const stages = await storage.getFlightpathStages(tenantId);
+      const sorted = stages.sort((a, b) => a.sortOrder - b.sortOrder);
+      const result = [];
+      for (const stage of sorted) {
+        const deliverables = await storage.getStageDeliverables(stage.id);
+        result.push({ ...stage, deliverables: deliverables.sort((a, b) => a.sortOrder - b.sortOrder) });
+      }
+      res.json(result);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+  app.post("/api/governance-model/stages", async (req, res) => {
+    try {
+      const stage = await storage.createFlightpathStage(req.body);
+      res.status(201).json(stage);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+  app.patch("/api/governance-model/stages/:id", async (req, res) => {
+    try {
+      const stage = await storage.updateFlightpathStage(req.params.id, req.body);
+      if (!stage) return res.status(404).json({ message: "Stage not found" });
+      res.json(stage);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+  app.delete("/api/governance-model/stages/:id", async (req, res) => {
+    try {
+      await storage.deleteFlightpathStage(req.params.id);
+      res.status(204).send();
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+  app.get("/api/governance-model/stages/:stageId/deliverables", async (req, res) => {
+    try {
+      const deliverables = await storage.getStageDeliverables(req.params.stageId);
+      res.json(deliverables.sort((a, b) => a.sortOrder - b.sortOrder));
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+  app.post("/api/governance-model/stages/:stageId/deliverables", async (req, res) => {
+    try {
+      const deliverable = await storage.createDeliverable({ ...req.body, stageId: req.params.stageId });
+      res.status(201).json(deliverable);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+  app.patch("/api/governance-model/deliverables/:id", async (req, res) => {
+    try {
+      const deliverable = await storage.updateDeliverable(req.params.id, req.body);
+      if (!deliverable) return res.status(404).json({ message: "Deliverable not found" });
+      res.json(deliverable);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+  app.delete("/api/governance-model/deliverables/:id", async (req, res) => {
+    try {
+      await storage.deleteDeliverable(req.params.id);
+      res.status(204).send();
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
   // ── Project Checkpoints ──
   app.get("/api/timelines/:id/checkpoints", async (req, res) => {
     try {
@@ -2321,9 +2380,12 @@ Respond ONLY with valid JSON:
 
       const stages = await storage.getFlightpathStages(req.tenantId || "default");
       const sortedStages = stages.sort((a, b) => a.sortOrder - b.sortOrder);
-      let frameworkContext = "You are the FlightPath Governance Coach — an AI assistant that helps project managers navigate the FlightPath governance framework.\n\n";
-      frameworkContext += "## FlightPath Framework Overview\n";
-      frameworkContext += "FlightPath is a 5-stage project governance framework (Stage 0 through Stage 4) that guides projects from initial value framing through to value realization and evolution.\n\n";
+      const tenantSettings = await storage.getSettings();
+      const govLabel = tenantSettings?.governanceModelLabel || "Operating Model";
+      let frameworkContext = `You are the ${govLabel} Governance Coach — an AI assistant that helps project managers navigate the ${govLabel} governance framework.\n\n`;
+      frameworkContext += `IMPORTANT: In all user-facing responses, refer to the governance lifecycle as "${govLabel}". Do not use the term "FlightPath".\n\n`;
+      frameworkContext += `## ${govLabel} Framework Overview\n`;
+      frameworkContext += `The ${govLabel} is a 5-stage project governance framework (Stage 0 through Stage 4) that guides projects from initial value framing through to value realization and evolution.\n\n`;
 
       for (const stage of sortedStages) {
         const deliverables = await storage.getStageDeliverables(stage.id);
@@ -2351,13 +2413,14 @@ Respond ONLY with valid JSON:
       }
 
       frameworkContext += `## Your Role
-- Answer questions about the FlightPath framework, stages, gates, deliverables, and RACI responsibilities
+- Answer questions about the ${govLabel} framework, stages, gates, deliverables, and RACI responsibilities
 - Guide PMs through their current stage and explain what's needed
 - Recommend next actions and warn about common failure modes
 - Explain gate criteria and what it takes to pass each gate
 - Help PMs understand RACI roles and accountability
 - Be specific, actionable, and reference actual framework deliverables and stages
-- Keep responses focused and practical — you're a governance coach, not a general assistant`;
+- Keep responses focused and practical — you're a governance coach, not a general assistant
+- Always refer to the governance framework as "${govLabel}" — never use the term "FlightPath" in your responses`;
 
       const openai = new OpenAI({
         apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,

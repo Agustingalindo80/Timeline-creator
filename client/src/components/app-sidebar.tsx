@@ -22,6 +22,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { useBranding } from "@/components/branding-provider";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useGovernanceLabel } from "@/hooks/use-governance-label";
 import type { AppSettings } from "@shared/schema";
 
 type MyModulesResponse = {
@@ -96,11 +97,12 @@ export function AppSidebar() {
     return location.startsWith(url);
   };
 
-  const appName = branding?.appName || "FlightPath";
+  const { coachLabel } = useGovernanceLabel();
+  const appName = branding?.appName || "Project High Level Planning";
 
   const coreItems = [
     { title: "Dashboard", url: "/", icon: LayoutDashboard, visible: true },
-    { title: "FlightPath Coach", url: "/chat", icon: Bot, visible: hasModule("coach") },
+    { title: coachLabel, url: "/chat", icon: Bot, visible: hasModule("coach") },
     { title: "Opportunities", url: "/opportunities", icon: Target, visible: hasModule("opportunities") && opportunitiesEnabled },
   ].filter(i => i.visible);
 

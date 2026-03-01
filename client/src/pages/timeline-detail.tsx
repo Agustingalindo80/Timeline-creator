@@ -1398,7 +1398,7 @@ export default function TimelineDetail() {
   });
 
   const { data: governanceStages = [] } = useQuery<FlightpathStage[]>({
-    queryKey: ["/api/flightpath-stages"],
+    queryKey: ["/api/governance-model/stages"],
   });
 
   const { data: projectAllocs = [] } = useQuery<AllocationWithTeamMember[]>({

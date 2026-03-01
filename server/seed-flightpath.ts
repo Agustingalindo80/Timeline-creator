@@ -172,12 +172,12 @@ export async function seedFlightpathData(tenantId: string = "default"): Promise<
       console.log(`Updating Stage 0 to pre-sales format for tenant "${tenantId}"...`);
       await reseedStage0(tenantId);
     } else {
-      console.log(`FlightPath stages already seeded for tenant "${tenantId}"`);
+      console.log(`Governance stages already seeded for tenant "${tenantId}"`);
     }
     return;
   }
 
-  console.log(`Seeding FlightPath stages for tenant "${tenantId}"...`);
+  console.log(`Seeding governance stages for tenant "${tenantId}"...`);
 
   for (const stageData of STAGES) {
     const [stage] = await db.insert(flightpathStages).values({
@@ -204,5 +204,5 @@ export async function seedFlightpathData(tenantId: string = "default"): Promise<
     }
   }
 
-  console.log(`FlightPath seeding complete: ${STAGES.length} stages with deliverables`);
+  console.log(`Governance seeding complete: ${STAGES.length} stages with deliverables`);
 }

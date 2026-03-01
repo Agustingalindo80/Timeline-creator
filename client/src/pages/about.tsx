@@ -85,12 +85,12 @@ const coreModules = [
   },
   {
     icon: Compass,
-    title: "FlightPath Governance",
+    title: "Operating Model Governance",
     description: "Stage-gated project lifecycle with 5 stages (Value Framing through Value Realization), deliverable checklists, RACI accountability matrices, gate enforcement, AI-powered readiness evaluation, and document repository integration for artifact verification.",
   },
   {
     icon: Bot,
-    title: "FlightPath Coach",
+    title: "Governance Coach",
     description: "AI-powered natural language assistant that guides project managers through the governance framework, explains stage requirements, RACI roles, and recommends next actions.",
   },
   {

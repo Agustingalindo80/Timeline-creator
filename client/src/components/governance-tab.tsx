@@ -54,7 +54,7 @@ export function GovernanceTab({ timelineId, currentStageId, onStageChange, oppor
   });
 
   const { data: stages = [], isLoading: stagesLoading } = useQuery<StageWithDeliverables[]>({
-    queryKey: ["/api/flightpath-stages"],
+    queryKey: ["/api/governance-model/stages"],
   });
 
   const { data: checkpoints = [] } = useQuery<ProjectCheckpoint[]>({
@@ -246,7 +246,7 @@ export function GovernanceTab({ timelineId, currentStageId, onStageChange, oppor
   if (stages.length === 0) {
     return (
       <Card className="p-6 text-center">
-        <p className="text-sm text-muted-foreground">No FlightPath stages configured. Go to Settings to set up the governance framework.</p>
+        <p className="text-sm text-muted-foreground">No governance stages configured. Go to Settings to set up the governance framework.</p>
       </Card>
     );
   }

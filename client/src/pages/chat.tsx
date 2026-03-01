@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { apiRequest } from "@/lib/queryClient";
 import { useAppTitle } from "@/hooks/use-app-title";
+import { useGovernanceLabel } from "@/hooks/use-governance-label";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -15,6 +16,7 @@ interface ChatMessage {
 
 export default function ChatPage() {
   const appTitle = useAppTitle();
+  const { label: govLabel, coachLabel } = useGovernanceLabel();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -60,7 +62,7 @@ export default function ChatPage() {
   return (
     <div className="flex flex-col h-full">
       <Helmet>
-        <title>FlightPath Coach | {appTitle}</title>
+        <title>{coachLabel} | {appTitle}</title>
       </Helmet>
 
       <div className="border-b px-6 py-4 shrink-0">
@@ -69,7 +71,7 @@ export default function ChatPage() {
             <Bot className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-lg font-semibold" data-testid="text-chat-title">FlightPath Coach</h1>
+            <h1 className="text-lg font-semibold" data-testid="text-chat-title">{coachLabel}</h1>
             <p className="text-xs text-muted-foreground">AI-powered governance framework assistant</p>
           </div>
         </div>
@@ -81,13 +83,13 @@ export default function ChatPage() {
             <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
               <Bot className="w-8 h-8 text-primary" />
             </div>
-            <h2 className="text-lg font-semibold mb-2" data-testid="text-welcome-title">Welcome to FlightPath Coach</h2>
+            <h2 className="text-lg font-semibold mb-2" data-testid="text-welcome-title">Welcome to {coachLabel}</h2>
             <p className="text-sm text-muted-foreground mb-6">
-              I can help you navigate the FlightPath governance framework. Ask me about stages, gates, deliverables, RACI responsibilities, or how to prepare for your next gate review.
+              I can help you navigate the {govLabel} governance framework. Ask me about stages, gates, deliverables, RACI responsibilities, or how to prepare for your next gate review.
             </p>
             <div className="grid gap-2 w-full">
               {[
-                "What are the 5 stages of FlightPath?",
+                `What are the 5 stages of the ${govLabel}?`,
                 "What deliverables do I need for Stage 0?",
                 "How do I prepare for Gate 1: Value Approval?",
                 "Explain the RACI for the Value Narrative deliverable",
@@ -161,7 +163,7 @@ export default function ChatPage() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ask about FlightPath stages, gates, deliverables, RACI..."
+            placeholder="Ask about stages, gates, deliverables, RACI..."
             className="min-h-[44px] max-h-[120px] resize-none"
             rows={1}
             data-testid="input-chat-message"
