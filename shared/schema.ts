@@ -248,7 +248,7 @@ export const rateCards = pgTable("rate_cards", {
 export const projectTeamMembers = pgTable("project_team_members", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   timelineId: varchar("timeline_id").notNull().references(() => timelines.id, { onDelete: "cascade" }),
-  teamMemberId: varchar("team_member_id").notNull().references(() => teamMembers.id, { onDelete: "cascade" }),
+  teamMemberId: varchar("team_member_id").references(() => teamMembers.id, { onDelete: "cascade" }),
   rateCardId: varchar("rate_card_id").references(() => rateCards.id),
   monthlyCost: numeric("monthly_cost", { precision: 10, scale: 2 }),
   hourlyCost: numeric("hourly_cost", { precision: 10, scale: 2 }),
@@ -466,7 +466,7 @@ export type ProgressEntry = typeof progressEntries.$inferSelect;
 export type AppSettings = typeof appSettings.$inferSelect;
 
 export type TimesheetEntryWithDetails = TimesheetEntry & { teamMember: TeamMember; task: Task | null };
-export type ProjectTeamMemberWithDetails = ProjectTeamMember & { teamMember: TeamMember; rateCard: RateCard | null };
+export type ProjectTeamMemberWithDetails = ProjectTeamMember & { teamMember: TeamMember | null; rateCard: RateCard | null };
 export type TimelineWithMilestones = Timeline & { milestones: Milestone[]; tasks: Task[] };
 export type TimelineWithAll = TimelineWithMilestones & { risks: Risk[] };
 export type ClientWithProjects = Client & { projects: TimelineWithMilestones[]; contacts: Contact[] };

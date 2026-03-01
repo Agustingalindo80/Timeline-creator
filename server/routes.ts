@@ -1107,10 +1107,16 @@ export async function registerRoutes(
   app.post("/api/timelines/:id/team", async (req, res) => {
     try {
       const { teamMemberId, rateCardId, monthlyCost, hourlyCost, allocation, startDate, endDate } = req.body;
-      if (!teamMemberId) return res.status(400).json({ message: "Team member is required" });
+      const parentTimeline = await storage.getTimeline(req.params.id);
+      if (parentTimeline && parentTimeline.recordType === "project" && !teamMemberId) {
+        return res.status(400).json({ message: "Team member is required for projects" });
+      }
+      if (!teamMemberId && !rateCardId) {
+        return res.status(400).json({ message: "Either a team member or a role (rate card) is required" });
+      }
       const assignment = await storage.createProjectTeamMember({
         timelineId: req.params.id,
-        teamMemberId,
+        teamMemberId: teamMemberId || null,
         rateCardId: rateCardId || null,
         monthlyCost: monthlyCost || null,
         hourlyCost: hourlyCost || null,
@@ -1128,13 +1134,26 @@ export async function registerRoutes(
     try {
       const { teamMemberId, rateCardId, monthlyCost, hourlyCost, allocation, startDate, endDate } = req.body;
       const updates: any = {};
-      if (teamMemberId !== undefined) updates.teamMemberId = teamMemberId;
-      if (rateCardId !== undefined) updates.rateCardId = rateCardId;
+      if (teamMemberId !== undefined) updates.teamMemberId = teamMemberId || null;
+      if (rateCardId !== undefined) updates.rateCardId = rateCardId || null;
       if (monthlyCost !== undefined) updates.monthlyCost = monthlyCost;
       if (hourlyCost !== undefined) updates.hourlyCost = hourlyCost;
       if (allocation !== undefined) updates.allocation = allocation;
       if (startDate !== undefined) updates.startDate = startDate;
       if (endDate !== undefined) updates.endDate = endDate;
+
+      const existing = await storage.getProjectTeamMemberById(req.params.id);
+      if (!existing) return res.status(404).json({ message: "Assignment not found" });
+      const finalTeamMemberId = updates.teamMemberId !== undefined ? updates.teamMemberId : existing.teamMemberId;
+      const finalRateCardId = updates.rateCardId !== undefined ? updates.rateCardId : existing.rateCardId;
+      const parentTimeline = await storage.getTimeline(existing.timelineId);
+      if (parentTimeline && parentTimeline.recordType === "project" && !finalTeamMemberId) {
+        return res.status(400).json({ message: "Team member is required for projects" });
+      }
+      if (!finalTeamMemberId && !finalRateCardId) {
+        return res.status(400).json({ message: "Either a team member or a role (rate card) is required" });
+      }
+
       const assignment = await storage.updateProjectTeamMember(req.params.id, updates);
       if (!assignment) return res.status(404).json({ message: "Assignment not found" });
       res.json(assignment);

@@ -39,6 +39,7 @@ The application uses a modern web stack. The frontend is built with React, Vite,
 - **FlightPath AI Coach:** A conversational chatbot knowing the governance framework, powered by OpenAI.
 - **Document Repository Integration:** Links to Google Drive for artifact management, with AI-powered artifact verification for checkpoints.
 - **Multi-Tenancy Readiness:** Designed with `tenantId` for customizable governance frameworks per tenant.
+- **Team Composition (Opportunity vs Project):** On opportunities, team entries are role-based — only a rate card (role) is required, and a real team member can be assigned later ("Assign later" option). On projects, a real team member is always required. This models the evolution from pre-sales planning to delivery staffing. The `teamMemberId` column on `project_team_members` is nullable; backend enforces the project requirement by checking `recordType`. Role-only entries display the rate card name with an "Unassigned" badge. Convert-to-project copies role-only entries as positions to fill.
 - **Resource Allocation:** Matrix view for team members' weekly hours across projects.
 - **Configurable Fields:** User-configurable dropdown fields stored as JSONB.
 - **Date Formatting:** Per-project date format setting.

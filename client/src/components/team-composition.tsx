@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Trash2, Save, DollarSign } from "lucide-react";
+import { Plus, Trash2, Save, DollarSign, UserCircle, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -28,9 +29,11 @@ import type { TeamMember, RateCard, ProjectTeamMemberWithDetails } from "@shared
 
 interface TeamCompositionProps {
   timelineId: string;
+  opportunityMode?: boolean;
+  region?: string;
 }
 
-export function TeamComposition({ timelineId }: TeamCompositionProps) {
+export function TeamComposition({ timelineId, opportunityMode = false, region }: TeamCompositionProps) {
   const { toast } = useToast();
   const [showAddForm, setShowAddForm] = useState(false);
   const [newTeamMemberId, setNewTeamMemberId] = useState("");
@@ -42,6 +45,7 @@ export function TeamComposition({ timelineId }: TeamCompositionProps) {
   const [newEndDate, setNewEndDate] = useState("");
 
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTeamMemberId, setEditTeamMemberId] = useState("");
   const [editRateCardId, setEditRateCardId] = useState("");
   const [editMonthlyCost, setEditMonthlyCost] = useState("");
   const [editHourlyCost, setEditHourlyCost] = useState("");
@@ -61,13 +65,17 @@ export function TeamComposition({ timelineId }: TeamCompositionProps) {
     queryKey: ["/api/rate-cards"],
   });
 
+  const filteredRateCards = region
+    ? allRateCards.filter(c => !c.region || c.region === region)
+    : allRateCards;
+
   const addMutation = useMutation({
     mutationFn: async (data: any) => {
       await apiRequest("POST", `/api/timelines/${timelineId}/team`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/timelines", timelineId, "team"] });
-      toast({ title: "Team member added to project" });
+      toast({ title: opportunityMode ? "Role added to opportunity" : "Team member added to project" });
       resetAddForm();
     },
   });
@@ -89,7 +97,7 @@ export function TeamComposition({ timelineId }: TeamCompositionProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/timelines", timelineId, "team"] });
-      toast({ title: "Team member removed from project" });
+      toast({ title: opportunityMode ? "Role removed from opportunity" : "Team member removed from project" });
     },
   });
 
@@ -105,9 +113,13 @@ export function TeamComposition({ timelineId }: TeamCompositionProps) {
   };
 
   const handleAdd = () => {
-    if (!newTeamMemberId) return;
+    if (opportunityMode) {
+      if (!newRateCardId) return;
+    } else {
+      if (!newTeamMemberId) return;
+    }
     addMutation.mutate({
-      teamMemberId: newTeamMemberId,
+      teamMemberId: newTeamMemberId || null,
       rateCardId: newRateCardId || null,
       monthlyCost: newMonthlyCost || null,
       hourlyCost: newHourlyCost || null,
@@ -119,6 +131,7 @@ export function TeamComposition({ timelineId }: TeamCompositionProps) {
 
   const startEditing = (a: ProjectTeamMemberWithDetails) => {
     setEditingId(a.id);
+    setEditTeamMemberId(a.teamMemberId || "");
     setEditRateCardId(a.rateCardId || "");
     setEditMonthlyCost(a.monthlyCost ?? "");
     setEditHourlyCost(a.hourlyCost ?? "");
@@ -132,6 +145,7 @@ export function TeamComposition({ timelineId }: TeamCompositionProps) {
     updateMutation.mutate({
       id: editingId,
       data: {
+        teamMemberId: editTeamMemberId || null,
         rateCardId: editRateCardId || null,
         monthlyCost: editMonthlyCost || null,
         hourlyCost: editHourlyCost || null,
@@ -154,8 +168,29 @@ export function TeamComposition({ timelineId }: TeamCompositionProps) {
     return sum + cost * alloc;
   }, 0);
 
-  const assignedMemberIds = new Set(assignments.map(a => a.teamMemberId));
+  const assignedMemberIds = new Set(assignments.map(a => a.teamMemberId).filter(Boolean));
   const availableMembers = allTeamMembers.filter(m => !assignedMemberIds.has(m.id));
+
+  const canShowAddForm = opportunityMode
+    ? filteredRateCards.length > 0
+    : availableMembers.length > 0;
+
+  const getDisplayName = (a: ProjectTeamMemberWithDetails): string => {
+    if (a.teamMember) return a.teamMember.name;
+    if (a.rateCard) return a.rateCard.name;
+    return "Unassigned Role";
+  };
+
+  const getDisplayRole = (a: ProjectTeamMemberWithDetails): string | null => {
+    if (a.teamMember?.role) return a.teamMember.role;
+    if (a.rateCard?.role) return a.rateCard.role;
+    return null;
+  };
+
+  const getInitial = (a: ProjectTeamMemberWithDetails): string => {
+    const name = getDisplayName(a);
+    return name.charAt(0).toUpperCase();
+  };
 
   if (loadingAssignments) {
     return <p className="text-sm text-muted-foreground py-4 text-center">Loading team...</p>;
@@ -183,60 +218,112 @@ export function TeamComposition({ timelineId }: TeamCompositionProps) {
         <Button
           size="sm"
           onClick={() => setShowAddForm(!showAddForm)}
-          disabled={availableMembers.length === 0 && !showAddForm}
+          disabled={!canShowAddForm && !showAddForm}
           data-testid="button-add-team-member"
         >
           <Plus className="w-4 h-4 mr-1" />
-          Add Member
+          {opportunityMode ? "Add Role" : "Add Member"}
         </Button>
       </div>
 
-      {allTeamMembers.length === 0 && (
+      {!opportunityMode && allTeamMembers.length === 0 && (
         <Card className="p-6 text-center">
           <p className="text-sm text-muted-foreground mb-2">No team members have been created yet.</p>
           <p className="text-xs text-muted-foreground">Go to Settings to add Team Members and Rate Cards first.</p>
         </Card>
       )}
 
-      {showAddForm && availableMembers.length > 0 && (
+      {opportunityMode && filteredRateCards.length === 0 && (
+        <Card className="p-6 text-center">
+          <p className="text-sm text-muted-foreground mb-2">No rate cards available{region ? ` for region "${region}"` : ""}.</p>
+          <p className="text-xs text-muted-foreground">Go to Settings to add Rate Cards first.</p>
+        </Card>
+      )}
+
+      {showAddForm && canShowAddForm && (
         <Card className="p-4" data-testid="form-add-team-assignment">
-          <h4 className="text-xs font-medium text-muted-foreground mb-3">Add Team Member to Project</h4>
+          <h4 className="text-xs font-medium text-muted-foreground mb-3">
+            {opportunityMode ? "Add Role to Opportunity" : "Add Team Member to Project"}
+          </h4>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Team Member *</label>
-              <Select value={newTeamMemberId} onValueChange={setNewTeamMemberId}>
-                <SelectTrigger data-testid="select-new-team-member">
-                  <SelectValue placeholder="Select member" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableMembers.map(m => (
-                    <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Rate Card</label>
-              <Select value={newRateCardId} onValueChange={(v) => {
-                const val = v === "none" ? "" : v;
-                setNewRateCardId(val);
-                const card = allRateCards.find(c => c.id === val);
-                if (card) {
-                  if (card.costRate && !newMonthlyCost) setNewMonthlyCost(card.costRate);
-                  if (card.billRate && !newHourlyCost) setNewHourlyCost(card.billRate);
-                }
-              }}>
-                <SelectTrigger data-testid="select-new-rate-card">
-                  <SelectValue placeholder="Optional" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {allRateCards.map(c => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {opportunityMode ? (
+              <>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Rate Card / Role *</label>
+                  <Select value={newRateCardId} onValueChange={(v) => {
+                    setNewRateCardId(v);
+                    const card = filteredRateCards.find(c => c.id === v);
+                    if (card) {
+                      if (card.costRate) setNewMonthlyCost(card.costRate);
+                      if (card.billRate) setNewHourlyCost(card.billRate);
+                    }
+                  }}>
+                    <SelectTrigger data-testid="select-new-rate-card">
+                      <SelectValue placeholder="Select role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredRateCards.map(c => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}{c.role ? ` — ${c.role}` : ""}{c.costRate ? ` ($${c.costRate}/hr)` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Team Member</label>
+                  <Select value={newTeamMemberId || "unassigned"} onValueChange={(v) => setNewTeamMemberId(v === "unassigned" ? "" : v)}>
+                    <SelectTrigger data-testid="select-new-team-member">
+                      <SelectValue placeholder="Assign later" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unassigned">Assign later</SelectItem>
+                      {availableMembers.map(m => (
+                        <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Team Member *</label>
+                  <Select value={newTeamMemberId} onValueChange={setNewTeamMemberId}>
+                    <SelectTrigger data-testid="select-new-team-member">
+                      <SelectValue placeholder="Select member" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableMembers.map(m => (
+                        <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Rate Card</label>
+                  <Select value={newRateCardId} onValueChange={(v) => {
+                    const val = v === "none" ? "" : v;
+                    setNewRateCardId(val);
+                    const card = allRateCards.find(c => c.id === val);
+                    if (card) {
+                      if (card.costRate && !newMonthlyCost) setNewMonthlyCost(card.costRate);
+                      if (card.billRate && !newHourlyCost) setNewHourlyCost(card.billRate);
+                    }
+                  }}>
+                    <SelectTrigger data-testid="select-new-rate-card">
+                      <SelectValue placeholder="Optional" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {allRateCards.map(c => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Monthly Cost ($)</label>
               <Input
@@ -293,7 +380,7 @@ export function TeamComposition({ timelineId }: TeamCompositionProps) {
             <div className="flex items-end gap-2">
               <Button
                 onClick={handleAdd}
-                disabled={!newTeamMemberId || addMutation.isPending}
+                disabled={(opportunityMode ? !newRateCardId : !newTeamMemberId) || addMutation.isPending}
                 data-testid="button-submit-team-member"
               >
                 {addMutation.isPending ? "Adding..." : "Add"}
@@ -306,9 +393,11 @@ export function TeamComposition({ timelineId }: TeamCompositionProps) {
         </Card>
       )}
 
-      {assignments.length === 0 && allTeamMembers.length > 0 && (
+      {assignments.length === 0 && (opportunityMode ? filteredRateCards.length > 0 : allTeamMembers.length > 0) && (
         <p className="text-sm text-muted-foreground py-4 text-center">
-          No team members assigned yet. Click "Add Member" to assign someone.
+          {opportunityMode
+            ? 'No roles assigned yet. Click "Add Role" to define the team structure.'
+            : 'No team members assigned yet. Click "Add Member" to assign someone.'}
         </p>
       )}
 
@@ -318,15 +407,31 @@ export function TeamComposition({ timelineId }: TeamCompositionProps) {
             {editingId === a.id ? (
               <div className="space-y-3">
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary">
-                    {a.teamMember.name.charAt(0).toUpperCase()}
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 ${a.teamMember ? "bg-primary/10 text-primary" : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"}`}>
+                    {a.teamMember ? getInitial(a) : <Users className="w-4 h-4" />}
                   </div>
                   <div>
-                    <p className="text-sm font-medium">{a.teamMember.name}</p>
-                    {a.teamMember.role && <p className="text-xs text-muted-foreground">{a.teamMember.role}</p>}
+                    <p className="text-sm font-medium">{getDisplayName(a)}</p>
+                    {getDisplayRole(a) && <p className="text-xs text-muted-foreground">{getDisplayRole(a)}</p>}
                   </div>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {opportunityMode && (
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Team Member</label>
+                      <Select value={editTeamMemberId || "unassigned"} onValueChange={(v) => setEditTeamMemberId(v === "unassigned" ? "" : v)}>
+                        <SelectTrigger data-testid={`select-edit-team-member-${a.id}`}>
+                          <SelectValue placeholder="Assign later" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="unassigned">Assign later</SelectItem>
+                          {allTeamMembers.map(m => (
+                            <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   <div>
                     <label className="text-xs font-medium text-muted-foreground mb-1 block">Rate Card</label>
                     <Select value={editRateCardId} onValueChange={(v) => setEditRateCardId(v === "none" ? "" : v)}>
@@ -335,7 +440,7 @@ export function TeamComposition({ timelineId }: TeamCompositionProps) {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">None</SelectItem>
-                        {allRateCards.map(c => (
+                        {(opportunityMode ? filteredRateCards : allRateCards).map(c => (
                           <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                         ))}
                       </SelectContent>
@@ -406,18 +511,23 @@ export function TeamComposition({ timelineId }: TeamCompositionProps) {
             ) : (
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary shrink-0">
-                    {a.teamMember.name.charAt(0).toUpperCase()}
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 ${a.teamMember ? "bg-primary/10 text-primary" : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"}`}>
+                    {a.teamMember ? getInitial(a) : <Users className="w-4 h-4" />}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium truncate" data-testid={`text-team-name-${a.id}`}>{a.teamMember.name}</p>
-                      {a.rateCard && (
+                      <p className="text-sm font-medium truncate" data-testid={`text-team-name-${a.id}`}>{getDisplayName(a)}</p>
+                      {a.rateCard && a.teamMember && (
                         <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{a.rateCard.name}</span>
+                      )}
+                      {!a.teamMember && (
+                        <Badge variant="outline" className="text-xs text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-600" data-testid={`badge-unassigned-${a.id}`}>
+                          Unassigned
+                        </Badge>
                       )}
                     </div>
                     <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                      {a.teamMember.role && <span>{a.teamMember.role}</span>}
+                      {getDisplayRole(a) && <span>{getDisplayRole(a)}</span>}
                       {a.allocation !== 100 && <span>{a.allocation}% allocated</span>}
                       {a.startDate && <span>{a.startDate}{a.endDate ? ` — ${a.endDate}` : ""}</span>}
                     </div>
@@ -454,9 +564,9 @@ export function TeamComposition({ timelineId }: TeamCompositionProps) {
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Remove team member?</AlertDialogTitle>
+                        <AlertDialogTitle>Remove {a.teamMember ? "team member" : "role"}?</AlertDialogTitle>
                         <AlertDialogDescription>
-                          This will remove {a.teamMember.name} from this project's team composition.
+                          This will remove {getDisplayName(a)} from this {opportunityMode ? "opportunity's" : "project's"} team composition.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>

@@ -106,6 +106,7 @@ export interface IStorage {
   updateRateCard(id: string, data: Partial<InsertRateCard>): Promise<RateCard | undefined>;
   deleteRateCard(id: string): Promise<void>;
   getProjectTeamMembers(timelineId: string): Promise<ProjectTeamMemberWithDetails[]>;
+  getProjectTeamMemberById(id: string): Promise<ProjectTeamMember | undefined>;
   createProjectTeamMember(data: InsertProjectTeamMember): Promise<ProjectTeamMember>;
   updateProjectTeamMember(id: string, data: Partial<InsertProjectTeamMember>): Promise<ProjectTeamMember | undefined>;
   deleteProjectTeamMember(id: string): Promise<void>;
@@ -425,17 +426,16 @@ export class DatabaseStorage implements IStorage {
     const memberMap = new Map(allMembers.map(m => [m.id, m]));
     const cardMap = new Map(allCards.map(c => [c.id, c]));
 
-    return assignments
-      .map(a => {
-        const teamMember = memberMap.get(a.teamMemberId);
-        if (!teamMember) return null;
-        return {
-          ...a,
-          teamMember,
-          rateCard: a.rateCardId ? cardMap.get(a.rateCardId) || null : null,
-        };
-      })
-      .filter((a): a is ProjectTeamMemberWithDetails => a !== null);
+    return assignments.map(a => ({
+      ...a,
+      teamMember: a.teamMemberId ? memberMap.get(a.teamMemberId) || null : null,
+      rateCard: a.rateCardId ? cardMap.get(a.rateCardId) || null : null,
+    }));
+  }
+
+  async getProjectTeamMemberById(id: string): Promise<ProjectTeamMember | undefined> {
+    const [member] = await db.select().from(projectTeamMembers).where(eq(projectTeamMembers.id, id));
+    return member;
   }
 
   async createProjectTeamMember(data: InsertProjectTeamMember): Promise<ProjectTeamMember> {

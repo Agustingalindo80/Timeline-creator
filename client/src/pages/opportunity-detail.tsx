@@ -379,7 +379,7 @@ export default function OpportunityDetail() {
           </TabsContent>
 
           <TabsContent value="team">
-            <TeamCompositionWrapper timelineId={opp.id} />
+            <TeamCompositionWrapper timelineId={opp.id} region={opp.region || undefined} />
           </TabsContent>
 
           <TabsContent value="governance">
@@ -426,7 +426,7 @@ export default function OpportunityDetail() {
   );
 }
 
-function TeamCompositionWrapper({ timelineId }: { timelineId: string }) {
+function TeamCompositionWrapper({ timelineId, region }: { timelineId: string; region?: string }) {
   const [TeamComposition, setTeamComp] = useState<any>(null);
 
   if (!TeamComposition) {
@@ -436,5 +436,5 @@ function TeamCompositionWrapper({ timelineId }: { timelineId: string }) {
     return <div className="p-4 text-muted-foreground">Loading team composition...</div>;
   }
 
-  return <TeamComposition timelineId={timelineId} />;
+  return <TeamComposition timelineId={timelineId} opportunityMode={true} region={region} />;
 }
