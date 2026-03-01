@@ -135,10 +135,10 @@ export interface IStorage {
   createAllocation(data: InsertAllocation): Promise<Allocation>;
   updateAllocation(id: string, data: Partial<InsertAllocation>): Promise<Allocation | undefined>;
   deleteAllocation(id: string): Promise<void>;
-  getSettings(): Promise<AppSettings>;
-  updateSettings(data: Partial<Omit<AppSettings, "id">>): Promise<AppSettings>;
-  getBranding(): Promise<BrandingConfig>;
-  updateBranding(data: Partial<InsertBranding>): Promise<BrandingConfig>;
+  getSettings(tenantId?: string): Promise<AppSettings>;
+  updateSettings(data: Partial<Omit<AppSettings, "id">>, tenantId?: string): Promise<AppSettings>;
+  getBranding(tenantId?: string): Promise<BrandingConfig>;
+  updateBranding(data: Partial<InsertBranding>, tenantId?: string): Promise<BrandingConfig>;
   getTimesheetEntries(filters?: { timelineId?: string; teamMemberId?: string; weekEnding?: string; taskId?: string; dayDate?: string }): Promise<TimesheetEntry[]>;
   getTimesheetEntry(id: string): Promise<TimesheetEntry | undefined>;
   createTimesheetEntry(data: InsertTimesheetEntry): Promise<TimesheetEntry>;
@@ -516,12 +516,12 @@ export class DatabaseStorage implements IStorage {
     await db.delete(projectTeamMembers).where(eq(projectTeamMembers.id, id));
   }
 
-  async getSettings(): Promise<AppSettings> {
-    const [settings] = await db.select().from(appSettings);
+  async getSettings(tenantId: string = "default"): Promise<AppSettings> {
+    const [settings] = await db.select().from(appSettings).where(eq(appSettings.tenantId, tenantId));
     if (settings) return settings;
     const [created] = await db
       .insert(appSettings)
-      .values({ id: "app", riskRegisterEnabled: false, opportunitiesEnabled: true })
+      .values({ id: tenantId === "default" ? "app" : `app_${tenantId}`, tenantId, riskRegisterEnabled: false, opportunitiesEnabled: true })
       .returning();
     return created;
   }
@@ -590,32 +590,32 @@ export class DatabaseStorage implements IStorage {
     await db.delete(allocations).where(eq(allocations.id, id));
   }
 
-  async updateSettings(data: Partial<Omit<AppSettings, "id">>): Promise<AppSettings> {
-    await this.getSettings();
+  async updateSettings(data: Partial<Omit<AppSettings, "id">>, tenantId: string = "default"): Promise<AppSettings> {
+    await this.getSettings(tenantId);
     const [updated] = await db
       .update(appSettings)
       .set(data)
-      .where(eq(appSettings.id, "app"))
+      .where(eq(appSettings.tenantId, tenantId))
       .returning();
     return updated;
   }
 
-  async getBranding(): Promise<BrandingConfig> {
-    const [branding] = await db.select().from(brandingConfig);
+  async getBranding(tenantId: string = "default"): Promise<BrandingConfig> {
+    const [branding] = await db.select().from(brandingConfig).where(eq(brandingConfig.tenantId, tenantId));
     if (branding) return branding;
     const [created] = await db
       .insert(brandingConfig)
-      .values({ id: "default" })
+      .values({ id: tenantId === "default" ? "default" : `brand_${tenantId}`, tenantId })
       .returning();
     return created;
   }
 
-  async updateBranding(data: Partial<InsertBranding>): Promise<BrandingConfig> {
-    await this.getBranding();
+  async updateBranding(data: Partial<InsertBranding>, tenantId: string = "default"): Promise<BrandingConfig> {
+    await this.getBranding(tenantId);
     const [updated] = await db
       .update(brandingConfig)
       .set(data)
-      .where(eq(brandingConfig.id, "default"))
+      .where(eq(brandingConfig.tenantId, tenantId))
       .returning();
     return updated;
   }

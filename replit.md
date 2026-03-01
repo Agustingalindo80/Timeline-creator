@@ -26,7 +26,7 @@ The application uses a modern web stack with React, Vite, Tailwind CSS, and shad
 **Technical Implementations:**
 - **Project Structure:** Clear separation of client-side and server-side code.
 - **API Design:** RESTful endpoints for all entities.
-- **Database Schema:** Detailed schemas for all project entities with `tenantId` for multi-tenancy.
+- **Database Schema:** Detailed schemas for all project entities with `tenantId` for multi-tenancy. Date fields use PostgreSQL `date` type (Drizzle `date()` in string mode). Event timestamps use `timestamp with time zone`. Status fields use `pgEnum` constraints (`health_status`, `record_type`, `project_status`, `task_status`, `task_item_type`, `gate_status`, `risk_status`). EVM snapshots have a partial unique index (`evm_current_uniq`) preventing duplicate current snapshots. `tasks.parentTaskId` uses `ON DELETE SET NULL` to prevent cascade deletion of task hierarchies.
 - **Financial Calculations:** Automated calculation of `Approved Budget`, `Total Running Cost`, and `Gross Margin`.
 - **Project Health:** Four configurable health indicators.
 - **Milestones & Tasks:** Milestones are point-in-time events; tasks are duration-based with hierarchical structure and progress tracking.
@@ -58,9 +58,9 @@ The application uses a modern web stack with React, Vite, Tailwind CSS, and shad
   - Audit logging for sensitive actions.
 - **Multi-Tenancy Architecture:**
   - `tenants` table: id, name, slug (unique), status (active/suspended/trial), plan (free/pro/enterprise), maxUsers, maxProjects, storageLimit, billingEmail, timestamps.
-  - All 20+ core tables have `tenantId` column (default "default").
+  - All 20+ core tables have `tenantId` column (default "default"). `app_settings` and `branding_config` have `UNIQUE(tenant_id)` constraints for tenant isolation.
   - `server/middleware/tenant.ts`: Derives `req.tenantId` from session → header → user_org_roles DB lookup → fallback "default".
-  - Storage layer methods accept optional `tenantId` for list queries (getClients, getTimelines, getTeamMembers, getRateCards, getAllContacts, getAllAllAllocations).
+  - Storage layer methods accept optional `tenantId` for list queries (getClients, getTimelines, getTeamMembers, getRateCards, getAllContacts, getAllAllAllocations). `getSettings()`, `updateSettings()`, `getBranding()`, `updateBranding()` accept `tenantId`.
   - All route handlers pass `req.tenantId` to storage/rbac calls — no hardcoded "default" in routes.
   - Performance indexes on 13 key query patterns (timeline tenant+client, tasks timeline, timesheets, progress, EVM, etc.).
 - **Super Admin & Global Admin Console:**
@@ -85,5 +85,5 @@ The application uses a modern web stack with React, Vite, Tailwind CSS, and shad
 - **wouter:** Client-side router.
 - **html2canvas:** For taking screenshots.
 - **jspdf:** For client-side PDF generation.
-- **OpenAI (via Replit AI Integrations):** Powers FlightPath AI Coach and Gate Evaluator (model: gpt-5.2).
+- **OpenAI (via Replit AI Integrations):** Powers Governance AI Coach and Gate Evaluator (model: gpt-5.2).
 - **Google Drive (via Replit Connector):** For artifact management.

@@ -227,9 +227,9 @@ export async function registerRoutes(
 
   // --- BRANDING ROUTES ---
 
-  app.get("/api/branding", async (_req, res) => {
+  app.get("/api/branding", async (req, res) => {
     try {
-      const branding = await storage.getBranding();
+      const branding = await storage.getBranding(req.tenantId || "default");
       res.json(branding);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -246,7 +246,7 @@ export async function registerRoutes(
       for (const field of fields) {
         if (req.body[field] !== undefined) updates[field] = req.body[field];
       }
-      const branding = await storage.updateBranding(updates);
+      const branding = await storage.updateBranding(updates, req.tenantId || "default");
       res.json(branding);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -260,7 +260,7 @@ export async function registerRoutes(
       const filename = `logo-${Date.now()}${ext}`;
       fs.writeFileSync(path.join(uploadsDir, filename), req.file.buffer);
       const url = `/uploads/${filename}`;
-      const branding = await storage.updateBranding({ logoUrl: url });
+      const branding = await storage.updateBranding({ logoUrl: url }, req.tenantId || "default");
       res.json(branding);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -274,7 +274,7 @@ export async function registerRoutes(
       const filename = `favicon-${Date.now()}${ext}`;
       fs.writeFileSync(path.join(uploadsDir, filename), req.file.buffer);
       const url = `/uploads/${filename}`;
-      const branding = await storage.updateBranding({ faviconUrl: url });
+      const branding = await storage.updateBranding({ faviconUrl: url }, req.tenantId || "default");
       res.json(branding);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -1479,9 +1479,9 @@ export async function registerRoutes(
   });
 
   // GET app settings
-  app.get("/api/settings", async (_req, res) => {
+  app.get("/api/settings", async (req, res) => {
     try {
-      const settings = await storage.getSettings();
+      const settings = await storage.getSettings(req.tenantId || "default");
       res.json(settings);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -1502,7 +1502,7 @@ export async function registerRoutes(
         if (req.body[field] !== undefined) updates[field] = req.body[field];
       }
 
-      const settings = await storage.updateSettings(updates);
+      const settings = await storage.updateSettings(updates, req.tenantId || "default");
       res.json(settings);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -2380,7 +2380,7 @@ Respond ONLY with valid JSON:
 
       const stages = await storage.getFlightpathStages(req.tenantId || "default");
       const sortedStages = stages.sort((a, b) => a.sortOrder - b.sortOrder);
-      const tenantSettings = await storage.getSettings();
+      const tenantSettings = await storage.getSettings(req.tenantId || "default");
       const govLabel = tenantSettings?.governanceModelLabel || "Operating Model";
       let frameworkContext = `You are the ${govLabel} Governance Coach — an AI assistant that helps project managers navigate the ${govLabel} governance framework.\n\n`;
       frameworkContext += `IMPORTANT: In all user-facing responses, refer to the governance lifecycle as "${govLabel}". Do not use the term "FlightPath".\n\n`;

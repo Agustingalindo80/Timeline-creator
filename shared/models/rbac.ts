@@ -64,7 +64,7 @@ export const objectRolePermissions = pgTable("object_role_permissions", {
 
 export const auditLog = pgTable("audit_log", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  tenantId: text("tenant_id").notNull().default("default"),
+  tenantId: text("tenant_id").notNull(),
   actorUserId: varchar("actor_user_id").references(() => users.id, { onDelete: "set null" }),
   action: text("action").notNull(),
   objectType: text("object_type"),
@@ -104,7 +104,7 @@ export type ModuleKey = typeof MODULE_KEYS[number];
 
 export const MODULE_LABELS: Record<ModuleKey, string> = {
   dashboard: "Dashboard",
-  coach: "FlightPath Coach",
+  coach: "AI Coach",
   projects: "Projects",
   opportunities: "Opportunities",
   clients: "Clients",
@@ -117,7 +117,7 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
 
 export const ALL_PERMISSIONS = [
   { key: "module.dashboard", description: "Access the dashboard", category: "module" },
-  { key: "module.coach", description: "Access FlightPath Coach", category: "module" },
+  { key: "module.coach", description: "Access AI Coach", category: "module" },
   { key: "module.projects", description: "Access the Projects module", category: "module" },
   { key: "module.opportunities", description: "Access the Opportunities module", category: "module" },
   { key: "module.clients", description: "Access the Clients module", category: "module" },
