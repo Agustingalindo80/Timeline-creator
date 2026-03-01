@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, Fragment } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Helmet } from "react-helmet-async";
 import { Shield, Plus, X, UserCog, ScrollText, Grid3X3, Check, Edit3, Trash2, Link2, Unlink, ArrowLeft, ChevronRight } from "lucide-react";
@@ -1145,8 +1145,8 @@ function RoleMatrixViewer() {
             </thead>
             <tbody>
               {Object.entries(categories).map(([category, perms]) => (
-                <>
-                  <tr key={`cat-${category}`}>
+                <Fragment key={category}>
+                  <tr>
                     <td colSpan={systemRoleNames.length + 1} className="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground bg-muted/50 dark:bg-muted/30">
                       {category}
                     </td>
@@ -1175,7 +1175,7 @@ function RoleMatrixViewer() {
                       })}
                     </tr>
                   ))}
-                </>
+                </Fragment>
               ))}
               {permissions.length === 0 && (
                 <tr>

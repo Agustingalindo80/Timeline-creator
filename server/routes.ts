@@ -11,6 +11,7 @@ import { listFilesInFolder, getFileMetadata, getFileContent, extractFolderIdFrom
 import { storage } from "./storage";
 import { db } from "./db";
 import { seedFlightpathData } from "./seed-flightpath";
+import { provisionTenant } from "./tenant-provisioning";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import { requirePermission, requireModuleAccess } from "./middleware/permissions";
 import { tenantContext } from "./middleware/tenant";
@@ -2815,14 +2816,14 @@ Respond ONLY with valid JSON:
 
   // ── RBAC API Routes ──
 
-  app.get("/api/rbac/roles", async (_req, res) => {
+  app.get("/api/rbac/roles", async (req, res) => {
     try {
       const roles = await storage.getOrgRoles(req.tenantId || "default");
       res.json(roles);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
-  app.get("/api/rbac/users", requireModuleAccess("admin"), requirePermission("users.manage"), async (_req, res) => {
+  app.get("/api/rbac/users", requireModuleAccess("admin"), requirePermission("users.manage"), async (req, res) => {
     try {
       const usersList = await storage.getUsersByTenant(req.tenantId || "default");
       res.json(usersList);
@@ -3207,6 +3208,7 @@ Respond ONLY with valid JSON:
         billingEmail: billingEmail || null,
         createdBy: userId,
       });
+      await provisionTenant(tenant.id, userId || undefined);
       res.status(201).json(tenant);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });

@@ -63,6 +63,12 @@ The application uses a modern web stack with React, Vite, Tailwind CSS, and shad
   - Storage layer methods accept optional `tenantId` for list queries (getClients, getTimelines, getTeamMembers, getRateCards, getAllContacts, getAllAllAllocations). `getSettings()`, `updateSettings()`, `getBranding()`, `updateBranding()` accept `tenantId`.
   - All route handlers pass `req.tenantId` to storage/rbac calls — no hardcoded "default" in routes.
   - Performance indexes on 13 key query patterns (timeline tenant+client, tasks timeline, timesheets, progress, EVM, etc.).
+- **Tenant Provisioning Pipeline:**
+  - `server/tenant-provisioning.ts`: `provisionTenant(tenantId, creatorUserId)` automatically called after `POST /api/global-admin/tenants`.
+  - Seeds: RBAC system roles + permissions, governance stages + deliverables, app settings, branding config.
+  - Assigns creator as Global Admin in the new tenant.
+  - Idempotent: checks for existing roles before inserting (safe to retry on partial failures). Uses `onConflictDoNothing()` for permissions and role-permission mappings.
+  - New tenants are immediately functional after creation — no manual setup required.
 - **Super Admin & Global Admin Console:**
   - `users.isSuperAdmin` boolean — first user auto-promoted.
   - `server/middleware/superadmin.ts`: Blocks non-super-admins from global admin endpoints.
