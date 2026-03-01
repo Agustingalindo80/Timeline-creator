@@ -1,0 +1,262 @@
+Here’s the straight dev-best-practices review. Your schema is solid for an MVP, but if you’re serious about scale (multi-tenant, reporting integrity, performance), there are a handful of **high-impact fixes** you should make. I’m going to be blunt and specific.
+
+---
+
+## 1) Biggest architectural gap: multi-tenancy is inconsistent
+
+You have `tenantId` in `evmSnapshots` and `flightpathStages`, but **not** in most core tables (`timelines`, `tasks`, `risks`, `clients`, etc.). That’s a risk.
+
+### Why it matters
+
+* You can’t reliably enforce tenant isolation in SQL.
+* You’ll eventually have “cross-tenant data leak” bugs unless every query is perfectly filtered (they won’t be).
+* RBAC uses tenant scope; core records must align.
+
+### Fix (recommended)
+
+Add `tenantId` to *every* tenant-owned table:
+
+* clients, contacts
+* timelines + all children (milestones, tasks, risks, timesheet_entries, progress_entries)
+* team_members, rate_cards, allocations, project_team_members, workstream_resources
+* flightpath_deliverables, project_gates, project_checkpoints, branding_config, app_settings
+
+Then add composite indexes like:
+
+* `(tenantId, id)` or at least `(tenantId)` plus normal PK
+
+**This is the #1 enhancement.**
+
+---
+
+## 2) You’re storing dates as `text` everywhere (this will hurt you)
+
+You have `startDate`, `endDate`, `weekEnding`, `generatedAt`, `convertedAt` etc. as `text`.
+
+### Why it matters
+
+* Sorting, filtering, time zones, range queries become brittle
+* You’ll get subtle bugs in reporting/EVM (especially weekly snapshots)
+* Indexing dates is far less effective
+
+### Fix
+
+Use Postgres types:
+
+* `date` for day-based fields (`weekEnding`, milestone planned/actual)
+* `timestamp with time zone` for events (`generatedAt`, `convertedAt`, approvals)
+
+In Drizzle: use `date()` and `timestamp()`.
+
+At minimum, convert these first:
+
+* `timesheet_entries.weekEnding`, `progress_entries.weekEnding`, `evm_snapshots.weekEnding`
+* `milestones.date`, `milestones.actualDate`
+* `project_gates.approvedAt`, `project_checkpoints.completedAt`, `evm_snapshots.generatedAt`
+
+---
+
+## 3) Missing critical uniqueness constraints (data duplication risk)
+
+Right now, your model allows duplicates that will break reporting.
+
+### Add these constraints
+
+* `contacts`: unique `(clientId, email)` if email present
+* `progress_entries`: unique `(timelineId, taskId, weekEnding)` **must-have**
+* `timesheet_entries`: if you want day-level entries: unique `(timelineId, teamMemberId, taskId, dayDate)` (or allow duplicates but then you must aggregate carefully)
+* `evm_snapshots`: unique `(tenantId, timelineId, weekEnding, version)` and partial unique `(tenantId, timelineId, weekEnding) where isCurrent=true`
+* `project_gates`: unique `(timelineId, stageId)` (one gate per stage per timeline)
+* `project_checkpoints`: unique `(timelineId, stageId, deliverableId)` OR `(timelineId, stageId, checkpointName)` depending on your rule
+
+Without these you’ll eventually see “two snapshots current”, “same checkpoint twice”, “progress row spam”, etc.
+
+---
+
+## 4) No foreign keys where they should exist (referential integrity)
+
+### Specific problems
+
+* `timelines.clientId` has no FK to `clients.id`
+* `timelines.flightpathStageId` has no FK to `flightpath_stages.id`
+* `tasks.parentTaskId` has no self FK to `tasks.id`
+* `teamMembers.userId` has no FK to `users.id` (assuming users model exports it)
+* `tasks.assignedRoleId` looks like it should reference `rate_cards.id` or a role table, but it’s dangling.
+
+### Fix
+
+Add FKs with delete policies (usually `set null` or `restrict`).
+
+---
+
+## 5) You use a lot of `text` with implicit enums (should be explicit)
+
+You have many “enum-like” fields:
+
+* health statuses, task statuses, risk probability/impact/status
+* recordType, engagementModel, projectStatus, billableType, mode, gate status
+
+### Why it matters
+
+* Inconsistent values appear over time (`In Progress` vs `in_progress`)
+* Queries and charts get messy
+* Validation exists in UI but data gets corrupted via imports/API
+
+### Fix options
+
+**Option A (best for Postgres):** use `pgEnum` in Drizzle
+**Option B:** add `CHECK` constraints
+
+At minimum, enforce:
+
+* `timelines.recordType` = project|opportunity
+* `project_gates.status` = pending|in_review|approved|rejected
+* `timesheet_entries.billableType` = billable|non_billable|pto|holiday (whatever you use)
+* `evm_snapshots.mode` = scheduled|manual_freeze|gate_freeze
+
+---
+
+## 6) Money fields: make the semantics consistent
+
+You store:
+
+* `approvedBudget`, `estimatedRevenue`, `totalRunningCost`, `grossMargin`
+* plus rate cards cost/bill rates, plus team member costs.
+
+### Issues
+
+* `grossMargin` is numeric(5,2) — unclear if it’s percent or amount.
+* Currency is on `timelines`, but rates/costs are not currency-scoped.
+* For LATAM SIs, multi-currency is inevitable.
+
+### Fix
+
+* Rename for clarity:
+
+  * `grossMarginPercent` (numeric 5,2) OR `grossMarginAmount` (12,2)
+* Add `currency` to `rate_cards` (and optionally `team_members` cost currency)
+* If you keep it simple, enforce “everything stored in timeline currency” and record FX rate on snapshot.
+
+---
+
+## 7) Missing audit fields everywhere (createdAt/updatedAt)
+
+Only a few tables have time metadata. Most domain tables don’t.
+
+### Why it matters
+
+* reporting “created this week”, “changed since last week”
+* compliance/audit
+* debugging “who changed the scope”
+
+### Fix
+
+Add to all major tables:
+
+* `createdAt` timestamp tz default now()
+* `updatedAt` timestamp tz (maintain via app code or DB trigger)
+* `createdBy` userId (optional but powerful)
+
+Minimum set:
+
+* timelines, tasks, risks, milestones, checkpoints, gates, timesheets, progress_entries, team_members, rate_cards
+
+---
+
+## 8) Indexing: you’re missing the indexes you’ll feel in production
+
+For performance, add indexes on:
+
+* all FK columns: `timeline_id`, `client_id`, `task_id`, `team_member_id`, `stage_id`
+* time slicing: `weekEnding` on timesheets/progress/snapshots
+* high-cardinality filters: `recordType`, `projectStatus`, `opportunityStatus`, `healthOverall`
+
+Example high ROI:
+
+* `timesheet_entries (timeline_id, week_ending)`
+* `progress_entries (timeline_id, week_ending)`
+* `evm_snapshots (tenant_id, timeline_id, week_ending desc)`
+* `tasks (timeline_id, parent_task_id, sort_order)`
+
+---
+
+## 9) app_settings and branding_config are global, not tenant-safe
+
+Right now `app_settings` id = "app" and `branding_config` id = "default".
+
+### Fix
+
+Make them per tenant:
+
+* include `tenantId` + unique `(tenantId, id)`
+* or make `tenantId` the PK
+
+Otherwise one tenant overwrites another.
+
+---
+
+## 10) “client” is duplicated in timelines (`client` text + `clientId`)
+
+That will drift.
+
+### Fix
+
+Kill `timelines.client` (text) and rely on FK to `clients`.
+If you need a display override, add `clientDisplayNameOverride` and keep it explicit.
+
+---
+
+## 11) Artifacts embedded in `project_checkpoints` will limit you later
+
+You’re storing:
+
+* `artifactUrl`, fileId, fileName, verified, summary inline.
+
+### Recommendation
+
+It’s fine now, but if you want:
+
+* multiple artifacts per deliverable
+* versioning
+* reuse
+* audit pack exports
+
+…then create an `artifacts` table and reference it. You already saw this earlier—this is the point where it starts paying off.
+
+---
+
+## 12) Drizzle + Zod: you’re under-validating critical fields
+
+You define defaults in `insertTaskSchema` and `insertRiskSchema`, but not constraints like:
+
+* percentComplete 0..100
+* allocation 0..100
+* weeklyHours >= 0
+* hours >= 0 and <= 24 (per day)
+* riskFactorPercent/bufferPercent 0..100
+* grossMarginPercent 0..100
+
+### Fix
+
+Add Zod refinements and DB constraints. If you do only one, do DB constraints.
+
+---
+
+# High-impact improvement list (prioritized)
+
+If you want the “do this next sprint” list:
+
+1. **Add `tenantId` everywhere** + enforce in queries
+2. Convert key date fields from `text` → `date/timestamp`
+3. Add uniqueness constraints for progress, gates, checkpoints, evm current
+4. Add missing FKs (clientId, stageId, parentTaskId, userId)
+5. Add createdAt/updatedAt (+ createdBy where valuable)
+6. Add indexes on timelineId/weekEnding/taskId/teamMemberId
+7. Make app_settings + branding_config tenant-scoped
+8. Normalize money fields + clarify gross margin semantics
+9. Replace key “enum-like” fields with `pgEnum` / CHECK constraints
+10. (Optional) Add `artifacts` table for governance scalability
+
+---
+
+If you want, I can take *this exact Drizzle file* and propose a **diff-style upgraded schema** (what columns to add/change and where), including suggested indexes and constraints, so your dev team can apply it systematically rather than interpreting a checklist.
