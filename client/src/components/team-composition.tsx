@@ -203,14 +203,14 @@ export function TeamComposition({ timelineId, opportunityMode = false, region }:
           <div className="flex items-center gap-2 bg-muted/50 rounded-md px-3 py-2" data-testid="summary-monthly-cost">
             <DollarSign className="w-4 h-4 text-muted-foreground" />
             <div>
-              <p className="text-xs text-muted-foreground">Total Monthly Cost</p>
+              <p className="text-xs text-muted-foreground">{opportunityMode ? "Total Cost Rate" : "Total Monthly Cost"}</p>
               <p className="text-sm font-semibold">${totalMonthlyCost.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
             </div>
           </div>
           <div className="flex items-center gap-2 bg-muted/50 rounded-md px-3 py-2" data-testid="summary-hourly-cost">
             <DollarSign className="w-4 h-4 text-muted-foreground" />
             <div>
-              <p className="text-xs text-muted-foreground">Total Hourly Cost</p>
+              <p className="text-xs text-muted-foreground">{opportunityMode ? "Total Bill Rate" : "Total Hourly Cost"}</p>
               <p className="text-sm font-semibold">${totalHourlyCost.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
             </div>
           </div>
@@ -325,7 +325,7 @@ export function TeamComposition({ timelineId, opportunityMode = false, region }:
               </>
             )}
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Monthly Cost ($)</label>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">{opportunityMode ? "Cost Rate ($/hr)" : "Monthly Cost ($)"}</label>
               <Input
                 type="number"
                 step="0.01"
@@ -337,7 +337,7 @@ export function TeamComposition({ timelineId, opportunityMode = false, region }:
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Hourly Cost ($)</label>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">{opportunityMode ? "Bill Rate ($/hr)" : "Hourly Cost ($)"}</label>
               <Input
                 type="number"
                 step="0.01"
@@ -447,7 +447,7 @@ export function TeamComposition({ timelineId, opportunityMode = false, region }:
                     </Select>
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Monthly Cost ($)</label>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">{opportunityMode ? "Cost Rate ($/hr)" : "Monthly Cost ($)"}</label>
                     <Input
                       type="number"
                       step="0.01"
@@ -458,7 +458,7 @@ export function TeamComposition({ timelineId, opportunityMode = false, region }:
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Hourly Cost ($)</label>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">{opportunityMode ? "Bill Rate ($/hr)" : "Hourly Cost ($)"}</label>
                     <Input
                       type="number"
                       step="0.01"
@@ -535,13 +535,13 @@ export function TeamComposition({ timelineId, opportunityMode = false, region }:
                   <div className="flex items-center gap-4 text-sm shrink-0">
                     {a.monthlyCost && (
                       <div className="text-right" data-testid={`text-monthly-cost-${a.id}`}>
-                        <p className="text-xs text-muted-foreground">Monthly</p>
+                        <p className="text-xs text-muted-foreground">{opportunityMode ? "Cost/hr" : "Monthly"}</p>
                         <p className="font-medium">${parseFloat(a.monthlyCost).toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
                       </div>
                     )}
                     {a.hourlyCost && (
                       <div className="text-right" data-testid={`text-hourly-cost-${a.id}`}>
-                        <p className="text-xs text-muted-foreground">Hourly</p>
+                        <p className="text-xs text-muted-foreground">{opportunityMode ? "Bill/hr" : "Hourly"}</p>
                         <p className="font-medium">${parseFloat(a.hourlyCost).toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
                       </div>
                     )}
