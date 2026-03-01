@@ -12,6 +12,14 @@ import {
   Users,
   AlertTriangle,
   ArrowRightCircle,
+  DollarSign,
+  TrendingUp,
+  Shield,
+  Building2,
+  MapPin,
+  Cloud,
+  Briefcase,
+  Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -41,12 +49,48 @@ import type { TimelineWithMilestones, Client, AppSettings, FlightpathStage, Proj
 import { DEFAULT_REGIONS, DEFAULT_ENGAGEMENT_MODELS, DEFAULT_PROJECT_TYPES } from "@shared/schema";
 
 const OPP_STATUS_OPTIONS = [
-  { value: "qualifying", label: "Qualifying", color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
-  { value: "estimating", label: "Estimating", color: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200" },
-  { value: "proposed", label: "Proposed", color: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200" },
-  { value: "won", label: "Won", color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
-  { value: "lost", label: "Lost", color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" },
+  { value: "qualifying", label: "Qualifying", color: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20" },
+  { value: "estimating", label: "Estimating", color: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" },
+  { value: "proposed", label: "Proposed", color: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20" },
+  { value: "won", label: "Won", color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" },
+  { value: "lost", label: "Lost", color: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20" },
 ];
+
+function MarginIndicator({ value }: { value: number }) {
+  const color = value >= 30
+    ? "text-emerald-600 dark:text-emerald-400"
+    : value >= 15
+      ? "text-amber-600 dark:text-amber-400"
+      : "text-red-600 dark:text-red-400";
+  const bgColor = value >= 30
+    ? "bg-emerald-500/10"
+    : value >= 15
+      ? "bg-amber-500/10"
+      : "bg-red-500/10";
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className={`text-2xl font-semibold tracking-tight tabular-nums ${color}`} data-testid="text-opp-margin">
+        {value.toFixed(1)}%
+      </span>
+      <div className={`w-1.5 h-6 rounded-full ${bgColor} ${color}`}>
+        <div
+          className={`w-full rounded-full ${value >= 30 ? "bg-emerald-500" : value >= 15 ? "bg-amber-500" : "bg-red-500"}`}
+          style={{ height: `${Math.min(100, Math.max(10, value * 2))}%`, marginTop: 'auto' }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function MetadataItem({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
+  return (
+    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+      <Icon className="w-3.5 h-3.5 shrink-0 opacity-60" />
+      <span className="truncate">{value}</span>
+    </div>
+  );
+}
 
 export default function OpportunityDetail() {
   const { id } = useParams<{ id: string }>();
@@ -123,19 +167,32 @@ export default function OpportunityDetail() {
 
   if (isLoading) {
     return (
-      <div className="p-6 space-y-4">
-        <Skeleton className="h-10 w-64" />
-        <Skeleton className="h-96 w-full" />
+      <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
+        <div className="flex items-center gap-4">
+          <Skeleton className="h-9 w-9 rounded-md" />
+          <div className="space-y-2 flex-1">
+            <Skeleton className="h-7 w-72" />
+            <Skeleton className="h-4 w-48" />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Skeleton className="h-24 rounded-md" />
+          <Skeleton className="h-24 rounded-md" />
+          <Skeleton className="h-24 rounded-md" />
+          <Skeleton className="h-24 rounded-md" />
+        </div>
+        <Skeleton className="h-10 w-80 rounded-md" />
+        <Skeleton className="h-96 w-full rounded-md" />
       </div>
     );
   }
 
   if (!opp) {
     return (
-      <div className="p-6">
+      <div className="p-6 flex flex-col items-center justify-center min-h-[400px] gap-3">
         <p className="text-muted-foreground">Opportunity not found.</p>
         <Link href="/opportunities">
-          <Button variant="link" className="mt-2">Back to Opportunities</Button>
+          <Button variant="outline" data-testid="button-back-opportunities">Back to Opportunities</Button>
         </Link>
       </div>
     );
@@ -184,25 +241,37 @@ export default function OpportunityDetail() {
   const engagementOptions = (settings as any)?.engagementModels || DEFAULT_ENGAGEMENT_MODELS;
   const projectTypeOptions = (settings as any)?.projectTypes || DEFAULT_PROJECT_TYPES;
 
+  const price = parseFloat(opp.approvedBudget || "0");
+  const cost = parseFloat(opp.totalRunningCost || "0");
+  const margin = parseFloat(opp.grossMargin || "0");
+  const hasFinancials = price > 0 || cost > 0;
+
   return (
     <>
       <Helmet>
         <title>{opp.title} - {appTitle}</title>
       </Helmet>
       <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
-        <div className="flex items-start gap-4">
-          <Link href="/opportunities">
-            <Button variant="ghost" size="icon" data-testid="button-back-opportunities">
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-          </Link>
-          <div className="flex-1 min-w-0">
-            {editing ? (
+        {editing ? (
+          <Card>
+            <CardContent className="p-5 space-y-4">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Edit Opportunity</h2>
+                <div className="flex items-center gap-2">
+                  <Button onClick={saveEdits} disabled={updateMutation.isPending} data-testid="button-save-opp">
+                    <Save className="w-4 h-4 mr-1" /> Save
+                  </Button>
+                  <Button variant="ghost" onClick={() => setEditing(false)} data-testid="button-cancel-edit">
+                    <X className="w-4 h-4 mr-1" /> Cancel
+                  </Button>
+                </div>
+              </div>
               <div className="space-y-4">
                 <Input
                   value={editTitle}
                   onChange={e => setEditTitle(e.target.value)}
-                  className="text-xl font-bold"
+                  className="text-lg font-semibold border-0 border-b rounded-none px-0 focus-visible:ring-0 focus-visible:border-primary"
+                  placeholder="Opportunity title"
                   data-testid="input-edit-opp-title"
                 />
                 <Textarea
@@ -210,78 +279,104 @@ export default function OpportunityDetail() {
                   onChange={e => setEditDescription(e.target.value)}
                   placeholder="Description"
                   rows={2}
+                  className="border-0 border-b rounded-none px-0 resize-none focus-visible:ring-0 focus-visible:border-primary"
                   data-testid="input-edit-opp-description"
                 />
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <Select value={editStatus} onValueChange={setEditStatus}>
-                    <SelectTrigger data-testid="select-edit-status"><SelectValue placeholder="Status" /></SelectTrigger>
-                    <SelectContent>
-                      {OPP_STATUS_OPTIONS.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Select value={editClientId} onValueChange={setEditClientId}>
-                    <SelectTrigger data-testid="select-edit-client"><SelectValue placeholder="Client" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No client</SelectItem>
-                      {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Select value={editRegion} onValueChange={setEditRegion}>
-                    <SelectTrigger data-testid="select-edit-region"><SelectValue placeholder="Region" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No region</SelectItem>
-                      {regionOptions.map((r: any) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Select value={editEngagement} onValueChange={setEditEngagement}>
-                    <SelectTrigger data-testid="select-edit-engagement"><SelectValue placeholder="Engagement" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      {engagementOptions.map((e: any) => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground">Status</label>
+                    <Select value={editStatus} onValueChange={setEditStatus}>
+                      <SelectTrigger data-testid="select-edit-status"><SelectValue placeholder="Status" /></SelectTrigger>
+                      <SelectContent>
+                        {OPP_STATUS_OPTIONS.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground">Client</label>
+                    <Select value={editClientId} onValueChange={setEditClientId}>
+                      <SelectTrigger data-testid="select-edit-client"><SelectValue placeholder="Client" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No client</SelectItem>
+                        {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground">Region</label>
+                    <Select value={editRegion} onValueChange={setEditRegion}>
+                      <SelectTrigger data-testid="select-edit-region"><SelectValue placeholder="Region" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No region</SelectItem>
+                        {regionOptions.map((r: any) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground">Engagement</label>
+                    <Select value={editEngagement} onValueChange={setEditEngagement}>
+                      <SelectTrigger data-testid="select-edit-engagement"><SelectValue placeholder="Engagement" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {engagementOptions.map((e: any) => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <Select value={editProjectType} onValueChange={setEditProjectType}>
-                    <SelectTrigger data-testid="select-edit-project-type"><SelectValue placeholder="Type" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      {projectTypeOptions.map((p: any) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    value={editSalesforceClouds}
-                    onChange={e => setEditSalesforceClouds(e.target.value)}
-                    placeholder="Salesforce Clouds"
-                    data-testid="input-edit-clouds"
-                  />
-                  <Input
-                    type="date"
-                    value={editStartDate}
-                    onChange={e => setEditStartDate(e.target.value)}
-                    data-testid="input-edit-start-date"
-                  />
-                  <Input
-                    type="date"
-                    value={editEndDate}
-                    onChange={e => setEditEndDate(e.target.value)}
-                    data-testid="input-edit-end-date"
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button onClick={saveEdits} disabled={updateMutation.isPending} data-testid="button-save-opp">
-                    <Save className="w-4 h-4 mr-1" /> Save
-                  </Button>
-                  <Button variant="outline" onClick={() => setEditing(false)} data-testid="button-cancel-edit">
-                    <X className="w-4 h-4 mr-1" /> Cancel
-                  </Button>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground">Project Type</label>
+                    <Select value={editProjectType} onValueChange={setEditProjectType}>
+                      <SelectTrigger data-testid="select-edit-project-type"><SelectValue placeholder="Type" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {projectTypeOptions.map((p: any) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground">Salesforce Clouds</label>
+                    <Input
+                      value={editSalesforceClouds}
+                      onChange={e => setEditSalesforceClouds(e.target.value)}
+                      placeholder="Salesforce Clouds"
+                      data-testid="input-edit-clouds"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground">Start Date</label>
+                    <Input
+                      type="date"
+                      value={editStartDate}
+                      onChange={e => setEditStartDate(e.target.value)}
+                      data-testid="input-edit-start-date"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground">End Date</label>
+                    <Input
+                      type="date"
+                      value={editEndDate}
+                      onChange={e => setEditEndDate(e.target.value)}
+                      data-testid="input-edit-end-date"
+                    />
+                  </div>
                 </div>
               </div>
-            ) : (
-              <>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-5">
+            <div className="flex items-start gap-3">
+              <Link href="/opportunities">
+                <Button variant="ghost" size="icon" data-testid="button-back-opportunities">
+                  <ArrowLeft className="w-4 h-4" />
+                </Button>
+              </Link>
+              <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 flex-wrap">
-                  <h1 className="text-2xl font-bold truncate" data-testid="text-opp-title">{opp.title}</h1>
-                  <Badge className={`${statusOption.color} border-0`} data-testid="badge-opp-status">{statusOption.label}</Badge>
+                  <h1 className="page-title truncate" data-testid="text-opp-title">{opp.title}</h1>
+                  <Badge className={`${statusOption.color} border`} data-testid="badge-opp-status">{statusOption.label}</Badge>
                   {stage0 && opp.flightpathStageId === stage0.id && (
                     <Badge variant="outline" className="gap-1" data-testid="badge-stage-0">
                       <ShieldCheck className="w-3 h-3" /> Stage 0
@@ -289,88 +384,117 @@ export default function OpportunityDetail() {
                   )}
                   {isWon && convertedProject && (
                     <Link href={`/timeline/${convertedProject.id}`}>
-                      <Badge variant="outline" className="gap-1 text-green-600 border-green-300 cursor-pointer hover:bg-green-50 dark:hover:bg-green-950" data-testid="badge-converted-project">
+                      <Badge variant="outline" className="gap-1 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 cursor-pointer" data-testid="badge-converted-project">
                         <ArrowRightCircle className="w-3 h-3" /> View Project
                       </Badge>
                     </Link>
                   )}
                 </div>
-                {opp.description && <p className="text-sm text-muted-foreground mt-1" data-testid="text-opp-description">{opp.description}</p>}
-                <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground flex-wrap">
-                  {clientName && <span data-testid="text-opp-client">{clientName}</span>}
-                  {opp.region && <span data-testid="text-opp-region">{opp.region}</span>}
-                  {opp.salesforceClouds && <span data-testid="text-opp-clouds">{opp.salesforceClouds}</span>}
-                  {opp.engagementModel && <span>{opp.engagementModel}</span>}
-                  {opp.currency && opp.currency !== "USD" && <span>{opp.currency}</span>}
+                {opp.description && (
+                  <p className="text-sm text-muted-foreground mt-1.5 max-w-2xl" data-testid="text-opp-description">{opp.description}</p>
+                )}
+                <div className="flex items-center gap-4 mt-3 flex-wrap">
+                  {clientName && <MetadataItem icon={Building2} label="Client" value={clientName} />}
+                  {opp.region && <MetadataItem icon={MapPin} label="Region" value={opp.region} />}
+                  {opp.salesforceClouds && <MetadataItem icon={Cloud} label="Clouds" value={opp.salesforceClouds} />}
+                  {opp.engagementModel && <MetadataItem icon={Briefcase} label="Engagement" value={opp.engagementModel} />}
+                  {opp.startDate && <MetadataItem icon={Calendar} label="Start" value={opp.startDate} />}
+                  {opp.endDate && <MetadataItem icon={Calendar} label="End" value={opp.endDate} />}
                 </div>
-              </>
-            )}
-          </div>
-          {!editing && !isWon && (
-            <div className="flex items-center gap-2 shrink-0">
-              <Button variant="outline" size="sm" onClick={startEditing} data-testid="button-edit-opp">
-                <Edit3 className="w-4 h-4 mr-1" /> Edit
-              </Button>
-              {canConvert && (
-                <Button size="sm" onClick={() => setConvertDialogOpen(true)} data-testid="button-convert-to-project">
-                  <ArrowRightCircle className="w-4 h-4 mr-1" /> Convert to Project
-                </Button>
-              )}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {!isWon && (
+                  <>
+                    <Button variant="outline" size="sm" onClick={startEditing} data-testid="button-edit-opp">
+                      <Edit3 className="w-4 h-4 mr-1" /> Edit
+                    </Button>
+                    {canConvert && (
+                      <Button size="sm" onClick={() => setConvertDialogOpen(true)} data-testid="button-convert-to-project">
+                        <ArrowRightCircle className="w-4 h-4 mr-1" /> Convert to Project
+                      </Button>
+                    )}
+                  </>
+                )}
+                {isWon && (
+                  <Badge variant="outline" className="text-emerald-600 dark:text-emerald-400 border-emerald-500/30 gap-1" data-testid="badge-won-status">
+                    Won{opp.convertedAt ? " · Converted" : ""}
+                  </Badge>
+                )}
+              </div>
             </div>
-          )}
-          {isWon && (
-            <div className="shrink-0">
-              <Badge variant="outline" className="text-green-600 border-green-300 gap-1" data-testid="badge-won-status">Won{opp.convertedAt ? " · Converted" : ""}</Badge>
-            </div>
-          )}
-        </div>
 
-        {(opp.approvedBudget || opp.totalRunningCost) && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="pt-3 pb-3">
-                <div className="text-xs text-muted-foreground">Buffered Price</div>
-                <div className="text-lg font-semibold" data-testid="text-opp-price">${parseFloat(opp.approvedBudget || "0").toLocaleString()}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-3 pb-3">
-                <div className="text-xs text-muted-foreground">Base Cost</div>
-                <div className="text-lg font-semibold" data-testid="text-opp-cost">${parseFloat(opp.totalRunningCost || "0").toLocaleString()}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-3 pb-3">
-                <div className="text-xs text-muted-foreground">Gross Margin</div>
-                <div className={`text-lg font-semibold ${parseFloat(opp.grossMargin || "0") >= 30 ? "text-green-600" : parseFloat(opp.grossMargin || "0") >= 15 ? "text-amber-600" : "text-red-600"}`} data-testid="text-opp-margin">
-                  {parseFloat(opp.grossMargin || "0").toFixed(1)}%
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-3 pb-3">
-                <div className="text-xs text-muted-foreground">Risk / Buffer</div>
-                <div className="text-lg font-semibold" data-testid="text-opp-risk-buffer">
-                  {opp.riskFactorPercent || "0"}% / {opp.bufferPercent || "0"}%
-                </div>
-              </CardContent>
-            </Card>
+            {hasFinancials && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center justify-center w-7 h-7 rounded-md bg-primary/10">
+                        <DollarSign className="w-3.5 h-3.5 text-primary" />
+                      </div>
+                      <span className="metric-label">Buffered Price</span>
+                    </div>
+                    <div className="text-2xl font-semibold tracking-tight tabular-nums" data-testid="text-opp-price">
+                      ${price.toLocaleString()}
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center justify-center w-7 h-7 rounded-md bg-muted">
+                        <DollarSign className="w-3.5 h-3.5 text-muted-foreground" />
+                      </div>
+                      <span className="metric-label">Base Cost</span>
+                    </div>
+                    <div className="text-2xl font-semibold tracking-tight tabular-nums" data-testid="text-opp-cost">
+                      ${cost.toLocaleString()}
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center justify-center w-7 h-7 rounded-md bg-emerald-500/10">
+                        <TrendingUp className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                      </div>
+                      <span className="metric-label">Gross Margin</span>
+                    </div>
+                    <MarginIndicator value={margin} />
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center justify-center w-7 h-7 rounded-md bg-amber-500/10">
+                        <Shield className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                      </div>
+                      <span className="metric-label">Risk / Buffer</span>
+                    </div>
+                    <div className="text-2xl font-semibold tracking-tight tabular-nums" data-testid="text-opp-risk-buffer">
+                      {opp.riskFactorPercent || "0"}%
+                      <span className="text-muted-foreground mx-1 text-base">/</span>
+                      {opp.bufferPercent || "0"}%
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
           </div>
         )}
 
-        <Tabs defaultValue="estimate">
-          <TabsList data-testid="opp-tabs">
-            <TabsTrigger value="estimate" data-testid="tab-estimate">
-              <Target className="w-4 h-4 mr-1" /> Estimate
+        <Tabs defaultValue="estimate" className="space-y-4">
+          <TabsList className="bg-muted/50 p-0.5" data-testid="opp-tabs">
+            <TabsTrigger value="estimate" className="gap-1.5 data-[state=active]:shadow-sm" data-testid="tab-estimate">
+              <Target className="w-3.5 h-3.5" /> Estimate
             </TabsTrigger>
-            <TabsTrigger value="team" data-testid="tab-team">
-              <Users className="w-4 h-4 mr-1" /> Team
+            <TabsTrigger value="team" className="gap-1.5 data-[state=active]:shadow-sm" data-testid="tab-team">
+              <Users className="w-3.5 h-3.5" /> Team
             </TabsTrigger>
-            <TabsTrigger value="governance" data-testid="tab-governance">
-              <ShieldCheck className="w-4 h-4 mr-1" /> Governance
+            <TabsTrigger value="governance" className="gap-1.5 data-[state=active]:shadow-sm" data-testid="tab-governance">
+              <ShieldCheck className="w-3.5 h-3.5" /> Governance
             </TabsTrigger>
-            <TabsTrigger value="raid" data-testid="tab-raid">
-              <AlertTriangle className="w-4 h-4 mr-1" /> RAID Log
+            <TabsTrigger value="raid" className="gap-1.5 data-[state=active]:shadow-sm" data-testid="tab-raid">
+              <AlertTriangle className="w-3.5 h-3.5" /> RAID Log
             </TabsTrigger>
           </TabsList>
 
@@ -433,7 +557,13 @@ function TeamCompositionWrapper({ timelineId, region }: { timelineId: string; re
     import("@/components/team-composition").then(mod => {
       setTeamComp(() => mod.TeamComposition || mod.default);
     });
-    return <div className="p-4 text-muted-foreground">Loading team composition...</div>;
+    return (
+      <div className="p-6 space-y-3">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-32 w-full" />
+      </div>
+    );
   }
 
   return <TeamComposition timelineId={timelineId} opportunityMode={true} region={region} />;

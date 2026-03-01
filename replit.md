@@ -47,6 +47,19 @@ The application uses a modern web stack. The frontend is built with React, Vite,
 - **Branding & Theming:** Database-driven system for customizing app name, logo, favicon, and color scheme, supporting multi-tenancy.
 - **Authentication:** Replit Auth via OpenID Connect, with session storage in PostgreSQL.
 
+## UI/Design System (Phase 1 Overhaul — Complete)
+- **Font:** Inter (previously Poppins) — tighter, more professional feel with condensed heading tracking
+- **Color Palette:** Executive-grade dark-first design
+  - Primary blue: `#3B82F6` (hsl 217 91% 60%)
+  - Dark mode background: slate-900 (`hsl(222, 47%, 11%)`), cards: slate-800 (`hsl(217, 33%, 14%)`)
+  - Light mode: Clean whites with subtle gray borders
+  - Semantic colors: emerald for success, amber for warnings, red for destructive
+- **Component Classes:** `card-elevated`, `card-interactive`, `metric-value`, `metric-label`, `table-row-hover`, `table-header-cell`, `table-financial`, `health-pulse`, `fade-in`, `slide-in-up`, `financial-positive`, `financial-negative`
+- **Sidebar:** Linear-inspired minimal navigation with grouped sections (Core, Workspace, Resources, System), left accent bar on active items
+- **Dashboard:** Mission Control layout with large metric cards, pipeline funnel bars, smart currency formatting ($1.2M, $450K)
+- **Data Tables:** Stripe-style tight rows, uppercase tracking headers, tabular-nums financial columns, em-dash empty placeholders
+- **Detail Pages:** Stripe-inspired precision layout with color-coded KPI cards, inline edit mode, clean tab indicators
+
 ## External Dependencies
 - **React:** Frontend library.
 - **Vite:** Frontend build tool.

@@ -263,7 +263,7 @@ export default function OpportunitiesPage() {
     const active = sortField === field;
     return (
       <th
-        className={`font-medium text-muted-foreground px-3 py-2 whitespace-nowrap cursor-pointer select-none hover:text-foreground transition-colors ${align === "center" ? "text-center" : "text-left"}`}
+        className={`table-header-cell px-3 py-2 cursor-pointer hover:text-foreground transition-colors ${align === "center" ? "text-center" : "text-left"}`}
         onClick={() => toggleSort(field)}
         data-testid={`sort-${field}`}
       >
@@ -272,7 +272,7 @@ export default function OpportunitiesPage() {
           {active ? (
             sortDir === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
           ) : (
-            <ArrowUpDown className="w-3 h-3 opacity-30" />
+            <ArrowUpDown className="w-3 h-3 opacity-20" />
           )}
         </div>
       </th>
@@ -455,23 +455,23 @@ export default function OpportunitiesPage() {
         </div>
       ) : !opportunities || opportunities.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 text-center">
-          <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-6">
-            <Target className="w-8 h-8 text-muted-foreground" />
+          <div className="w-14 h-14 rounded-full bg-muted/60 flex items-center justify-center mb-5">
+            <Target className="w-7 h-7 text-muted-foreground/70" />
           </div>
-          <h2 className="text-xl font-semibold mb-2" data-testid="text-empty-title">No opportunities yet</h2>
-          <p className="text-muted-foreground mb-6 max-w-md">
+          <h2 className="text-lg font-semibold mb-1.5" data-testid="text-empty-title">No opportunities yet</h2>
+          <p className="text-sm text-muted-foreground mb-5 max-w-sm">
             Create your first opportunity to start tracking your pre-sales pipeline.
           </p>
-          <Button onClick={() => setCreateDialogOpen(true)} data-testid="button-empty-create">
+          <Button size="sm" onClick={() => setCreateDialogOpen(true)} data-testid="button-empty-create">
             <Plus className="w-4 h-4 mr-2" />
             New Opportunity
           </Button>
         </div>
       ) : processedOpportunities.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center" data-testid="empty-search-results">
-          <Search className="w-10 h-10 text-muted-foreground mb-4" />
-          <h2 className="text-lg font-semibold mb-1">No matching opportunities</h2>
-          <p className="text-sm text-muted-foreground mb-3">
+          <Search className="w-8 h-8 text-muted-foreground/60 mb-3" />
+          <h2 className="text-base font-semibold mb-1">No matching opportunities</h2>
+          <p className="text-xs text-muted-foreground mb-3">
             No opportunities match your current filters. Try adjusting your search or filters.
           </p>
           <Button variant="outline" size="sm" onClick={clearAllFilters} data-testid="button-clear-filters-empty">
@@ -553,11 +553,11 @@ export default function OpportunitiesPage() {
                   return (
                     <tr
                       key={opp.id}
-                      className="border-b hover-elevate cursor-pointer transition-colors"
+                      className="border-b table-row-hover cursor-pointer"
                       onClick={() => navigate(`/opportunities/${opp.id}`)}
                       data-testid={`row-opportunity-${opp.id}`}
                     >
-                      <td className="px-3 py-2.5">
+                      <td className="px-3 py-2">
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-foreground" data-testid={`text-opportunity-name-${opp.id}`}>
                             {opp.title}
@@ -573,13 +573,13 @@ export default function OpportunitiesPage() {
                           )}
                         </div>
                       </td>
-                      <td className="px-3 py-2.5 text-muted-foreground" data-testid={`text-opportunity-client-${opp.id}`}>
-                        {getClientName(opp.clientId) || "-"}
+                      <td className="px-3 py-2 text-muted-foreground" data-testid={`text-opportunity-client-${opp.id}`}>
+                        {getClientName(opp.clientId) || <span className="text-muted-foreground/40">—</span>}
                       </td>
-                      <td className="px-3 py-2.5 text-muted-foreground" data-testid={`text-opportunity-region-${opp.id}`}>
-                        {opp.region ? (regionOptions.find((o) => o.value === opp.region)?.label || opp.region) : "-"}
+                      <td className="px-3 py-2 text-muted-foreground" data-testid={`text-opportunity-region-${opp.id}`}>
+                        {opp.region ? (regionOptions.find((o) => o.value === opp.region)?.label || opp.region) : <span className="text-muted-foreground/40">—</span>}
                       </td>
-                      <td className="px-3 py-2.5 text-center">
+                      <td className="px-3 py-2 text-center">
                         <Badge
                           variant="outline"
                           className={`text-[10px] ${statusColor}`}
@@ -588,17 +588,17 @@ export default function OpportunitiesPage() {
                           {statusLabel}
                         </Badge>
                       </td>
-                      <td className="px-3 py-2.5 text-muted-foreground tabular-nums" data-testid={`text-price-${opp.id}`}>
+                      <td className="px-3 py-2 table-financial text-muted-foreground" data-testid={`text-price-${opp.id}`}>
                         {formatCurrency(opp.approvedBudget)}
                       </td>
-                      <td className="px-3 py-2.5 text-muted-foreground tabular-nums" data-testid={`text-cost-${opp.id}`}>
+                      <td className="px-3 py-2 table-financial text-muted-foreground" data-testid={`text-cost-${opp.id}`}>
                         {formatCurrency(opp.totalRunningCost)}
                       </td>
-                      <td className="px-3 py-2.5 text-muted-foreground tabular-nums" data-testid={`text-margin-${opp.id}`}>
+                      <td className="px-3 py-2 table-financial text-muted-foreground" data-testid={`text-margin-${opp.id}`}>
                         {formatMargin(opp.grossMargin)}
                       </td>
-                      <td className="px-3 py-2.5 text-muted-foreground" data-testid={`text-clouds-${opp.id}`}>
-                        {opp.salesforceClouds || "-"}
+                      <td className="px-3 py-2 text-muted-foreground" data-testid={`text-clouds-${opp.id}`}>
+                        {opp.salesforceClouds || <span className="text-muted-foreground/40">—</span>}
                       </td>
                     </tr>
                   );

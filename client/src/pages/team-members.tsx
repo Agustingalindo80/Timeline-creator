@@ -289,40 +289,40 @@ export default function TeamMembers() {
 
       <div className="border rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-xs">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="text-left p-2 font-medium">
-                  <button className="flex items-center text-xs" onClick={() => toggleSort("name")}>
+                <th className="text-left px-3 py-2 table-header-cell">
+                  <button className="flex items-center" onClick={() => toggleSort("name")}>
                     Name <SortIcon field="name" />
                   </button>
                 </th>
-                <th className="text-left p-2 font-medium">
-                  <button className="flex items-center text-xs" onClick={() => toggleSort("role")}>
+                <th className="text-left px-3 py-2 table-header-cell">
+                  <button className="flex items-center" onClick={() => toggleSort("role")}>
                     Role <SortIcon field="role" />
                   </button>
                 </th>
-                <th className="text-left p-2 font-medium">
-                  <button className="flex items-center text-xs" onClick={() => toggleSort("department")}>
+                <th className="text-left px-3 py-2 table-header-cell">
+                  <button className="flex items-center" onClick={() => toggleSort("department")}>
                     Department <SortIcon field="department" />
                   </button>
                 </th>
-                <th className="text-left p-2 font-medium">
-                  <button className="flex items-center text-xs" onClick={() => toggleSort("email")}>
+                <th className="text-left px-3 py-2 table-header-cell">
+                  <button className="flex items-center" onClick={() => toggleSort("email")}>
                     Email <SortIcon field="email" />
                   </button>
                 </th>
-                <th className="text-right p-2 font-medium">
-                  <button className="flex items-center justify-end text-xs" onClick={() => toggleSort("monthlyCost")}>
+                <th className="text-right px-3 py-2 table-header-cell">
+                  <button className="flex items-center justify-end" onClick={() => toggleSort("monthlyCost")}>
                     Monthly ($) <SortIcon field="monthlyCost" />
                   </button>
                 </th>
-                <th className="text-right p-2 font-medium">
-                  <button className="flex items-center justify-end text-xs" onClick={() => toggleSort("hourlyCost")}>
+                <th className="text-right px-3 py-2 table-header-cell">
+                  <button className="flex items-center justify-end" onClick={() => toggleSort("hourlyCost")}>
                     Hourly ($) <SortIcon field="hourlyCost" />
                   </button>
                 </th>
-                <th className="w-20 p-2"></th>
+                <th className="w-20 px-3 py-2"></th>
               </tr>
               {showFilters && (
                 <tr className="border-b bg-muted/30">
@@ -350,25 +350,37 @@ export default function TeamMembers() {
               {filteredMembers.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="p-8 text-center text-muted-foreground">
-                    {members.length === 0 ? "No team members yet. Add your first member." : "No members match filters."}
+                    {members.length === 0 ? (
+                      <span className="flex flex-col items-center gap-2">
+                        <Users className="w-7 h-7 text-muted-foreground/50" />
+                        <span className="text-sm font-medium">No team members yet</span>
+                        <span className="text-xs">Add your first member to get started.</span>
+                      </span>
+                    ) : (
+                      <span className="flex flex-col items-center gap-2">
+                        <Search className="w-7 h-7 text-muted-foreground/50" />
+                        <span className="text-sm font-medium">No members match filters</span>
+                        <span className="text-xs">Try adjusting your search or filters.</span>
+                      </span>
+                    )}
                   </td>
                 </tr>
               ) : (
                 filteredMembers.map(m => {
                   const isDirty = !!dirtyRows[m.id];
                   return (
-                    <tr key={m.id} className={`border-b hover:bg-muted/30 transition-colors ${isDirty ? "bg-yellow-50 dark:bg-yellow-950" : ""}`} data-testid={`row-member-${m.id}`}>
-                      <td className="p-2">
+                    <tr key={m.id} className={`border-b table-row-hover ${isDirty ? "bg-yellow-50 dark:bg-yellow-950" : ""}`} data-testid={`row-member-${m.id}`}>
+                      <td className="px-3 py-1.5">
                         <Link href={`/team-members/${m.id}`}>
-                          <span className="flex items-center gap-2 text-sm font-medium hover:underline cursor-pointer" data-testid={`link-member-${m.id}`}>
-                            <span className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary shrink-0">
+                          <span className="flex items-center gap-2 text-xs font-medium hover:underline cursor-pointer" data-testid={`link-member-${m.id}`}>
+                            <span className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-semibold text-primary shrink-0">
                               {m.name.charAt(0).toUpperCase()}
                             </span>
                             {m.name}
                           </span>
                         </Link>
                       </td>
-                      <td className="p-2">
+                      <td className="px-3 py-1.5">
                         <select
                           className="h-7 rounded border border-input bg-background px-2 text-xs w-full max-w-[180px]"
                           value={(getDisplayValue(m, "role") as string) || ""}
@@ -379,7 +391,7 @@ export default function TeamMembers() {
                           {roleOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                         </select>
                       </td>
-                      <td className="p-2">
+                      <td className="px-3 py-1.5">
                         <Input
                           className="h-7 text-xs max-w-[140px]"
                           value={(getDisplayValue(m, "department") as string) || ""}
@@ -387,8 +399,8 @@ export default function TeamMembers() {
                           data-testid={`input-department-${m.id}`}
                         />
                       </td>
-                      <td className="p-2 text-xs text-muted-foreground">{m.email || "—"}</td>
-                      <td className="p-2 text-right">
+                      <td className="px-3 py-1.5 text-xs text-muted-foreground">{m.email || <span className="text-muted-foreground/40">—</span>}</td>
+                      <td className="px-3 py-1.5 table-financial">
                         <Input
                           className="h-7 text-xs w-24 ml-auto text-right"
                           type="number"
@@ -399,7 +411,7 @@ export default function TeamMembers() {
                           data-testid={`input-monthly-${m.id}`}
                         />
                       </td>
-                      <td className="p-2 text-right">
+                      <td className="px-3 py-1.5 table-financial">
                         <Input
                           className="h-7 text-xs w-24 ml-auto text-right"
                           type="number"
@@ -410,7 +422,7 @@ export default function TeamMembers() {
                           data-testid={`input-hourly-${m.id}`}
                         />
                       </td>
-                      <td className="p-2">
+                      <td className="px-3 py-1.5">
                         <div className="flex items-center gap-1 justify-end">
                           <Link href={`/team-members/${m.id}`}>
                             <Button size="icon" variant="ghost" className="h-7 w-7" data-testid={`button-view-member-${m.id}`}>

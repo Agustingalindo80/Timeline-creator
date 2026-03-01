@@ -483,30 +483,30 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
     const tm = resource.teamMemberId ? teamMembers.find(m => m.id === resource.teamMemberId) : null;
 
     return (
-      <div key={resource.id} className="flex items-center gap-3 px-4 py-2 border-t bg-muted/10 hover:bg-muted/20 transition-colors" data-testid={`resource-row-${resource.id}`}>
+      <div key={resource.id} className="flex items-center gap-3 px-4 py-2 border-t bg-muted/5 table-row-hover" data-testid={`resource-row-${resource.id}`}>
         <div className="w-8" />
-        <Users className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+        <Users className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
         <div className="flex-1 min-w-0">
           <div className="text-sm font-medium truncate">
             {rc?.name || rc?.role || "Unknown Role"}
           </div>
-          <div className="flex items-center gap-2 mt-0.5">
-            {taskTypeLabel && <Badge variant="outline" className="text-[10px] px-1.5 py-0">{taskTypeLabel}</Badge>}
-            <span className="text-[10px] text-muted-foreground">{hpw}h/wk × {duration} wks</span>
-            {tm && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{tm.name}</Badge>}
+          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+            {taskTypeLabel && <Badge variant="outline" className="text-[10px]">{taskTypeLabel}</Badge>}
+            <span className="text-[10px] text-muted-foreground tabular-nums">{hpw}h/wk × {duration} wks</span>
+            {tm && <Badge variant="secondary" className="text-[10px]">{tm.name}</Badge>}
           </div>
         </div>
-        <div className="text-right text-sm shrink-0">
-          <div className="font-medium">{totalHrs.toLocaleString()}h</div>
-          <div className="text-xs text-muted-foreground">${totalPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+        <div className="text-right shrink-0">
+          <div className="text-sm font-semibold tabular-nums">{totalHrs.toLocaleString()}h</div>
+          <div className="text-xs text-muted-foreground tabular-nums">${totalPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => openEditResourceDialog(resource)} data-testid={`button-edit-resource-${resource.id}`}>
+          <Button variant="ghost" size="icon" onClick={() => openEditResourceDialog(resource)} data-testid={`button-edit-resource-${resource.id}`}>
             <Edit3 className="w-3 h-3" />
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" data-testid={`button-delete-resource-${resource.id}`}>
+              <Button variant="ghost" size="icon" className="text-destructive" data-testid={`button-delete-resource-${resource.id}`}>
                 <Trash2 className="w-3 h-3" />
               </Button>
             </AlertDialogTrigger>
@@ -621,40 +621,40 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
   return (
     <div className="space-y-6" data-testid="estimate-tab">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card data-testid="card-total-hours">
-          <CardContent className="pt-4 pb-4">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-              <Clock className="w-4 h-4" />
+        <Card className="card-elevated" data-testid="card-total-hours">
+          <CardContent className="pt-5 pb-5">
+            <div className="metric-label flex items-center gap-1.5 mb-2">
+              <Clock className="w-3.5 h-3.5" />
               Total Hours
             </div>
-            <div className="text-2xl font-bold">{totalHours.toLocaleString()}</div>
+            <div className="metric-value text-3xl">{totalHours.toLocaleString()}</div>
           </CardContent>
         </Card>
-        <Card data-testid="card-base-price">
-          <CardContent className="pt-4 pb-4">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-              <DollarSign className="w-4 h-4" />
+        <Card className="card-elevated" data-testid="card-base-price">
+          <CardContent className="pt-5 pb-5">
+            <div className="metric-label flex items-center gap-1.5 mb-2">
+              <DollarSign className="w-3.5 h-3.5" />
               Base Price
             </div>
-            <div className="text-2xl font-bold">${basePrice.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
+            <div className="metric-value text-3xl">${basePrice.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
           </CardContent>
         </Card>
-        <Card data-testid="card-base-cost">
-          <CardContent className="pt-4 pb-4">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-              <TrendingUp className="w-4 h-4" />
+        <Card className="card-elevated" data-testid="card-base-cost">
+          <CardContent className="pt-5 pb-5">
+            <div className="metric-label flex items-center gap-1.5 mb-2">
+              <TrendingUp className="w-3.5 h-3.5" />
               Base Cost
             </div>
-            <div className="text-2xl font-bold">${baseCost.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
+            <div className="metric-value text-3xl">${baseCost.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
           </CardContent>
         </Card>
-        <Card data-testid="card-margin">
-          <CardContent className="pt-4 pb-4">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-              <Calculator className="w-4 h-4" />
+        <Card className="card-elevated" data-testid="card-margin">
+          <CardContent className="pt-5 pb-5">
+            <div className="metric-label flex items-center gap-1.5 mb-2">
+              <Calculator className="w-3.5 h-3.5" />
               Expected GM
             </div>
-            <div className={`text-2xl font-bold ${expectedGM >= 30 ? "text-green-600" : expectedGM >= 15 ? "text-amber-600" : "text-red-600"}`}>
+            <div className={`metric-value text-3xl ${expectedGM >= 30 ? "text-green-600 dark:text-green-400" : expectedGM >= 15 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400"}`}>
               {expectedGM.toFixed(1)}%
             </div>
           </CardContent>
@@ -663,15 +663,15 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Planned Effort / Scope</h3>
-            <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <h3 className="section-title">Planned Effort / Scope</h3>
+            <div className="flex items-center gap-2 flex-wrap">
               <Button size="sm" variant="outline" onClick={handleDownloadTemplate} data-testid="button-download-template">
-                <Download className="w-4 h-4 mr-1" /> Download Template
+                <Download className="w-4 h-4 mr-1" /> Template
               </Button>
               <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isImporting} data-testid="button-import-template">
                 {isImporting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Upload className="w-4 h-4 mr-1" />}
-                {isImporting ? "Importing..." : "Import from Template"}
+                {isImporting ? "Importing..." : "Import"}
               </Button>
               <input
                 ref={fileInputRef}
@@ -688,9 +688,12 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
           </div>
 
           {phases.length === 0 && (
-            <div className="text-center py-12 text-muted-foreground border border-dashed rounded-lg" data-testid="text-empty-backlog">
-              No phases yet. Add a phase to start building your estimate.
-            </div>
+            <Card className="border-dashed" data-testid="text-empty-backlog">
+              <CardContent className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                <Calculator className="w-8 h-8 mb-3 opacity-40" />
+                <p className="text-sm">No phases yet. Add a phase to start building your estimate.</p>
+              </CardContent>
+            </Card>
           )}
 
           {phases.map(phase => {
@@ -698,29 +701,34 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
             const expanded = expandedPhases.has(phase.id);
             const phaseHours = getPhaseHours(phase.id);
             const phasePrice = getPhaseRevenue(phase.id);
+            const phaseCost = getPhaseCost(phase.id);
+            const phaseMargin = phasePrice > 0 ? ((phasePrice - phaseCost) / phasePrice) * 100 : 0;
 
             return (
-              <Card key={phase.id} data-testid={`card-phase-${phase.id}`}>
+              <Card key={phase.id} className="card-elevated" data-testid={`card-phase-${phase.id}`}>
                 <div
-                  className="flex items-center gap-3 p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                  className="flex items-center gap-3 p-4 cursor-pointer transition-smooth"
                   onClick={() => togglePhase(phase.id)}
                   data-testid={`phase-header-${phase.id}`}
                 >
-                  {expanded ? <ChevronDown className="w-4 h-4 shrink-0" /> : <ChevronRight className="w-4 h-4 shrink-0" />}
+                  <div className="transition-transform duration-200" style={{ transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)' }}>
+                    <ChevronDown className="w-4 h-4 shrink-0 text-muted-foreground" />
+                  </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate">{phase.title}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {children.length} workstream{children.length !== 1 ? "s" : ""} · {phaseHours.toLocaleString()} hrs · ${phasePrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    <div className="font-semibold truncate tracking-tight">{phase.title}</div>
+                    <div className="flex items-center gap-3 mt-0.5 text-xs text-muted-foreground">
+                      <span>{children.length} workstream{children.length !== 1 ? "s" : ""}</span>
+                      <span className="tabular-nums">{phaseHours.toLocaleString()} hrs</span>
+                      <span className="tabular-nums font-medium text-foreground/70">${phasePrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={e => { e.stopPropagation(); openEditDialog(phase); }} data-testid={`button-edit-phase-${phase.id}`}>
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="icon" onClick={e => { e.stopPropagation(); openEditDialog(phase); }} data-testid={`button-edit-phase-${phase.id}`}>
                       <Edit3 className="w-3.5 h-3.5" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7"
                       onClick={e => { e.stopPropagation(); setSelectedParentPhase(phase.id); setNewTaskTitle(""); setNewTaskDuration(""); setAddWorkstreamOpen(true); }}
                       data-testid={`button-add-workstream-${phase.id}`}
                     >
@@ -728,7 +736,7 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
                     </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={e => e.stopPropagation()} data-testid={`button-delete-phase-${phase.id}`}>
+                        <Button variant="ghost" size="icon" className="text-destructive" onClick={e => e.stopPropagation()} data-testid={`button-delete-phase-${phase.id}`}>
                           <Trash2 className="w-3.5 h-3.5" />
                         </Button>
                       </AlertDialogTrigger>
@@ -768,35 +776,35 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
                       return (
                         <div key={ws.id}>
                           <div
-                            className="flex items-center gap-3 px-4 py-3 border-t hover:bg-muted/30 transition-colors cursor-pointer"
+                            className="flex items-center gap-3 px-4 py-2.5 border-t table-row-hover cursor-pointer"
                             onClick={() => toggleWorkstream(ws.id)}
                             data-testid={`workstream-row-${ws.id}`}
                           >
-                            <div className="w-4">
-                              {wsExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                            <div className="w-4 transition-transform duration-200" style={{ transform: wsExpanded ? 'rotate(0deg)' : 'rotate(-90deg)' }}>
+                              <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="text-sm font-medium truncate">{ws.title}</div>
-                              <div className="flex items-center gap-2 mt-0.5">
-                                {duration > 0 && <Badge variant="outline" className="text-[10px] px-1.5 py-0">{duration} wks</Badge>}
-                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{wsResources.length} resource{wsResources.length !== 1 ? "s" : ""}</Badge>
-                                {confLevel && <Badge className={`text-[10px] px-1.5 py-0 ${confLevel.color} border-0`}>{confLevel.label}</Badge>}
+                              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                {duration > 0 && <Badge variant="outline" className="text-[10px]">{duration} wks</Badge>}
+                                <Badge variant="secondary" className="text-[10px]">{wsResources.length} resource{wsResources.length !== 1 ? "s" : ""}</Badge>
+                                {confLevel && <Badge className={`text-[10px] ${confLevel.color} border-0`}>{confLevel.label}</Badge>}
                               </div>
                             </div>
-                            <div className="text-right text-sm shrink-0">
-                              <div className="font-medium">{wsHours.toLocaleString()}h</div>
-                              <div className="text-xs text-muted-foreground">${wsPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                            <div className="text-right shrink-0">
+                              <div className="text-sm font-semibold tabular-nums">{wsHours.toLocaleString()}h</div>
+                              <div className="text-xs text-muted-foreground tabular-nums">${wsPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
                             </div>
                             <div className="flex items-center gap-1">
-                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={e => { e.stopPropagation(); openAddResourceDialog(ws.id); }} data-testid={`button-add-resource-${ws.id}`}>
+                              <Button variant="ghost" size="icon" onClick={e => { e.stopPropagation(); openAddResourceDialog(ws.id); }} data-testid={`button-add-resource-${ws.id}`}>
                                 <Plus className="w-3.5 h-3.5" />
                               </Button>
-                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={e => { e.stopPropagation(); openEditDialog(ws); }} data-testid={`button-edit-workstream-${ws.id}`}>
+                              <Button variant="ghost" size="icon" onClick={e => { e.stopPropagation(); openEditDialog(ws); }} data-testid={`button-edit-workstream-${ws.id}`}>
                                 <Edit3 className="w-3.5 h-3.5" />
                               </Button>
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={e => e.stopPropagation()} data-testid={`button-delete-workstream-${ws.id}`}>
+                                  <Button variant="ghost" size="icon" className="text-destructive" onClick={e => e.stopPropagation()} data-testid={`button-delete-workstream-${ws.id}`}>
                                     <Trash2 className="w-3.5 h-3.5" />
                                   </Button>
                                 </AlertDialogTrigger>
@@ -814,7 +822,7 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
                             </div>
                           </div>
                           {wsExpanded && (
-                            <div>
+                            <div className="transition-smooth">
                               {wsResources.length === 0 && (
                                 <div className="px-4 py-3 border-t bg-muted/10 text-sm text-muted-foreground text-center">
                                   No resources assigned. Click + on the workstream to add a resource.
@@ -834,100 +842,129 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
         </div>
 
         <div className="space-y-4">
-          <Card data-testid="card-financial-summary">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center justify-between">
+          <Card className="card-elevated" data-testid="card-financial-summary">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center justify-between gap-2">
                 Financial Summary
                 <Button size="sm" variant="outline" onClick={syncFinancials} data-testid="button-sync-financials">
                   Sync
                 </Button>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Base Price</span>
-                <span className="font-medium">${basePrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-              </div>
-              <div className="space-y-1">
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Risk Factor</span>
-                  <span className="font-medium">{localRiskPercent}%</span>
+            <CardContent className="space-y-4 text-sm">
+              <div>
+                <div className="metric-label mb-1">Price</div>
+                <div className="space-y-2">
+                  <div className="flex justify-between gap-2">
+                    <span className="text-muted-foreground">Base Price</span>
+                    <span className="font-medium tabular-nums">${basePrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center gap-2">
+                      <span className="text-muted-foreground">Risk Factor</span>
+                      <span className="font-medium tabular-nums">{localRiskPercent}%</span>
+                    </div>
+                    <Slider
+                      value={[localRiskPercent]}
+                      max={50}
+                      step={1}
+                      onValueChange={(v) => setLocalRiskPercent(v[0])}
+                      onValueCommit={(v) => updateOppMutation.mutate({ riskFactorPercent: v[0].toString() })}
+                      data-testid="slider-risk-factor"
+                    />
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-muted-foreground">Risk-Adjusted</span>
+                    <span className="font-medium tabular-nums">${riskAdjustedPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center gap-2">
+                      <span className="text-muted-foreground">Buffer</span>
+                      <span className="font-medium tabular-nums">{localBufferPercent}%</span>
+                    </div>
+                    <Slider
+                      value={[localBufferPercent]}
+                      max={30}
+                      step={1}
+                      onValueChange={(v) => setLocalBufferPercent(v[0])}
+                      onValueCommit={(v) => updateOppMutation.mutate({ bufferPercent: v[0].toString() })}
+                      data-testid="slider-buffer"
+                    />
+                  </div>
                 </div>
-                <Slider
-                  value={[localRiskPercent]}
-                  max={50}
-                  step={1}
-                  onValueChange={(v) => setLocalRiskPercent(v[0])}
-                  onValueCommit={(v) => updateOppMutation.mutate({ riskFactorPercent: v[0].toString() })}
-                  data-testid="slider-risk-factor"
-                />
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Risk-Adjusted Price</span>
-                <span className="font-medium">${riskAdjustedPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-              </div>
-              <div className="space-y-1">
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Buffer</span>
-                  <span className="font-medium">{localBufferPercent}%</span>
-                </div>
-                <Slider
-                  value={[localBufferPercent]}
-                  max={30}
-                  step={1}
-                  onValueChange={(v) => setLocalBufferPercent(v[0])}
-                  onValueCommit={(v) => updateOppMutation.mutate({ bufferPercent: v[0].toString() })}
-                  data-testid="slider-buffer"
-                />
-              </div>
+
               <Separator />
-              <div className="flex justify-between font-semibold">
-                <span>Buffered Price</span>
-                <span>${bufferedPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+
+              <div>
+                <div className="metric-label mb-1">Revenue</div>
+                <div className="flex justify-between gap-2 items-baseline">
+                  <span className="text-sm font-semibold">Buffered Price</span>
+                  <span className="text-lg font-bold tabular-nums">${bufferedPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Base Cost</span>
-                <span className="font-medium">${baseCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-              </div>
-              <div className={`flex justify-between font-semibold ${grossMargin >= 30 ? "text-green-600" : grossMargin >= 15 ? "text-amber-600" : "text-red-600"}`}>
-                <span>Gross Margin</span>
-                <span>{grossMargin.toFixed(1)}%</span>
+
+              <Separator />
+
+              <div>
+                <div className="metric-label mb-1">Cost & Margin</div>
+                <div className="space-y-2">
+                  <div className="flex justify-between gap-2">
+                    <span className="text-muted-foreground">Base Cost</span>
+                    <span className="font-medium tabular-nums">${baseCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  </div>
+                  <div className={`flex justify-between gap-2 items-baseline ${grossMargin >= 30 ? "text-green-600 dark:text-green-400" : grossMargin >= 15 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400"}`}>
+                    <span className="text-sm font-semibold">Gross Margin</span>
+                    <span className="text-lg font-bold tabular-nums">{grossMargin.toFixed(1)}%</span>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card data-testid="card-hours-by-role">
-            <CardHeader className="pb-3">
+          <Card className="card-elevated" data-testid="card-hours-by-role">
+            <CardHeader className="pb-2">
               <CardTitle className="text-base">Hours by Role</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               {Object.entries(hoursByRole).length === 0 && (
                 <div className="text-muted-foreground text-center py-2">No resources assigned</div>
               )}
-              {Object.entries(hoursByRole).sort((a, b) => b[1] - a[1]).map(([role, hours]) => (
-                <div key={role} className="flex justify-between">
-                  <span className="text-muted-foreground truncate mr-2">{role}</span>
-                  <span className="font-medium shrink-0">{hours.toLocaleString()}h</span>
-                </div>
-              ))}
+              {Object.entries(hoursByRole).sort((a, b) => b[1] - a[1]).map(([role, hours]) => {
+                const pct = totalHours > 0 ? (hours / totalHours) * 100 : 0;
+                return (
+                  <div key={role} className="space-y-1">
+                    <div className="flex justify-between gap-2">
+                      <span className="text-muted-foreground truncate">{role}</span>
+                      <span className="font-medium shrink-0 tabular-nums">{hours.toLocaleString()}h</span>
+                    </div>
+                    <div className="h-1 rounded-full bg-muted">
+                      <div
+                        className="h-1 rounded-full bg-primary/60 transition-all duration-300"
+                        style={{ width: `${Math.min(pct, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
             </CardContent>
           </Card>
 
-          <Card data-testid="card-confidence">
-            <CardHeader className="pb-3">
+          <Card className="card-elevated" data-testid="card-confidence">
+            <CardHeader className="pb-2">
               <CardTitle className="text-base">Confidence Breakdown</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               {CONFIDENCE_LEVELS.map(level => (
-                <div key={level.value} className="flex justify-between items-center">
+                <div key={level.value} className="flex justify-between items-center gap-2">
                   <Badge className={`${level.color} border-0`}>{level.label}</Badge>
-                  <span className="font-medium">{confidenceCounts[level.value] || 0}</span>
+                  <span className="font-semibold tabular-nums">{confidenceCounts[level.value] || 0}</span>
                 </div>
               ))}
               {confidenceCounts["unset"] > 0 && (
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center gap-2">
                   <Badge variant="outline">Unset</Badge>
-                  <span className="font-medium">{confidenceCounts["unset"]}</span>
+                  <span className="font-semibold tabular-nums">{confidenceCounts["unset"]}</span>
                 </div>
               )}
             </CardContent>

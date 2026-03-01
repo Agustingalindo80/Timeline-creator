@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -143,18 +143,24 @@ function ProjectTimesheetsTab({ timelineId, tasks }: { timelineId: string; tasks
 
   return (
     <div className="space-y-4" data-testid="project-timesheets-tab">
-      <div className="flex items-center gap-4">
-        <Card className="px-4 py-3 border">
-          <p className="text-xs text-muted-foreground">Total Hours</p>
-          <p className="text-xl font-semibold font-mono" data-testid="text-project-ts-total-hours">{totalHours.toFixed(1)}</p>
+      <div className="grid grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="pt-3 pb-3">
+            <div className="metric-label">Total Hours</div>
+            <div className="metric-value tabular-nums" data-testid="text-project-ts-total-hours">{totalHours.toFixed(1)}</div>
+          </CardContent>
         </Card>
-        <Card className="px-4 py-3 border">
-          <p className="text-xs text-muted-foreground">Entries</p>
-          <p className="text-xl font-semibold font-mono" data-testid="text-project-ts-entry-count">{entries.length}</p>
+        <Card>
+          <CardContent className="pt-3 pb-3">
+            <div className="metric-label">Entries</div>
+            <div className="metric-value tabular-nums" data-testid="text-project-ts-entry-count">{entries.length}</div>
+          </CardContent>
         </Card>
-        <Card className="px-4 py-3 border">
-          <p className="text-xs text-muted-foreground">Weeks</p>
-          <p className="text-xl font-semibold font-mono" data-testid="text-project-ts-week-count">{groupedByWeek.length}</p>
+        <Card>
+          <CardContent className="pt-3 pb-3">
+            <div className="metric-label">Weeks</div>
+            <div className="metric-value tabular-nums" data-testid="text-project-ts-week-count">{groupedByWeek.length}</div>
+          </CardContent>
         </Card>
       </div>
 
@@ -768,56 +774,76 @@ function EVMTab({ timelineId, tasks, approvedBudget }: { timelineId: string; tas
 
   return (
     <div className="space-y-6" data-testid="evm-tab">
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3" data-testid="evm-summary-cards">
-        <Card className="p-4 border" data-testid="evm-card-bac">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide">BAC</p>
-          <p className="text-lg font-semibold font-mono mt-1">${fmt(bac)}</p>
-          <p className="text-[10px] text-muted-foreground">Budget at Completion</p>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4" data-testid="evm-summary-cards">
+        <Card data-testid="evm-card-bac">
+          <CardContent className="pt-3 pb-3">
+            <div className="metric-label">BAC</div>
+            <div className="metric-value tabular-nums">${fmt(bac)}</div>
+            <div className="text-[10px] text-muted-foreground">Budget at Completion</div>
+          </CardContent>
         </Card>
-        <Card className="p-4 border" data-testid="evm-card-pv">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide">PV</p>
-          <p className="text-lg font-semibold font-mono mt-1">${fmt(pv)}</p>
-          <p className="text-[10px] text-muted-foreground">Planned Value</p>
+        <Card data-testid="evm-card-pv">
+          <CardContent className="pt-3 pb-3">
+            <div className="metric-label">PV</div>
+            <div className="metric-value tabular-nums">${fmt(pv)}</div>
+            <div className="text-[10px] text-muted-foreground">Planned Value</div>
+          </CardContent>
         </Card>
-        <Card className="p-4 border" data-testid="evm-card-ac">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide">AC</p>
-          <p className="text-lg font-semibold font-mono mt-1">${fmt(ac)}</p>
-          <p className="text-[10px] text-muted-foreground">Actual Cost</p>
+        <Card data-testid="evm-card-ac">
+          <CardContent className="pt-3 pb-3">
+            <div className="metric-label">AC</div>
+            <div className="metric-value tabular-nums">${fmt(ac)}</div>
+            <div className="text-[10px] text-muted-foreground">Actual Cost</div>
+          </CardContent>
         </Card>
-        <Card className="p-4 border" data-testid="evm-card-ev">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide">EV</p>
-          <p className="text-lg font-semibold font-mono mt-1">${fmt(ev)}</p>
-          <p className="text-[10px] text-muted-foreground">Earned Value</p>
+        <Card data-testid="evm-card-ev">
+          <CardContent className="pt-3 pb-3">
+            <div className="metric-label">EV</div>
+            <div className="metric-value tabular-nums">${fmt(ev)}</div>
+            <div className="text-[10px] text-muted-foreground">Earned Value</div>
+          </CardContent>
         </Card>
-        <Card className={`p-4 border ${getIndicatorBg(spi)}`} data-testid="evm-card-spi">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide">SPI</p>
-          <p className={`text-lg font-semibold font-mono mt-1 ${getIndicatorColor(spi)}`}>{spi.toFixed(2)}</p>
-          <p className="text-[10px] text-muted-foreground">Schedule Performance</p>
+        <Card className={`${getIndicatorBg(spi)}`} data-testid="evm-card-spi">
+          <CardContent className="pt-3 pb-3">
+            <div className="metric-label">SPI</div>
+            <div className={`metric-value tabular-nums ${getIndicatorColor(spi)}`}>{spi.toFixed(2)}</div>
+            <div className="text-[10px] text-muted-foreground">Schedule Performance</div>
+          </CardContent>
         </Card>
-        <Card className={`p-4 border ${getIndicatorBg(cpi)}`} data-testid="evm-card-cpi">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide">CPI</p>
-          <p className={`text-lg font-semibold font-mono mt-1 ${getIndicatorColor(cpi)}`}>{cpi.toFixed(2)}</p>
-          <p className="text-[10px] text-muted-foreground">Cost Performance</p>
+        <Card className={`${getIndicatorBg(cpi)}`} data-testid="evm-card-cpi">
+          <CardContent className="pt-3 pb-3">
+            <div className="metric-label">CPI</div>
+            <div className={`metric-value tabular-nums ${getIndicatorColor(cpi)}`}>{cpi.toFixed(2)}</div>
+            <div className="text-[10px] text-muted-foreground">Cost Performance</div>
+          </CardContent>
         </Card>
-        <Card className="p-4 border" data-testid="evm-card-sv">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide">SV</p>
-          <p className={`text-lg font-semibold font-mono mt-1 ${sv >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>${fmt(sv)}</p>
-          <p className="text-[10px] text-muted-foreground">Schedule Variance</p>
+        <Card data-testid="evm-card-sv">
+          <CardContent className="pt-3 pb-3">
+            <div className="metric-label">SV</div>
+            <div className={`metric-value tabular-nums ${sv >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>${fmt(sv)}</div>
+            <div className="text-[10px] text-muted-foreground">Schedule Variance</div>
+          </CardContent>
         </Card>
-        <Card className="p-4 border" data-testid="evm-card-cv">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide">CV</p>
-          <p className={`text-lg font-semibold font-mono mt-1 ${cv >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>${fmt(cv)}</p>
-          <p className="text-[10px] text-muted-foreground">Cost Variance</p>
+        <Card data-testid="evm-card-cv">
+          <CardContent className="pt-3 pb-3">
+            <div className="metric-label">CV</div>
+            <div className={`metric-value tabular-nums ${cv >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>${fmt(cv)}</div>
+            <div className="text-[10px] text-muted-foreground">Cost Variance</div>
+          </CardContent>
         </Card>
-        <Card className="p-4 border" data-testid="evm-card-eac">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide">EAC</p>
-          <p className="text-lg font-semibold font-mono mt-1">${fmt(eac)}</p>
-          <p className="text-[10px] text-muted-foreground">Estimate at Completion</p>
+        <Card data-testid="evm-card-eac">
+          <CardContent className="pt-3 pb-3">
+            <div className="metric-label">EAC</div>
+            <div className="metric-value tabular-nums">${fmt(eac)}</div>
+            <div className="text-[10px] text-muted-foreground">Estimate at Completion</div>
+          </CardContent>
         </Card>
-        <Card className="p-4 border" data-testid="evm-card-etc">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide">ETC</p>
-          <p className="text-lg font-semibold font-mono mt-1">${fmt(etc)}</p>
-          <p className="text-[10px] text-muted-foreground">Estimate to Complete</p>
+        <Card data-testid="evm-card-etc">
+          <CardContent className="pt-3 pb-3">
+            <div className="metric-label">ETC</div>
+            <div className="metric-value tabular-nums">${fmt(etc)}</div>
+            <div className="text-[10px] text-muted-foreground">Estimate to Complete</div>
+          </CardContent>
         </Card>
       </div>
 
@@ -1477,30 +1503,30 @@ export default function TimelineDetail() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-3">
-            <Skeleton className="w-9 h-9 rounded-md" />
-            <Skeleton className="h-5 w-48" />
-          </div>
-        </header>
-        <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
-          <Skeleton className="h-64 w-full rounded-md" />
-        </main>
+      <div className="p-6 space-y-4">
+        <div className="flex items-center gap-3">
+          <Skeleton className="w-9 h-9 rounded-md" />
+          <Skeleton className="h-6 w-48" />
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Skeleton className="h-20 rounded-md" />
+          <Skeleton className="h-20 rounded-md" />
+          <Skeleton className="h-20 rounded-md" />
+          <Skeleton className="h-20 rounded-md" />
+        </div>
+        <Skeleton className="h-10 w-full rounded-md" />
+        <Skeleton className="h-64 w-full rounded-md" />
       </div>
     );
   }
 
   if (!timeline) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-lg font-semibold mb-2">Project not found</h2>
-          <Button variant="outline" onClick={() => navigate("/")}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Home
-          </Button>
-        </div>
+      <div className="p-6">
+        <p className="text-muted-foreground">Project not found.</p>
+        <Button variant="ghost" className="mt-2" onClick={() => navigate("/projects")}>
+          Back to Projects
+        </Button>
       </div>
     );
   }
@@ -1695,7 +1721,7 @@ export default function TimelineDetail() {
                   t.status === "complete" ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300" : ""
                 }`}>{taskStatuses.find((s) => s.value === t.status)?.label || t.status}</Badge>
                 <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-                  t.health === "amber" ? "bg-amber-500" : t.health === "red" ? "bg-red-500" : "bg-green-500"
+                  t.health === "amber" ? "bg-amber-500 animate-pulse" : t.health === "red" ? "bg-red-500 animate-pulse" : "bg-green-500"
                 }`} title={taskHealthOptions.find((h) => h.value === t.health)?.label || t.health} />
                 {t.itemType === "phase" && <Badge variant="outline" className="text-xs">{taskItemTypes.find((it) => it.value === "phase")?.label || "Phase"}</Badge>}
                 {t.itemType === "phase" && tl.tasks.some((ct) => ct.parentTaskId === t.id) && (
@@ -1774,124 +1800,247 @@ export default function TimelineDetail() {
     </Card>
   );
 
+  const healthColor = (val: string | null | undefined) => {
+    if (val === "red") return "bg-red-500";
+    if (val === "amber") return "bg-amber-500";
+    return "bg-green-500";
+  };
+
+  const healthPulse = (val: string | null | undefined) => {
+    if (val === "red" || val === "amber") return "animate-pulse";
+    return "";
+  };
+
+  const projectStatus = projectStatuses.find(s => s.value === (timeline.projectStatus || "not_started"));
+  const statusColor = timeline.projectStatus === "in_progress" ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" :
+    timeline.projectStatus === "complete" ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" :
+    timeline.projectStatus === "on_hold" ? "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200" :
+    "";
+
+  const budget = parseFloat(timeline.approvedBudget ?? "0") || 0;
+  const cost = parseFloat(timeline.totalRunningCost ?? "0") || 0;
+  const gm = budget > 0 ? ((budget - cost) / budget) * 100 : null;
+
   return (
-    <div className="min-h-screen bg-background">
+    <>
       <Helmet>
         <title>{`${timeline.title} | ${appTitleOnly}`}</title>
         <meta name="description" content={timeline.description || `View the ${timeline.title} project with ${timeline.milestones.length} milestones.`} />
         <meta property="og:title" content={`${timeline.title} | ${appTitleOnly}`} />
       </Helmet>
-      <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-3">
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={() => navigate("/projects")}
-              data-testid="button-back"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
-            <div className="flex items-center gap-2">
-              <div
-                className="w-2.5 h-2.5 rounded-full shrink-0"
-                style={{ backgroundColor: timeline.color }}
-              />
-              <h1 className="text-lg font-semibold" data-testid="text-timeline-title">
-                {timeline.title}
-              </h1>
-              {timeline.sourceOpportunityId && (
-                <Link href={`/opportunities/${timeline.sourceOpportunityId}`}>
-                  <Badge variant="outline" className="gap-1 text-xs cursor-pointer hover:bg-muted" data-testid="badge-source-opportunity">
-                    From Opportunity
+      <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
+        <div className="flex items-start gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate("/projects")}
+            data-testid="button-back"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div className="flex-1 min-w-0">
+            {!editing && (
+              <>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div
+                    className="w-2.5 h-2.5 rounded-full shrink-0"
+                    style={{ backgroundColor: timeline.color }}
+                  />
+                  <h1 className="text-2xl font-bold truncate" data-testid="text-timeline-title">
+                    {timeline.title}
+                  </h1>
+                  <Badge className={`${statusColor} border-0`} data-testid="badge-project-status">
+                    {projectStatus?.label || "Not Started"}
                   </Badge>
-                </Link>
-              )}
-              {!editing && (
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={startEditing}
-                  data-testid="button-edit-title"
-                >
-                  <Edit3 className="w-3.5 h-3.5" />
-                </Button>
-              )}
+                  {timeline.sourceOpportunityId && (
+                    <Link href={`/opportunities/${timeline.sourceOpportunityId}`}>
+                      <Badge variant="outline" className="gap-1 text-xs cursor-pointer hover:bg-muted" data-testid="badge-source-opportunity">
+                        From Opportunity
+                      </Badge>
+                    </Link>
+                  )}
+                  {(() => {
+                    const sorted = [...governanceStages].sort((a, b) => a.stageNumber - b.stageNumber);
+                    const current = sorted.find(s => s.id === timeline.flightpathStageId);
+                    if (current) {
+                      return (
+                        <Badge variant="outline" className="gap-1 text-xs" data-testid="badge-governance-stage">
+                          <ShieldCheck className="w-3 h-3" />
+                          Stage {current.stageNumber}: {current.name}
+                        </Badge>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+                {timeline.description && <p className="text-sm text-muted-foreground mt-1" data-testid="text-project-description">{timeline.description}</p>}
+                <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground flex-wrap">
+                  {(() => {
+                    const client = (clientsList || []).find(c => c.id === timeline.clientId);
+                    return client ? <span data-testid="text-project-client">{client.name}</span> : null;
+                  })()}
+                  {timeline.region && <span data-testid="text-project-region">{timeline.region}</span>}
+                  {timeline.projectType && <span>{projectTypes.find(p => p.value === timeline.projectType)?.label || timeline.projectType}</span>}
+                  {timeline.engagementModel && <span>{engagementModels.find(e => e.value === timeline.engagementModel)?.label || timeline.engagementModel}</span>}
+                  {timeline.dateFormat && <span data-testid="badge-date-format">{timeline.dateFormat}</span>}
+                  {timeline.startDate && <span>Start: {timeline.startDate}</span>}
+                  {timeline.endDate && <span>End: {timeline.endDate}</span>}
+                </div>
+              </>
+            )}
+          </div>
+          {!editing && (
+            <div className="flex items-center gap-2 shrink-0 flex-wrap">
+              <Button variant="outline" size="sm" onClick={startEditing} data-testid="button-edit-title">
+                <Edit3 className="w-4 h-4 mr-1" /> Edit
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant={filterMode === "milestones" ? "secondary" : "outline"}
+                    size="sm"
+                    data-testid="button-filter"
+                  >
+                    <ListFilter className="w-4 h-4 mr-1" />
+                    {filterMode === "all" ? "All" : "Milestones"}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setFilterMode("all")} data-testid="filter-all">
+                    <Calendar className="w-4 h-4 mr-2" />
+                    All (Milestones + Tasks)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setFilterMode("milestones")} data-testid="filter-milestones">
+                    <ClipboardList className="w-4 h-4 mr-2" />
+                    Milestones Only
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" disabled={exporting} data-testid="button-export">
+                    <Download className="w-4 h-4 mr-1" />
+                    {exporting ? "..." : "Export"}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => handleExport("png")} data-testid="button-export-png">
+                    <Image className="w-4 h-4 mr-2" />
+                    Download as PNG
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleExport("pdf")} data-testid="button-export-pdf">
+                    <FileText className="w-4 h-4 mr-2" />
+                    Download as PDF
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" data-testid="button-add-item">
+                    <Plus className="w-4 h-4 mr-1" />
+                    Add
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => { setShowAddForm(!showAddForm); setShowAddTaskForm(false); }}
+                    data-testid="button-add-milestone"
+                  >
+                    <Calendar className="w-4 h-4 mr-2" />
+                    Add Milestone
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => { setShowAddTaskForm(!showAddTaskForm); setShowAddForm(false); }}
+                    data-testid="button-add-task"
+                  >
+                    <ClipboardList className="w-4 h-4 mr-2" />
+                    Add Task
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant={filterMode === "milestones" ? "secondary" : "outline"}
-                  data-testid="button-filter"
-                >
-                  <ListFilter className="w-4 h-4 mr-2" />
-                  {filterMode === "all" ? "All" : "Milestones Only"}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setFilterMode("all")} data-testid="filter-all">
-                  <Calendar className="w-4 h-4 mr-2" />
-                  All (Milestones + Tasks)
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setFilterMode("milestones")} data-testid="filter-milestones">
-                  <ClipboardList className="w-4 h-4 mr-2" />
-                  Milestones Only
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" disabled={exporting} data-testid="button-export">
-                  <Download className="w-4 h-4 mr-2" />
-                  {exporting ? "Exporting..." : "Export"}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => handleExport("png")} data-testid="button-export-png">
-                  <Image className="w-4 h-4 mr-2" />
-                  Download as PNG
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleExport("pdf")} data-testid="button-export-pdf">
-                  <FileText className="w-4 h-4 mr-2" />
-                  Download as PDF
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" data-testid="button-add-item">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={() => { setShowAddForm(!showAddForm); setShowAddTaskForm(false); }}
-                  data-testid="button-add-milestone"
-                >
-                  <Calendar className="w-4 h-4 mr-2" />
-                  Add Milestone
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => { setShowAddTaskForm(!showAddTaskForm); setShowAddForm(false); }}
-                  data-testid="button-add-task"
-                >
-                  <ClipboardList className="w-4 h-4 mr-2" />
-                  Add Task
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+          )}
         </div>
-      </header>
 
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+        {(budget > 0 || cost > 0) && !editing && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Card>
+              <CardContent className="pt-3 pb-3">
+                <div className="metric-label">Approved Budget</div>
+                <div className="metric-value" data-testid="text-approved-budget">
+                  ${budget.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-3 pb-3">
+                <div className="metric-label">Running Cost</div>
+                <div className="metric-value" data-testid="text-total-running-cost">
+                  ${cost.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-3 pb-3">
+                <div className="metric-label">Gross Margin</div>
+                <div className={`metric-value ${
+                  gm === null ? "text-muted-foreground" :
+                  gm >= 30 ? "text-green-600 dark:text-green-400" :
+                  gm >= 15 ? "text-amber-600 dark:text-amber-400" :
+                  "text-red-600 dark:text-red-400"
+                }`} data-testid="text-gross-margin">
+                  {gm !== null ? `${gm.toFixed(1)}%` : "\u2014"}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-3 pb-3">
+                <div className="metric-label">Team</div>
+                <div className="metric-value" data-testid="text-team-count">
+                  {uniqueTeamMemberCount}
+                </div>
+                <div className="text-xs text-muted-foreground">{uniqueTeamMemberCount === 1 ? "member" : "members"} allocated</div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {!editing && (
+          <div className="flex items-center gap-6 flex-wrap">
+            {([
+              { key: "healthOverall", label: "Overall" },
+              { key: "scopeHealth", label: "Scope" },
+              { key: "budgetHealth", label: "Budget" },
+              { key: "teamHealth", label: "Team" },
+            ] as const).map(({ key, label }) => {
+              const val = (timeline as any)[key] || "green";
+              return (
+                <div key={key} className="flex items-center gap-2">
+                  <div className={`w-2.5 h-2.5 rounded-full ${healthColor(val)} ${healthPulse(val)}`} />
+                  <span className="text-xs text-muted-foreground">{label}</span>
+                  <select
+                    className="text-xs border rounded-md px-2 py-1 bg-background transition-smooth"
+                    value={val}
+                    onChange={async (e) => {
+                      await apiRequest("PATCH", `/api/timelines/${id}`, { [key]: e.target.value });
+                      queryClient.invalidateQueries({ queryKey: ["/api/timelines", id] });
+                      queryClient.invalidateQueries({ queryKey: ["/api/timelines"] });
+                    }}
+                    data-testid={`select-health-${key}`}
+                  >
+                    {taskHealthOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="space-y-6">
         {editing && (
-          <Card className="p-5 mb-6 space-y-4">
+          <Card className="p-5 space-y-4">
             <div className="space-y-3">
               <div className="flex gap-3 flex-wrap">
                 <div className="flex-1 min-w-[200px] space-y-1">
@@ -1899,6 +2048,7 @@ export default function TimelineDetail() {
                   <Input
                     value={editTitle}
                     onChange={(e) => setEditTitle(e.target.value)}
+                    className="text-xl font-bold"
                     data-testid="input-edit-title"
                   />
                 </div>
@@ -1912,9 +2062,138 @@ export default function TimelineDetail() {
                   />
                 </div>
               </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground">Theme</label>
-                <ThemePicker value={editColor} onChange={setEditColor} compact />
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Project Type</label>
+                  <select
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                    value={timeline.projectType || ""}
+                    onChange={async (e) => {
+                      await apiRequest("PATCH", `/api/timelines/${id}`, { projectType: e.target.value || null });
+                      queryClient.invalidateQueries({ queryKey: ["/api/timelines", id] });
+                      queryClient.invalidateQueries({ queryKey: ["/api/timelines"] });
+                    }}
+                    data-testid="select-project-type"
+                  >
+                    <option value="">Not set</option>
+                    {projectTypes.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Engagement</label>
+                  <select
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                    value={timeline.engagementModel || ""}
+                    onChange={async (e) => {
+                      await apiRequest("PATCH", `/api/timelines/${id}`, { engagementModel: e.target.value || null });
+                      queryClient.invalidateQueries({ queryKey: ["/api/timelines", id] });
+                      queryClient.invalidateQueries({ queryKey: ["/api/timelines"] });
+                    }}
+                    data-testid="select-engagement-model"
+                  >
+                    <option value="">Not set</option>
+                    {engagementModels.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Client</label>
+                  <select
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                    value={timeline.clientId || ""}
+                    onChange={async (e) => {
+                      await apiRequest("PATCH", `/api/timelines/${id}`, { clientId: e.target.value || null });
+                      queryClient.invalidateQueries({ queryKey: ["/api/timelines", id] });
+                      queryClient.invalidateQueries({ queryKey: ["/api/timelines"] });
+                    }}
+                    data-testid="select-client"
+                  >
+                    <option value="">Not set</option>
+                    {(clientsList || []).map((cl) => (
+                      <option key={cl.id} value={cl.id}>{cl.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Status</label>
+                  <select
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                    value={timeline.projectStatus || "not_started"}
+                    onChange={async (e) => {
+                      await apiRequest("PATCH", `/api/timelines/${id}`, { projectStatus: e.target.value });
+                      queryClient.invalidateQueries({ queryKey: ["/api/timelines", id] });
+                      queryClient.invalidateQueries({ queryKey: ["/api/timelines"] });
+                    }}
+                    data-testid="select-project-status"
+                  >
+                    {projectStatuses.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Region</label>
+                  <select
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                    value={timeline.region || ""}
+                    onChange={async (e) => {
+                      await apiRequest("PATCH", `/api/timelines/${id}`, { region: e.target.value || null });
+                      queryClient.invalidateQueries({ queryKey: ["/api/timelines", id] });
+                      queryClient.invalidateQueries({ queryKey: ["/api/timelines"] });
+                    }}
+                    data-testid="select-region"
+                  >
+                    <option value="">Not set</option>
+                    {regionOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Start Date</label>
+                  <input
+                    type="date"
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                    defaultValue={timeline.startDate ?? ""}
+                    key={`start-${timeline.startDate}`}
+                    onBlur={async (e) => {
+                      const val = e.target.value || null;
+                      if (val !== (timeline.startDate ?? null)) {
+                        await apiRequest("PATCH", `/api/timelines/${id}`, { startDate: val });
+                        queryClient.invalidateQueries({ queryKey: ["/api/timelines", id] });
+                        queryClient.invalidateQueries({ queryKey: ["/api/timelines"] });
+                      }
+                    }}
+                    data-testid="input-project-start-date"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">End Date</label>
+                  <input
+                    type="date"
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                    defaultValue={timeline.endDate ?? ""}
+                    key={`end-${timeline.endDate}`}
+                    onBlur={async (e) => {
+                      const val = e.target.value || null;
+                      if (val !== (timeline.endDate ?? null)) {
+                        await apiRequest("PATCH", `/api/timelines/${id}`, { endDate: val });
+                        queryClient.invalidateQueries({ queryKey: ["/api/timelines", id] });
+                        queryClient.invalidateQueries({ queryKey: ["/api/timelines"] });
+                      }
+                    }}
+                    data-testid="input-project-end-date"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Theme</label>
+                  <ThemePicker value={editColor} onChange={setEditColor} compact />
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-2 justify-end">
@@ -1923,254 +2202,22 @@ export default function TimelineDetail() {
                 onClick={() => setEditing(false)}
                 data-testid="button-cancel-edit"
               >
-                Cancel
+                <X className="w-4 h-4 mr-1" /> Cancel
               </Button>
               <Button
                 onClick={() => updateMutation.mutate()}
                 disabled={!editTitle.trim() || updateMutation.isPending}
                 data-testid="button-save-edit"
               >
-                <Save className="w-4 h-4 mr-2" />
-                {updateMutation.isPending ? "Saving..." : "Save Changes"}
+                <Save className="w-4 h-4 mr-1" />
+                {updateMutation.isPending ? "Saving..." : "Save"}
               </Button>
             </div>
           </Card>
         )}
 
-        {timeline.description && !editing && (
-          <p className="text-sm text-muted-foreground mb-6">{timeline.description}</p>
-        )}
-
-        {!editing && (
-          <Card className="p-4 mb-6">
-            <div className="flex items-center gap-6 flex-wrap mb-4">
-              <div className="flex items-center gap-2">
-                <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Project Type</label>
-                <select
-                  className="text-xs border rounded px-2 py-1 bg-background"
-                  value={timeline.projectType || ""}
-                  onChange={async (e) => {
-                    await apiRequest("PATCH", `/api/timelines/${id}`, { projectType: e.target.value || null });
-                    queryClient.invalidateQueries({ queryKey: ["/api/timelines", id] });
-                    queryClient.invalidateQueries({ queryKey: ["/api/timelines"] });
-                  }}
-                  data-testid="select-project-type"
-                >
-                  <option value="">Not set</option>
-                  {projectTypes.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Engagement Model</label>
-                <select
-                  className="text-xs border rounded px-2 py-1 bg-background"
-                  value={timeline.engagementModel || ""}
-                  onChange={async (e) => {
-                    await apiRequest("PATCH", `/api/timelines/${id}`, { engagementModel: e.target.value || null });
-                    queryClient.invalidateQueries({ queryKey: ["/api/timelines", id] });
-                    queryClient.invalidateQueries({ queryKey: ["/api/timelines"] });
-                  }}
-                  data-testid="select-engagement-model"
-                >
-                  <option value="">Not set</option>
-                  {engagementModels.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Client</label>
-                <select
-                  className="text-xs border rounded px-2 py-1 bg-background"
-                  value={timeline.clientId || ""}
-                  onChange={async (e) => {
-                    await apiRequest("PATCH", `/api/timelines/${id}`, { clientId: e.target.value || null });
-                    queryClient.invalidateQueries({ queryKey: ["/api/timelines", id] });
-                    queryClient.invalidateQueries({ queryKey: ["/api/timelines"] });
-                  }}
-                  data-testid="select-client"
-                >
-                  <option value="">Not set</option>
-                  {(clientsList || []).map((cl) => (
-                    <option key={cl.id} value={cl.id}>{cl.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Status</label>
-                <select
-                  className="text-xs border rounded px-2 py-1 bg-background"
-                  value={timeline.projectStatus || "not_started"}
-                  onChange={async (e) => {
-                    await apiRequest("PATCH", `/api/timelines/${id}`, { projectStatus: e.target.value });
-                    queryClient.invalidateQueries({ queryKey: ["/api/timelines", id] });
-                    queryClient.invalidateQueries({ queryKey: ["/api/timelines"] });
-                  }}
-                  data-testid="select-project-status"
-                >
-                  {projectStatuses.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Region</label>
-                <select
-                  className="text-xs border rounded px-2 py-1 bg-background"
-                  value={timeline.region || ""}
-                  onChange={async (e) => {
-                    await apiRequest("PATCH", `/api/timelines/${id}`, { region: e.target.value || null });
-                    queryClient.invalidateQueries({ queryKey: ["/api/timelines", id] });
-                    queryClient.invalidateQueries({ queryKey: ["/api/timelines"] });
-                  }}
-                  data-testid="select-region"
-                >
-                  <option value="">Not set</option>
-                  {regionOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-              </div>
-              {timeline.dateFormat && (
-                <div className="flex items-center gap-2">
-                  <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Date Format</label>
-                  <Badge variant="outline" className="text-xs" data-testid="badge-date-format">{timeline.dateFormat}</Badge>
-                </div>
-              )}
-              <div className="flex items-center gap-2">
-                <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Governance Stage</label>
-                {(() => {
-                  const sorted = [...governanceStages].sort((a, b) => a.stageNumber - b.stageNumber);
-                  const current = sorted.find(s => s.id === timeline.flightpathStageId);
-                  if (current) {
-                    return (
-                      <Badge className="text-xs flex items-center gap-1" data-testid="badge-governance-stage">
-                        <ShieldCheck className="w-3 h-3" />
-                        Stage {current.stageNumber}: {current.name}
-                      </Badge>
-                    );
-                  }
-                  return (
-                    <Badge variant="secondary" className="text-xs" data-testid="badge-governance-stage">
-                      Not Started
-                    </Badge>
-                  );
-                })()}
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Start Date</label>
-                <input
-                  type="date"
-                  className="text-xs border rounded px-2 py-1 bg-background"
-                  defaultValue={timeline.startDate ?? ""}
-                  key={`start-${timeline.startDate}`}
-                  onBlur={async (e) => {
-                    const val = e.target.value || null;
-                    if (val !== (timeline.startDate ?? null)) {
-                      await apiRequest("PATCH", `/api/timelines/${id}`, { startDate: val });
-                      queryClient.invalidateQueries({ queryKey: ["/api/timelines", id] });
-                      queryClient.invalidateQueries({ queryKey: ["/api/timelines"] });
-                    }
-                  }}
-                  data-testid="input-project-start-date"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">End Date</label>
-                <input
-                  type="date"
-                  className="text-xs border rounded px-2 py-1 bg-background"
-                  defaultValue={timeline.endDate ?? ""}
-                  key={`end-${timeline.endDate}`}
-                  onBlur={async (e) => {
-                    const val = e.target.value || null;
-                    if (val !== (timeline.endDate ?? null)) {
-                      await apiRequest("PATCH", `/api/timelines/${id}`, { endDate: val });
-                      queryClient.invalidateQueries({ queryKey: ["/api/timelines", id] });
-                      queryClient.invalidateQueries({ queryKey: ["/api/timelines"] });
-                    }
-                  }}
-                  data-testid="input-project-end-date"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Approved Budget</label>
-                <span className="text-xs font-semibold px-2 py-1" data-testid="text-approved-budget">
-                  {timeline.approvedBudget ? `$${parseFloat(timeline.approvedBudget).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—"}
-                </span>
-                <span className="text-[10px] text-muted-foreground italic">(sum of financial obligations)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Total Running Cost</label>
-                <span className="text-xs font-semibold px-2 py-1" data-testid="text-total-running-cost">
-                  {timeline.totalRunningCost ? `$${parseFloat(timeline.totalRunningCost).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—"}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Gross Margin</label>
-                {(() => {
-                  const budget = parseFloat(timeline.approvedBudget ?? "0") || 0;
-                  const cost = parseFloat(timeline.totalRunningCost ?? "0") || 0;
-                  const gm = budget > 0 ? ((budget - cost) / budget) * 100 : null;
-                  return (
-                    <span
-                      className={`text-xs font-semibold px-2 py-1 rounded ${
-                        gm === null ? "text-muted-foreground" :
-                        gm >= 30 ? "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950" :
-                        gm >= 15 ? "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950" :
-                        "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950"
-                      }`}
-                      data-testid="text-gross-margin"
-                    >
-                      {gm !== null ? `${gm.toFixed(1)}%` : "—"}
-                    </span>
-                  );
-                })()}
-              </div>
-            </div>
-            <h4 className="text-xs font-medium text-muted-foreground mb-3">Health</h4>
-            <div className="flex items-center gap-6 flex-wrap">
-              {([
-                { key: "healthOverall", label: "Overall" },
-                { key: "scopeHealth", label: "Scope" },
-                { key: "budgetHealth", label: "Budget" },
-                { key: "teamHealth", label: "Team Composition" },
-              ] as const).map(({ key, label }) => (
-                <div key={key} className="flex items-center gap-2">
-                  <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">{label}</label>
-                  <select
-                    className="text-xs border rounded px-2 py-1 bg-background"
-                    value={(timeline as any)[key] || "green"}
-                    onChange={async (e) => {
-                      await apiRequest("PATCH", `/api/timelines/${id}`, { [key]: e.target.value });
-                      queryClient.invalidateQueries({ queryKey: ["/api/timelines", id] });
-                      queryClient.invalidateQueries({ queryKey: ["/api/timelines"] });
-                    }}
-                    data-testid={`select-health-${key}`}
-                  >
-                    {taskHealthOptions.map((opt) => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
-                  </select>
-                  <div
-                    className="w-3 h-3 rounded-full"
-                    style={{
-                      backgroundColor:
-                        (timeline as any)[key] === "green" ? "#22c55e" :
-                        (timeline as any)[key] === "amber" ? "#f59e0b" :
-                        (timeline as any)[key] === "red" ? "#ef4444" : "#94a3b8"
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
-          </Card>
-        )}
-
         {showAddForm && (
-          <Card className="p-4 mb-6">
+          <Card className="p-4">
             <h4 className="text-xs font-medium text-muted-foreground mb-3">New Milestone</h4>
             <div className="flex items-end gap-3 flex-wrap">
               <div className="flex-1 min-w-[160px]">
@@ -2246,7 +2293,7 @@ export default function TimelineDetail() {
         )}
 
         {showAddTaskForm && (
-          <Card className="p-4 mb-6">
+          <Card className="p-4">
             <h4 className="text-xs font-medium text-muted-foreground mb-3">New Task</h4>
             <div className="flex items-end gap-3 flex-wrap">
               <div className="flex-1 min-w-[160px]">
@@ -2389,7 +2436,7 @@ export default function TimelineDetail() {
           </Card>
         )}
 
-        <div className="mb-4 flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
           <Badge variant="secondary">
             {timeline.milestones.length} milestone{timeline.milestones.length !== 1 ? "s" : ""}
           </Badge>
@@ -2412,7 +2459,7 @@ export default function TimelineDetail() {
           />
         </div>
 
-        <Tabs defaultValue="milestones" className="mt-8" data-testid="manage-tabs">
+        <Tabs defaultValue="milestones" data-testid="manage-tabs">
           <TabsList className="mb-4">
             <TabsTrigger value="milestones" data-testid="tab-milestones">
               Milestones ({timeline.milestones.length})
@@ -2675,7 +2722,8 @@ export default function TimelineDetail() {
             <RaidLog timelineId={timeline.id} />
           </TabsContent>
         </Tabs>
-      </main>
-    </div>
+        </div>
+      </div>
+    </>
   );
 }

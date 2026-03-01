@@ -269,7 +269,7 @@ export default function ContactsList() {
     const active = sortField === field;
     return (
       <th
-        className={`font-medium text-muted-foreground px-3 py-2 whitespace-nowrap cursor-pointer select-none hover:text-foreground transition-colors ${align === "center" ? "text-center" : "text-left"}`}
+        className={`table-header-cell px-3 py-2 cursor-pointer hover:text-foreground transition-colors ${align === "center" ? "text-center" : "text-left"}`}
         onClick={() => toggleSort(field)}
         data-testid={`sort-${field}`}
       >
@@ -278,7 +278,7 @@ export default function ContactsList() {
           {active ? (
             sortDir === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
           ) : (
-            <ArrowUpDown className="w-3 h-3 opacity-30" />
+            <ArrowUpDown className="w-3 h-3 opacity-20" />
           )}
         </div>
       </th>
@@ -357,19 +357,19 @@ export default function ContactsList() {
         </div>
       ) : !contacts || contacts.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 text-center">
-          <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-6">
-            <Users className="w-8 h-8 text-muted-foreground" />
+          <div className="w-14 h-14 rounded-full bg-muted/60 flex items-center justify-center mb-5">
+            <Users className="w-7 h-7 text-muted-foreground/70" />
           </div>
-          <h2 className="text-xl font-semibold mb-2" data-testid="text-empty-title">No contacts yet</h2>
-          <p className="text-muted-foreground mb-6 max-w-md" data-testid="text-empty-description">
+          <h2 className="text-lg font-semibold mb-1.5" data-testid="text-empty-title">No contacts yet</h2>
+          <p className="text-sm text-muted-foreground mb-5 max-w-sm" data-testid="text-empty-description">
             Contacts are created from the client detail page. Navigate to a client and add contacts there.
           </p>
         </div>
       ) : processedContacts.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center" data-testid="empty-search-results">
-          <Search className="w-10 h-10 text-muted-foreground mb-4" />
-          <h2 className="text-lg font-semibold mb-1">No matching contacts</h2>
-          <p className="text-sm text-muted-foreground mb-3">
+          <Search className="w-8 h-8 text-muted-foreground/60 mb-3" />
+          <h2 className="text-base font-semibold mb-1">No matching contacts</h2>
+          <p className="text-xs text-muted-foreground mb-3">
             No contacts match your current filters. Try adjusting your search or filters.
           </p>
           <Button variant="outline" size="sm" onClick={clearAllFilters} data-testid="button-clear-filters-empty">
@@ -444,7 +444,7 @@ export default function ContactsList() {
                   return (
                     <tr
                       key={contact.id}
-                      className={`border-b last:border-b-0 transition-colors ${dirty ? "bg-yellow-50 dark:bg-yellow-950" : ""}`}
+                      className={`border-b last:border-b-0 table-row-hover ${dirty ? "bg-yellow-50 dark:bg-yellow-950" : ""}`}
                       data-testid={`row-contact-${contact.id}`}
                     >
                       <td className="px-3 py-1.5">
