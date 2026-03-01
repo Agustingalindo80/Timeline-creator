@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,7 +25,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Plus, Trash2, ChevronDown, ChevronRight, Edit3, Calculator, TrendingUp, Clock, DollarSign, Users } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronRight, Edit3, Calculator, TrendingUp, Clock, DollarSign, Users, Download, Upload, Loader2 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { TimelineWithMilestones, Task, RateCard, WorkstreamResource, TeamMember } from "@shared/schema";
@@ -70,6 +70,8 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
   const [newResNotes, setNewResNotes] = useState("");
   const [localRiskPercent, setLocalRiskPercent] = useState(0);
   const [localBufferPercent, setLocalBufferPercent] = useState(0);
+  const [isImporting, setIsImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: allRateCards = [] } = useQuery<RateCard[]>({
     queryKey: ["/api/rate-cards"],
@@ -292,6 +294,54 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
     });
     setEditingResource(null);
     setEditResourceOpen(false);
+  };
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const res = await fetch("/api/estimate-template");
+      if (!res.ok) throw new Error("Failed to download template");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "estimate-template.xlsx";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleImportTemplate = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsImporting(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch(`/api/timelines/${timeline.id}/import-estimate`, {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Import failed");
+      }
+      const result = await res.json();
+      queryClient.invalidateQueries({ queryKey: ["/api/timelines", timeline.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/timelines", timeline.id, "workstream-resources"] });
+      toast({
+        title: "Import Complete",
+        description: `${result.phasesCreated} phase(s), ${result.workstreamsCreated} workstream(s), ${result.resourcesCreated} resource(s) created. ${result.rowsSkipped > 0 ? `${result.rowsSkipped} row(s) skipped.` : ""}`,
+      });
+    } catch (err: any) {
+      toast({ title: "Import Failed", description: err.message, variant: "destructive" });
+    } finally {
+      setIsImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
 
   const getRateCard = (roleId: string | null | undefined): RateCard | undefined => {
@@ -612,10 +662,27 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Backlog</h3>
-            <Button size="sm" onClick={() => { setNewTaskTitle(""); setAddPhaseOpen(true); }} data-testid="button-add-phase">
-              <Plus className="w-4 h-4 mr-1" /> Add Phase
-            </Button>
+            <h3 className="text-lg font-semibold">Planned Effort / Scope</h3>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" onClick={handleDownloadTemplate} data-testid="button-download-template">
+                <Download className="w-4 h-4 mr-1" /> Download Template
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isImporting} data-testid="button-import-template">
+                {isImporting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Upload className="w-4 h-4 mr-1" />}
+                {isImporting ? "Importing..." : "Import from Template"}
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                className="hidden"
+                onChange={handleImportTemplate}
+                data-testid="input-import-file"
+              />
+              <Button size="sm" onClick={() => { setNewTaskTitle(""); setAddPhaseOpen(true); }} data-testid="button-add-phase">
+                <Plus className="w-4 h-4 mr-1" /> Add Phase
+              </Button>
+            </div>
           </div>
 
           {phases.length === 0 && (
