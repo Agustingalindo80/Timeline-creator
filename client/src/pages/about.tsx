@@ -24,6 +24,12 @@ import {
   AlertTriangle,
   Compass,
   Bot,
+  Target,
+  Calculator,
+  ArrowRightLeft,
+  Upload,
+  UserCheck,
+  Milestone,
 } from "lucide-react";
 
 const coreModules = [
@@ -43,9 +49,19 @@ const coreModules = [
     description: "Create and manage projects with visual timelines, milestones, hierarchical phases and workstreams, and configurable health indicators across four dimensions.",
   },
   {
+    icon: Target,
+    title: "Opportunities & Pre-Sales",
+    description: "Full pre-sales pipeline with opportunity lifecycle management (Qualifying, Estimating, Proposed, Won, Lost). Price-driven financial model with risk and buffer adjustments. Stage 0 governance gate and one-click conversion to delivery projects.",
+  },
+  {
+    icon: Calculator,
+    title: "Resource-Based Estimation",
+    description: "Build detailed estimates with hierarchical phases and workstreams. Assign multiple resources per workstream using rate cards, with duration-based hour calculations, confidence levels, and automatic financial roll-ups for pricing and cost.",
+  },
+  {
     icon: Users,
     title: "Team & Resource Management",
-    description: "Track team members, define rate cards by role and region, assign resources to projects, and plan weekly allocations across the portfolio.",
+    description: "Track team members, define rate cards by role and region, assign resources to projects, and plan weekly allocations across the portfolio. Supports role-only entries for pre-sales planning with automatic team sync from estimates.",
   },
   {
     icon: Clock,
@@ -97,8 +113,8 @@ const keyCapabilities = [
   },
   {
     icon: DollarSign,
-    title: "Financial Tracking",
-    description: "Approved budget, total running cost, and gross margin calculated automatically from milestones, allocations, and rate cards.",
+    title: "Price-Driven Financial Model",
+    description: "Opportunities use a price-driven model: Base Price (hours x bill rate), Risk-Adjusted Price, and Buffered Price with configurable risk and buffer percentages. Gross Margin calculated as (Buffered Price - Base Cost) / Buffered Price. Projects track approved budget, running cost, and margin.",
   },
   {
     icon: Heart,
@@ -129,6 +145,26 @@ const keyCapabilities = [
     icon: FolderKanban,
     title: "Document Repository Integration",
     description: "Connect Google Drive or SharePoint folders to projects. Link deliverable artifacts to governance checkpoints and run AI-powered verification to ensure documents meet requirements.",
+  },
+  {
+    icon: ArrowRightLeft,
+    title: "Convert to Project",
+    description: "One-click conversion from won opportunities to delivery projects. Copies phases, workstreams, resources, team composition, allocations, and RAID items. Role-only team entries carry over as positions to fill.",
+  },
+  {
+    icon: Milestone,
+    title: "Stage 0 Pre-Sales Governance",
+    description: "Six pre-sales deliverables (Deal Context, Scope Definition Pack, Solution Approach, Delivery Feasibility Review, SOW, Sales-to-Delivery Handoff Pack) with RACI matrices and a Commercial & Operational Authorization gate.",
+  },
+  {
+    icon: Upload,
+    title: "Estimate Template Import/Export",
+    description: "Download a pre-formatted Excel template to define phases, workstreams, and resources offline. Import the completed template to bulk-create the estimate hierarchy with automatic duplicate detection.",
+  },
+  {
+    icon: UserCheck,
+    title: "Sync from Estimate",
+    description: "Auto-populate team composition from workstream resources. Consolidates by rate card, calculates required FTEs using peak concurrent hours, and computes the delta against existing team entries.",
   },
   {
     icon: FileSpreadsheet,
@@ -189,9 +225,9 @@ export default function AboutPage() {
         <div className="text-center max-w-3xl mx-auto" data-testid="about-overview">
           <p className="text-sm leading-relaxed text-muted-foreground">
             A unified platform for project managers to plan, execute, and monitor projects with full visibility into
-            scope, schedule, cost, and team performance. From initial value framing through to value realization,
-            the platform combines traditional project management with stage-gated governance and AI-powered insights
-            to keep projects on track and stakeholders informed.
+            scope, schedule, cost, and team performance. From pre-sales opportunity estimation through stage-gated
+            delivery to value realization, the platform combines resource-based pricing, traditional project management,
+            AI-powered governance, and earned value analysis to keep projects on track and stakeholders informed.
           </p>
         </div>
 
