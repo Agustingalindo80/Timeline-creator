@@ -1,4 +1,15 @@
 import { useState, useRef, useCallback, useMemo, Fragment } from "react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  ReferenceLine,
+  ResponsiveContainer,
+  Legend,
+  Tooltip as RechartsTooltip,
+} from "recharts";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, useLocation, Link } from "wouter";
 import { Helmet } from "react-helmet-async";
@@ -893,6 +904,108 @@ function EVMTab({ timelineId, tasks, approvedBudget }: { timelineId: string; tas
           </CardContent>
         </Card>
       </div>
+
+      {weeklyData.length > 1 && (
+        <Card data-testid="chart-evm-scurve">
+          <CardContent className="pt-4 pb-4">
+            <h3 className="text-sm font-semibold mb-3">S-Curve (PV / AC / EV)</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={weeklyData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="week"
+                  tickFormatter={(val: string) => {
+                    const d = new Date(val + "T00:00:00");
+                    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                  }}
+                />
+                <YAxis
+                  tickFormatter={(val: number) => `$${val.toLocaleString()}`}
+                />
+                <RechartsTooltip
+                  content={({ active, payload, label }) => {
+                    if (!active || !payload?.length) return null;
+                    const d = new Date(label + "T00:00:00");
+                    const weekLabel = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+                    return (
+                      <div className="rounded-lg border bg-background p-2 shadow-md text-xs">
+                        <div className="font-medium mb-1">{weekLabel}</div>
+                        {payload.map((entry: any) => (
+                          <div key={entry.dataKey} className="flex items-center gap-2">
+                            <span style={{ color: entry.color }}>{entry.name}:</span>
+                            <span className="font-mono">${fmt(entry.value)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  }}
+                />
+                <Legend />
+                <ReferenceLine y={bac} stroke="#9CA3AF" strokeDasharray="5 5" label={{ value: "BAC", position: "right", fontSize: 11 }} />
+                <Line type="monotone" dataKey="pv" name="PV" stroke="#3B82F6" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} />
+                <Line type="monotone" dataKey="ac" name="AC" stroke="#EF4444" strokeWidth={2} dot={{ r: 3 }} />
+                <Line type="monotone" dataKey="ev" name="EV" stroke="#22C55E" strokeWidth={2} dot={{ r: 3 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
+
+      {(() => {
+        const trendData = evmSnapshots.map(snap => ({
+          week: snap.weekEnding,
+          spi: parseFloat(snap.spiValue || "0"),
+          cpi: parseFloat(snap.cpiValue || "0"),
+        }));
+        const hasCurrentSnap = evmSnapshots.some(s => s.weekEnding === currentWeekEnding);
+        if (!hasCurrentSnap) {
+          trendData.push({ week: currentWeekEnding, spi, cpi });
+        }
+        trendData.sort((a, b) => a.week.localeCompare(b.week));
+        if (trendData.length < 2) return null;
+        return (
+          <Card data-testid="chart-evm-performance">
+            <CardContent className="pt-4 pb-4">
+              <h3 className="text-sm font-semibold mb-3">Performance Trends (CPI / SPI)</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={trendData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="week"
+                    tickFormatter={(val: string) => {
+                      const d = new Date(val + "T00:00:00");
+                      return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                    }}
+                  />
+                  <YAxis domain={[0, 'auto']} />
+                  <RechartsTooltip
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload?.length) return null;
+                      const d = new Date(label + "T00:00:00");
+                      const weekLabel = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+                      return (
+                        <div className="rounded-lg border bg-background p-2 shadow-md text-xs">
+                          <div className="font-medium mb-1">{weekLabel}</div>
+                          {payload.map((entry: any) => (
+                            <div key={entry.dataKey} className="flex items-center gap-2">
+                              <span style={{ color: entry.color }}>{entry.name}:</span>
+                              <span className="font-mono">{parseFloat(entry.value).toFixed(2)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    }}
+                  />
+                  <Legend />
+                  <ReferenceLine y={1.0} stroke="#9CA3AF" strokeDasharray="5 5" label={{ value: "Target", position: "right", fontSize: 11 }} />
+                  <Line type="monotone" dataKey="spi" name="SPI" stroke="#3B82F6" strokeWidth={2} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="cpi" name="CPI" stroke="#22C55E" strokeWidth={2} dot={{ r: 3 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">

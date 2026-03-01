@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Helmet } from "react-helmet-async";
-import { Shield, Plus, X, UserCog, ScrollText, Grid3X3, Check, Edit3, Trash2 } from "lucide-react";
+import { Shield, Plus, X, UserCog, ScrollText, Grid3X3, Check, Edit3, Trash2, Link2, Unlink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -478,10 +478,19 @@ function RolesManager() {
   );
 }
 
+type TeamMemberBasic = {
+  id: string;
+  name: string;
+  email: string | null;
+  userId: string | null;
+};
+
 function UsersRolesManager() {
   const { toast } = useToast();
   const [assigningUserId, setAssigningUserId] = useState<string | null>(null);
   const [selectedRoleId, setSelectedRoleId] = useState<string>("");
+  const [linkingUserId, setLinkingUserId] = useState<string | null>(null);
+  const [selectedTeamMemberId, setSelectedTeamMemberId] = useState<string>("");
 
   const { data: users = [], isLoading: usersLoading } = useQuery<RbacUser[]>({
     queryKey: ["/api/rbac/users"],
@@ -491,6 +500,15 @@ function UsersRolesManager() {
     queryKey: ["/api/rbac/roles"],
   });
 
+  const { data: allTeamMembers = [] } = useQuery<TeamMemberBasic[]>({
+    queryKey: ["/api/team-members"],
+  });
+
+  const availableTeamMembers = useMemo(() => {
+    const linkedUserIds = new Set(users.filter(u => u.teamMember).map(u => u.id));
+    return allTeamMembers.filter(tm => !tm.userId || linkedUserIds.has(tm.userId) === false);
+  }, [allTeamMembers, users]);
+
   const assignRoleMutation = useMutation({
     mutationFn: async ({ userId, roleId }: { userId: string; roleId: string }) => {
       await apiRequest("POST", `/api/rbac/users/${userId}/roles`, { roleId });
@@ -498,7 +516,6 @@ function UsersRolesManager() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/rbac/users"] });
       toast({ title: "Role assigned" });
-      setAssigningUserId(null);
       setSelectedRoleId("");
     },
   });
@@ -510,6 +527,36 @@ function UsersRolesManager() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/rbac/users"] });
       toast({ title: "Role removed" });
+    },
+  });
+
+  const linkTeamMemberMutation = useMutation({
+    mutationFn: async ({ userId, teamMemberId }: { userId: string; teamMemberId: string }) => {
+      await apiRequest("POST", `/api/rbac/users/${userId}/link-team-member`, { teamMemberId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/rbac/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/team-members"] });
+      toast({ title: "Team member linked" });
+      setLinkingUserId(null);
+      setSelectedTeamMemberId("");
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed to link", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const unlinkTeamMemberMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      await apiRequest("POST", `/api/rbac/users/${userId}/unlink-team-member`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/rbac/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/team-members"] });
+      toast({ title: "Team member unlinked" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed to unlink", description: err.message, variant: "destructive" });
     },
   });
 
@@ -550,33 +597,98 @@ function UsersRolesManager() {
               <tbody>
                 {users.map((user) => (
                   <tr key={user.id} className="table-row-hover border-t border-border" data-testid={`row-user-${user.id}`}>
-                    <td className="px-4 py-3 text-sm">
+                    <td className="px-4 py-3 text-sm font-medium" data-testid={`text-user-name-${user.id}`}>
                       {[user.firstName, user.lastName].filter(Boolean).join(" ") || "—"}
                     </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">
                       {user.email || "—"}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-1">
+                      <div className="flex flex-wrap items-center gap-1.5">
                         {user.orgRoles.map((role) => (
-                          <Badge key={role.roleId} variant="secondary" className="text-xs gap-1">
-                            {role.roleName}
-                            <button
+                          <div key={role.roleId} className="flex items-center gap-0.5">
+                            <Badge variant="secondary" className="text-xs" data-testid={`badge-role-${user.id}-${role.roleId}`}>
+                              {role.roleName}
+                            </Badge>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-5 w-5"
                               onClick={() => removeRoleMutation.mutate({ userId: user.id, roleId: role.roleId })}
-                              className="ml-0.5 rounded-full"
+                              disabled={removeRoleMutation.isPending}
                               data-testid={`button-remove-role-${user.id}-${role.roleId}`}
                             >
                               <X className="w-3 h-3" />
-                            </button>
-                          </Badge>
+                            </Button>
+                          </div>
                         ))}
                         {user.orgRoles.length === 0 && (
                           <span className="text-xs text-muted-foreground">No roles</span>
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">
-                      {user.teamMember ? user.teamMember.name : "—"}
+                    <td className="px-4 py-3">
+                      {user.teamMember ? (
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <Badge variant="secondary" className="text-xs" data-testid={`badge-team-member-${user.id}`}>
+                            <Link2 className="w-3 h-3 mr-1" />
+                            {user.teamMember.name}
+                          </Badge>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-6 w-6"
+                            onClick={() => unlinkTeamMemberMutation.mutate(user.id)}
+                            disabled={unlinkTeamMemberMutation.isPending}
+                            data-testid={`button-unlink-tm-${user.id}`}
+                          >
+                            <Unlink className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      ) : linkingUserId === user.id ? (
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Select value={selectedTeamMemberId} onValueChange={setSelectedTeamMemberId}>
+                            <SelectTrigger className="h-8 w-44 text-xs" data-testid={`select-team-member-${user.id}`}>
+                              <SelectValue placeholder="Select team member..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {availableTeamMembers.map((tm) => (
+                                <SelectItem key={tm.id} value={tm.id} data-testid={`select-item-tm-${tm.id}`}>{tm.name}{tm.email ? ` (${tm.email})` : ""}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              if (selectedTeamMemberId) {
+                                linkTeamMemberMutation.mutate({ userId: user.id, teamMemberId: selectedTeamMemberId });
+                              }
+                            }}
+                            disabled={!selectedTeamMemberId || linkTeamMemberMutation.isPending}
+                            data-testid={`button-confirm-link-${user.id}`}
+                          >
+                            {linkTeamMemberMutation.isPending ? "..." : "Link"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => { setLinkingUserId(null); setSelectedTeamMemberId(""); }}
+                            data-testid={`button-cancel-link-${user.id}`}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setLinkingUserId(user.id)}
+                          data-testid={`button-link-tm-${user.id}`}
+                        >
+                          <Link2 className="w-3 h-3 mr-1" />
+                          Link
+                        </Button>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       {assigningUserId === user.id ? (
@@ -589,7 +701,7 @@ function UsersRolesManager() {
                               {roles
                                 .filter((r) => !user.orgRoles.some((ur) => ur.roleId === r.id))
                                 .map((r) => (
-                                  <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                                  <SelectItem key={r.id} value={r.id} data-testid={`select-item-role-${r.id}`}>{r.name}</SelectItem>
                                 ))}
                             </SelectContent>
                           </Select>
@@ -601,6 +713,7 @@ function UsersRolesManager() {
                               }
                             }}
                             disabled={!selectedRoleId || assignRoleMutation.isPending}
+                            data-testid={`button-confirm-assign-${user.id}`}
                           >
                             {assignRoleMutation.isPending ? "..." : "Assign"}
                           </Button>
@@ -608,8 +721,9 @@ function UsersRolesManager() {
                             size="sm"
                             variant="ghost"
                             onClick={() => { setAssigningUserId(null); setSelectedRoleId(""); }}
+                            data-testid={`button-done-assign-${user.id}`}
                           >
-                            Cancel
+                            Done
                           </Button>
                         </div>
                       ) : (

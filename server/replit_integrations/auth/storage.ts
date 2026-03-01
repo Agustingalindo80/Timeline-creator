@@ -1,7 +1,8 @@
 import { users, type User, type UpsertUser } from "@shared/models/auth";
 import { orgRoles, userOrgRoles } from "@shared/models/rbac";
+import { teamMembers } from "@shared/schema";
 import { db } from "../../db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 
 export interface IAuthStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -31,6 +32,7 @@ class AuthStorage implements IAuthStorage {
 
     if (!existingUser) {
       await this.assignDefaultRole(user.id);
+      await this.autoLinkTeamMember(user);
     }
 
     return user;
@@ -67,6 +69,26 @@ class AuthStorage implements IAuthStorage {
       }
     } catch (err) {
       console.error("Failed to assign default role:", err);
+    }
+  }
+  private async autoLinkTeamMember(user: User): Promise<void> {
+    try {
+      if (!user.email) return;
+      const [tm] = await db.select()
+        .from(teamMembers)
+        .where(and(
+          eq(teamMembers.email, user.email),
+          isNull(teamMembers.userId),
+        ))
+        .limit(1);
+      if (tm) {
+        await db.update(teamMembers)
+          .set({ userId: user.id })
+          .where(eq(teamMembers.id, tm.id));
+        console.log(`Auto-linked team member "${tm.name}" to user ${user.id} (email match: ${user.email})`);
+      }
+    } catch (err) {
+      console.error("Failed to auto-link team member:", err);
     }
   }
 }

@@ -2778,6 +2778,26 @@ Respond ONLY with valid JSON:
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
+  app.post("/api/rbac/users/:userId/link-team-member", requireModuleAccess("admin"), requirePermission("users.manage"), async (req, res) => {
+    try {
+      const { teamMemberId } = req.body;
+      if (!teamMemberId) return res.status(400).json({ message: "teamMemberId is required" });
+      await storage.linkTeamMemberToUser(teamMemberId, req.params.userId as string);
+      invalidatePermissionCache(req.params.userId as string);
+      res.json({ success: true });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.post("/api/rbac/users/:userId/unlink-team-member", requireModuleAccess("admin"), requirePermission("users.manage"), async (req, res) => {
+    try {
+      const tm = await storage.getTeamMemberByUserId(req.params.userId as string);
+      if (!tm) return res.status(404).json({ message: "No linked team member found" });
+      await storage.unlinkTeamMemberFromUser(tm.id);
+      invalidatePermissionCache(req.params.userId as string);
+      res.json({ success: true });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
   app.get("/api/rbac/objects/:objectType/:objectId/assignments", async (req, res) => {
     try {
       const assignments = await storage.getObjectAssignments(req.params.objectType, req.params.objectId, "default");

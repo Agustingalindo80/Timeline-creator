@@ -33,7 +33,7 @@ The application uses a modern web stack with React, Vite, Tailwind CSS, and shad
 - **Resource-Based Estimation:** Workstreams use multi-resource assignments with rate cards, calculating estimated hours, cost, and revenue.
 - **Timesheet Management:** Global page for tracking daily effort.
 - **Progress Tracking:** Project-level tab for weekly % complete per workstream.
-- **EVM Dashboard:** Project-level tab displaying Earned Value Management metrics with historical snapshot tracking and revision versioning. Server-side EVM engine ensures persistence.
+- **EVM Dashboard:** Project-level tab displaying Earned Value Management metrics with historical snapshot tracking and revision versioning. Server-side EVM engine ensures persistence. Includes S-Curve chart (PV/AC/EV over time with BAC reference line) and CPI/SPI Performance Trend chart using Recharts.
 - **RAID Log:** Supports Risks, Assumptions, Issues, and Dependencies.
 - **Opportunities Module:** Pre-sales entity with a dedicated API, Estimate tab for financial roll-ups (price-driven model), and "Convert to Project" feature.
 - **Estimate Template Import/Export:** Functionality to download an Excel template and import estimates.
@@ -51,7 +51,8 @@ The application uses a modern web stack with React, Vite, Tailwind CSS, and shad
   - **Server-Side Enforcement:** `requireModuleAccess()` middleware on all write endpoints. `checkTimelineAccess()` on all timeline subresource endpoints (milestones, tasks, timesheets, progress, risks, checkpoints, gates, artifacts, EVM). Admin/RBAC endpoints require `module.admin`.
   - **Frontend Guards:** Sidebar module-gated via `/api/rbac/my-modules`. `ProtectedRoute` component wraps module routes. Access Denied page for unauthorized direct navigation.
   - **Admin UI Split:** Settings (`/admin/settings`) for app configuration. Security (`/admin/security`) with Roles, Users, Audit Log, Role Matrix tabs.
-  - **Auto-Role Assignment:** New users auto-assigned "Member" role (or "Global Admin" if first user ever).
+  - **Auto-Role Assignment:** New users auto-assigned "Member" role (or "Global Admin" if first user ever). Auto-links team member by email match on first login.
+  - **Team Member ↔ User Linking:** Admin can link/unlink team members to users from Security > Users tab. API: `POST /api/rbac/users/:userId/link-team-member` and `/unlink-team-member`.
   - **Permission Cache:** 10-second TTL with explicit invalidation on role changes via API.
   - Audit logging for sensitive actions.
 
