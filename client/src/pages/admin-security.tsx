@@ -45,7 +45,7 @@ type RbacUser = {
   profileImageUrl: string | null;
   createdAt: string | null;
   updatedAt: string | null;
-  orgRoles: { roleId: string; roleName: string }[];
+  orgRoles: { id: string; name: string; description: string | null; isSystem: boolean; tenantId: string }[];
   teamMember: { id: string; name: string } | null;
 };
 
@@ -94,7 +94,7 @@ function RolesManager() {
     const counts: Record<string, number> = {};
     for (const u of users) {
       for (const r of u.orgRoles) {
-        counts[r.roleId] = (counts[r.roleId] || 0) + 1;
+        counts[r.id] = (counts[r.id] || 0) + 1;
       }
     }
     return counts;
@@ -508,7 +508,7 @@ function UserDetailView({
   const [editEmail, setEditEmail] = useState(user.email || "");
 
   const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ") || "Unknown User";
-  const availableRoles = roles.filter(r => !user.orgRoles.some(ur => ur.roleId === r.id));
+  const availableRoles = roles.filter(r => !user.orgRoles.some(ur => ur.id === r.id));
 
   const updateUserMutation = useMutation({
     mutationFn: async (data: { firstName: string; lastName: string; email: string }) => {
@@ -821,26 +821,26 @@ function UserDetailView({
               {user.orgRoles.length > 0 ? (
                 <div className="space-y-2">
                   {user.orgRoles.map((role) => {
-                    const roleDetail = roles.find(r => r.id === role.roleId);
+                    const roleDetail = roles.find(r => r.id === role.id);
                     return (
-                      <div key={role.roleId} className="border rounded-md p-3 flex items-center justify-between gap-3" data-testid={`card-role-${role.roleId}`}>
+                      <div key={role.id} className="border rounded-md p-3 flex items-center justify-between gap-3" data-testid={`card-role-${role.id}`}>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-medium" data-testid={`text-role-name-${role.roleId}`}>{role.roleName}</span>
-                            {roleDetail?.isSystem && (
+                            <span className="text-sm font-medium" data-testid={`text-role-name-${role.id}`}>{role.name}</span>
+                            {(roleDetail?.isSystem || role.isSystem) && (
                               <Badge variant="outline" className="text-[10px]">System</Badge>
                             )}
                           </div>
-                          {roleDetail?.description && (
-                            <p className="text-xs text-muted-foreground mt-0.5">{roleDetail.description}</p>
+                          {(roleDetail?.description || role.description) && (
+                            <p className="text-xs text-muted-foreground mt-0.5">{roleDetail?.description || role.description}</p>
                           )}
                         </div>
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => removeRoleMutation.mutate(role.roleId)}
+                          onClick={() => removeRoleMutation.mutate(role.id)}
                           disabled={removeRoleMutation.isPending}
-                          data-testid={`button-remove-role-${role.roleId}`}
+                          data-testid={`button-remove-role-${role.id}`}
                         >
                           <X className="w-3.5 h-3.5 mr-1" />
                           Remove
@@ -981,8 +981,8 @@ function UsersRolesManager() {
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap items-center gap-1">
                         {user.orgRoles.map((role) => (
-                          <Badge key={role.roleId} variant="secondary" className="text-xs" data-testid={`badge-role-${user.id}-${role.roleId}`}>
-                            {role.roleName}
+                          <Badge key={role.id} variant="secondary" className="text-xs" data-testid={`badge-role-${user.id}-${role.id}`}>
+                            {role.name}
                           </Badge>
                         ))}
                         {user.orgRoles.length === 0 && (
