@@ -1,0 +1,236 @@
+This v3 is a big step up: **real enums, real dates, timestamptz where it matters, safer parentTaskId delete, and better gating status modeling**. At this point, the remaining technical debt is mostly about **tenant isolation hardening**, **data correctness constraints**, and **billing/entitlements readiness**.
+
+Below is the final “best practices” punch list—ordered by impact/risk.
+
+---
+
+## 1) Tenant isolation is still not enforced at the DB level (highest risk)
+
+You store `tenantId` everywhere, but FKs reference only `id`, not `(tenantId, id)`. That means a bug could link records across tenants:
+
+* `timelines.clientId → clients.id` (tenant mismatch possible)
+* `contacts.clientId → clients.id`
+* `tasks.timelineId → timelines.id`
+* `workstream_resources.taskId → tasks.id`
+* etc.
+
+### Best-practice options (choose one)
+
+**A) Gold standard (cleanest long-term): composite keys**
+
+* Make parent tables primary key `(tenantId, id)`
+* Child tables store both and reference composite
+* This *guarantees* isolation at the DB layer
+
+**B) Pragmatic (good enough now): add DB triggers**
+
+* On insert/update, validate that referenced row has the same tenantId
+* Example: before insert into `tasks`, check that timeline.tenantId = tasks.tenantId
+* This is much easier than composite PK migration
+
+**My blunt recommendation:** do triggers now, composite keys later if you become a true SaaS at scale.
+
+---
+
+## 2) Stop defaulting tenantId to `"default"` (still a footgun)
+
+You still have `.default("default")` on almost all tenantId columns.
+
+### Why it’s debt
+
+Any endpoint that forgets to set tenantId will silently write into “default,” mixing tenant data.
+
+### Fix
+
+* Remove the default value
+* Keep `notNull()`
+* Ensure your backend injects tenantId explicitly for every insert
+
+This one change prevents a *whole category* of production incidents.
+
+---
+
+## 3) app_settings / branding_config should use tenantId as the primary key
+
+You improved with `unique("...tenant_uniq")`, but the PK is still a fixed string id (“app”, “default”). That’s awkward and invites mistakes.
+
+### Better design
+
+* Make `tenantId` the primary key (single-row-per-tenant tables)
+* Drop the `id` column entirely or keep as constant but not PK
+
+**Why:** simpler queries, less risk, cleaner constraints.
+
+---
+
+## 4) Add “only one current snapshot” DB enforcement for EVM
+
+You have uniqueness on `(tenantId, timelineId, weekEnding, version)` but **nothing prevents two rows with isCurrent = true** for the same week.
+
+### Fix
+
+Add a partial unique index:
+
+* unique `(tenantId, timelineId, weekEnding)` where `isCurrent = true`
+
+In Postgres that’s a partial unique index; Drizzle often needs raw SQL migration for it.
+
+---
+
+## 5) Normalize/lock down remaining “text enum” fields (data cleanliness)
+
+You added enums for health/status/gates/risks and recordType—good. But some fields that will be used for reporting are still free-form text:
+
+* `timelines.region`
+* `projectType`, `engagementModel`
+* `timesheetEntries.billableType`
+* `risks.probability`, `risks.impact` (still text)
+* `mode` in `evmSnapshots` (still text)
+* `opportunityStatus` (text)
+
+### Recommendation
+
+Either:
+
+* Convert to `pgEnum`, OR
+* add check constraints if values are tenant-configurable
+
+**Practical split:**
+
+* Make `billableType`, `evmSnapshots.mode`, `probability/impact` enums (these should be stable)
+* Keep `engagementModel` as enum too if it’s not tenant-customizable
+* If you want tenant-custom values, store the code in DB but validate against tenant config at write time.
+
+---
+
+## 6) Uniqueness constraints to prevent duplicate operational records
+
+You’ve got strong uniques for progress and gates. Still missing some common integrity rules:
+
+### Add / consider
+
+**A) timesheet_entries duplication**
+If you intend one entry per person per day per task:
+
+* unique `(tenantId, teamMemberId, timelineId, dayDate, taskId)` (or without taskId if day totals)
+
+Right now you can have duplicates and “double cost” unless your aggregation logic is defensive.
+
+**B) project_team_members duplicates**
+Prevent adding the same team member twice to the same timeline:
+
+* unique `(tenantId, timelineId, teamMemberId)`
+
+**C) allocations duplicates**
+If you expect one active allocation window per member per timeline:
+
+* unique `(tenantId, teamMemberId, timelineId, startDate, endDate)` (or a rule that prevents overlapping allocations—harder but valuable)
+
+---
+
+## 7) Add DB-level checks for numeric boundaries (not only Zod)
+
+You validate hours and percent in Zod—good—but DB still accepts invalid values if anything bypasses your API (imports, admin scripts, bugs).
+
+### High-value DB CHECK constraints
+
+* `tasks.percentComplete between 0 and 100`
+* `project_team_members.allocation between 0 and 100`
+* `timesheet_entries.hours between 0 and 24` (or your business rule)
+* `allocations.weeklyHours >= 0`
+* `riskFactorPercent/bufferPercent between 0 and 100`
+* `grossMargin between 0 and 100` (if it’s percent)
+
+---
+
+## 8) Clarify commercial fields semantics (avoid future confusion)
+
+`grossMargin` is still ambiguous. Your validation implies percent. Rename for clarity:
+
+* `grossMarginPercent` (numeric 5,2)
+  Optionally add:
+* `grossMarginAmount` later
+
+Also consider separating:
+
+* “Revenue” vs “Budget” vs “Cost” definitions so EVM is consistent across projects.
+
+---
+
+## 9) createdBy / approvedBy / completedBy should reference users (FK)
+
+Currently:
+
+* `createdBy` is varchar
+* `projectGates.approvedBy` and `projectCheckpoints.completedBy` are text
+
+### Recommendation
+
+Make them FKs to `users.id`:
+
+* `createdByUserId`, `approvedByUserId`, `completedByUserId`
+  And keep optional display fields if you want to store the name at time of action.
+
+This is important for audit-grade governance.
+
+---
+
+## 10) Indexing improvements for actual query patterns
+
+You added several good ones. Add these if you’re doing portfolio dashboards and exports:
+
+* `timelines (tenantId, projectStatus)` and `(tenantId, opportunityStatus)`
+* `project_gates (tenantId, timelineId, status)` for “pending approvals” dashboards
+* `project_checkpoints (tenantId, timelineId, completed)` for compliance views
+* `evm_snapshots (tenantId, timelineId, weekEnding desc)` (you have index but ensure desc helps)
+* `tasks (tenantId, timelineId, sortOrder)` if you frequently load tree structures
+
+Also: add indexes on FK columns where missing (tenantId already helps but not enough).
+
+---
+
+## 11) Consider soft deletes for audit-heavy domains
+
+Right now you have cascade deletes on timelines → children. That’s fine early, but for governance and financial history you’ll regret losing data.
+
+### Recommendation
+
+For top-level entities:
+
+* `timelines`, `clients`, `team_members`
+  Add `deletedAt timestamptz` and filter in queries.
+  Keep hard delete for admin-only.
+
+---
+
+## 12) Naming/branding tech debt: “flightpath” still in table names
+
+You changed tenant-facing terminology, but DB remains `flightpath_*`. That’s okay. Just be intentional:
+
+* Keep DB names stable (no urgent need to rename)
+* But ensure API/UI never expose “flightpath” if trademark sensitivity matters
+
+If you later refactor, use views to avoid breaking migrations:
+
+* create view `governance_stages` as select * from flightpath_stages
+
+---
+
+# Summary: What I’d do next (fastest risk reduction)
+
+1. **Remove default tenantId = "default"** across tables
+2. **Enforce tenant integrity** (triggers now, composite keys later)
+3. Add **partial unique for EVM isCurrent**
+4. Add missing **uniques**: project_team_members, timesheet rule, etc.
+5. Add **DB check constraints** for hours/percents/buffers
+6. Convert remaining high-impact text fields to enums (mode, billableType, probability/impact)
+7. Make `tenantId` the PK for app_settings and branding_config
+
+---
+
+If you want, I can give you a concrete migration pack:
+
+* raw SQL for the partial unique index and tenant validation triggers
+* suggested Drizzle changes for removing tenantId defaults
+* recommended `pgEnum` definitions for billableType/mode/probability/impact
+* and the exact unique/index additions (with names) so it’s copy/pasteable into your migrations.
