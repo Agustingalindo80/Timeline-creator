@@ -10,7 +10,7 @@ I prefer iterative development with a focus on delivering core features first. P
 The application uses a modern web stack with React, Vite, Tailwind CSS, and shadcn/ui for the frontend, and Express.js on Node.js with PostgreSQL and Drizzle ORM for the backend.
 
 **UI/UX Decisions:**
-- Consistent left-hand sidebar navigation with module-permission-gated items. Sections: Core (Dashboard, Projects), Help & Support (Governance Coach), Workspace (Companies, Contacts, Opportunities), Operations (Team Members, Allocations, Timesheets), Administration (Settings, Security, About), Super Admin (Global Administration).
+- Consistent left-hand sidebar navigation with module-permission-gated items. Sections: Workspace (Dashboard, Companies, Contacts, Opportunities, Projects), Help & Support (Governance Coach), Operations (Team Members, Allocations, Timesheets), Administration (Settings, Security, About), Super Admin (Global Administration).
 - Supports dark/light mode.
 - Project visualizations include horizontal timeline views and Gantt-like bars.
 - Health indicators use colored dots.

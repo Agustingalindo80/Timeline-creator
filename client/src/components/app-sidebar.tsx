@@ -100,19 +100,16 @@ export function AppSidebar() {
   const { coachLabel } = useGovernanceLabel();
   const appName = branding?.appName || "Project High Level Planning";
 
-  const coreItems = [
-    { title: "Dashboard", url: "/", icon: LayoutDashboard, visible: true },
-    { title: "Projects", url: "/projects", icon: FolderKanban, visible: hasModule("projects") },
-  ].filter(i => i.visible);
-
   const helpItems = [
     { title: coachLabel, url: "/chat", icon: Bot, visible: hasModule("coach") },
   ].filter(i => i.visible);
 
   const workItems = [
+    { title: "Dashboard", url: "/", icon: LayoutDashboard, visible: true },
     { title: "Companies", url: "/clients", icon: Building2, visible: hasModule("clients") },
     { title: "Contacts", url: "/contacts", icon: Users, visible: hasModule("contacts") },
     { title: "Opportunities", url: "/opportunities", icon: Target, visible: hasModule("opportunities") && opportunitiesEnabled },
+    { title: "Projects", url: "/projects", icon: FolderKanban, visible: hasModule("projects") },
   ].filter(i => i.visible);
 
   const operationsItems = [
@@ -220,9 +217,8 @@ export function AppSidebar() {
           </div>
         )}
 
-        {renderNavGroup("Core", coreItems)}
-        {renderNavGroup("Help & Support", helpItems)}
         {renderNavGroup("Workspace", workItems)}
+        {renderNavGroup("Help & Support", helpItems)}
         {renderNavGroup("Operations", operationsItems)}
 
         {showAdmin && (
