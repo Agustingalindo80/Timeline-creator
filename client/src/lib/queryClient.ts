@@ -1,5 +1,16 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+function getTenantApiPrefix(): string {
+  const match = window.location.pathname.match(/^\/t\/([a-z0-9-]+)(\/|$)/);
+  return match ? `/t/${match[1]}` : "";
+}
+
+function prefixUrl(url: string): string {
+  if (!url.startsWith("/api/")) return url;
+  const prefix = getTenantApiPrefix();
+  return prefix ? `${prefix}${url}` : url;
+}
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
@@ -12,7 +23,7 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  const res = await fetch(url, {
+  const res = await fetch(prefixUrl(url), {
     method,
     headers: data ? { "Content-Type": "application/json" } : {},
     body: data ? JSON.stringify(data) : undefined,
@@ -29,7 +40,8 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey.join("/") as string, {
+    const rawUrl = queryKey.join("/") as string;
+    const res = await fetch(prefixUrl(rawUrl), {
       credentials: "include",
     });
 

@@ -1,4 +1,4 @@
-import { LayoutDashboard, FolderKanban, Settings, Building2, Users, UserCheck, CalendarRange, Clock, LogOut, Info, Bot, Target, Shield, ChevronRight, Globe, ChevronsUpDown } from "lucide-react";
+import { LayoutDashboard, FolderKanban, Settings, Building2, Users, UserCheck, CalendarRange, Clock, LogOut, Info, Bot, Target, Shield, ChevronRight, Globe, ChevronsUpDown, FlaskConical } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
@@ -86,6 +86,11 @@ export function AppSidebar() {
 
   const isSuperAdmin = superAdminCheck?.isSuperAdmin || false;
   const showTenantPicker = (myTenants?.length ?? 0) > 1;
+
+  // TODO: Lock down Super Admin tenant switching before commercial launch
+  const naturalTenantIds = new Set(myTenants?.map(t => t.id) ?? []);
+  const isTestingTenant = isSuperAdmin && currentTenant?.tenantId &&
+    !naturalTenantIds.has(currentTenant.tenantId);
 
   const modules = new Set(myModules?.modules ?? []);
   const hasModule = (mod: string) => modules.has(`module.${mod}`);
@@ -214,6 +219,18 @@ export function AppSidebar() {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
+          </div>
+        )}
+
+        {isTestingTenant && !isCollapsed && (
+          <div className="px-3 pb-1">
+            <div
+              className="flex items-center gap-2 px-2.5 py-1.5 text-[11px] font-semibold rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400"
+              data-testid="badge-testing-mode"
+            >
+              <FlaskConical className="w-3.5 h-3.5 shrink-0" />
+              <span>TESTING MODE</span>
+            </div>
           </div>
         )}
 

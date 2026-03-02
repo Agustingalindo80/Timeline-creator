@@ -59,23 +59,25 @@ The application uses a modern web stack with React, Vite, Tailwind CSS, and shad
 - **Multi-Tenancy Architecture:**
   - `tenants` table: id, name, slug (unique), status (active/suspended/trial), plan (free/pro/enterprise), maxUsers, maxProjects, storageLimit, billingEmail, timestamps.
   - All 20+ core tables have `tenantId` column (default "default"). `app_settings` and `branding_config` have `UNIQUE(tenant_id)` constraints for tenant isolation.
-  - `server/middleware/tenant.ts`: Derives `req.tenantId` from session → header → user_org_roles DB lookup → fallback "default".
+  - `server/middleware/tenant.ts`: Derives `req.tenantId` from slug-based URL (`/t/:slug/*`) → session → user_org_roles DB lookup → fallback "default". Slug lookups cached with 30s TTL.
   - Storage layer methods accept optional `tenantId` for list queries (getClients, getTimelines, getTeamMembers, getRateCards, getAllContacts, getAllAllAllocations). `getSettings()`, `updateSettings()`, `getBranding()`, `updateBranding()` accept `tenantId`.
   - All route handlers pass `req.tenantId` to storage/rbac calls — no hardcoded "default" in routes.
   - Performance indexes on 13 key query patterns (timeline tenant+client, tasks timeline, timesheets, progress, EVM, etc.).
 - **Tenant Provisioning Pipeline:**
-  - `server/tenant-provisioning.ts`: `provisionTenant(tenantId, creatorUserId)` automatically called after `POST /api/global-admin/tenants`.
+  - `server/tenant-provisioning.ts`: `provisionTenant(tenantId, tenantAdmin?, creatorUserId?)` automatically called after `POST /api/global-admin/tenants`.
   - Seeds: RBAC system roles + permissions, governance stages + deliverables, app settings, branding config.
-  - Assigns creator as Global Admin in the new tenant.
+  - Tenant Admin (first user) created during provisioning with email/firstName/lastName. Assigned "Global Admin" role within the new tenant only.
+  - Super Admin (creator) is NOT auto-assigned to new tenants — maintains platform operator boundary.
   - Idempotent: checks for existing roles before inserting (safe to retry on partial failures). Uses `onConflictDoNothing()` for permissions and role-permission mappings.
   - New tenants are immediately functional after creation — no manual setup required.
 - **Super Admin & Global Admin Console:**
   - `users.isSuperAdmin` boolean — first user auto-promoted.
   - `server/middleware/superadmin.ts`: Blocks non-super-admins from global admin endpoints.
   - API: `GET/POST/PATCH/DELETE /api/global-admin/tenants`, `/tenants/:id/usage`, `/tenants/:id/users`, `/api/global-admin/stats`, `/api/global-admin/check`.
-  - UI: `/global-admin` page with Tenants tab (list→detail, create dialog, edit inline, suspend) and System tab (aggregate stats).
-  - Sidebar: "Super Admin" section with "Global Admin" link, visible only to super admins (via `/api/global-admin/check`).
+  - UI: `/global-admin` page with Tenants tab (list→detail, create dialog with Tenant Admin fields, edit inline, suspend) and System tab (aggregate stats). Tenant detail shows metadata + usage stats only (no individual user browsing).
+  - Sidebar: "Super Admin" section with "Global Admin" link, visible only to super admins (via `/api/global-admin/check`). "TESTING MODE" amber badge shown when Super Admin is viewing a tenant they don't belong to.
   - Tenant switching: `POST /api/tenant/switch`, `GET /api/tenant/current`, `GET /api/tenant/my-tenants`.
+  - Slug-based tenant URL routing: `/t/:slug/*` pattern resolves tenant from URL slug. Client-side uses wouter `Router` with dynamic `base` prop. API calls auto-prefixed with `/t/:slug` via `queryClient.ts`. Server URL rewrite middleware strips `/t/:slug` prefix before Express routing.
 
 ## External Dependencies
 - **React:** Frontend library.

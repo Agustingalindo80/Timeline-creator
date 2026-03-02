@@ -207,6 +207,7 @@ export interface IStorage {
   getClientsByTimelineIds(timelineIds: string[]): Promise<Client[]>;
   getContactsByClientIds(clientIds: string[]): Promise<Contact[]>;
   getTeamMembersByTimelineIds(timelineIds: string[]): Promise<TeamMember[]>;
+  getTenantBySlug(slug: string): Promise<import("@shared/schema").Tenant | undefined>;
   createOrgRole(data: { tenantId: string; name: string; description?: string; isSystem?: boolean }): Promise<OrgRole>;
   updateOrgRole(id: string, data: { name?: string; description?: string }): Promise<OrgRole | undefined>;
   deleteOrgRole(id: string): Promise<void>;
@@ -892,20 +893,24 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUsersByTenant(tenantId: string): Promise<(User & { orgRoles?: OrgRole[]; teamMember?: TeamMember | null })[]> {
-    const allUsers = await db.select().from(users);
-    const allRoleAssignments = await db
+    const roleAssignments = await db
       .select()
       .from(userOrgRoles)
       .where(eq(userOrgRoles.tenantId, tenantId));
-    const allRoles = await db.select().from(orgRoles).where(eq(orgRoles.tenantId, tenantId));
-    const allMembers = await db.select().from(teamMembers);
 
-    const roleMap = new Map(allRoles.map(r => [r.id, r]));
-    const memberByUserIdMap = new Map(allMembers.filter(m => m.userId).map(m => [m.userId!, m]));
+    const tenantUserIds = [...new Set(roleAssignments.map(ra => ra.userId))];
+    if (tenantUserIds.length === 0) return [];
 
-    return allUsers.map(u => {
-      const userRoleAssignments = allRoleAssignments.filter(ra => ra.userId === u.id);
-      const roles = userRoleAssignments.map(ra => roleMap.get(ra.roleId)).filter(Boolean) as OrgRole[];
+    const tenantUsers = await db.select().from(users).where(inArray(users.id, tenantUserIds));
+    const tenantRoles = await db.select().from(orgRoles).where(eq(orgRoles.tenantId, tenantId));
+    const tenantMembers = await db.select().from(teamMembers).where(eq(teamMembers.tenantId, tenantId));
+
+    const roleMap = new Map(tenantRoles.map(r => [r.id, r]));
+    const memberByUserIdMap = new Map(tenantMembers.filter(m => m.userId).map(m => [m.userId!, m]));
+
+    return tenantUsers.map(u => {
+      const userRoles = roleAssignments.filter(ra => ra.userId === u.id);
+      const roles = userRoles.map(ra => roleMap.get(ra.roleId)).filter(Boolean) as OrgRole[];
       return {
         ...u,
         orgRoles: roles,
@@ -1152,6 +1157,11 @@ export class DatabaseStorage implements IStorage {
 
   async getTenant(id: string): Promise<import("@shared/schema").Tenant | undefined> {
     const [tenant] = await db.select().from(tenants).where(eq(tenants.id, id));
+    return tenant;
+  }
+
+  async getTenantBySlug(slug: string): Promise<import("@shared/schema").Tenant | undefined> {
+    const [tenant] = await db.select().from(tenants).where(eq(tenants.slug, slug));
     return tenant;
   }
 

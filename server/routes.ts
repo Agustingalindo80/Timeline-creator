@@ -180,6 +180,14 @@ export async function registerRoutes(
 
   app.use("/uploads", express.static(uploadsDir));
 
+  app.use((req, _res, next) => {
+    const match = req.path.match(/^\/t\/([a-z0-9-]+)(\/api\/.*)$/);
+    if (match) {
+      req.url = match[2];
+    }
+    next();
+  });
+
   app.use((req, res, next) => {
     if (!req.path.startsWith("/api/")) return next();
     const publicPaths = ["/api/login", "/api/logout", "/api/callback", "/api/auth/user", "/api/branding"];
@@ -3160,7 +3168,15 @@ Respond ONLY with valid JSON:
     try {
       const tenantId = req.tenantId || "default";
       const tenant = await storage.getTenant(tenantId);
-      res.json({ tenantId, tenant: tenant || null });
+      res.json({ tenantId, tenant: tenant || null, tenantSlug: req.tenantSlug || tenant?.slug || null });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.get("/api/tenant/by-slug/:slug", isAuthenticated, async (req, res) => {
+    try {
+      const tenant = await storage.getTenantBySlug(req.params.slug);
+      if (!tenant) return res.status(404).json({ message: "Tenant not found" });
+      res.json(tenant);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
@@ -3194,8 +3210,9 @@ Respond ONLY with valid JSON:
 
   app.post("/api/global-admin/tenants", requireSuperAdmin(), async (req, res) => {
     try {
-      const { name, slug, plan, maxUsers, maxProjects, storageLimit, billingEmail } = req.body;
+      const { name, slug, plan, maxUsers, maxProjects, storageLimit, billingEmail, adminEmail, adminFirstName, adminLastName } = req.body;
       if (!name || !slug) return res.status(400).json({ message: "name and slug required" });
+      if (!adminEmail || !adminFirstName || !adminLastName) return res.status(400).json({ message: "Tenant Admin details (adminEmail, adminFirstName, adminLastName) are required" });
       const existing = (await storage.getTenants()).find(t => t.slug === slug);
       if (existing) return res.status(409).json({ message: "Slug already taken" });
       const userId = extractUserId(req);
@@ -3208,7 +3225,7 @@ Respond ONLY with valid JSON:
         billingEmail: billingEmail || null,
         createdBy: userId,
       });
-      await provisionTenant(tenant.id, userId || undefined);
+      await provisionTenant(tenant.id, { email: adminEmail, firstName: adminFirstName, lastName: adminLastName });
       res.status(201).json(tenant);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });

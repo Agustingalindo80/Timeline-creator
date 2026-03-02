@@ -1,4 +1,4 @@
-import { Switch, Route, Redirect, Link } from "wouter";
+import { Switch, Route, Redirect, Link, Router } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -108,7 +108,7 @@ function SuperAdminRoute({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-function Router() {
+function AppRouter() {
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
@@ -140,21 +140,30 @@ const sidebarStyle = {
   "--sidebar-width-icon": "3rem",
 };
 
+function getBasePath() {
+  const match = window.location.pathname.match(/^\/t\/([a-z0-9-]+)(\/|$)/);
+  return match ? `/t/${match[1]}` : "";
+}
+
 function AuthenticatedApp() {
+  const basePath = getBasePath();
+
   return (
-    <SidebarProvider style={sidebarStyle as React.CSSProperties}>
-      <div className="flex h-screen w-full">
-        <AppSidebar />
-        <div className="flex flex-col flex-1 min-w-0">
-          <header className="flex items-center p-2 border-b shrink-0">
-            <SidebarTrigger data-testid="button-sidebar-toggle" />
-          </header>
-          <main className="flex-1 overflow-auto">
-            <Router />
-          </main>
+    <Router base={basePath}>
+      <SidebarProvider style={sidebarStyle as React.CSSProperties}>
+        <div className="flex h-screen w-full">
+          <AppSidebar />
+          <div className="flex flex-col flex-1 min-w-0">
+            <header className="flex items-center p-2 border-b shrink-0">
+              <SidebarTrigger data-testid="button-sidebar-toggle" />
+            </header>
+            <main className="flex-1 overflow-auto">
+              <AppRouter />
+            </main>
+          </div>
         </div>
-      </div>
-    </SidebarProvider>
+      </SidebarProvider>
+    </Router>
   );
 }
 

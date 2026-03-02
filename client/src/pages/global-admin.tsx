@@ -91,19 +91,27 @@ function CreateTenantDialog({ onCreated }: { onCreated: () => void }) {
   const [plan, setPlan] = useState("free");
   const [maxUsers, setMaxUsers] = useState("10");
   const [maxProjects, setMaxProjects] = useState("25");
+  const [adminEmail, setAdminEmail] = useState("");
+  const [adminFirstName, setAdminFirstName] = useState("");
+  const [adminLastName, setAdminLastName] = useState("");
+
+  const computedSlug = slug || name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+$/, "");
 
   const createMutation = useMutation({
     mutationFn: async () => {
       return apiRequest("POST", "/api/global-admin/tenants", {
         name,
-        slug: slug || name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+        slug: computedSlug,
         plan,
         maxUsers: parseInt(maxUsers) || 10,
         maxProjects: parseInt(maxProjects) || 25,
+        adminEmail,
+        adminFirstName,
+        adminLastName,
       });
     },
     onSuccess: () => {
-      toast({ title: "Tenant created" });
+      toast({ title: "Tenant created", description: `Tenant Admin: ${adminEmail}` });
       queryClient.invalidateQueries({ queryKey: ["/api/global-admin/tenants"] });
       queryClient.invalidateQueries({ queryKey: ["/api/global-admin/stats"] });
       setOpen(false);
@@ -112,12 +120,17 @@ function CreateTenantDialog({ onCreated }: { onCreated: () => void }) {
       setPlan("free");
       setMaxUsers("10");
       setMaxProjects("25");
+      setAdminEmail("");
+      setAdminFirstName("");
+      setAdminLastName("");
       onCreated();
     },
     onError: (err: any) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     },
   });
+
+  const canSubmit = name && adminEmail && adminFirstName && adminLastName;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -126,11 +139,13 @@ function CreateTenantDialog({ onCreated }: { onCreated: () => void }) {
           <Plus className="w-4 h-4 mr-2" /> New Tenant
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Create New Tenant</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
+          <Separator />
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Organization</p>
           <div className="space-y-2">
             <Label htmlFor="tenant-name">Organization Name</Label>
             <Input
@@ -139,7 +154,7 @@ function CreateTenantDialog({ onCreated }: { onCreated: () => void }) {
               value={name}
               onChange={(e) => {
                 setName(e.target.value);
-                if (!slug) setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-"));
+                if (!slug) setSlug("");
               }}
               placeholder="Acme Corp"
             />
@@ -149,10 +164,15 @@ function CreateTenantDialog({ onCreated }: { onCreated: () => void }) {
             <Input
               id="tenant-slug"
               data-testid="input-tenant-slug"
-              value={slug}
-              onChange={(e) => setSlug(e.target.value)}
+              value={slug || computedSlug}
+              onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
               placeholder="acme-corp"
             />
+            {computedSlug && (
+              <p className="text-xs text-muted-foreground" data-testid="text-tenant-url">
+                Tenant URL: {window.location.origin}/t/{computedSlug}
+              </p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="tenant-plan">Plan</Label>
@@ -189,12 +209,49 @@ function CreateTenantDialog({ onCreated }: { onCreated: () => void }) {
               />
             </div>
           </div>
+
+          <Separator />
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tenant Administrator</p>
+          <p className="text-xs text-muted-foreground">This person will be the first user and Global Admin of the new tenant.</p>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="admin-first-name">First Name</Label>
+              <Input
+                id="admin-first-name"
+                data-testid="input-admin-first-name"
+                value={adminFirstName}
+                onChange={(e) => setAdminFirstName(e.target.value)}
+                placeholder="Jane"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="admin-last-name">Last Name</Label>
+              <Input
+                id="admin-last-name"
+                data-testid="input-admin-last-name"
+                value={adminLastName}
+                onChange={(e) => setAdminLastName(e.target.value)}
+                placeholder="Doe"
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="admin-email">Email</Label>
+            <Input
+              id="admin-email"
+              data-testid="input-admin-email"
+              type="email"
+              value={adminEmail}
+              onChange={(e) => setAdminEmail(e.target.value)}
+              placeholder="jane@acmecorp.com"
+            />
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)} data-testid="button-cancel-tenant">Cancel</Button>
           <Button
             onClick={() => createMutation.mutate()}
-            disabled={!name || createMutation.isPending}
+            disabled={!canSubmit || createMutation.isPending}
             data-testid="button-save-tenant"
           >
             {createMutation.isPending ? "Creating..." : "Create Tenant"}
@@ -212,15 +269,6 @@ function TenantDetailView({ tenantId, onBack }: { tenantId: string; onBack: () =
 
   const { data: tenant, isLoading } = useQuery<Tenant>({
     queryKey: ["/api/global-admin/tenants", tenantId],
-  });
-
-  const { data: tenantUsers } = useQuery<any[]>({
-    queryKey: ["/api/global-admin/tenants", tenantId, "users"],
-    queryFn: async () => {
-      const res = await fetch(`/api/global-admin/tenants/${tenantId}/users`);
-      if (!res.ok) throw new Error("Failed to load users");
-      return res.json();
-    },
   });
 
   const updateMutation = useMutation({
@@ -378,69 +426,57 @@ function TenantDetailView({ tenantId, onBack }: { tenantId: string; onBack: () =
         </div>
       )}
 
-      <Tabs defaultValue="usage">
-        <TabsList>
-          <TabsTrigger value="usage" data-testid="tab-usage">Usage</TabsTrigger>
-          <TabsTrigger value="users" data-testid="tab-users">Users</TabsTrigger>
-        </TabsList>
+      <div className="space-y-4">
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
+          <StatCard
+            title="Users"
+            value={`${tenant.userCount ?? 0} / ${tenant.maxUsers}`}
+            icon={Users}
+            subtitle="Active users vs limit"
+          />
+          <StatCard
+            title="Projects"
+            value={`${tenant.projectCount ?? 0} / ${tenant.maxProjects}`}
+            icon={FolderKanban}
+            subtitle="Active projects vs limit"
+          />
+          <StatCard
+            title="Opportunities"
+            value={tenant.opportunityCount ?? 0}
+            icon={Target}
+          />
+        </div>
 
-        <TabsContent value="usage" className="space-y-4 mt-4">
-          <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
-            <StatCard
-              title="Users"
-              value={`${tenant.userCount ?? 0} / ${tenant.maxUsers}`}
-              icon={Users}
-              subtitle="Active users vs limit"
-            />
-            <StatCard
-              title="Projects"
-              value={`${tenant.projectCount ?? 0} / ${tenant.maxProjects}`}
-              icon={FolderKanban}
-              subtitle="Active projects vs limit"
-            />
-            <StatCard
-              title="Opportunities"
-              value={tenant.opportunityCount ?? 0}
-              icon={Target}
-            />
-          </div>
-        </TabsContent>
-
-        <TabsContent value="users" className="mt-4">
-          <div className="border rounded-md overflow-hidden">
-            <table className="w-full text-sm" data-testid="table-tenant-users">
-              <thead>
-                <tr className="border-b bg-muted/50">
-                  <th className="text-left p-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Name</th>
-                  <th className="text-left p-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Email</th>
-                  <th className="text-left p-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Roles</th>
-                </tr>
-              </thead>
-              <tbody>
-                {tenantUsers?.map((u: any) => (
-                  <tr key={u.id} className="border-b last:border-0 hover:bg-muted/30" data-testid={`row-user-${u.id}`}>
-                    <td className="p-3">
-                      {u.firstName || u.lastName ? `${u.firstName || ""} ${u.lastName || ""}`.trim() : "—"}
-                    </td>
-                    <td className="p-3 text-muted-foreground">{u.email || "—"}</td>
-                    <td className="p-3">
-                      <div className="flex gap-1 flex-wrap">
-                        {u.orgRoles?.map((r: any) => (
-                          <Badge key={r.id} variant="secondary" className="text-xs" data-testid={`badge-role-${r.id}`}>
-                            {r.name}
-                          </Badge>
-                        ))}
-                      </div>
-                    </td>
-                  </tr>
-                )) ?? (
-                  <tr><td colSpan={3} className="p-6 text-center text-muted-foreground">No users found</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </TabsContent>
-      </Tabs>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold">Tenant Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+              <div>
+                <span className="text-muted-foreground">Slug</span>
+                <p className="font-medium" data-testid="text-tenant-slug">{tenant.slug}</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Tenant URL</span>
+                <p className="font-medium font-mono text-xs" data-testid="text-tenant-url">
+                  {window.location.origin}/t/{tenant.slug}
+                </p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Billing Email</span>
+                <p className="font-medium" data-testid="text-billing-email">{tenant.billingEmail || "—"}</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Created</span>
+                <p className="font-medium" data-testid="text-created-at">
+                  {tenant.createdAt ? new Date(tenant.createdAt).toLocaleDateString() : "—"}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

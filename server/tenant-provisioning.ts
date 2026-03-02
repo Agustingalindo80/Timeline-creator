@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import {
   orgRoles,
   orgPermissions,
@@ -9,10 +9,21 @@ import {
   ALL_PERMISSIONS,
   SYSTEM_ROLE_PERMISSIONS,
 } from "@shared/schema";
+import { users } from "@shared/schema";
 import { seedFlightpathData } from "./seed-flightpath";
 import { storage } from "./storage";
 
-export async function provisionTenant(tenantId: string, creatorUserId?: string): Promise<void> {
+export interface TenantAdminInfo {
+  email: string;
+  firstName: string;
+  lastName: string;
+}
+
+export async function provisionTenant(
+  tenantId: string,
+  tenantAdmin?: TenantAdminInfo,
+  creatorUserId?: string,
+): Promise<void> {
   console.log(`Provisioning tenant "${tenantId}"...`);
 
   try {
@@ -62,16 +73,39 @@ export async function provisionTenant(tenantId: string, creatorUserId?: string):
     await storage.getBranding(tenantId);
     console.log(`  Settings and branding initialized for tenant "${tenantId}"`);
 
-    if (creatorUserId) {
-      const adminRoleId = roleIdsByName["Global Admin"];
-      if (adminRoleId) {
-        await db.insert(userOrgRoles).values({
-          tenantId,
-          userId: creatorUserId,
-          roleId: adminRoleId,
-        }).onConflictDoNothing();
-        console.log(`  Creator assigned Global Admin role for tenant "${tenantId}"`);
+    const adminRoleId = roleIdsByName["Global Admin"];
+
+    if (tenantAdmin && adminRoleId) {
+      const [existingUser] = await db.select().from(users).where(eq(users.email, tenantAdmin.email));
+      let adminUserId: string;
+
+      if (existingUser) {
+        adminUserId = existingUser.id;
+        console.log(`  Found existing user "${tenantAdmin.email}" (${adminUserId})`);
+      } else {
+        const [created] = await db.insert(users).values({
+          id: sql`gen_random_uuid()`,
+          email: tenantAdmin.email,
+          firstName: tenantAdmin.firstName,
+          lastName: tenantAdmin.lastName,
+        }).returning();
+        adminUserId = created.id;
+        console.log(`  Created Tenant Admin user "${tenantAdmin.email}" (${adminUserId})`);
       }
+
+      await db.insert(userOrgRoles).values({
+        tenantId,
+        userId: adminUserId,
+        roleId: adminRoleId,
+      }).onConflictDoNothing();
+      console.log(`  Tenant Admin assigned Global Admin role for tenant "${tenantId}"`);
+    } else if (creatorUserId && adminRoleId) {
+      await db.insert(userOrgRoles).values({
+        tenantId,
+        userId: creatorUserId,
+        roleId: adminRoleId,
+      }).onConflictDoNothing();
+      console.log(`  Creator assigned Global Admin role for tenant "${tenantId}" (legacy fallback)`);
     }
 
     console.log(`Tenant "${tenantId}" provisioning complete`);
