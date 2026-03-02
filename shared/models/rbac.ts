@@ -98,6 +98,7 @@ export const MODULE_KEYS = [
   "allocations",
   "timesheets",
   "team_members",
+  "reports",
   "admin",
 ] as const;
 export type ModuleKey = typeof MODULE_KEYS[number];
@@ -112,6 +113,7 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
   allocations: "Allocations",
   timesheets: "Timesheets",
   team_members: "Team Members",
+  reports: "Reports",
   admin: "Admin",
 };
 
@@ -125,6 +127,7 @@ export const ALL_PERMISSIONS = [
   { key: "module.allocations", description: "Access the Allocations module", category: "module" },
   { key: "module.timesheets", description: "Access the Timesheets module", category: "module" },
   { key: "module.team_members", description: "Access the Team Members module", category: "module" },
+  { key: "module.reports", description: "Access the Reports module", category: "module" },
   { key: "module.admin", description: "Access the Admin / Settings area", category: "module" },
 
   { key: "record.global_access", description: "See all records regardless of assignment (bypass record-level filtering)", category: "access" },
@@ -198,7 +201,7 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<string, string[]> = {
 
   "PMO Lead": [
     "module.dashboard", "module.projects", "module.clients", "module.allocations",
-    "module.timesheets", "module.team_members", "module.admin", "module.coach",
+    "module.timesheets", "module.team_members", "module.reports", "module.admin", "module.coach",
     "record.global_access",
     "opp.view", "estimate.view", "rates.view",
     "gate.review", "gate.approve", "artifacts.manage", "raci.manage",
@@ -210,7 +213,7 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<string, string[]> = {
   ],
 
   "Finance": [
-    "module.dashboard", "module.projects", "module.opportunities", "module.clients", "module.admin",
+    "module.dashboard", "module.projects", "module.opportunities", "module.clients", "module.reports", "module.admin",
     "record.global_access",
     "opp.view", "estimate.view", "rates.view", "rates.edit", "pricing.approve",
     "project.view",
@@ -219,7 +222,7 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<string, string[]> = {
 
   "Delivery Lead": [
     "module.dashboard", "module.projects", "module.clients", "module.allocations",
-    "module.timesheets", "module.team_members", "module.coach",
+    "module.timesheets", "module.team_members", "module.reports", "module.coach",
     "record.global_access",
     "opp.view", "opp.edit", "estimate.view", "estimate.edit",
     "gate.review", "gate.submit", "gate.approve", "artifacts.manage",
@@ -230,7 +233,7 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<string, string[]> = {
   ],
 
   "Project Manager": [
-    "module.dashboard", "module.projects", "module.timesheets", "module.allocations", "module.coach",
+    "module.dashboard", "module.projects", "module.timesheets", "module.allocations", "module.reports", "module.coach",
     "gate.submit", "gate.review", "artifacts.manage",
     "project.view", "project.edit",
     "timesheet.submit", "timesheet.approve",

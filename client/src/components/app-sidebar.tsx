@@ -1,4 +1,4 @@
-import { LayoutDashboard, FolderKanban, Settings, Building2, Users, UserCheck, CalendarRange, Clock, LogOut, Info, Bot, Target, Shield, ChevronRight, Globe, ChevronsUpDown, FlaskConical } from "lucide-react";
+import { LayoutDashboard, FolderKanban, Settings, Building2, Users, UserCheck, CalendarRange, Clock, LogOut, Info, Bot, Target, Shield, ChevronRight, Globe, ChevronsUpDown, FlaskConical, BarChart3 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
@@ -115,6 +115,7 @@ export function AppSidebar() {
     { title: "Contacts", url: "/contacts", icon: Users, visible: hasModule("contacts") },
     { title: "Opportunities", url: "/opportunities", icon: Target, visible: hasModule("opportunities") && opportunitiesEnabled },
     { title: "Projects", url: "/projects", icon: FolderKanban, visible: hasModule("projects") },
+    { title: "Reports", url: "/reports", icon: BarChart3, visible: hasModule("reports") },
   ].filter(i => i.visible);
 
   const operationsItems = [

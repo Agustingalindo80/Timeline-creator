@@ -31,6 +31,11 @@ import ChatPage from "@/pages/chat";
 import OpportunitiesPage from "@/pages/opportunities";
 import OpportunityDetail from "@/pages/opportunity-detail";
 import GlobalAdminPage from "@/pages/global-admin";
+import ReportsPage from "@/pages/reports";
+import PortfolioHealthReport from "@/pages/reports/portfolio-health";
+import ProjectStatusReport from "@/pages/reports/project-status";
+import MilestoneTrackerReport from "@/pages/reports/milestone-tracker";
+import RaidSummaryReport from "@/pages/reports/raid-summary";
 import Landing from "@/pages/landing";
 import NotFound from "@/pages/not-found";
 
@@ -124,6 +129,11 @@ function AppRouter() {
       <Route path="/timesheets">{() => <ProtectedRoute requiredModule="module.timesheets"><TimesheetsPage /></ProtectedRoute>}</Route>
       <Route path="/opportunities">{() => <ProtectedRoute requiredModule="module.opportunities"><OpportunitiesPage /></ProtectedRoute>}</Route>
       <Route path="/opportunities/:id">{() => <ProtectedRoute requiredModule="module.opportunities"><OpportunityDetail /></ProtectedRoute>}</Route>
+      <Route path="/reports/portfolio-health">{() => <ProtectedRoute requiredModule="module.reports"><PortfolioHealthReport /></ProtectedRoute>}</Route>
+      <Route path="/reports/project-status">{() => <ProtectedRoute requiredModule="module.reports"><ProjectStatusReport /></ProtectedRoute>}</Route>
+      <Route path="/reports/milestone-tracker">{() => <ProtectedRoute requiredModule="module.reports"><MilestoneTrackerReport /></ProtectedRoute>}</Route>
+      <Route path="/reports/raid-summary">{() => <ProtectedRoute requiredModule="module.reports"><RaidSummaryReport /></ProtectedRoute>}</Route>
+      <Route path="/reports">{() => <ProtectedRoute requiredModule="module.reports"><ReportsPage /></ProtectedRoute>}</Route>
       <Route path="/about" component={AboutPage} />
       <Route path="/chat" component={ChatPage} />
       <Route path="/admin/security">{() => <ProtectedRoute requiredModule="module.admin"><AdminSecurity /></ProtectedRoute>}</Route>

@@ -20,6 +20,7 @@ import { getEffectivePermissions, invalidatePermissionCache, hasGlobalRecordAcce
 import { eq, and } from "drizzle-orm";
 import { ALL_PERMISSIONS, users, timelines, userOrgRoles } from "@shared/schema";
 import { calculateEVMForWeek } from "./evm-engine";
+import { getPortfolioHealth, getProjectStatusReport, getMilestonesReport, getRaidSummaryReport } from "./reports";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
@@ -3303,6 +3304,63 @@ Respond ONLY with valid JSON:
       const [user] = await db.select({ isSuperAdmin: users.isSuperAdmin }).from(users).where(eq(users.id, userId));
       res.json({ isSuperAdmin: user?.isSuperAdmin || false });
     } catch (err: any) { res.json({ isSuperAdmin: false }); }
+  });
+
+  // ── REPORT ROUTES ──
+
+  app.get("/api/reports/portfolio-health", requireModuleAccess("reports"), requirePermission("reports.view"), async (req, res) => {
+    try {
+      const tenantId = req.tenantId || "default";
+      const data = await getPortfolioHealth(tenantId, {
+        clientId: req.query.clientId as string | undefined,
+        region: req.query.region as string | undefined,
+        status: req.query.status as string | undefined,
+        healthFilter: req.query.healthFilter as string | undefined,
+      });
+      res.json(data);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/reports/project-status/:id", requireModuleAccess("reports"), requirePermission("reports.view"), async (req, res) => {
+    try {
+      const tenantId = req.tenantId || "default";
+      const data = await getProjectStatusReport(tenantId, req.params.id);
+      if (!data) return res.status(404).json({ message: "Project not found" });
+      res.json(data);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/reports/milestones", requireModuleAccess("reports"), requirePermission("reports.view"), async (req, res) => {
+    try {
+      const tenantId = req.tenantId || "default";
+      const data = await getMilestonesReport(tenantId, {
+        dateFrom: req.query.dateFrom as string | undefined,
+        dateTo: req.query.dateTo as string | undefined,
+        financialOnly: req.query.financialOnly === "true",
+        projectId: req.query.projectId as string | undefined,
+      });
+      res.json(data);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/reports/raid-summary", requireModuleAccess("reports"), requirePermission("reports.view"), async (req, res) => {
+    try {
+      const tenantId = req.tenantId || "default";
+      const data = await getRaidSummaryReport(tenantId, {
+        itemType: req.query.itemType as string | undefined,
+        status: req.query.status as string | undefined,
+        projectId: req.query.projectId as string | undefined,
+      });
+      res.json(data);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
   });
 
   // ── Seed FlightPath on startup ──
