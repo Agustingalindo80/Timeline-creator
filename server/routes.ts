@@ -1154,7 +1154,7 @@ export async function registerRoutes(
 
   // --- RATE CARD ROUTES ---
 
-  app.get("/api/rate-cards", async (_req, res) => {
+  app.get("/api/rate-cards", async (req, res) => {
     try {
       const cards = await storage.getRateCards(req.tenantId);
       res.json(cards);

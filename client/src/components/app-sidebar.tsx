@@ -153,6 +153,7 @@ export function AppSidebar() {
   const adminItems = [
     { title: "Settings", url: "/admin/settings", icon: Settings },
     { title: "Security", url: "/admin/security", icon: Shield },
+    { title: "About", url: "/about", icon: Info },
   ];
 
   return (
@@ -220,29 +221,9 @@ export function AppSidebar() {
         {renderNavGroup("Workspace", workItems)}
         {renderNavGroup("Resources", resourceItems)}
 
-        <SidebarGroup className="py-1">
-          <SidebarGroupContent>
-            <SidebarMenu className="gap-0.5">
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={isActive("/about")}
-                  className="h-8 px-3 gap-2.5 text-[13px] font-medium rounded-md"
-                  data-testid="nav-about"
-                >
-                  <Link href="/about">
-                    <Info className="w-4 h-4 shrink-0" />
-                    <span className="truncate">About</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
         {showAdmin && (
           <SidebarGroup className="py-1">
-            <Collapsible defaultOpen={location.startsWith("/admin")}>
+            <Collapsible defaultOpen={location.startsWith("/admin") || location === "/about"}>
               <SidebarGroupLabel className="px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 mb-0.5">
                 <CollapsibleTrigger className="flex items-center gap-1 w-full" data-testid="nav-admin-toggle">
                   Admin

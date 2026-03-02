@@ -30,23 +30,28 @@ import {
   Upload,
   UserCheck,
   Milestone,
+  CalendarRange,
+  Globe,
+  ShieldCheck,
+  Database,
+  ServerCog,
 } from "lucide-react";
 
 const coreModules = [
   {
     icon: LayoutDashboard,
     title: "Dashboard",
-    description: "Portfolio-level overview providing a consolidated view of all active projects, their health status, budgets, and key metrics at a glance.",
+    description: "Mission Control layout with portfolio-level metric cards, pipeline funnel bars, and a consolidated view of all active projects, health status, budgets, and key performance indicators.",
   },
   {
     icon: Building2,
     title: "Client & Contact Management",
-    description: "Maintain a centralised directory of clients, contacts, industries, and relationships. Link projects to clients for full traceability.",
+    description: "Centralised directory of clients, contacts, industries, and relationships. Link projects to clients for full traceability across the portfolio.",
   },
   {
     icon: FolderKanban,
     title: "Project Management",
-    description: "Create and manage projects with visual timelines, milestones, hierarchical phases and workstreams, and configurable health indicators across four dimensions.",
+    description: "Create and manage projects with visual timelines, milestones, hierarchical phases and workstreams, and configurable health indicators across four dimensions (Overall, Scope, Budget, Team).",
   },
   {
     icon: Target,
@@ -64,9 +69,14 @@ const coreModules = [
     description: "Track team members, define rate cards by role and region, assign resources to projects, and plan weekly allocations across the portfolio. Supports role-only entries for pre-sales planning with automatic team sync from estimates.",
   },
   {
+    icon: CalendarRange,
+    title: "Resource Allocation",
+    description: "Matrix view for team members' weekly hours across projects. Visual capacity planning to balance workloads and identify over/under-allocation across the portfolio.",
+  },
+  {
     icon: Clock,
     title: "Timesheets",
-    description: "Record actual daily effort per team member, per project and workstream. Supports Mon-Sun daily entry with automatic weekly totalling.",
+    description: "Record actual daily effort per team member, per project and workstream. Supports Mon-Sun daily entry with automatic weekly totalling and project-level aggregation.",
   },
   {
     icon: TrendingUp,
@@ -76,7 +86,7 @@ const coreModules = [
   {
     icon: BarChart3,
     title: "EVM Dashboard",
-    description: "Full Earned Value Management suite: BAC, PV, AC, EV, SV, CV, SPI, CPI, EAC, and ETC. Colour-coded performance indicators with weekly and per-workstream breakdowns.",
+    description: "Full Earned Value Management suite: BAC, PV, AC, EV, SV, CV, SPI, CPI, EAC, and ETC. S-Curve charts (PV/AC/EV over time with BAC reference), CPI/SPI Performance Trend charts, snapshot versioning, and per-workstream breakdowns.",
   },
   {
     icon: AlertTriangle,
@@ -91,17 +101,27 @@ const coreModules = [
   {
     icon: Bot,
     title: "Governance Coach",
-    description: "AI-powered natural language assistant that guides project managers through the governance framework, explains stage requirements, RACI roles, and recommends next actions.",
+    description: "AI-powered natural language assistant (OpenAI) that guides project managers through the governance framework, explains stage requirements, RACI roles, and recommends next actions. Dynamically adapts to tenant-specific governance labels.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "RBAC Security System",
+    description: "Two-layer access model: Security Roles define module access and action permissions; Record-Level Filtering restricts visibility to assigned projects. 9 seeded system roles, custom Role Builder UI, Role Matrix viewer, and server-side enforcement on all endpoints.",
+  },
+  {
+    icon: Globe,
+    title: "Multi-Tenancy & Global Admin",
+    description: "Full tenant isolation with automated provisioning pipeline. Global Admin console for tenant CRUD, usage stats, and tenant switching. Super Admin controls for platform-wide governance.",
   },
   {
     icon: Palette,
     title: "Branding & Customisation",
-    description: "Personalise the platform with custom app name, logo, favicon, and colour scheme. Supports dark and light themes.",
+    description: "Database-driven personalisation with custom app name, logo, favicon, and colour scheme per tenant. Supports dark and light themes with persistent preference.",
   },
   {
     icon: SlidersHorizontal,
     title: "Configurable Fields",
-    description: "User-defined dropdown options for project types, engagement models, statuses, roles, regions, and more. Adapt the platform to your organisation's terminology.",
+    description: "Admin-customisable dropdown options for project types, engagement models, statuses, roles, regions, date formats, and more. Adapt the platform to your organisation's terminology.",
   },
 ];
 
@@ -114,7 +134,7 @@ const keyCapabilities = [
   {
     icon: DollarSign,
     title: "Price-Driven Financial Model",
-    description: "Opportunities use a price-driven model: Base Price (hours x bill rate), Risk-Adjusted Price, and Buffered Price with configurable risk and buffer percentages. Gross Margin calculated as (Buffered Price - Base Cost) / Buffered Price. Projects track approved budget, running cost, and margin.",
+    description: "Opportunities use a price-driven model: Base Price (hours x bill rate), Risk-Adjusted Price, and Buffered Price with configurable risk and buffer percentages. Gross Margin calculated as (Buffered Price - Base Cost) / Buffered Price.",
   },
   {
     icon: Heart,
@@ -124,7 +144,7 @@ const keyCapabilities = [
   {
     icon: BarChart3,
     title: "Earned Value Management",
-    description: "Industry-standard EVM metrics computed from allocations (PV), timesheets (AC), and progress entries (EV) for objective performance measurement.",
+    description: "Industry-standard EVM metrics computed from allocations (PV), timesheets (AC), and progress entries (EV) with historical snapshot tracking and revision versioning.",
   },
   {
     icon: Shield,
@@ -144,27 +164,42 @@ const keyCapabilities = [
   {
     icon: FolderKanban,
     title: "Document Repository Integration",
-    description: "Connect Google Drive or SharePoint folders to projects. Link deliverable artifacts to governance checkpoints and run AI-powered verification to ensure documents meet requirements.",
+    description: "Connect Google Drive folders to projects. Link deliverable artifacts to governance checkpoints and run AI-powered verification to ensure documents meet requirements.",
   },
   {
     icon: ArrowRightLeft,
     title: "Convert to Project",
-    description: "One-click conversion from won opportunities to delivery projects. Copies phases, workstreams, resources, team composition, allocations, and RAID items. Role-only team entries carry over as positions to fill.",
+    description: "One-click conversion from won opportunities to delivery projects. Copies phases, workstreams, resources, team composition, allocations, and RAID items.",
   },
   {
     icon: Milestone,
     title: "Stage 0 Pre-Sales Governance",
-    description: "Six pre-sales deliverables (Deal Context, Scope Definition Pack, Solution Approach, Delivery Feasibility Review, SOW, Sales-to-Delivery Handoff Pack) with RACI matrices and a Commercial & Operational Authorization gate.",
+    description: "Six pre-sales deliverables (Deal Context, Scope Definition Pack, Solution Approach, Delivery Feasibility Review, SOW, Sales-to-Delivery Handoff Pack) with RACI matrices.",
   },
   {
     icon: Upload,
     title: "Estimate Template Import/Export",
-    description: "Download a pre-formatted Excel template to define phases, workstreams, and resources offline. Import the completed template to bulk-create the estimate hierarchy with automatic duplicate detection.",
+    description: "Download a pre-formatted Excel template to define phases, workstreams, and resources offline. Import the completed template to bulk-create the estimate hierarchy.",
   },
   {
     icon: UserCheck,
     title: "Sync from Estimate",
     description: "Auto-populate team composition from workstream resources. Consolidates by rate card, calculates required FTEs using peak concurrent hours, and computes the delta against existing team entries.",
+  },
+  {
+    icon: Lock,
+    title: "Role-Based Access Control",
+    description: "Configurable security roles with module-level permissions and record-level filtering. Admin-managed Role Builder, Role Matrix, user-role assignments, and audit logging for sensitive actions.",
+  },
+  {
+    icon: Database,
+    title: "Multi-Tenant Architecture",
+    description: "Full tenant isolation across all data tables. Automated provisioning pipeline seeds RBAC roles, governance stages, settings, and branding for new tenants.",
+  },
+  {
+    icon: ServerCog,
+    title: "Tenant Provisioning Pipeline",
+    description: "New tenants are immediately functional after creation — RBAC system roles, permissions, governance stages, app settings, branding, and admin user assignment are all seeded automatically.",
   },
   {
     icon: FileSpreadsheet,
@@ -177,14 +212,9 @@ const keyCapabilities = [
     description: "Toggle between dark and light modes. Theme preference is persisted and applied consistently across all pages.",
   },
   {
-    icon: Lock,
-    title: "Secure Authentication",
-    description: "Role-based access control with secure session management. All data is protected behind authentication.",
-  },
-  {
     icon: SlidersHorizontal,
     title: "Dynamic Framework Configuration",
-    description: "Multi-tenant ready governance framework. Configure stages, deliverables, RACI roles, and gate criteria per organisation. AI Coach dynamically adapts to your framework.",
+    description: "Tenant-customisable governance framework with configurable labels, stages, deliverables, RACI roles, and gate criteria. AI Coach dynamically adapts to your framework.",
   },
 ];
 
@@ -224,10 +254,10 @@ export default function AboutPage() {
 
         <div className="text-center max-w-3xl mx-auto" data-testid="about-overview">
           <p className="text-sm leading-relaxed text-muted-foreground">
-            A unified platform for project managers to plan, execute, and monitor projects with full visibility into
+            A unified, multi-tenant platform for project managers to plan, execute, and monitor projects with full visibility into
             scope, schedule, cost, and team performance. From pre-sales opportunity estimation through stage-gated
             delivery to value realization, the platform combines resource-based pricing, traditional project management,
-            AI-powered governance, and earned value analysis to keep projects on track and stakeholders informed.
+            AI-powered governance coaching, earned value analysis, and role-based security to keep projects on track and stakeholders informed.
           </p>
         </div>
 
@@ -281,13 +311,14 @@ export default function AboutPage() {
           <Badge variant="outline" className="text-xs uppercase tracking-wider mb-3">Architecture</Badge>
           <h2 className="text-xl font-semibold mb-3">Technical Summary</h2>
           <p className="text-xs text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            Built on a modern web stack with a React frontend, Node.js backend, and PostgreSQL database.
-            Real-time data updates, secure session-based authentication, and a responsive design ensure
-            the platform works reliably across devices and team sizes. AI-powered features leverage
-            OpenAI integration for intelligent gate evaluation and conversational coaching.
+            Built on a modern web stack with React, Tailwind CSS, and shadcn/ui on the frontend, Express.js on Node.js
+            with PostgreSQL and Drizzle ORM on the backend. Full multi-tenant architecture with tenant isolation across all data tables,
+            automated provisioning pipeline, and a two-layer RBAC security system with server-side enforcement.
+            AI-powered features leverage OpenAI integration for intelligent gate evaluation and conversational governance coaching.
+            Real-time data updates via TanStack React Query, secure session-based authentication via Replit Auth (OpenID Connect),
+            and a responsive design ensure the platform works reliably across devices and team sizes.
             All configuration, branding, governance frameworks, and field options are database-driven
-            for easy customisation without code changes. Multi-tenant ready architecture supports
-            different governance frameworks per organisation.
+            for easy customisation without code changes.
           </p>
         </div>
       </div>

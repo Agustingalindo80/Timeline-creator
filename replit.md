@@ -10,13 +10,13 @@ I prefer iterative development with a focus on delivering core features first. P
 The application uses a modern web stack with React, Vite, Tailwind CSS, and shadcn/ui for the frontend, and Express.js on Node.js with PostgreSQL and Drizzle ORM for the backend.
 
 **UI/UX Decisions:**
-- Consistent left-hand sidebar navigation with module-permission-gated items. Admin section has Settings + Security sub-items.
+- Consistent left-hand sidebar navigation with module-permission-gated items. Admin section has Settings, Security, and About sub-items.
 - Supports dark/light mode.
 - Project visualizations include horizontal timeline views and Gantt-like bars.
 - Health indicators use colored dots.
 - Data tables support inline editing and CRUD operations.
 - Dynamic forms for project creation and detail management.
-- A static "About" page for stakeholder overview.
+- About page under Admin section with comprehensive feature overview.
 - **Color Palette:** Executive-grade dark-first design with a primary blue (`#3B82F6`), slate-900 background for dark mode, and clean whites for light mode.
 - **Component Classes:** Standardized classes for cards, metrics, tables, and financial displays.
 - **Dashboard:** Mission Control layout with metric cards and pipeline funnel bars.
