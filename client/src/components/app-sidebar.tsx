@@ -102,17 +102,20 @@ export function AppSidebar() {
 
   const coreItems = [
     { title: "Dashboard", url: "/", icon: LayoutDashboard, visible: true },
+    { title: "Projects", url: "/projects", icon: FolderKanban, visible: hasModule("projects") },
+  ].filter(i => i.visible);
+
+  const helpItems = [
     { title: coachLabel, url: "/chat", icon: Bot, visible: hasModule("coach") },
-    { title: "Opportunities", url: "/opportunities", icon: Target, visible: hasModule("opportunities") && opportunitiesEnabled },
   ].filter(i => i.visible);
 
   const workItems = [
-    { title: "Projects", url: "/projects", icon: FolderKanban, visible: hasModule("projects") },
-    { title: "Clients", url: "/clients", icon: Building2, visible: hasModule("clients") },
+    { title: "Companies", url: "/clients", icon: Building2, visible: hasModule("clients") },
     { title: "Contacts", url: "/contacts", icon: Users, visible: hasModule("contacts") },
+    { title: "Opportunities", url: "/opportunities", icon: Target, visible: hasModule("opportunities") && opportunitiesEnabled },
   ].filter(i => i.visible);
 
-  const resourceItems = [
+  const operationsItems = [
     { title: "Team Members", url: "/team-members", icon: UserCheck, visible: hasModule("team_members") },
     { title: "Allocations", url: "/allocations", icon: CalendarRange, visible: hasModule("allocations") },
     { title: "Timesheets", url: "/timesheets", icon: Clock, visible: hasModule("timesheets") },
@@ -218,15 +221,16 @@ export function AppSidebar() {
         )}
 
         {renderNavGroup("Core", coreItems)}
+        {renderNavGroup("Help & Support", helpItems)}
         {renderNavGroup("Workspace", workItems)}
-        {renderNavGroup("Resources", resourceItems)}
+        {renderNavGroup("Operations", operationsItems)}
 
         {showAdmin && (
           <SidebarGroup className="py-1">
             <Collapsible defaultOpen={location.startsWith("/admin") || location === "/about"}>
               <SidebarGroupLabel className="px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 mb-0.5">
                 <CollapsibleTrigger className="flex items-center gap-1 w-full" data-testid="nav-admin-toggle">
-                  Admin
+                  Administration
                   <ChevronRight className="w-3 h-3 transition-transform duration-200 group-data-[state=open]:rotate-90" />
                 </CollapsibleTrigger>
               </SidebarGroupLabel>
@@ -260,6 +264,7 @@ export function AppSidebar() {
             <SidebarGroupLabel className="px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 mb-0.5">
               Super Admin
             </SidebarGroupLabel>
+
             <SidebarGroupContent>
               <SidebarMenu className="gap-0.5">
                 <SidebarMenuItem>
@@ -271,7 +276,7 @@ export function AppSidebar() {
                   >
                     <Link href="/global-admin">
                       <Globe className="w-4 h-4 shrink-0" />
-                      <span className="truncate">Global Admin</span>
+                      <span className="truncate">Global Administration</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
