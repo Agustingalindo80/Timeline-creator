@@ -2956,6 +2956,19 @@ Respond ONLY with valid JSON:
       const user = (req as any).user;
       const userId = user?.claims?.sub || user?.id;
       if (!userId) return res.status(401).json({ message: "Authentication required" });
+
+      // TODO: Remove before commercial launch — Super Admins see all modules for testing
+      const [userRecord] = await db.select({ isSuperAdmin: users.isSuperAdmin }).from(users).where(eq(users.id, userId));
+      if (userRecord?.isSuperAdmin) {
+        const allModules = [
+          "module.dashboard", "module.coach", "module.projects", "module.opportunities",
+          "module.clients", "module.contacts", "module.allocations", "module.timesheets",
+          "module.team_members", "module.reports", "module.admin"
+        ];
+        const teamMemberId = await getLinkedTeamMemberId(userId);
+        return res.json({ modules: allModules, isGlobalAccess: true, teamMemberId });
+      }
+
       const modules = await getUserModulePermissions(userId, req.tenantId || "default");
       const isGlobal = await hasGlobalRecordAccess(userId, req.tenantId || "default");
       const teamMemberId = await getLinkedTeamMemberId(userId);

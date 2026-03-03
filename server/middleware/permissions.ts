@@ -1,7 +1,8 @@
 import type { Request, Response, NextFunction } from "express";
 import { hasAnyPermission, hasPermission, hasGlobalRecordAccess, getUserOrgPermissions } from "../rbac";
 import { db } from "../db";
-import { auditLog } from "@shared/schema";
+import { auditLog, users } from "@shared/schema";
+import { eq } from "drizzle-orm";
 
 const AUDITED_ACTIONS = new Set([
   "gate.approve",
@@ -16,6 +17,12 @@ function extractUserId(req: Request): string | null {
   const user = (req as any).user;
   if (!user) return null;
   return user?.claims?.sub || user?.id || null;
+}
+
+// TODO: Remove before commercial launch — Super Admins bypass all RBAC for testing
+async function isSuperAdmin(userId: string): Promise<boolean> {
+  const [user] = await db.select({ isSuperAdmin: users.isSuperAdmin }).from(users).where(eq(users.id, userId));
+  return user?.isSuperAdmin === true;
 }
 
 function extractObjectContext(req: Request): { objectType?: string; objectId?: string } {
@@ -39,6 +46,9 @@ export function requirePermission(...permissionKeys: string[]) {
     if (!userId) {
       return res.status(401).json({ message: "Authentication required" });
     }
+
+    // TODO: Remove before commercial launch — Super Admins bypass all permission checks for testing
+    if (await isSuperAdmin(userId)) return next();
 
     const tenantId = req.tenantId || "default";
     const { objectType, objectId } = extractObjectContext(req);
@@ -83,6 +93,9 @@ export function requireModuleAccess(moduleKey: string) {
       return res.status(401).json({ message: "Authentication required" });
     }
 
+    // TODO: Remove before commercial launch — Super Admins bypass all module checks for testing
+    if (await isSuperAdmin(userId)) return next();
+
     const tenantId = req.tenantId || "default";
     const permKey = `module.${moduleKey}`;
 
@@ -108,6 +121,9 @@ export function requireObjectAccess(objectType: string) {
     if (!userId) {
       return res.status(401).json({ message: "Authentication required" });
     }
+
+    // TODO: Remove before commercial launch — Super Admins bypass all object access checks for testing
+    if (await isSuperAdmin(userId)) return next();
 
     const tenantId = req.tenantId || "default";
     const objectId = (req.params.id || req.params.objectId) as string | undefined;
