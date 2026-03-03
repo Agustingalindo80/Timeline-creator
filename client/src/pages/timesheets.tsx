@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { usePermissions } from "@/hooks/use-permissions";
+import { useTranslation } from "react-i18next";
 import type {
   Timeline,
   Task,
@@ -30,7 +31,7 @@ function getWeekDays(weekEndingStr: string): { date: string; label: string; dayN
   const mon = new Date(sun);
   mon.setDate(sun.getDate() - 6);
   const days: { date: string; label: string; dayName: string }[] = [];
-  const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]; // kept as short keys for date formatting
   for (let i = 0; i < 7; i++) {
     const d = new Date(mon);
     d.setDate(mon.getDate() + i);
@@ -75,6 +76,7 @@ interface TimesheetRow {
 }
 
 export default function TimesheetsPage() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const { hasPermission, assignments: userAssignments } = usePermissions();
   const [selectedTeamMemberId, setSelectedTeamMemberId] = useState<string>("");
@@ -343,12 +345,12 @@ export default function TimesheetsPage() {
 
   const handleAddRow = () => {
     if (!newRowProjectId || !newRowTaskId) {
-      toast({ title: "Select both a project and workstream", variant: "destructive" });
+      toast({ title: t("timesheets.selectBothProjectWorkstream"), variant: "destructive" });
       return;
     }
     const rk = rowKey(newRowProjectId, newRowTaskId);
     if (existingRows.some(r => r.key === rk)) {
-      toast({ title: "This project + workstream combination already exists", variant: "destructive" });
+      toast({ title: t("timesheets.combinationExists"), variant: "destructive" });
       return;
     }
     setPendingRows(prev => [...prev, { projectId: newRowProjectId, taskId: newRowTaskId, key: rk }]);
@@ -374,23 +376,23 @@ export default function TimesheetsPage() {
   return (
     <>
       <Helmet>
-        <title>Timesheets</title>
+        <title>{t("timesheets.title")}</title>
       </Helmet>
       <div className="p-6 space-y-6">
         <div>
-          <h1 className="text-2xl font-semibold" data-testid="text-page-title">Timesheets</h1>
+          <h1 className="text-2xl font-semibold" data-testid="text-page-title">{t("timesheets.title")}</h1>
           <p className="text-sm text-muted-foreground mt-1" data-testid="text-page-description">
-            Track daily effort hours by project and workstream
+            {t("timesheets.subtitle")}
           </p>
         </div>
 
         <div className="flex items-center gap-4 flex-wrap">
           {isGlobalAccess ? (
             <div className="w-64" data-testid="container-team-member-selector">
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Team Member</label>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("timesheets.teamMember")}</label>
               <Select value={selectedTeamMemberId} onValueChange={(v) => { setSelectedTeamMemberId(v); setEditingCells({}); setPendingRows([]); }} data-testid="select-team-member">
                 <SelectTrigger data-testid="select-team-member-trigger">
-                  <SelectValue placeholder="Select team member" />
+                  <SelectValue placeholder={t("timesheets.selectTeamMember")} />
                 </SelectTrigger>
                 <SelectContent>
                   {allTeamMembers.map((tm) => (
@@ -403,9 +405,9 @@ export default function TimesheetsPage() {
             </div>
           ) : (
             <div className="w-64" data-testid="container-team-member-readonly">
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Team Member</label>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("timesheets.teamMember")}</label>
               <div className="flex items-center h-9 px-3 rounded-md border bg-muted text-sm" data-testid="text-team-member-name">
-                {allTeamMembers.find(tm => tm.id === selectedTeamMemberId)?.name || "Loading..."}
+                {allTeamMembers.find(tm => tm.id === selectedTeamMemberId)?.name || t("common.loading")}
               </div>
             </div>
           )}
@@ -422,7 +424,7 @@ export default function TimesheetsPage() {
                 <ChevronLeft className="w-4 h-4" />
               </Button>
               <div className="text-sm font-medium min-w-[200px] text-center" data-testid="text-week-ending">
-                Week ending: {formatDisplayDate(weekEnding)}
+                {t("timesheets.weekEnding")} {formatDisplayDate(weekEnding)}
               </div>
               <Button
                 size="icon"
@@ -439,7 +441,7 @@ export default function TimesheetsPage() {
         {!selectedTeamMemberId && (
           <Card>
             <CardContent className="p-8 text-center text-muted-foreground" data-testid="text-no-member">
-              Select a team member to view and edit their timesheet
+              {t("timesheets.selectMemberPrompt")}
             </CardContent>
           </Card>
         )}
@@ -455,7 +457,7 @@ export default function TimesheetsPage() {
             <div className="flex items-center gap-4 flex-wrap">
               <Card className="flex-1 min-w-[140px]">
                 <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Total Hours This Week</CardTitle>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">{t("timesheets.totalHoursWeek")}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold" data-testid="text-total-hours">{grandTotal.toFixed(1)}</div>
@@ -463,7 +465,7 @@ export default function TimesheetsPage() {
               </Card>
               <Card className="flex-1 min-w-[140px]">
                 <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Entries</CardTitle>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">{t("projects.entries")}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold" data-testid="text-entry-count">{existingRows.length}</div>
@@ -477,15 +479,15 @@ export default function TimesheetsPage() {
                   <table className="w-full text-sm" data-testid="table-timesheet">
                     <thead>
                       <tr className="border-b">
-                        <th className="text-left p-3 font-medium sticky left-0 bg-card z-10 min-w-[140px]">Project</th>
-                        <th className="text-left p-3 font-medium min-w-[140px]">Workstream</th>
+                        <th className="text-left p-3 font-medium sticky left-0 bg-card z-10 min-w-[140px]">{t("common.project")}</th>
+                        <th className="text-left p-3 font-medium min-w-[140px]">{t("timesheets.workstream")}</th>
                         {weekDays.map((day) => (
                           <th key={day.date} className="text-center p-2 font-medium min-w-[72px]">
                             <div className="text-[10px] text-muted-foreground">{day.dayName}</div>
                             <div className="text-xs">{day.label}</div>
                           </th>
                         ))}
-                        <th className="text-right p-3 font-medium min-w-[70px]">Total</th>
+                        <th className="text-right p-3 font-medium min-w-[70px]">{t("common.total")}</th>
                         <th className="p-3 w-10"></th>
                       </tr>
                     </thead>
@@ -493,7 +495,7 @@ export default function TimesheetsPage() {
                       {existingRows.length === 0 && !addingRow && (
                         <tr>
                           <td colSpan={11} className="p-8 text-center text-muted-foreground" data-testid="text-no-entries">
-                            No time entries for this week. Click "Add Row" below to start logging hours.
+                            {t("timesheets.noTimeEntries")}
                           </td>
                         </tr>
                       )}
@@ -551,7 +553,7 @@ export default function TimesheetsPage() {
                     </tbody>
                     <tfoot>
                       <tr className="border-t-2">
-                        <td className="p-2 font-medium sticky left-0 bg-card z-10" colSpan={2}>Day Totals</td>
+                        <td className="p-2 font-medium sticky left-0 bg-card z-10" colSpan={2}>{t("timesheets.dayTotals")}</td>
                         {weekDays.map((day) => {
                           const dt = getDayTotal(day.date);
                           return (
@@ -576,15 +578,15 @@ export default function TimesheetsPage() {
                 <CardContent className="p-4">
                   <div className="flex items-end gap-3 flex-wrap">
                     <div className="flex-1 min-w-[180px]">
-                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Project</label>
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("common.project")}</label>
                       <Select value={newRowProjectId} onValueChange={(v) => { setNewRowProjectId(v); setNewRowTaskId(""); }}>
                         <SelectTrigger data-testid="select-new-row-project">
-                          <SelectValue placeholder="Select project" />
+                          <SelectValue placeholder={t("timesheets.selectProject")} />
                         </SelectTrigger>
                         <SelectContent>
                           {allocatedProjects.length === 0 ? (
                             <div className="px-2 py-3 text-sm text-muted-foreground text-center" data-testid="text-no-allocated-projects">
-                              No project allocations found for this team member
+                              {t("timesheets.noAllocations")}
                             </div>
                           ) : (
                             allocatedProjects.map((p) => (
@@ -595,10 +597,10 @@ export default function TimesheetsPage() {
                       </Select>
                     </div>
                     <div className="flex-1 min-w-[180px]">
-                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Workstream</label>
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("timesheets.workstream")}</label>
                       <Select value={newRowTaskId} onValueChange={setNewRowTaskId} disabled={!newRowProjectId}>
                         <SelectTrigger data-testid="select-new-row-workstream">
-                          <SelectValue placeholder={newRowProjectId ? "Select workstream" : "Select project first"} />
+                          <SelectValue placeholder={newRowProjectId ? t("timesheets.selectWorkstream") : t("timesheets.selectProjectFirst")} />
                         </SelectTrigger>
                         <SelectContent>
                           {availableNewWorkstreams.map((ws) => (
@@ -608,10 +610,10 @@ export default function TimesheetsPage() {
                       </Select>
                     </div>
                     <Button onClick={handleAddRow} disabled={!newRowProjectId || !newRowTaskId} data-testid="button-confirm-add-row">
-                      Add
+                      {t("common.add")}
                     </Button>
                     <Button variant="outline" onClick={() => { setAddingRow(false); setNewRowProjectId(""); setNewRowTaskId(""); }} data-testid="button-cancel-add-row">
-                      Cancel
+                      {t("common.cancel")}
                     </Button>
                   </div>
                 </CardContent>
@@ -619,7 +621,7 @@ export default function TimesheetsPage() {
             ) : (
               <Button variant="outline" className="gap-2" onClick={() => setAddingRow(true)} data-testid="button-add-row">
                 <Plus className="w-4 h-4" />
-                Add Row
+                {t("timesheets.addRow")}
               </Button>
             )}
           </>

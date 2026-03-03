@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Helmet } from "react-helmet-async";
-import { Shield, List, Plus, X, GripVertical, RotateCcw, Users, CreditCard, Edit3, Trash2, Save, ChevronDown, ChevronRight, Calendar, Paintbrush, Upload, ImageIcon, Compass, ChevronUp } from "lucide-react";
+import { Shield, List, Plus, X, GripVertical, RotateCcw, Users, CreditCard, Edit3, Trash2, Save, ChevronDown, ChevronRight, Calendar, Paintbrush, Upload, ImageIcon, Compass, ChevronUp, Globe } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -25,6 +25,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAppTitle } from "@/hooks/use-app-title";
 import { useGovernanceLabel } from "@/hooks/use-governance-label";
+import { useTranslation } from "react-i18next";
 import { Label } from "@/components/ui/label";
 import { PermissionGuard } from "@/components/permission-guard";
 import type { AppSettings, FieldOption, TeamMember, RateCard, AllocationWithProject, TimelineWithMilestones, BrandingConfig, FlightpathStage, FlightpathDeliverable } from "@shared/schema";
@@ -66,6 +67,7 @@ function FieldOptionEditor({
   isPending,
   testIdPrefix,
 }: FieldOptionEditorProps) {
+  const { t } = useTranslation();
   const [items, setItems] = useState<FieldOption[]>(options);
   const [newValue, setNewValue] = useState("");
   const [newLabel, setNewLabel] = useState("");
@@ -288,6 +290,7 @@ interface TabConfig {
 }
 
 function MemberAllocations({ memberId, memberName }: { memberId: string; memberName: string }) {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [showAdd, setShowAdd] = useState(false);
   const [newProjectId, setNewProjectId] = useState("");
@@ -507,6 +510,7 @@ function MemberAllocations({ memberId, memberName }: { memberId: string; memberN
 }
 
 function TeamMembersManager() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState("");
@@ -748,6 +752,7 @@ function TeamMembersManager() {
 }
 
 function RateCardsManager() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [addingForRegion, setAddingForRegion] = useState<string | null>(null);
   const [newRole, setNewRole] = useState("");
@@ -1102,6 +1107,7 @@ function ColorField({ label, description, value, defaultValue, onChange, testId 
 }
 
 function BrandingManager() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const logoInputRef = useRef<HTMLInputElement>(null);
   const faviconInputRef = useRef<HTMLInputElement>(null);
@@ -1503,6 +1509,7 @@ function BrandingManager() {
 type StageWithDeliverables = FlightpathStage & { deliverables: FlightpathDeliverable[] };
 
 function FlightPathManager() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const { label: govLabel } = useGovernanceLabel();
   const [expandedStage, setExpandedStage] = useState<string | null>(null);
@@ -1718,6 +1725,7 @@ function FlightPathManager() {
 
 
 export default function Admin() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const appTitle = useAppTitle("Settings");
 
@@ -1977,6 +1985,27 @@ export default function Admin() {
                           data-testid="input-governance-label"
                         />
                       </div>
+                    </div>
+                  </div>
+                </Card>
+
+                <div className="mt-6 mb-4">
+                  <h2 className="text-base font-semibold mb-1 flex items-center gap-2">
+                    <Globe className="w-4 h-4" />
+                    {t("settings.languageLabel")}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    {t("settings.languageReadOnly")}
+                  </p>
+                </div>
+
+                <Card className="p-5">
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="text-sm font-medium">{t("settings.language")}</Label>
+                      <p className="text-sm mt-1" data-testid="text-locale-display">
+                        {settings?.locale === "es" ? "Español" : settings?.locale === "pt" ? "Português" : "English"}
+                      </p>
                     </div>
                   </div>
                 </Card>

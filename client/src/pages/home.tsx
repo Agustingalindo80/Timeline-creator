@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { Helmet } from "react-helmet-async";
+import { useTranslation } from "react-i18next";
 import { Plus, FileSpreadsheet, Trash2, FolderKanban, Search, Save, ExternalLink, ArrowUpDown, ArrowUp, ArrowDown, X, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -97,9 +98,10 @@ interface ColumnFilters {
 }
 
 export default function Home() {
+  const { t } = useTranslation();
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const appTitle = useAppTitle("Projects");
+  const appTitle = useAppTitle(t("projects.title"));
   const [searchQuery, setSearchQuery] = useState("");
   const [edits, setEdits] = useState<Record<string, RowEdits>>({});
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
@@ -245,7 +247,7 @@ export default function Home() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/timelines"] });
-      toast({ title: "Project deleted" });
+      toast({ title: t("projects.projectUpdated") });
     },
   });
 
@@ -305,9 +307,9 @@ export default function Home() {
         return next;
       });
       queryClient.invalidateQueries({ queryKey: ["/api/timelines"] });
-      toast({ title: "Project updated" });
+      toast({ title: t("projects.projectUpdated") });
     } catch {
-      toast({ title: "Failed to save", variant: "destructive" });
+      toast({ title: t("clients.failedToSave"), variant: "destructive" });
     } finally {
       setSavingIds((prev) => {
         const next = new Set(prev);
@@ -386,12 +388,12 @@ export default function Home() {
       </Helmet>
 
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-semibold" data-testid="text-page-title">Projects</h1>
+        <h1 className="text-xl font-semibold" data-testid="text-page-title">{t("projects.title")}</h1>
         <div className="flex items-center gap-2">
           {hasAnyEdits && (
             <Button onClick={saveAll} size="sm" disabled={isSaving} data-testid="button-save-all">
               <Save className="w-4 h-4 mr-2" />
-              {isSaving ? "Saving..." : "Save All Changes"}
+              {isSaving ? t("common.saving") : t("common.saveAllChanges")}
             </Button>
           )}
           <Button
@@ -401,11 +403,11 @@ export default function Home() {
             data-testid="button-import-excel"
           >
             <FileSpreadsheet className="w-4 h-4 mr-2" />
-            Import Excel
+            {t("projects.importExcel")}
           </Button>
           <Button size="sm" onClick={() => navigate("/create")} data-testid="button-create-timeline">
             <Plus className="w-4 h-4 mr-2" />
-            New Project
+            {t("projects.newProject")}
           </Button>
         </div>
       </div>
@@ -417,7 +419,7 @@ export default function Home() {
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by project name or client..."
+              placeholder={t("common.search") + "..."}
               className="pl-9 h-8 text-sm"
               data-testid="input-search-projects"
             />
@@ -430,7 +432,7 @@ export default function Home() {
             data-testid="button-toggle-filters"
           >
             <Filter className="w-3.5 h-3.5 mr-1.5" />
-            Filters
+            {t("common.filters")}
             {activeFilterCount > 0 && (
               <span className="ml-1.5 bg-primary text-primary-foreground rounded-full w-4 h-4 text-[10px] flex items-center justify-center">
                 {activeFilterCount}
@@ -446,7 +448,7 @@ export default function Home() {
               data-testid="button-clear-filters"
             >
               <X className="w-3.5 h-3.5 mr-1" />
-              Clear all
+              {t("common.clearAll")}
             </Button>
           )}
         </div>
@@ -466,9 +468,9 @@ export default function Home() {
           <div className="w-14 h-14 rounded-full bg-muted/60 flex items-center justify-center mb-5">
             <FolderKanban className="w-7 h-7 text-muted-foreground/70" />
           </div>
-          <h2 className="text-lg font-semibold mb-1.5">No projects yet</h2>
+          <h2 className="text-lg font-semibold mb-1.5">{t("dashboard.noActiveProjects")}</h2>
           <p className="text-sm text-muted-foreground mb-5 max-w-sm">
-            Create your first project by adding milestones manually or importing from an Excel spreadsheet.
+            {t("projects.noMilestonesAdded")}
           </p>
           <div className="flex gap-3">
             <Button
@@ -477,23 +479,23 @@ export default function Home() {
               data-testid="button-empty-import"
             >
               <FileSpreadsheet className="w-4 h-4 mr-2" />
-              Import Excel
+              {t("projects.importExcel")}
             </Button>
             <Button onClick={() => navigate("/create")} data-testid="button-empty-create">
               <Plus className="w-4 h-4 mr-2" />
-              Create Manually
+              {t("projects.manualEntry")}
             </Button>
           </div>
         </div>
       ) : processedTimelines.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center" data-testid="empty-search-results">
           <Search className="w-8 h-8 text-muted-foreground/60 mb-3" />
-          <h2 className="text-base font-semibold mb-1">No matching projects</h2>
+          <h2 className="text-base font-semibold mb-1">{t("common.noData")}</h2>
           <p className="text-xs text-muted-foreground mb-3">
-            No projects match your current filters. Try adjusting your search or filters.
+            {t("clients.noMatchingDescription")}
           </p>
           <Button variant="outline" size="sm" onClick={clearAllFilters} data-testid="button-clear-filters-empty">
-            Clear all filters
+            {t("common.clearAllFilters")}
           </Button>
         </div>
       ) : (
@@ -502,21 +504,21 @@ export default function Home() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="bg-muted/50 border-b">
-                  <SortHeader field="title" label="Project Name" />
-                  <SortHeader field="client" label="Client" />
-                  <SortHeader field="projectStatus" label="Status" />
-                  <SortHeader field="region" label="Region" />
-                  <SortHeader field="projectType" label="Project Type" />
-                  <SortHeader field="engagementModel" label="Engagement Model" />
-                  <SortHeader field="approvedBudget" label="Budget" />
-                  <SortHeader field="totalRunningCost" label="Running Cost" />
-                  <SortHeader field="grossMargin" label="GM %" />
-                  <SortHeader field="healthOverall" label="Overall" align="center" />
-                  <SortHeader field="scopeHealth" label="Scope" align="center" />
-                  <SortHeader field="budgetHealth" label="Budget" align="center" />
-                  <SortHeader field="teamHealth" label="Team" align="center" />
-                  <SortHeader field="progress" label="Progress" align="center" />
-                  <th className="text-center font-medium text-muted-foreground px-3 py-2 whitespace-nowrap w-[80px]">Actions</th>
+                  <SortHeader field="title" label={t("reports.projectName")} />
+                  <SortHeader field="client" label={t("common.client")} />
+                  <SortHeader field="projectStatus" label={t("common.status")} />
+                  <SortHeader field="region" label={t("common.region")} />
+                  <SortHeader field="projectType" label={t("projects.projectType")} />
+                  <SortHeader field="engagementModel" label={t("projects.engagement")} />
+                  <SortHeader field="approvedBudget" label={t("projects.budget")} />
+                  <SortHeader field="totalRunningCost" label={t("projects.runningCost")} />
+                  <SortHeader field="grossMargin" label={t("projects.grossMargin")} />
+                  <SortHeader field="healthOverall" label={t("projects.overall")} align="center" />
+                  <SortHeader field="scopeHealth" label={t("projects.scope")} align="center" />
+                  <SortHeader field="budgetHealth" label={t("projects.budget")} align="center" />
+                  <SortHeader field="teamHealth" label={t("projects.team")} align="center" />
+                  <SortHeader field="progress" label={t("common.status")} align="center" />
+                  <th className="text-center font-medium text-muted-foreground px-3 py-2 whitespace-nowrap w-[80px]">{t("common.actions")}</th>
                 </tr>
                 {showFilters && (
                   <tr className="bg-muted/30 border-b">
@@ -528,7 +530,7 @@ export default function Home() {
                         onChange={(e) => setFilter("clientId", e.target.value)}
                         data-testid="filter-client"
                       >
-                        <option value="">All</option>
+                        <option value="">{t("common.all")}</option>
                         {(clientsList || []).map((cl) => (
                           <option key={cl.id} value={cl.id}>{cl.name}</option>
                         ))}
@@ -541,7 +543,7 @@ export default function Home() {
                         onChange={(e) => setFilter("projectStatus", e.target.value)}
                         data-testid="filter-projectStatus"
                       >
-                        <option value="">All</option>
+                        <option value="">{t("common.all")}</option>
                         {projectStatusOptions.map((opt) => (
                           <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
@@ -554,7 +556,7 @@ export default function Home() {
                         onChange={(e) => setFilter("region", e.target.value)}
                         data-testid="filter-region"
                       >
-                        <option value="">All</option>
+                        <option value="">{t("common.all")}</option>
                         {regionOptions.map((opt) => (
                           <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
@@ -567,7 +569,7 @@ export default function Home() {
                         onChange={(e) => setFilter("projectType", e.target.value)}
                         data-testid="filter-projectType"
                       >
-                        <option value="">All</option>
+                        <option value="">{t("common.all")}</option>
                         {projectTypeOptions.map((opt) => (
                           <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
@@ -580,7 +582,7 @@ export default function Home() {
                         onChange={(e) => setFilter("engagementModel", e.target.value)}
                         data-testid="filter-engagementModel"
                       >
-                        <option value="">All</option>
+                        <option value="">{t("common.all")}</option>
                         {engagementModelOptions.map((opt) => (
                           <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
@@ -596,7 +598,7 @@ export default function Home() {
                         onChange={(e) => setFilter("healthOverall", e.target.value)}
                         data-testid="filter-healthOverall"
                       >
-                        <option value="">All</option>
+                        <option value="">{t("common.all")}</option>
                         {healthOptions.map((opt) => (
                           <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
@@ -609,7 +611,7 @@ export default function Home() {
                         onChange={(e) => setFilter("scopeHealth", e.target.value)}
                         data-testid="filter-scopeHealth"
                       >
-                        <option value="">All</option>
+                        <option value="">{t("common.all")}</option>
                         {healthOptions.map((opt) => (
                           <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
@@ -622,7 +624,7 @@ export default function Home() {
                         onChange={(e) => setFilter("budgetHealth", e.target.value)}
                         data-testid="filter-budgetHealth"
                       >
-                        <option value="">All</option>
+                        <option value="">{t("common.all")}</option>
                         {healthOptions.map((opt) => (
                           <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
@@ -635,7 +637,7 @@ export default function Home() {
                         onChange={(e) => setFilter("teamHealth", e.target.value)}
                         data-testid="filter-teamHealth"
                       >
-                        <option value="">All</option>
+                        <option value="">{t("common.all")}</option>
                         {healthOptions.map((opt) => (
                           <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
@@ -863,7 +865,7 @@ export default function Home() {
                               className="h-6 w-6"
                               onClick={() => saveRow(timeline.id)}
                               disabled={saving}
-                              title="Save changes"
+                              title={t("common.save")}
                               data-testid={`button-save-${timeline.id}`}
                             >
                               <Save className="w-3.5 h-3.5 text-primary" />
@@ -874,7 +876,7 @@ export default function Home() {
                               size="icon"
                               variant="ghost"
                               className="h-6 w-6"
-                              title="Open project"
+                              title={t("common.edit")}
                               data-testid={`button-open-${timeline.id}`}
                             >
                               <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
@@ -886,7 +888,7 @@ export default function Home() {
                                 size="icon"
                                 variant="ghost"
                                 className="h-6 w-6"
-                                title="Delete project"
+                                title={t("common.delete")}
                                 data-testid={`button-delete-${timeline.id}`}
                               >
                                 <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
@@ -894,18 +896,18 @@ export default function Home() {
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>Delete project?</AlertDialogTitle>
+                                <AlertDialogTitle>{t("common.delete")}?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  This will permanently delete "{timeline.title}" and all its milestones and tasks. This action cannot be undone.
+                                  {t("clients.deleteDescription", { name: timeline.title })}
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
                                 <AlertDialogAction
                                   onClick={() => deleteMutation.mutate(timeline.id)}
                                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                 >
-                                  Delete
+                                  {t("common.delete")}
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>

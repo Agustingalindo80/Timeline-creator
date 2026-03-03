@@ -22,6 +22,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAppTitle } from "@/hooks/use-app-title";
+import { useTranslation } from "react-i18next";
 import { TimelineView } from "@/components/timeline-view";
 import { ThemePicker } from "@/components/theme-picker";
 import { formatDateForProject } from "@/lib/date-format";
@@ -37,6 +38,7 @@ interface MilestoneForm {
 }
 
 export default function CreateTimeline() {
+  const { t } = useTranslation();
   const [, navigate] = useLocation();
   const searchString = useSearch();
   const params = new URLSearchParams(searchString);
@@ -99,8 +101,8 @@ export default function CreateTimeline() {
       ];
       if (!validTypes.includes(file.type) && !file.name.endsWith(".csv") && !file.name.endsWith(".xlsx") && !file.name.endsWith(".xls")) {
         toast({
-          title: "Invalid file type",
-          description: "Please upload an Excel (.xlsx, .xls) or CSV file.",
+          title: t("projects.invalidFileType"),
+          description: t("projects.invalidFileDescription"),
           variant: "destructive",
         });
         return;
@@ -131,21 +133,21 @@ export default function CreateTimeline() {
           );
           if (data.title) setTitle(data.title);
           toast({
-            title: "File imported",
-            description: `${data.milestones.length} milestones loaded from spreadsheet.`,
+            title: t("projects.fileImported"),
+            description: `${data.milestones.length} milestones loaded.`,
           });
           setActiveTab("manual");
         } else {
           toast({
-            title: "No data found",
-            description: "Could not find milestones in the spreadsheet. Ensure columns include Title and Date.",
+            title: t("projects.noDataFound"),
+            description: t("projects.expectedColumns"),
             variant: "destructive",
           });
         }
       } catch (err: any) {
         toast({
-          title: "Import failed",
-          description: err.message || "Failed to parse the uploaded file.",
+          title: t("projects.importFailed"),
+          description: err.message,
           variant: "destructive",
         });
       } finally {
@@ -184,12 +186,12 @@ export default function CreateTimeline() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/timelines"] });
-      toast({ title: "Project created" });
+      toast({ title: t("projects.projectCreated") });
       navigate(`/timeline/${data.id}`);
     },
     onError: (err: any) => {
       toast({
-        title: "Error creating project",
+        title: t("projects.errorCreatingProject"),
         description: err.message,
         variant: "destructive",
       });
@@ -235,14 +237,14 @@ export default function CreateTimeline() {
             >
               <ArrowLeft className="w-4 h-4" />
             </Button>
-            <h1 className="text-lg font-semibold">Create Project</h1>
+            <h1 className="text-lg font-semibold">{t("projects.createProject")}</h1>
           </div>
           <Button
             onClick={() => createMutation.mutate()}
             disabled={!canSubmit || createMutation.isPending}
             data-testid="button-save-timeline"
           >
-            {createMutation.isPending ? "Saving..." : "Save Project"}
+            {createMutation.isPending ? t("common.saving") : t("projects.saveProject")}
           </Button>
         </div>
       </header>
@@ -254,20 +256,20 @@ export default function CreateTimeline() {
             {/* Timeline info */}
             <Card className="p-5 space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="title">Project Title</Label>
+                <Label htmlFor="title">{t("projects.projectTitle")}</Label>
                 <Input
                   id="title"
-                  placeholder="e.g. Product Launch Roadmap"
+                  placeholder={t("projects.projectTitlePlaceholder")}
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   data-testid="input-title"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="description">Description (optional)</Label>
+                <Label htmlFor="description">{t("projects.descriptionOptional")}</Label>
                 <Textarea
                   id="description"
-                  placeholder="Brief description of this project..."
+                  placeholder={t("projects.descriptionPlaceholder")}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   className="resize-none"
@@ -276,11 +278,11 @@ export default function CreateTimeline() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Theme</Label>
+                <Label>{t("projects.theme")}</Label>
                 <ThemePicker value={color} onChange={setColor} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="dateFormat">Date Format *</Label>
+                <Label htmlFor="dateFormat">{t("projects.dateFormat")}</Label>
                 <select
                   id="dateFormat"
                   className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
@@ -288,13 +290,13 @@ export default function CreateTimeline() {
                   onChange={(e) => setDateFormat(e.target.value)}
                   data-testid="select-date-format"
                 >
-                  <option value="">Select date format...</option>
+                  <option value="">{t("projects.selectDateFormat")}</option>
                   {dateFormats.map((df) => (
                     <option key={df.value} value={df.value}>{df.label}</option>
                   ))}
                 </select>
                 <p className="text-xs text-muted-foreground">
-                  This format will be used for all dates in this project and cannot be changed later.
+                  {t("projects.dateFormatNote")}
                 </p>
               </div>
             </Card>
@@ -304,11 +306,11 @@ export default function CreateTimeline() {
               <TabsList className="w-full">
                 <TabsTrigger value="manual" className="flex-1" data-testid="tab-manual">
                   <Pencil className="w-3.5 h-3.5 mr-1.5" />
-                  Manual Entry
+                  {t("projects.manualEntry")}
                 </TabsTrigger>
                 <TabsTrigger value="upload" className="flex-1" data-testid="tab-upload">
                   <FileSpreadsheet className="w-3.5 h-3.5 mr-1.5" />
-                  Excel Import
+                  {t("projects.excelImport")}
                 </TabsTrigger>
               </TabsList>
 
@@ -329,10 +331,10 @@ export default function CreateTimeline() {
                 >
                   <Upload className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
                   <p className="text-sm font-medium mb-1">
-                    {uploading ? "Processing file..." : "Drag & drop your spreadsheet here"}
+                    {uploading ? t("projects.processingFile") : t("projects.dragDropSpreadsheet")}
                   </p>
                   <p className="text-xs text-muted-foreground mb-4">
-                    Supports .xlsx, .xls, and .csv files
+                    {t("projects.supportsFormats")}
                   </p>
                   <label>
                     <input
@@ -346,7 +348,7 @@ export default function CreateTimeline() {
                       data-testid="input-file-upload"
                     />
                     <Button variant="outline" asChild disabled={uploading}>
-                      <span>Browse Files</span>
+                      <span>{t("projects.browseFiles")}</span>
                     </Button>
                   </label>
                   <div className="mt-6 border-t pt-4">
@@ -361,11 +363,11 @@ export default function CreateTimeline() {
                 {milestones.length === 0 ? (
                   <div className="border border-dashed rounded-md p-8 text-center">
                     <p className="text-sm text-muted-foreground mb-3">
-                      No milestones added yet. Start by adding your first milestone.
+                      {t("projects.noMilestonesAdded")}
                     </p>
                     <Button variant="outline" onClick={addMilestone} data-testid="button-add-first-milestone">
                       <Plus className="w-4 h-4 mr-2" />
-                      Add Milestone
+                      {t("projects.addMilestone")}
                     </Button>
                   </div>
                 ) : (
@@ -428,7 +430,7 @@ export default function CreateTimeline() {
                     ))}
                     <Button variant="outline" onClick={addMilestone} className="w-full" data-testid="button-add-milestone">
                       <Plus className="w-4 h-4 mr-2" />
-                      Add Milestone
+                      {t("projects.addMilestone")}
                     </Button>
                   </>
                 )}
@@ -439,7 +441,7 @@ export default function CreateTimeline() {
           {/* Right: Live Preview */}
           <div className="lg:col-span-2">
             <div className="sticky top-20">
-              <h2 className="text-sm font-medium text-muted-foreground mb-3">Live Preview</h2>
+              <h2 className="text-sm font-medium text-muted-foreground mb-3">{t("projects.livePreview")}</h2>
               <Card className="p-4 min-h-[300px]">
                 {previewMilestones.length > 0 ? (
                   <TimelineView
@@ -456,7 +458,7 @@ export default function CreateTimeline() {
                       />
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Add milestones to see a preview
+                      {t("projects.addMilestonesPreview")}
                     </p>
                   </div>
                 )}

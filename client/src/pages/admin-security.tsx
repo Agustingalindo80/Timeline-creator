@@ -36,6 +36,7 @@ import { useAppTitle } from "@/hooks/use-app-title";
 import { PermissionGuard } from "@/components/permission-guard";
 import { MODULE_KEYS, MODULE_LABELS, ALL_PERMISSIONS, PERMISSION_CATEGORIES, SYSTEM_ROLE_PERMISSIONS } from "@shared/models/rbac";
 import type { ModuleKey } from "@shared/models/rbac";
+import { useTranslation } from "react-i18next";
 
 type RbacUser = {
   id: string;

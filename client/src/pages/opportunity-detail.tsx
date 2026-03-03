@@ -42,6 +42,7 @@ import {
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAppTitle } from "@/hooks/use-app-title";
+import { useTranslation } from "react-i18next";
 import { EstimateTab } from "@/components/estimate-tab";
 import { GovernanceTab } from "@/components/governance-tab";
 import { RaidLog } from "@/components/raid-log";
@@ -93,6 +94,7 @@ function MetadataItem({ icon: Icon, label, value }: { icon: any; label: string; 
 }
 
 export default function OpportunityDetail() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const [, navigate] = useLocation();
   const { toast } = useToast();
@@ -145,7 +147,7 @@ export default function OpportunityDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/opportunities", id] });
       setEditing(false);
-      toast({ title: "Opportunity updated" });
+      toast({ title: t("opportunities.opportunityCreated") });
     },
   });
 
@@ -256,13 +258,13 @@ export default function OpportunityDetail() {
           <Card>
             <CardContent className="p-5 space-y-4">
               <div className="flex items-center justify-between gap-3 flex-wrap">
-                <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Edit Opportunity</h2>
+                <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">{t("common.edit")} {t("opportunities.title")}</h2>
                 <div className="flex items-center gap-2">
                   <Button onClick={saveEdits} disabled={updateMutation.isPending} data-testid="button-save-opp">
-                    <Save className="w-4 h-4 mr-1" /> Save
+                    <Save className="w-4 h-4 mr-1" /> {t("common.save")}
                   </Button>
                   <Button variant="ghost" onClick={() => setEditing(false)} data-testid="button-cancel-edit">
-                    <X className="w-4 h-4 mr-1" /> Cancel
+                    <X className="w-4 h-4 mr-1" /> {t("common.cancel")}
                   </Button>
                 </div>
               </div>
@@ -284,7 +286,7 @@ export default function OpportunityDetail() {
                 />
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">Status</label>
+                    <label className="text-xs font-medium text-muted-foreground">{t("common.status")}</label>
                     <Select value={editStatus} onValueChange={setEditStatus}>
                       <SelectTrigger data-testid="select-edit-status"><SelectValue placeholder="Status" /></SelectTrigger>
                       <SelectContent>
@@ -293,7 +295,7 @@ export default function OpportunityDetail() {
                     </Select>
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">Client</label>
+                    <label className="text-xs font-medium text-muted-foreground">{t("common.client")}</label>
                     <Select value={editClientId} onValueChange={setEditClientId}>
                       <SelectTrigger data-testid="select-edit-client"><SelectValue placeholder="Client" /></SelectTrigger>
                       <SelectContent>
@@ -303,7 +305,7 @@ export default function OpportunityDetail() {
                     </Select>
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">Region</label>
+                    <label className="text-xs font-medium text-muted-foreground">{t("common.region")}</label>
                     <Select value={editRegion} onValueChange={setEditRegion}>
                       <SelectTrigger data-testid="select-edit-region"><SelectValue placeholder="Region" /></SelectTrigger>
                       <SelectContent>
@@ -313,7 +315,7 @@ export default function OpportunityDetail() {
                     </Select>
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">Engagement</label>
+                    <label className="text-xs font-medium text-muted-foreground">{t("projects.engagement")}</label>
                     <Select value={editEngagement} onValueChange={setEditEngagement}>
                       <SelectTrigger data-testid="select-edit-engagement"><SelectValue placeholder="Engagement" /></SelectTrigger>
                       <SelectContent>
@@ -325,7 +327,7 @@ export default function OpportunityDetail() {
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">Project Type</label>
+                    <label className="text-xs font-medium text-muted-foreground">{t("projects.projectType")}</label>
                     <Select value={editProjectType} onValueChange={setEditProjectType}>
                       <SelectTrigger data-testid="select-edit-project-type"><SelectValue placeholder="Type" /></SelectTrigger>
                       <SelectContent>
@@ -335,7 +337,7 @@ export default function OpportunityDetail() {
                     </Select>
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">Salesforce Clouds</label>
+                    <label className="text-xs font-medium text-muted-foreground">{t("opportunities.salesforceClouds")}</label>
                     <Input
                       value={editSalesforceClouds}
                       onChange={e => setEditSalesforceClouds(e.target.value)}
@@ -344,7 +346,7 @@ export default function OpportunityDetail() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">Start Date</label>
+                    <label className="text-xs font-medium text-muted-foreground">{t("common.start")} {t("common.date")}</label>
                     <Input
                       type="date"
                       value={editStartDate}
@@ -353,7 +355,7 @@ export default function OpportunityDetail() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">End Date</label>
+                    <label className="text-xs font-medium text-muted-foreground">{t("common.end")} {t("common.date")}</label>
                     <Input
                       type="date"
                       value={editEndDate}
@@ -394,19 +396,19 @@ export default function OpportunityDetail() {
                   <p className="text-sm text-muted-foreground mt-1.5 max-w-2xl" data-testid="text-opp-description">{opp.description}</p>
                 )}
                 <div className="flex items-center gap-4 mt-3 flex-wrap">
-                  {clientName && <MetadataItem icon={Building2} label="Client" value={clientName} />}
-                  {opp.region && <MetadataItem icon={MapPin} label="Region" value={opp.region} />}
-                  {opp.salesforceClouds && <MetadataItem icon={Cloud} label="Clouds" value={opp.salesforceClouds} />}
-                  {opp.engagementModel && <MetadataItem icon={Briefcase} label="Engagement" value={opp.engagementModel} />}
-                  {opp.startDate && <MetadataItem icon={Calendar} label="Start" value={opp.startDate} />}
-                  {opp.endDate && <MetadataItem icon={Calendar} label="End" value={opp.endDate} />}
+                  {clientName && <MetadataItem icon={Building2} label={t("common.client")} value={clientName} />}
+                  {opp.region && <MetadataItem icon={MapPin} label={t("common.region")} value={opp.region} />}
+                  {opp.salesforceClouds && <MetadataItem icon={Cloud} label={t("opportunities.sfClouds")} value={opp.salesforceClouds} />}
+                  {opp.engagementModel && <MetadataItem icon={Briefcase} label={t("projects.engagement")} value={opp.engagementModel} />}
+                  {opp.startDate && <MetadataItem icon={Calendar} label={t("common.start")} value={opp.startDate} />}
+                  {opp.endDate && <MetadataItem icon={Calendar} label={t("common.end")} value={opp.endDate} />}
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 {!isWon && (
                   <>
                     <Button variant="outline" size="sm" onClick={startEditing} data-testid="button-edit-opp">
-                      <Edit3 className="w-4 h-4 mr-1" /> Edit
+                      <Edit3 className="w-4 h-4 mr-1" /> {t("common.edit")}
                     </Button>
                     {canConvert && (
                       <Button size="sm" onClick={() => setConvertDialogOpen(true)} data-testid="button-convert-to-project">
@@ -431,7 +433,7 @@ export default function OpportunityDetail() {
                       <div className="flex items-center justify-center w-7 h-7 rounded-md bg-primary/10">
                         <DollarSign className="w-3.5 h-3.5 text-primary" />
                       </div>
-                      <span className="metric-label">Buffered Price</span>
+                      <span className="metric-label">{t("opportunities.bufferedPrice")}</span>
                     </div>
                     <div className="text-2xl font-semibold tracking-tight tabular-nums" data-testid="text-opp-price">
                       ${price.toLocaleString()}
@@ -444,7 +446,7 @@ export default function OpportunityDetail() {
                       <div className="flex items-center justify-center w-7 h-7 rounded-md bg-muted">
                         <DollarSign className="w-3.5 h-3.5 text-muted-foreground" />
                       </div>
-                      <span className="metric-label">Base Cost</span>
+                      <span className="metric-label">{t("opportunities.baseCost")}</span>
                     </div>
                     <div className="text-2xl font-semibold tracking-tight tabular-nums" data-testid="text-opp-cost">
                       ${cost.toLocaleString()}
@@ -457,7 +459,7 @@ export default function OpportunityDetail() {
                       <div className="flex items-center justify-center w-7 h-7 rounded-md bg-emerald-500/10">
                         <TrendingUp className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                       </div>
-                      <span className="metric-label">Gross Margin</span>
+                      <span className="metric-label">{t("projects.grossMargin")}</span>
                     </div>
                     <MarginIndicator value={margin} />
                   </CardContent>
@@ -535,7 +537,7 @@ export default function OpportunityDetail() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => convertMutation.mutate()}
                 disabled={convertMutation.isPending}

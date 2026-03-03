@@ -33,6 +33,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { TeamMember, AppSettings } from "@shared/schema";
 import { DEFAULT_TEAM_MEMBER_ROLES } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 
 interface RowEdits {
   role?: string | null;
@@ -50,6 +51,7 @@ interface ColumnFilters {
 }
 
 export default function TeamMembers() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [sortField, setSortField] = useState<SortField>("name");
@@ -87,7 +89,7 @@ export default function TeamMembers() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/team-members"] });
-      toast({ title: "Team member created" });
+      toast({ title: t("teamMembers.memberCreated") });
       setCreateOpen(false);
       setNewName(""); setNewEmail(""); setNewRole(""); setNewDept("");
       setNewMonthlyCost(""); setNewHourlyCost(""); setNewAppAccess(false);
@@ -109,7 +111,7 @@ export default function TeamMembers() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/team-members"] });
-      toast({ title: "Team member deleted" });
+      toast({ title: t("teamMembers.memberDeleted") });
     },
   });
 
@@ -142,7 +144,7 @@ export default function TeamMembers() {
       await updateMutation.mutateAsync({ id, data: edits });
     }
     setDirtyRows({});
-    toast({ title: `${entries.length} member(s) updated` });
+    toast({ title: `${entries.length} ${t("teamMembers.membersUpdated")}` });
   }, [dirtyRows, updateMutation, toast]);
 
   const toggleSort = useCallback((field: SortField) => {
@@ -207,79 +209,79 @@ export default function TeamMembers() {
 
   return (
     <div className="p-4 md:p-6 max-w-[1400px] mx-auto">
-      <Helmet><title>Team Members | Project Planning</title></Helmet>
+      <Helmet><title>{t("teamMembers.title")}</title></Helmet>
 
       <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-xl font-semibold flex items-center gap-2" data-testid="text-page-title">
             <Users className="w-5 h-5" />
-            Team Members
+            {t("teamMembers.title")}
           </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">{members.length} member{members.length !== 1 ? "s" : ""}</p>
+          <p className="text-sm text-muted-foreground mt-0.5">{members.length} {members.length !== 1 ? t("teamMembers.members") : t("teamMembers.member")}</p>
         </div>
         <div className="flex items-center gap-2">
           {dirtyCount > 0 && (
             <Button size="sm" onClick={saveAll} disabled={updateMutation.isPending} data-testid="button-save-all-members">
               <Save className="w-3.5 h-3.5 mr-1" />
-              Save All Changes ({dirtyCount})
+              {t("common.saveAllChanges")} ({dirtyCount})
             </Button>
           )}
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger asChild>
               <Button size="sm" data-testid="button-create-member">
                 <Plus className="w-3.5 h-3.5 mr-1" />
-                Add Member
+                {t("teamMembers.addMember")}
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Add Team Member</DialogTitle>
-                <DialogDescription>Create a new team member.</DialogDescription>
+                <DialogTitle>{t("teamMembers.addTeamMember")}</DialogTitle>
+                <DialogDescription>{t("teamMembers.addDescription")}</DialogDescription>
               </DialogHeader>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label>Name *</Label>
-                  <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Full name" data-testid="input-create-member-name" />
+                  <Label>{t("teamMembers.nameRequired")}</Label>
+                  <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder={t("teamMembers.fullName")} data-testid="input-create-member-name" />
                 </div>
                 <div>
-                  <Label>Email {newAppAccess && "*"}</Label>
-                  <Input value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="Email" data-testid="input-create-member-email" />
+                  <Label>{t("common.email")} {newAppAccess && "*"}</Label>
+                  <Input value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder={t("common.email")} data-testid="input-create-member-email" />
                 </div>
                 <div className="col-span-2 flex items-center gap-3">
                   <Switch checked={newAppAccess} onCheckedChange={setNewAppAccess} data-testid="switch-app-access" />
                   <div>
-                    <Label>App Access</Label>
+                    <Label>{t("teamMembers.appAccess")}</Label>
                     <p className="text-xs text-muted-foreground" data-testid="text-app-access-status">
                       {newAppAccess
-                        ? "This person will be able to log in and access assigned projects"
-                        : "This person is tracked for estimation/allocation only"}
+                        ? t("teamMembers.appAccessEnabled")
+                        : t("teamMembers.appAccessDisabled")}
                     </p>
                   </div>
                 </div>
                 <div>
-                  <Label>Role</Label>
+                  <Label>{t("common.role")}</Label>
                   <select className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm" value={newRole} onChange={e => setNewRole(e.target.value)} data-testid="select-create-member-role">
-                    <option value="">Select role...</option>
+                    <option value="">{t("teamMembers.selectRole")}</option>
                     {roleOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                   </select>
                 </div>
                 <div>
-                  <Label>Department</Label>
+                  <Label>{t("common.department")}</Label>
                   <Input value={newDept} onChange={e => setNewDept(e.target.value)} placeholder="e.g. Engineering" data-testid="input-create-member-dept" />
                 </div>
                 <div>
-                  <Label>Monthly Cost ($)</Label>
+                  <Label>{t("teamMembers.monthlyDollar")}</Label>
                   <Input type="number" step="0.01" min="0" value={newMonthlyCost} onChange={e => setNewMonthlyCost(e.target.value)} placeholder="0.00" data-testid="input-create-member-monthly" />
                 </div>
                 <div>
-                  <Label>Hourly Cost ($)</Label>
+                  <Label>{t("teamMembers.hourlyDollar")}</Label>
                   <Input type="number" step="0.01" min="0" value={newHourlyCost} onChange={e => setNewHourlyCost(e.target.value)} placeholder="0.00" data-testid="input-create-member-hourly" />
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="ghost" onClick={() => setCreateOpen(false)}>Cancel</Button>
+                <Button variant="ghost" onClick={() => setCreateOpen(false)}>{t("common.cancel")}</Button>
                 <Button onClick={() => createMutation.mutate({ name: newName, email: newEmail || null, role: newRole || null, department: newDept || null, monthlyCost: newMonthlyCost || null, hourlyCost: newHourlyCost || null, enableAppAccess: newAppAccess })} disabled={!newName.trim() || (newAppAccess && !newEmail.trim()) || createMutation.isPending} data-testid="button-confirm-create-member">
-                  {createMutation.isPending ? "Creating..." : "Create"}
+                  {createMutation.isPending ? t("common.creating") : t("common.create")}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -290,18 +292,18 @@ export default function TeamMembers() {
       <div className="flex items-center gap-2 mb-3">
         <div className="relative flex-1 max-w-xs">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-          <Input className="pl-8 h-8 text-sm" placeholder="Search members..." value={search} onChange={e => setSearch(e.target.value)} data-testid="input-search-members" />
+          <Input className="pl-8 h-8 text-sm" placeholder={t("teamMembers.searchPlaceholder")} value={search} onChange={e => setSearch(e.target.value)} data-testid="input-search-members" />
         </div>
         <Button variant="outline" size="sm" className="h-8" onClick={() => setShowFilters(!showFilters)} data-testid="button-toggle-filters">
           <Filter className="w-3.5 h-3.5 mr-1" />
-          Filters
+          {t("common.filters")}
           {Object.values(columnFilters).filter(Boolean).length > 0 && (
             <Badge variant="secondary" className="ml-1 h-4 px-1 text-[10px]">{Object.values(columnFilters).filter(Boolean).length}</Badge>
           )}
         </Button>
         {Object.values(columnFilters).some(Boolean) && (
           <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setColumnFilters({})} data-testid="button-clear-filters">
-            <X className="w-3 h-3 mr-1" />Clear
+            <X className="w-3 h-3 mr-1" />{t("teamMembers.clear")}
           </Button>
         )}
       </div>
@@ -313,35 +315,35 @@ export default function TeamMembers() {
               <tr className="border-b bg-muted/50">
                 <th className="text-left px-3 py-2 table-header-cell">
                   <button className="flex items-center" onClick={() => toggleSort("name")}>
-                    Name <SortIcon field="name" />
+                    {t("common.name")} <SortIcon field="name" />
                   </button>
                 </th>
                 <th className="text-left px-3 py-2 table-header-cell">
                   <button className="flex items-center" onClick={() => toggleSort("role")}>
-                    Role <SortIcon field="role" />
+                    {t("common.role")} <SortIcon field="role" />
                   </button>
                 </th>
                 <th className="text-left px-3 py-2 table-header-cell">
                   <button className="flex items-center" onClick={() => toggleSort("department")}>
-                    Department <SortIcon field="department" />
+                    {t("common.department")} <SortIcon field="department" />
                   </button>
                 </th>
                 <th className="text-left px-3 py-2 table-header-cell">
                   <button className="flex items-center" onClick={() => toggleSort("email")}>
-                    Email <SortIcon field="email" />
+                    {t("common.email")} <SortIcon field="email" />
                   </button>
                 </th>
                 <th className="text-right px-3 py-2 table-header-cell">
                   <button className="flex items-center justify-end" onClick={() => toggleSort("monthlyCost")}>
-                    Monthly ($) <SortIcon field="monthlyCost" />
+                    {t("teamMembers.monthlyLabel")} <SortIcon field="monthlyCost" />
                   </button>
                 </th>
                 <th className="text-right px-3 py-2 table-header-cell">
                   <button className="flex items-center justify-end" onClick={() => toggleSort("hourlyCost")}>
-                    Hourly ($) <SortIcon field="hourlyCost" />
+                    {t("teamMembers.hourlyLabel")} <SortIcon field="hourlyCost" />
                   </button>
                 </th>
-                <th className="text-left px-3 py-2 table-header-cell">Access</th>
+                <th className="text-left px-3 py-2 table-header-cell">{t("teamMembers.access")}</th>
                 <th className="w-20 px-3 py-2"></th>
               </tr>
               {showFilters && (
@@ -349,13 +351,13 @@ export default function TeamMembers() {
                   <td className="p-1.5"></td>
                   <td className="p-1.5">
                     <select className="w-full h-7 rounded border border-input bg-background px-2 text-xs" value={columnFilters.role || ""} onChange={e => setColumnFilters(f => ({ ...f, role: e.target.value || undefined }))} data-testid="filter-role">
-                      <option value="">All</option>
+                      <option value="">{t("common.all")}</option>
                       {roleOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                     </select>
                   </td>
                   <td className="p-1.5">
                     <select className="w-full h-7 rounded border border-input bg-background px-2 text-xs" value={columnFilters.department || ""} onChange={e => setColumnFilters(f => ({ ...f, department: e.target.value || undefined }))} data-testid="filter-department">
-                      <option value="">All</option>
+                      <option value="">{t("common.all")}</option>
                       {uniqueDepartments.map(d => <option key={d} value={d!}>{d}</option>)}
                     </select>
                   </td>
@@ -374,14 +376,14 @@ export default function TeamMembers() {
                     {members.length === 0 ? (
                       <span className="flex flex-col items-center gap-2">
                         <Users className="w-7 h-7 text-muted-foreground/50" />
-                        <span className="text-sm font-medium">No team members yet</span>
-                        <span className="text-xs">Add your first member to get started.</span>
+                        <span className="text-sm font-medium">{t("teamMembers.noMembersYet")}</span>
+                        <span className="text-xs">{t("teamMembers.noMembersDescription")}</span>
                       </span>
                     ) : (
                       <span className="flex flex-col items-center gap-2">
                         <Search className="w-7 h-7 text-muted-foreground/50" />
-                        <span className="text-sm font-medium">No members match filters</span>
-                        <span className="text-xs">Try adjusting your search or filters.</span>
+                        <span className="text-sm font-medium">{t("teamMembers.noMatchingMembers")}</span>
+                        <span className="text-xs">{t("teamMembers.noMatchingDescription")}</span>
                       </span>
                     )}
                   </td>
@@ -445,9 +447,9 @@ export default function TeamMembers() {
                       </td>
                       <td className="px-3 py-1.5">
                         {m.userId ? (
-                          <Badge variant="default" className="text-[10px]" data-testid={`badge-app-access-${m.id}`}>App Access</Badge>
+                          <Badge variant="default" className="text-[10px]" data-testid={`badge-app-access-${m.id}`}>{t("teamMembers.access")}</Badge>
                         ) : (
-                          <Badge variant="secondary" className="text-[10px] text-muted-foreground" data-testid={`badge-app-access-${m.id}`}>No Access</Badge>
+                          <Badge variant="secondary" className="text-[10px] text-muted-foreground" data-testid={`badge-app-access-${m.id}`}>{t("teamMembers.noAccess")}</Badge>
                         )}
                       </td>
                       <td className="px-3 py-1.5">
@@ -465,15 +467,15 @@ export default function TeamMembers() {
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>Delete team member?</AlertDialogTitle>
+                                <AlertDialogTitle>{t("teamMembers.deleteTitle")}</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  This will permanently delete "{m.name}" and remove them from all project assignments and allocations.
+                                  {t("teamMembers.deleteDescription")} "{m.name}".
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
                                 <AlertDialogAction onClick={() => deleteMutation.mutate(m.id)} data-testid={`button-confirm-delete-member-${m.id}`}>
-                                  Delete
+                                  {t("common.delete")}
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>

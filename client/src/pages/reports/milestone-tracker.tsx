@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { useTranslation } from "react-i18next";
 import { ReportLayout } from "@/components/reports/report-layout";
 import { ReportStatCard } from "@/components/reports/report-charts";
 import { DateRangeFilter, ProjectFilter, ToggleFilter } from "@/components/reports/report-filters";
@@ -34,6 +35,7 @@ type SortKey = "date" | "amount" | "projectName";
 type SortDir = "asc" | "desc";
 
 export default function MilestoneTrackerReport() {
+  const { t } = useTranslation();
   const contentRef = useRef<HTMLDivElement>(null);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");

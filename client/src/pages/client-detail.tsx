@@ -16,6 +16,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { ClientWithProjects, Task, Contact, AppSettings } from "@shared/schema";
 import { DEFAULT_CONTACT_ROLES, DEFAULT_INDUSTRIES } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 
 const MONTHS: Record<string, number> = {
   january: 0, february: 1, march: 2, april: 3, may: 4, june: 5,
@@ -65,6 +66,7 @@ export default function ClientDetail() {
   const params = useParams<{ id: string }>();
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   const { data: client, isLoading } = useQuery<ClientWithProjects>({
     queryKey: ["/api/clients", params.id],

@@ -4,6 +4,7 @@ import { Helmet } from "react-helmet-async";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useTranslation } from "react-i18next";
 import type { AllocationFull, Timeline } from "@shared/schema";
 
 function getWeekStart(date: Date): Date {
@@ -63,6 +64,7 @@ type MemberGroup = {
 };
 
 export default function AllocationsPage() {
+  const { t } = useTranslation();
   const [rangeStart, setRangeStart] = useState(() => getWeekStart(new Date()));
   const [projectFilter, setProjectFilter] = useState("all");
 
@@ -150,21 +152,21 @@ export default function AllocationsPage() {
   return (
     <div className="p-6 max-w-full">
       <Helmet>
-        <title>Allocations | Project Planning</title>
+        <title>{t("allocations.title")}</title>
       </Helmet>
 
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold" data-testid="heading-allocations">Allocations</h1>
-          <p className="text-sm text-muted-foreground">Resource planning matrix</p>
+          <h1 className="text-2xl font-bold" data-testid="heading-allocations">{t("allocations.title")}</h1>
+          <p className="text-sm text-muted-foreground">{t("allocations.subtitle")}</p>
         </div>
         <div className="flex items-center gap-3">
           <Select value={projectFilter} onValueChange={setProjectFilter}>
             <SelectTrigger className="w-44" data-testid="select-project-filter">
-              <SelectValue placeholder="All Projects" />
+              <SelectValue placeholder={t("allocations.allProjects")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Projects</SelectItem>
+              <SelectItem value="all">{t("allocations.allProjects")}</SelectItem>
               {projects.map(p => (
                 <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>
               ))}
@@ -196,7 +198,7 @@ export default function AllocationsPage() {
 
       {isLoading ? (
         <div className="flex items-center justify-center py-20 text-muted-foreground text-sm">
-          Loading allocations...
+          {t("allocations.loadingAllocations")}
         </div>
       ) : (
         <div className="border rounded-lg overflow-x-auto">
@@ -204,10 +206,10 @@ export default function AllocationsPage() {
             <thead>
               <tr className="border-b bg-muted/30">
                 <th className="text-left px-4 py-3 font-medium text-muted-foreground min-w-[200px] sticky left-0 bg-muted/30 z-10">
-                  Resource
+                  {t("allocations.resource")}
                 </th>
                 <th className="text-left px-3 py-3 font-medium text-muted-foreground min-w-[160px]">
-                  Project
+                  {t("common.project")}
                 </th>
                 {weeks.map((w, i) => (
                   <th key={i} className="text-center px-2 py-3 font-medium text-muted-foreground min-w-[70px]">
@@ -221,7 +223,7 @@ export default function AllocationsPage() {
                 <tbody>
                 <tr>
                   <td colSpan={weeks.length + 2} className="text-center py-12 text-muted-foreground">
-                    No allocations found
+                    {t("allocations.noAllocationsFound")}
                   </td>
                 </tr>
                 </tbody>
@@ -308,18 +310,18 @@ export default function AllocationsPage() {
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
           <div className="flex items-center gap-1.5">
             <span className="w-3 h-3 rounded bg-green-100 dark:bg-green-950 border border-green-300 dark:border-green-700" />
-            Optimal
+            {t("allocations.optimal")}
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-3 h-3 rounded bg-blue-100 dark:bg-blue-950 border border-blue-300 dark:border-blue-700" />
-            Under Capacity
+            {t("allocations.underCapacity")}
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-3 h-3 rounded bg-red-100 dark:bg-red-950 border border-red-300 dark:border-red-700" />
-            Over Capacity
+            {t("allocations.overCapacity")}
           </div>
         </div>
-        <span className="text-xs text-muted-foreground italic">* Click cell to edit allocations (Feature coming in v2)</span>
+        <span className="text-xs text-muted-foreground italic">{t("allocations.clickToEdit")}</span>
       </div>
     </div>
   );

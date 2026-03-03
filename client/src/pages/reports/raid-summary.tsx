@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { useTranslation } from "react-i18next";
 import { ReportLayout } from "@/components/reports/report-layout";
 import { DropdownFilter, ProjectFilter } from "@/components/reports/report-filters";
 import { ReportStatCard } from "@/components/reports/report-charts";
@@ -60,6 +61,7 @@ const PROBABILITY_ORDER: Record<string, number> = { low: 1, medium: 2, high: 3, 
 const IMPACT_ORDER: Record<string, number> = { low: 1, medium: 2, high: 3, critical: 4 };
 
 export default function RaidSummaryReport() {
+  const { t } = useTranslation();
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [projectFilter, setProjectFilter] = useState("all");

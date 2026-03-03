@@ -1,14 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import type { AppSettings } from "@shared/schema";
-import { getGovernanceLabel, getCoachLabel } from "@/config/terminology";
 
 export function useGovernanceLabel() {
+  const { t } = useTranslation();
   const { data: settings } = useQuery<AppSettings>({
     queryKey: ["/api/settings"],
   });
 
-  const label = getGovernanceLabel(settings?.governanceModelLabel);
-  const coachLabel = getCoachLabel(settings?.governanceModelLabel);
+  const label = settings?.governanceModelLabel || t("governance.operatingModel");
+  const coachLabel = settings?.governanceModelLabel
+    ? `${settings.governanceModelLabel} Coach`
+    : t("governance.governanceCoach");
 
   return { label, coachLabel, customLabel: settings?.governanceModelLabel };
 }

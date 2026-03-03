@@ -1,6 +1,7 @@
 import { LayoutDashboard, FolderKanban, Settings, Building2, Users, UserCheck, CalendarRange, Clock, LogOut, Info, Bot, Target, Shield, ChevronRight, Globe, ChevronsUpDown, FlaskConical, BarChart3 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import {
   Sidebar,
   SidebarContent,
@@ -50,6 +51,7 @@ export function AppSidebar() {
   const { user, isAuthenticated } = useAuth();
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
+  const { t } = useTranslation();
 
   const { data: settings } = useQuery<AppSettings>({
     queryKey: ["/api/settings"],
@@ -110,18 +112,18 @@ export function AppSidebar() {
   ].filter(i => i.visible);
 
   const workItems = [
-    { title: "Dashboard", url: "/", icon: LayoutDashboard, visible: true },
-    { title: "Companies", url: "/clients", icon: Building2, visible: hasModule("clients") },
-    { title: "Contacts", url: "/contacts", icon: Users, visible: hasModule("contacts") },
-    { title: "Opportunities", url: "/opportunities", icon: Target, visible: hasModule("opportunities") && opportunitiesEnabled },
-    { title: "Projects", url: "/projects", icon: FolderKanban, visible: hasModule("projects") },
-    { title: "Reports", url: "/reports", icon: BarChart3, visible: hasModule("reports") },
+    { title: t("nav.dashboard"), url: "/", icon: LayoutDashboard, visible: true },
+    { title: t("nav.companies"), url: "/clients", icon: Building2, visible: hasModule("clients") },
+    { title: t("nav.contacts"), url: "/contacts", icon: Users, visible: hasModule("contacts") },
+    { title: t("nav.opportunities"), url: "/opportunities", icon: Target, visible: hasModule("opportunities") && opportunitiesEnabled },
+    { title: t("nav.projects"), url: "/projects", icon: FolderKanban, visible: hasModule("projects") },
+    { title: t("nav.reports"), url: "/reports", icon: BarChart3, visible: hasModule("reports") },
   ].filter(i => i.visible);
 
   const operationsItems = [
-    { title: "Team Members", url: "/team-members", icon: UserCheck, visible: hasModule("team_members") },
-    { title: "Allocations", url: "/allocations", icon: CalendarRange, visible: hasModule("allocations") },
-    { title: "Timesheets", url: "/timesheets", icon: Clock, visible: hasModule("timesheets") },
+    { title: t("nav.teamMembers"), url: "/team-members", icon: UserCheck, visible: hasModule("team_members") },
+    { title: t("nav.allocations"), url: "/allocations", icon: CalendarRange, visible: hasModule("allocations") },
+    { title: t("nav.timesheets"), url: "/timesheets", icon: Clock, visible: hasModule("timesheets") },
   ].filter(i => i.visible);
 
   const showAdmin = hasModule("admin");
@@ -157,9 +159,9 @@ export function AppSidebar() {
   };
 
   const adminItems = [
-    { title: "Settings", url: "/admin/settings", icon: Settings },
-    { title: "Security", url: "/admin/security", icon: Shield },
-    { title: "About", url: "/about", icon: Info },
+    { title: t("nav.settings"), url: "/admin/settings", icon: Settings },
+    { title: t("nav.security"), url: "/admin/security", icon: Shield },
+    { title: t("nav.about"), url: "/about", icon: Info },
   ];
 
   return (
@@ -199,7 +201,7 @@ export function AppSidebar() {
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <Building2 className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
-                    <span className="truncate">{currentTenant?.tenant?.name || "Default"}</span>
+                    <span className="truncate">{currentTenant?.tenant?.name || t("nav.defaultTenant")}</span>
                   </div>
                   <ChevronsUpDown className="w-3.5 h-3.5 shrink-0 text-muted-foreground ml-1" />
                 </button>
@@ -230,21 +232,21 @@ export function AppSidebar() {
               data-testid="badge-testing-mode"
             >
               <FlaskConical className="w-3.5 h-3.5 shrink-0" />
-              <span>TESTING MODE</span>
+              <span>{t("nav.testingMode")}</span>
             </div>
           </div>
         )}
 
-        {renderNavGroup("Workspace", workItems)}
-        {renderNavGroup("Help & Support", helpItems)}
-        {renderNavGroup("Operations", operationsItems)}
+        {renderNavGroup(t("nav.workspace"), workItems)}
+        {renderNavGroup(t("nav.helpSupport"), helpItems)}
+        {renderNavGroup(t("nav.operations"), operationsItems)}
 
         {showAdmin && (
           <SidebarGroup className="py-1">
             <Collapsible defaultOpen={location.startsWith("/admin") || location === "/about"}>
               <SidebarGroupLabel className="px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 mb-0.5">
                 <CollapsibleTrigger className="flex items-center gap-1 w-full" data-testid="nav-admin-toggle">
-                  Administration
+                  {t("nav.administration")}
                   <ChevronRight className="w-3 h-3 transition-transform duration-200 group-data-[state=open]:rotate-90" />
                 </CollapsibleTrigger>
               </SidebarGroupLabel>
@@ -276,7 +278,7 @@ export function AppSidebar() {
         {isSuperAdmin && (
           <SidebarGroup className="py-1">
             <SidebarGroupLabel className="px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 mb-0.5">
-              Super Admin
+              {t("nav.superAdmin")}
             </SidebarGroupLabel>
 
             <SidebarGroupContent>
@@ -290,7 +292,7 @@ export function AppSidebar() {
                   >
                     <Link href="/global-admin">
                       <Globe className="w-4 h-4 shrink-0" />
-                      <span className="truncate">Global Administration</span>
+                      <span className="truncate">{t("nav.globalAdmin")}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -325,7 +327,7 @@ export function AppSidebar() {
                 <a
                   href="/api/logout"
                   className="inline-flex items-center justify-center h-8 w-8 rounded-md text-muted-foreground/70 transition-colors"
-                  title="Log out"
+                  title={t("nav.logOut")}
                   data-testid="button-logout"
                 >
                   <LogOut className="w-3.5 h-3.5" />

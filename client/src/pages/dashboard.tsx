@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Helmet } from "react-helmet-async";
 import { Link } from "wouter";
+import { useTranslation } from "react-i18next";
 import {
   Target,
   FolderOpen,
@@ -17,11 +18,11 @@ import { useAppTitle } from "@/hooks/use-app-title";
 import type { TimelineWithMilestones, AppSettings } from "@shared/schema";
 
 const OPP_STATUS_OPTIONS = [
-  { value: "qualifying", label: "Qualifying", color: "bg-blue-500/15 text-blue-700 dark:text-blue-300" },
-  { value: "estimating", label: "Estimating", color: "bg-amber-500/15 text-amber-700 dark:text-amber-300" },
-  { value: "proposed", label: "Proposed", color: "bg-purple-500/15 text-purple-700 dark:text-purple-300" },
-  { value: "won", label: "Won", color: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" },
-  { value: "lost", label: "Lost", color: "bg-red-500/15 text-red-700 dark:text-red-300" },
+  { value: "qualifying", labelKey: "dashboard.qualifying", color: "bg-blue-500/15 text-blue-700 dark:text-blue-300" },
+  { value: "estimating", labelKey: "dashboard.estimating", color: "bg-amber-500/15 text-amber-700 dark:text-amber-300" },
+  { value: "proposed", labelKey: "dashboard.proposed", color: "bg-purple-500/15 text-purple-700 dark:text-purple-300" },
+  { value: "won", labelKey: "dashboard.won", color: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" },
+  { value: "lost", labelKey: "dashboard.lost", color: "bg-red-500/15 text-red-700 dark:text-red-300" },
 ];
 
 const FUNNEL_BAR_COLORS = [
@@ -70,16 +71,9 @@ function formatFullCurrency(value: number) {
   return `$${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 }
 
-const PROJECT_STATUS_LABELS: Record<string, string> = {
-  "not_started": "Not Started",
-  "in_progress": "In Progress",
-  "on_hold": "On Hold",
-  "complete": "Complete",
-  "cancelled": "Cancelled",
-};
-
 export default function Dashboard() {
-  const appTitle = useAppTitle("Dashboard");
+  const { t } = useTranslation();
+  const appTitle = useAppTitle(t("dashboard.title"));
 
   const { data: settings } = useQuery<AppSettings>({
     queryKey: ["/api/settings"],
@@ -104,6 +98,7 @@ export default function Dashboard() {
 
   const oppsByStatus = OPP_STATUS_OPTIONS.map((s, i) => ({
     ...s,
+    label: t(s.labelKey),
     barColor: FUNNEL_BAR_COLORS[i],
     count: opportunities.filter(o => o.opportunityStatus === s.value).length,
     revenue: opportunities.filter(o => o.opportunityStatus === s.value).reduce((sum, o) => sum + (parseFloat(o.estimatedRevenue || "0") || 0), 0),
@@ -119,8 +114,8 @@ export default function Dashboard() {
 
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="page-title" data-testid="text-dashboard-title">Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Overview of projects and pipeline</p>
+          <h1 className="page-title" data-testid="text-dashboard-title">{t("dashboard.title")}</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">{t("dashboard.subtitle")}</p>
         </div>
       </div>
 
@@ -138,11 +133,11 @@ export default function Dashboard() {
               <CardContent className="pt-5 pb-5">
                 <div className="metric-label mb-2 flex items-center gap-1.5">
                   <FolderOpen className="w-3.5 h-3.5" />
-                  Active Projects
+                  {t("dashboard.activeProjects")}
                 </div>
                 <div className="text-3xl font-bold tracking-tight tabular-nums">{activeProjects.length}</div>
                 <div className="flex items-center gap-1 mt-1.5 text-xs text-muted-foreground">
-                  <span>{projects.length} total</span>
+                  <span>{projects.length} {t("dashboard.total")}</span>
                 </div>
               </CardContent>
             </Card>
@@ -151,13 +146,13 @@ export default function Dashboard() {
               <CardContent className="pt-5 pb-5">
                 <div className="metric-label mb-2 flex items-center gap-1.5">
                   <DollarSign className="w-3.5 h-3.5" />
-                  Total Budget
+                  {t("dashboard.totalBudget")}
                 </div>
                 <div className="text-3xl font-bold tracking-tight tabular-nums">
                   {formatCurrency(totalProjectBudget)}
                 </div>
                 <div className="flex items-center gap-1 mt-1.5 text-xs text-muted-foreground">
-                  <span>across {activeProjects.length} projects</span>
+                  <span>{t("dashboard.across")} {activeProjects.length} {t("dashboard.projectsLabel")}</span>
                 </div>
               </CardContent>
             </Card>
@@ -168,11 +163,11 @@ export default function Dashboard() {
                   <CardContent className="pt-5 pb-5">
                     <div className="metric-label mb-2 flex items-center gap-1.5">
                       <Target className="w-3.5 h-3.5" />
-                      Active Opportunities
+                      {t("dashboard.activeOpportunities")}
                     </div>
                     <div className="text-3xl font-bold tracking-tight tabular-nums">{activeOpps.length}</div>
                     <div className="flex items-center gap-1 mt-1.5 text-xs text-muted-foreground">
-                      <span>{opportunities.length} total</span>
+                      <span>{opportunities.length} {t("dashboard.total")}</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -181,13 +176,13 @@ export default function Dashboard() {
                   <CardContent className="pt-5 pb-5">
                     <div className="metric-label mb-2 flex items-center gap-1.5">
                       <TrendingUp className="w-3.5 h-3.5" />
-                      Pipeline Value
+                      {t("dashboard.pipelineValue")}
                     </div>
                     <div className="text-3xl font-bold tracking-tight tabular-nums text-primary">
                       {formatCurrency(pipelineValue)}
                     </div>
                     <div className="flex items-center gap-1 mt-1.5 text-xs text-muted-foreground">
-                      <span>{activeOpps.length} active deals</span>
+                      <span>{activeOpps.length} {t("dashboard.activeDeals")}</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -202,11 +197,11 @@ export default function Dashboard() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between gap-2 flex-wrap">
               <span className="flex items-center gap-1.5 uppercase tracking-wider">
-                <Target className="w-3.5 h-3.5" /> Pipeline Funnel
+                <Target className="w-3.5 h-3.5" /> {t("dashboard.pipelineFunnel")}
               </span>
               <Link href="/opportunities">
                 <Button variant="ghost" size="sm" data-testid="link-view-all-opportunities">
-                  View All <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                  {t("common.viewAll")} <ArrowRight className="w-3.5 h-3.5 ml-1" />
                 </Button>
               </Link>
             </CardTitle>
@@ -216,7 +211,7 @@ export default function Dashboard() {
               {oppsByStatus.map(s => (
                 <div key={s.value} className="space-y-2" data-testid={`pipeline-stage-${s.value}`}>
                   <div className="flex items-center justify-between gap-1">
-                    <span className="text-xs font-medium text-muted-foreground">{s.label}</span>
+                    <span className="text-xs font-medium text-muted-foreground">{t(s.labelKey)}</span>
                     <span className="text-xs tabular-nums text-muted-foreground">{s.count}</span>
                   </div>
                   <div className="h-2 rounded-full bg-muted overflow-hidden">
@@ -242,11 +237,11 @@ export default function Dashboard() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between gap-2 flex-wrap">
               <span className="flex items-center gap-1.5 uppercase tracking-wider">
-                <FolderOpen className="w-3.5 h-3.5" /> Recent Projects
+                <FolderOpen className="w-3.5 h-3.5" /> {t("dashboard.recentProjects")}
               </span>
               <Link href="/projects">
                 <Button variant="ghost" size="sm" data-testid="link-view-all-projects">
-                  View All <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                  {t("common.viewAll")} <ArrowRight className="w-3.5 h-3.5 ml-1" />
                 </Button>
               </Link>
             </CardTitle>
@@ -259,7 +254,7 @@ export default function Dashboard() {
             ) : activeProjects.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-10">
                 <FolderOpen className="w-8 h-8 text-muted-foreground/40 mb-2" />
-                <p className="text-sm text-muted-foreground">No active projects</p>
+                <p className="text-sm text-muted-foreground">{t("dashboard.noActiveProjects")}</p>
               </div>
             ) : (
               <div className="divide-y divide-border">
@@ -269,7 +264,12 @@ export default function Dashboard() {
                       <div className="min-w-0 flex-1">
                         <div className="text-sm font-medium truncate">{p.title}</div>
                         <div className="text-xs text-muted-foreground mt-0.5">
-                          {PROJECT_STATUS_LABELS[p.projectStatus || ""] || p.projectStatus || "Not started"}
+                          {p.projectStatus === "not_started" ? t("dashboard.notStarted") :
+                           p.projectStatus === "in_progress" ? t("dashboard.inProgress") :
+                           p.projectStatus === "on_hold" ? t("dashboard.onHold") :
+                           p.projectStatus === "complete" ? t("dashboard.complete") :
+                           p.projectStatus === "cancelled" ? t("dashboard.cancelled") :
+                           p.projectStatus || t("dashboard.notStarted")}
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0 ml-3">
@@ -293,11 +293,11 @@ export default function Dashboard() {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between gap-2 flex-wrap">
                 <span className="flex items-center gap-1.5 uppercase tracking-wider">
-                  <Target className="w-3.5 h-3.5" /> Recent Opportunities
+                  <Target className="w-3.5 h-3.5" /> {t("dashboard.recentOpportunities")}
                 </span>
                 <Link href="/opportunities">
                   <Button variant="ghost" size="sm" data-testid="link-view-recent-opps">
-                    View All <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                    {t("common.viewAll")} <ArrowRight className="w-3.5 h-3.5 ml-1" />
                   </Button>
                 </Link>
               </CardTitle>
@@ -310,7 +310,7 @@ export default function Dashboard() {
               ) : opportunities.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-10">
                   <Target className="w-8 h-8 text-muted-foreground/40 mb-2" />
-                  <p className="text-sm text-muted-foreground">No opportunities yet</p>
+                  <p className="text-sm text-muted-foreground">{t("dashboard.noOpportunitiesYet")}</p>
                 </div>
               ) : (
                 <div className="divide-y divide-border">
@@ -324,7 +324,7 @@ export default function Dashboard() {
                               <span className="text-sm font-medium truncate">{o.title}</span>
                               {statusOpt && (
                                 <Badge className={`${statusOpt.color} border-0 text-[10px]`} variant="secondary">
-                                  {statusOpt.label}
+                                  {t(statusOpt.labelKey)}
                                 </Badge>
                               )}
                             </div>

@@ -26,8 +26,10 @@ import { formatDateForProject } from "@/lib/date-format";
 import type { TeamMember, AppSettings, AllocationWithProject, TimelineWithMilestones } from "@shared/schema";
 import { DEFAULT_TEAM_MEMBER_ROLES } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 
 export default function TeamMemberDetail() {
+  const { t } = useTranslation();
   const params = useParams<{ id: string }>();
   const [, navigate] = useLocation();
   const { toast } = useToast();
@@ -76,7 +78,7 @@ export default function TeamMemberDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/team-members", params.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/team-members"] });
-      toast({ title: "Team member updated" });
+      toast({ title: t("teamMembers.memberCreated") });
       setEditing(false);
     },
   });
@@ -87,7 +89,7 @@ export default function TeamMemberDetail() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/team-members"] });
-      toast({ title: "Team member deleted" });
+      toast({ title: t("teamMembers.memberDeleted") });
       navigate("/team-members");
     },
   });
@@ -122,7 +124,7 @@ export default function TeamMemberDetail() {
     return (
       <div className="p-6">
         <Link href="/team-members">
-          <Button variant="ghost" size="sm"><ArrowLeft className="w-4 h-4 mr-1" /> Back</Button>
+          <Button variant="ghost" size="sm"><ArrowLeft className="w-4 h-4 mr-1" /> {t("common.back")}</Button>
         </Link>
         <p className="text-muted-foreground mt-4">Team member not found.</p>
       </div>
@@ -133,12 +135,12 @@ export default function TeamMemberDetail() {
 
   return (
     <div className="p-4 md:p-6 max-w-[1000px] mx-auto">
-      <Helmet><title>{member.name} | Team Members</title></Helmet>
+      <Helmet><title>{member.name} | {t("teamMembers.title")}</title></Helmet>
 
       <div className="flex items-center gap-2 mb-4">
         <Link href="/team-members">
           <Button variant="ghost" size="sm" data-testid="button-back-to-members">
-            <ArrowLeft className="w-4 h-4 mr-1" /> Team Members
+            <ArrowLeft className="w-4 h-4 mr-1" /> {t("teamMembers.title")}
           </Button>
         </Link>
       </div>
@@ -154,34 +156,34 @@ export default function TeamMemberDetail() {
               {member.role && <Badge variant="secondary" data-testid="badge-member-role">{getRoleLabel(member.role)}</Badge>}
               {member.department && <Badge variant="outline" data-testid="badge-member-dept">{member.department}</Badge>}
               {member.userId ? (
-                <Badge variant="default" data-testid={`badge-app-access-${member.id}`}>App Access</Badge>
+                <Badge variant="default" data-testid={`badge-app-access-${member.id}`}>{t("teamMembers.access")}</Badge>
               ) : (
-                <Badge variant="secondary" className="text-muted-foreground" data-testid={`badge-app-access-${member.id}`}>No Access</Badge>
+                <Badge variant="secondary" className="text-muted-foreground" data-testid={`badge-app-access-${member.id}`}>{t("teamMembers.noAccess")}</Badge>
               )}
             </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={startEditing} data-testid="button-edit-member">
-            <Edit3 className="w-3.5 h-3.5 mr-1" /> Edit
+            <Edit3 className="w-3.5 h-3.5 mr-1" /> {t("common.edit")}
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="outline" size="sm" data-testid="button-delete-member">
-                <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete
+                <Trash2 className="w-3.5 h-3.5 mr-1" /> {t("common.delete")}
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Delete team member?</AlertDialogTitle>
+                <AlertDialogTitle>{t("teamMembers.deleteTitle")}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will permanently delete "{member.name}" and remove all their project assignments and allocations.
+                  {t("teamMembers.deleteDescription")} "{member.name}".
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
                 <AlertDialogAction onClick={() => deleteMutation.mutate()} data-testid="button-confirm-delete-member">
-                  Delete
+                  {t("common.delete")}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -193,51 +195,51 @@ export default function TeamMemberDetail() {
         <div className="border rounded-lg p-4 mb-6 bg-muted/30 space-y-3" data-testid="form-edit-member">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             <div>
-              <Label>Name *</Label>
+              <Label>{t("teamMembers.nameRequired")}</Label>
               <Input value={editName} onChange={e => setEditName(e.target.value)} data-testid="input-edit-name" />
             </div>
             <div>
-              <Label>Email {editAppAccess && "*"}</Label>
+              <Label>{t("common.email")} {editAppAccess && "*"}</Label>
               <Input value={editEmail} onChange={e => setEditEmail(e.target.value)} data-testid="input-edit-email" />
             </div>
             <div className="col-span-2 md:col-span-3 flex items-center gap-3">
               <Switch checked={editAppAccess} onCheckedChange={setEditAppAccess} data-testid="switch-app-access" />
               <div>
-                <Label>App Access</Label>
+                <Label>{t("teamMembers.appAccess")}</Label>
                 <p className="text-xs text-muted-foreground" data-testid="text-app-access-status">
                   {member?.userId && editAppAccess
-                    ? "Linked to user account"
+                    ? t("teamMembers.appAccessEnabled")
                     : editAppAccess
-                      ? "This person will be able to log in and access assigned projects"
-                      : "This person is tracked for estimation/allocation only"}
+                      ? t("teamMembers.appAccessEnabled")
+                      : t("teamMembers.appAccessDisabled")}
                 </p>
               </div>
             </div>
             <div>
-              <Label>Role</Label>
+              <Label>{t("common.role")}</Label>
               <select className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm" value={editRole} onChange={e => setEditRole(e.target.value)} data-testid="select-edit-role">
-                <option value="">Select role...</option>
+                <option value="">{t("teamMembers.selectRole")}</option>
                 {roleOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
               </select>
             </div>
             <div>
-              <Label>Department</Label>
+              <Label>{t("common.department")}</Label>
               <Input value={editDept} onChange={e => setEditDept(e.target.value)} data-testid="input-edit-dept" />
             </div>
             <div>
-              <Label>Monthly Cost ($)</Label>
+              <Label>{t("teamMembers.monthlyDollar")}</Label>
               <Input type="number" step="0.01" min="0" value={editMonthlyCost} onChange={e => setEditMonthlyCost(e.target.value)} data-testid="input-edit-monthly" />
             </div>
             <div>
-              <Label>Hourly Cost ($)</Label>
+              <Label>{t("teamMembers.hourlyDollar")}</Label>
               <Input type="number" step="0.01" min="0" value={editHourlyCost} onChange={e => setEditHourlyCost(e.target.value)} data-testid="input-edit-hourly" />
             </div>
           </div>
           <div className="flex gap-2 justify-end">
-            <Button variant="ghost" size="sm" onClick={() => setEditing(false)}>Cancel</Button>
+            <Button variant="ghost" size="sm" onClick={() => setEditing(false)}>{t("common.cancel")}</Button>
             <Button size="sm" onClick={() => updateMutation.mutate({ name: editName, email: editEmail || null, role: editRole || null, department: editDept || null, monthlyCost: editMonthlyCost || null, hourlyCost: editHourlyCost || null, enableAppAccess: editAppAccess, previouslyHadAccess: !!member?.userId })} disabled={!editName.trim() || (editAppAccess && !editEmail.trim()) || updateMutation.isPending} data-testid="button-save-member">
               <Save className="w-3.5 h-3.5 mr-1" />
-              {updateMutation.isPending ? "Saving..." : "Save"}
+              {updateMutation.isPending ? t("common.saving") : t("common.save")}
             </Button>
           </div>
         </div>
@@ -274,7 +276,7 @@ export default function TeamMemberDetail() {
         <TabsList data-testid="tabs-member-detail">
           <TabsTrigger value="allocations" data-testid="tab-allocations">
             <Calendar className="w-4 h-4 mr-1.5" />
-            Allocations ({allocs.length})
+            {t("allocations.title")} ({allocs.length})
           </TabsTrigger>
         </TabsList>
 

@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import { useTranslation } from "react-i18next";
 
 type Tenant = {
   id: string;
@@ -94,6 +95,7 @@ function CreateTenantDialog({ onCreated }: { onCreated: () => void }) {
   const [adminEmail, setAdminEmail] = useState("");
   const [adminFirstName, setAdminFirstName] = useState("");
   const [adminLastName, setAdminLastName] = useState("");
+  const [locale, setLocale] = useState("en");
 
   const computedSlug = slug || name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+$/, "");
 
@@ -108,6 +110,7 @@ function CreateTenantDialog({ onCreated }: { onCreated: () => void }) {
         adminEmail,
         adminFirstName,
         adminLastName,
+        locale,
       });
     },
     onSuccess: () => {
@@ -123,6 +126,7 @@ function CreateTenantDialog({ onCreated }: { onCreated: () => void }) {
       setAdminEmail("");
       setAdminFirstName("");
       setAdminLastName("");
+      setLocale("en");
       onCreated();
     },
     onError: (err: any) => {
@@ -208,6 +212,19 @@ function CreateTenantDialog({ onCreated }: { onCreated: () => void }) {
                 onChange={(e) => setMaxProjects(e.target.value)}
               />
             </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="tenant-locale">Language</Label>
+            <Select value={locale} onValueChange={setLocale}>
+              <SelectTrigger data-testid="select-tenant-locale">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="en">English</SelectItem>
+                <SelectItem value="es">Español</SelectItem>
+                <SelectItem value="pt">Português</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <Separator />

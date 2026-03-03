@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Helmet } from "react-helmet-async";
+import { useTranslation } from "react-i18next";
 import { Plus, Search, Building2, Trash2, ExternalLink, Save, ArrowUpDown, ArrowUp, ArrowDown, X, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -49,8 +50,9 @@ interface ColumnFilters {
 }
 
 export default function Clients() {
+  const { t } = useTranslation();
   const { toast } = useToast();
-  const appTitle = useAppTitle("Clients");
+  const appTitle = useAppTitle(t("clients.title"));
   const [searchQuery, setSearchQuery] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState("");
@@ -79,13 +81,13 @@ export default function Clients() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
-      toast({ title: "Client created" });
+      toast({ title: t("clients.clientCreated") });
       setCreateOpen(false);
       setNewName("");
       setNewIndustry("");
     },
     onError: () => {
-      toast({ title: "Failed to create client", variant: "destructive" });
+      toast({ title: t("clients.failedToCreate"), variant: "destructive" });
     },
   });
 
@@ -95,7 +97,7 @@ export default function Clients() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
-      toast({ title: "Client deleted" });
+      toast({ title: t("clients.clientDeleted") });
     },
   });
 
@@ -153,9 +155,9 @@ export default function Clients() {
         return next;
       });
       queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
-      toast({ title: "Client updated" });
+      toast({ title: t("clients.clientUpdated") });
     } catch {
-      toast({ title: "Failed to save", variant: "destructive" });
+      toast({ title: t("clients.failedToSave"), variant: "destructive" });
     } finally {
       setSavingIds((prev) => {
         const next = new Set(prev);
@@ -291,39 +293,39 @@ export default function Clients() {
       </Helmet>
 
       <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
-        <h1 className="text-xl font-semibold" data-testid="text-page-title">Clients</h1>
+        <h1 className="text-xl font-semibold" data-testid="text-page-title">{t("clients.title")}</h1>
         <div className="flex items-center gap-2">
           {hasAnyEdits && (
             <Button onClick={saveAll} size="sm" disabled={isSaving} data-testid="button-save-all">
               <Save className="w-4 h-4 mr-2" />
-              {isSaving ? "Saving..." : "Save All Changes"}
+              {isSaving ? t("common.saving") : t("common.saveAllChanges")}
             </Button>
           )}
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger asChild>
               <Button size="sm" data-testid="button-create-client">
                 <Plus className="w-4 h-4 mr-2" />
-                New Client
+                {t("clients.newClient")}
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Create Client</DialogTitle>
-                <DialogDescription>Add a new client to your organization.</DialogDescription>
+                <DialogTitle>{t("clients.createClient")}</DialogTitle>
+                <DialogDescription>{t("clients.addDescription")}</DialogDescription>
               </DialogHeader>
               <div className="space-y-3 py-2">
                 <div>
-                  <Label htmlFor="client-name">Name *</Label>
+                  <Label htmlFor="client-name">{t("clients.nameRequired")}</Label>
                   <Input
                     id="client-name"
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
-                    placeholder="Client name"
+                    placeholder={t("clients.clientName")}
                     data-testid="input-client-name"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="client-industry">Industry</Label>
+                  <Label htmlFor="client-industry">{t("clients.industry")}</Label>
                   <select
                     id="client-industry"
                     className="h-9 text-sm border rounded px-2 bg-background w-full"
@@ -331,7 +333,7 @@ export default function Clients() {
                     onChange={(e) => setNewIndustry(e.target.value)}
                     data-testid="select-client-industry"
                   >
-                    <option value="">Select industry...</option>
+                    <option value="">{t("clients.selectIndustry")}</option>
                     {industryOptions.map((opt) => (
                       <option key={opt.value} value={opt.value}>{opt.label}</option>
                     ))}
@@ -350,7 +352,7 @@ export default function Clients() {
                   disabled={!newName.trim() || createMutation.isPending}
                   data-testid="button-submit-client"
                 >
-                  {createMutation.isPending ? "Creating..." : "Create Client"}
+                  {createMutation.isPending ? t("common.creating") : t("clients.createClient")}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -365,7 +367,7 @@ export default function Clients() {
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by name or industry..."
+              placeholder={t("clients.searchPlaceholder")}
               className="pl-9 h-8 text-sm"
               data-testid="input-search-clients"
             />
@@ -378,7 +380,7 @@ export default function Clients() {
             data-testid="button-toggle-filters"
           >
             <Filter className="w-3.5 h-3.5 mr-1.5" />
-            Filters
+            {t("common.filters")}
             {activeFilterCount > 0 && (
               <span className="ml-1.5 bg-primary text-primary-foreground rounded-full w-4 h-4 text-[10px] flex items-center justify-center">
                 {activeFilterCount}
@@ -394,7 +396,7 @@ export default function Clients() {
               data-testid="button-clear-filters"
             >
               <X className="w-3.5 h-3.5 mr-1" />
-              Clear all
+              {t("common.clearAll")}
             </Button>
           )}
         </div>
@@ -414,24 +416,24 @@ export default function Clients() {
           <div className="w-14 h-14 rounded-full bg-muted/60 flex items-center justify-center mb-5">
             <Building2 className="w-7 h-7 text-muted-foreground/70" />
           </div>
-          <h2 className="text-lg font-semibold mb-1.5">No clients yet</h2>
+          <h2 className="text-lg font-semibold mb-1.5">{t("clients.noClientsYet")}</h2>
           <p className="text-sm text-muted-foreground mb-5 max-w-sm">
-            Add your first client to start organizing projects by client.
+            {t("clients.noClientsDescription")}
           </p>
           <Button onClick={() => setCreateOpen(true)} data-testid="button-empty-create-client">
             <Plus className="w-4 h-4 mr-2" />
-            Create Client
+            {t("clients.createClient")}
           </Button>
         </div>
       ) : processedClients.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center" data-testid="empty-search-results">
           <Search className="w-8 h-8 text-muted-foreground/60 mb-3" />
-          <h2 className="text-base font-semibold mb-1">No matching clients</h2>
+          <h2 className="text-base font-semibold mb-1">{t("clients.noMatchingClients")}</h2>
           <p className="text-xs text-muted-foreground mb-3">
-            No clients match your current filters. Try adjusting your search or filters.
+            {t("clients.noMatchingDescription")}
           </p>
           <Button variant="outline" size="sm" onClick={clearAllFilters} data-testid="button-clear-filters-empty">
-            Clear all filters
+            {t("common.clearAllFilters")}
           </Button>
         </div>
       ) : (
@@ -440,11 +442,11 @@ export default function Clients() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="bg-muted/50 border-b">
-                  <SortHeader field="name" label="Name" />
-                  <SortHeader field="industry" label="Industry" />
-                  <SortHeader field="contactPhone" label="Phone" />
-                  <SortHeader field="status" label="Status" align="center" />
-                  <th className="text-center font-medium text-muted-foreground px-3 py-2 whitespace-nowrap w-[80px]">Actions</th>
+                  <SortHeader field="name" label={t("common.name")} />
+                  <SortHeader field="industry" label={t("clients.industry")} />
+                  <SortHeader field="contactPhone" label={t("common.phone")} />
+                  <SortHeader field="status" label={t("common.status")} align="center" />
+                  <th className="text-center font-medium text-muted-foreground px-3 py-2 whitespace-nowrap w-[80px]">{t("common.actions")}</th>
                 </tr>
                 {showFilters && (
                   <tr className="bg-muted/30 border-b">
@@ -456,7 +458,7 @@ export default function Clients() {
                         onChange={(e) => setFilter("industry", e.target.value)}
                         data-testid="filter-industry"
                       >
-                        <option value="">All</option>
+                        <option value="">{t("common.all")}</option>
                         {industryOptions.map((opt) => (
                           <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
@@ -470,9 +472,9 @@ export default function Clients() {
                         onChange={(e) => setFilter("status", e.target.value)}
                         data-testid="filter-status"
                       >
-                        <option value="">All</option>
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
+                        <option value="">{t("common.all")}</option>
+                        <option value="active">{t("common.active")}</option>
+                        <option value="inactive">{t("common.inactive")}</option>
                       </select>
                     </th>
                     <th className="px-3 py-1.5" />
@@ -517,7 +519,7 @@ export default function Clients() {
                           className={inputClass}
                           value={getVal(client, "contactPhone")}
                           onChange={(e) => updateField(client.id, "contactPhone", e.target.value, client)}
-                          placeholder="Phone"
+                          placeholder={t("common.phone")}
                           data-testid={`input-contactPhone-${client.id}`}
                         />
                       </td>
@@ -528,8 +530,8 @@ export default function Clients() {
                           onChange={(e) => updateField(client.id, "status", e.target.value, client)}
                           data-testid={`select-status-${client.id}`}
                         >
-                          <option value="active">Active</option>
-                          <option value="inactive">Inactive</option>
+                          <option value="active">{t("common.active")}</option>
+                          <option value="inactive">{t("common.inactive")}</option>
                         </select>
                       </td>
                       <td className="px-3 py-2">
@@ -541,7 +543,7 @@ export default function Clients() {
                               className="h-6 w-6"
                               onClick={() => saveRow(client.id)}
                               disabled={savingIds.has(client.id)}
-                              title="Save changes"
+                              title={t("clients.saveChanges")}
                               data-testid={`button-save-${client.id}`}
                             >
                               <Save className="w-3.5 h-3.5 text-primary" />
@@ -553,7 +555,7 @@ export default function Clients() {
                                 size="icon"
                                 variant="ghost"
                                 className="h-6 w-6"
-                                title="Delete client"
+                                title={t("common.delete")}
                                 data-testid={`button-delete-client-${client.id}`}
                               >
                                 <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
@@ -561,18 +563,18 @@ export default function Clients() {
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>Delete client?</AlertDialogTitle>
+                                <AlertDialogTitle>{t("clients.deleteClient")}</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  This will permanently delete "{client.name}". Projects assigned to this client will be unlinked but not deleted.
+                                  {t("clients.deleteDescription", { name: client.name })}
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
                                 <AlertDialogAction
                                   onClick={() => deleteMutation.mutate(client.id)}
                                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                 >
-                                  Delete
+                                  {t("common.delete")}
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>

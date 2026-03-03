@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { ReportLayout } from "@/components/reports/report-layout";
 import { ReportStatCard, HealthDot } from "@/components/reports/report-charts";
 import { DropdownFilter } from "@/components/reports/report-filters";
@@ -94,6 +95,7 @@ function getEvmColor(val: string | null | undefined): string {
 }
 
 export default function ProjectStatusReport() {
+  const { t } = useTranslation();
   const [selectedProjectId, setSelectedProjectId] = useState("all");
 
   const { data: projects = [], isLoading: projectsLoading } = useQuery<ProjectOption[]>({

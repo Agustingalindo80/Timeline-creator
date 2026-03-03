@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { Helmet } from "react-helmet-async";
+import { useTranslation } from "react-i18next";
 import { Plus, Target, Search, X, Filter, ArrowUpDown, ArrowUp, ArrowDown, ExternalLink } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -75,9 +76,10 @@ interface ColumnFilters {
 }
 
 export default function OpportunitiesPage() {
+  const { t } = useTranslation();
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const appTitle = useAppTitle("Opportunities");
+  const appTitle = useAppTitle(t("opportunities.title"));
   const [searchQuery, setSearchQuery] = useState("");
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
@@ -124,12 +126,12 @@ export default function OpportunitiesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/opportunities"] });
-      toast({ title: "Opportunity created" });
+      toast({ title: t("opportunities.opportunityCreated") });
       setCreateDialogOpen(false);
       form.reset();
     },
     onError: () => {
-      toast({ title: "Failed to create opportunity", variant: "destructive" });
+      toast({ title: t("opportunities.failedToCreate"), variant: "destructive" });
     },
   });
 
@@ -291,17 +293,17 @@ export default function OpportunitiesPage() {
       </Helmet>
 
       <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
-        <h1 className="text-xl font-semibold" data-testid="text-page-title">Opportunities</h1>
+        <h1 className="text-xl font-semibold" data-testid="text-page-title">{t("opportunities.title")}</h1>
         <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button size="sm" data-testid="button-new-opportunity">
               <Plus className="w-4 h-4 mr-2" />
-              New Opportunity
+              {t("opportunities.newOpportunity")}
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Create Opportunity</DialogTitle>
+              <DialogTitle>{t("opportunities.createOpportunity")}</DialogTitle>
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmitCreate)} className="space-y-4">
@@ -310,9 +312,9 @@ export default function OpportunitiesPage() {
                   name="title"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Name</FormLabel>
+                      <FormLabel>{t("common.name")}</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="Opportunity name" data-testid="input-opportunity-title" />
+                        <Input {...field} placeholder={t("opportunities.opportunityName")} data-testid="input-opportunity-title" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -323,11 +325,11 @@ export default function OpportunitiesPage() {
                   name="clientId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Client</FormLabel>
+                      <FormLabel>{t("common.client")}</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger data-testid="select-opportunity-client">
-                            <SelectValue placeholder="Select client" />
+                            <SelectValue placeholder={t("opportunities.selectClient")} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -345,11 +347,11 @@ export default function OpportunitiesPage() {
                   name="region"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Region</FormLabel>
+                      <FormLabel>{t("common.region")}</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger data-testid="select-opportunity-region">
-                            <SelectValue placeholder="Select region" />
+                            <SelectValue placeholder={t("opportunities.selectRegion")} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -367,9 +369,9 @@ export default function OpportunitiesPage() {
                   name="description"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Description</FormLabel>
+                      <FormLabel>{t("common.description")}</FormLabel>
                       <FormControl>
-                        <Textarea {...field} placeholder="Brief description" data-testid="input-opportunity-description" />
+                        <Textarea {...field} placeholder={t("opportunities.briefDescription")} data-testid="input-opportunity-description" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -380,9 +382,9 @@ export default function OpportunitiesPage() {
                   name="salesforceClouds"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Salesforce Clouds</FormLabel>
+                      <FormLabel>{t("opportunities.salesforceClouds")}</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="e.g. Sales Cloud, Service Cloud" data-testid="input-opportunity-salesforce" />
+                        <Input {...field} placeholder={t("opportunities.salesforcePlaceholder")} data-testid="input-opportunity-salesforce" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -390,10 +392,10 @@ export default function OpportunitiesPage() {
                 />
                 <div className="flex justify-end gap-2">
                   <Button type="button" variant="outline" onClick={() => setCreateDialogOpen(false)} data-testid="button-cancel-create">
-                    Cancel
+                    {t("common.cancel")}
                   </Button>
                   <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit-create">
-                    {createMutation.isPending ? "Creating..." : "Create"}
+                    {createMutation.isPending ? t("common.creating") : t("common.create")}
                   </Button>
                 </div>
               </form>
@@ -409,7 +411,7 @@ export default function OpportunitiesPage() {
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by name or client..."
+              placeholder={t("opportunities.searchPlaceholder")}
               className="pl-9 h-8 text-sm"
               data-testid="input-search-opportunities"
             />
@@ -422,7 +424,7 @@ export default function OpportunitiesPage() {
             data-testid="button-toggle-filters"
           >
             <Filter className="w-3.5 h-3.5 mr-1.5" />
-            Filters
+            {t("common.filters")}
             {activeFilterCount > 0 && (
               <span className="ml-1.5 bg-primary text-primary-foreground rounded-full w-4 h-4 text-[10px] flex items-center justify-center">
                 {activeFilterCount}
@@ -438,7 +440,7 @@ export default function OpportunitiesPage() {
               data-testid="button-clear-filters"
             >
               <X className="w-3.5 h-3.5 mr-1" />
-              Clear all
+              {t("common.clearAll")}
             </Button>
           )}
         </div>
@@ -458,24 +460,24 @@ export default function OpportunitiesPage() {
           <div className="w-14 h-14 rounded-full bg-muted/60 flex items-center justify-center mb-5">
             <Target className="w-7 h-7 text-muted-foreground/70" />
           </div>
-          <h2 className="text-lg font-semibold mb-1.5" data-testid="text-empty-title">No opportunities yet</h2>
+          <h2 className="text-lg font-semibold mb-1.5" data-testid="text-empty-title">{t("opportunities.noOpportunitiesYet")}</h2>
           <p className="text-sm text-muted-foreground mb-5 max-w-sm">
-            Create your first opportunity to start tracking your pre-sales pipeline.
+            {t("opportunities.noOpportunitiesDescription")}
           </p>
           <Button size="sm" onClick={() => setCreateDialogOpen(true)} data-testid="button-empty-create">
             <Plus className="w-4 h-4 mr-2" />
-            New Opportunity
+            {t("opportunities.newOpportunity")}
           </Button>
         </div>
       ) : processedOpportunities.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center" data-testid="empty-search-results">
           <Search className="w-8 h-8 text-muted-foreground/60 mb-3" />
-          <h2 className="text-base font-semibold mb-1">No matching opportunities</h2>
+          <h2 className="text-base font-semibold mb-1">{t("opportunities.noMatchingOpportunities")}</h2>
           <p className="text-xs text-muted-foreground mb-3">
-            No opportunities match your current filters. Try adjusting your search or filters.
+            {t("opportunities.noMatchingDescription")}
           </p>
           <Button variant="outline" size="sm" onClick={clearAllFilters} data-testid="button-clear-filters-empty">
-            Clear all filters
+            {t("common.clearAllFilters")}
           </Button>
         </div>
       ) : (
@@ -484,14 +486,14 @@ export default function OpportunitiesPage() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="bg-muted/50 border-b">
-                  <SortHeader field="title" label="Name" />
-                  <SortHeader field="client" label="Client" />
-                  <SortHeader field="region" label="Region" />
-                  <SortHeader field="status" label="Status" align="center" />
-                  <SortHeader field="approvedBudget" label="Buffered Price" />
-                  <SortHeader field="totalRunningCost" label="Base Cost" />
-                  <SortHeader field="grossMargin" label="Margin" />
-                  <SortHeader field="salesforceClouds" label="SF Clouds" />
+                  <SortHeader field="title" label={t("common.name")} />
+                  <SortHeader field="client" label={t("common.client")} />
+                  <SortHeader field="region" label={t("common.region")} />
+                  <SortHeader field="status" label={t("common.status")} align="center" />
+                  <SortHeader field="approvedBudget" label={t("opportunities.bufferedPrice")} />
+                  <SortHeader field="totalRunningCost" label={t("opportunities.baseCost")} />
+                  <SortHeader field="grossMargin" label={t("opportunities.margin")} />
+                  <SortHeader field="salesforceClouds" label={t("opportunities.sfClouds")} />
                 </tr>
                 {showFilters && (
                   <tr className="bg-muted/30 border-b">
@@ -503,7 +505,7 @@ export default function OpportunitiesPage() {
                         onChange={(e) => setFilter("clientId", e.target.value)}
                         data-testid="filter-client"
                       >
-                        <option value="">All</option>
+                        <option value="">{t("common.all")}</option>
                         {(clientsList || []).map((cl) => (
                           <option key={cl.id} value={cl.id}>{cl.name}</option>
                         ))}
@@ -516,7 +518,7 @@ export default function OpportunitiesPage() {
                         onChange={(e) => setFilter("region", e.target.value)}
                         data-testid="filter-region"
                       >
-                        <option value="">All</option>
+                        <option value="">{t("common.all")}</option>
                         {regionOptions.map((opt) => (
                           <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
@@ -529,12 +531,12 @@ export default function OpportunitiesPage() {
                         onChange={(e) => setFilter("opportunityStatus", e.target.value)}
                         data-testid="filter-status"
                       >
-                        <option value="">All</option>
-                        <option value="qualifying">Qualifying</option>
-                        <option value="estimating">Estimating</option>
-                        <option value="proposed">Proposed</option>
-                        <option value="won">Won</option>
-                        <option value="lost">Lost</option>
+                        <option value="">{t("common.all")}</option>
+                        <option value="qualifying">{t("opportunities.qualifying")}</option>
+                        <option value="estimating">{t("opportunities.estimating")}</option>
+                        <option value="proposed">{t("opportunities.proposed")}</option>
+                        <option value="won">{t("opportunities.won")}</option>
+                        <option value="lost">{t("opportunities.lost")}</option>
                       </select>
                     </th>
                     <th className="px-3 py-1.5" />

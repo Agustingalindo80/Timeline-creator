@@ -2391,8 +2391,11 @@ Respond ONLY with valid JSON:
       const stages = await storage.getFlightpathStages(req.tenantId || "default");
       const sortedStages = stages.sort((a, b) => a.sortOrder - b.sortOrder);
       const tenantSettings = await storage.getSettings(req.tenantId || "default");
-      const govLabel = tenantSettings?.governanceModelLabel || "Operating Model";
-      let frameworkContext = `You are the ${govLabel} Governance Coach — an AI assistant that helps project managers navigate the ${govLabel} governance framework.\n\n`;
+      const tenantLocale = tenantSettings?.locale || "en";
+      const { getGovernanceLabel } = await import("@shared/terminology");
+      const govLabel = getGovernanceLabel(tenantSettings?.governanceModelLabel, tenantLocale as "en" | "es" | "pt");
+      const localeInstruction = tenantLocale !== "en" ? `\nIMPORTANT: Respond in ${tenantLocale === "es" ? "Spanish" : "Portuguese"}. The tenant's language is set to ${tenantLocale}.\n` : "";
+      let frameworkContext = `You are the ${govLabel} Governance Coach — an AI assistant that helps project managers navigate the ${govLabel} governance framework.\n${localeInstruction}\n`;
       frameworkContext += `IMPORTANT: In all user-facing responses, refer to the governance lifecycle as "${govLabel}". Do not use the term "FlightPath".\n\n`;
       frameworkContext += `## ${govLabel} Framework Overview\n`;
       frameworkContext += `The ${govLabel} is a 5-stage project governance framework (Stage 0 through Stage 4) that guides projects from initial value framing through to value realization and evolution.\n\n`;
@@ -3211,7 +3214,7 @@ Respond ONLY with valid JSON:
 
   app.post("/api/global-admin/tenants", requireSuperAdmin(), async (req, res) => {
     try {
-      const { name, slug, plan, maxUsers, maxProjects, storageLimit, billingEmail, adminEmail, adminFirstName, adminLastName } = req.body;
+      const { name, slug, plan, maxUsers, maxProjects, storageLimit, billingEmail, adminEmail, adminFirstName, adminLastName, locale } = req.body;
       if (!name || !slug) return res.status(400).json({ message: "name and slug required" });
       if (!adminEmail || !adminFirstName || !adminLastName) return res.status(400).json({ message: "Tenant Admin details (adminEmail, adminFirstName, adminLastName) are required" });
       const existing = (await storage.getTenants()).find(t => t.slug === slug);
@@ -3226,7 +3229,7 @@ Respond ONLY with valid JSON:
         billingEmail: billingEmail || null,
         createdBy: userId,
       });
-      await provisionTenant(tenant.id, { email: adminEmail, firstName: adminFirstName, lastName: adminLastName });
+      await provisionTenant(tenant.id, { email: adminEmail, firstName: adminFirstName, lastName: adminLastName }, undefined, locale || "en");
       res.status(201).json(tenant);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });

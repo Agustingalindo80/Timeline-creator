@@ -23,6 +23,7 @@ export async function provisionTenant(
   tenantId: string,
   tenantAdmin?: TenantAdminInfo,
   creatorUserId?: string,
+  locale: string = "en",
 ): Promise<void> {
   console.log(`Provisioning tenant "${tenantId}"...`);
 
@@ -69,9 +70,12 @@ export async function provisionTenant(
     await seedFlightpathData(tenantId);
     console.log(`  Governance stages seeded for tenant "${tenantId}"`);
 
-    await storage.getSettings(tenantId);
+    const settings = await storage.getSettings(tenantId);
+    if (settings && locale !== "en") {
+      await storage.updateSettings(tenantId, { locale });
+    }
     await storage.getBranding(tenantId);
-    console.log(`  Settings and branding initialized for tenant "${tenantId}"`);
+    console.log(`  Settings and branding initialized for tenant "${tenantId}" (locale: ${locale})`);
 
     const adminRoleId = roleIdsByName["Global Admin"];
 

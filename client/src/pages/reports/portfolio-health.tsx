@@ -2,6 +2,7 @@ import { useState, useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Helmet } from "react-helmet-async";
+import { useTranslation } from "react-i18next";
 import { Activity, FolderKanban, ShieldCheck, AlertTriangle, XCircle } from "lucide-react";
 import { ReportLayout } from "@/components/reports/report-layout";
 import { HealthPieChart, ReportStatCard, HealthDot } from "@/components/reports/report-charts";
@@ -44,6 +45,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export default function PortfolioHealthReport() {
+  const { t } = useTranslation();
   const contentRef = useRef<HTMLDivElement>(null);
   const [clientFilter, setClientFilter] = useState("all");
   const [regionFilter, setRegionFilter] = useState("all");

@@ -13,6 +13,8 @@ import { Loader2, ShieldX } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
+import { useLocale } from "@/hooks/use-locale";
 import Dashboard from "@/pages/dashboard";
 import Home from "@/pages/home";
 import CreateTimeline from "@/pages/create-timeline";
@@ -40,6 +42,7 @@ import Landing from "@/pages/landing";
 import NotFound from "@/pages/not-found";
 
 function ProtectedRoute({ requiredModule, children }: { requiredModule: string; children: ReactNode }) {
+  const { t } = useTranslation();
   const { data, isLoading } = useQuery<{ modules: string[]; isGlobalAccess: boolean; teamMemberId: string | null }>({
     queryKey: ["/api/rbac/my-modules"],
   });
@@ -58,14 +61,14 @@ function ProtectedRoute({ requiredModule, children }: { requiredModule: string; 
         <Card className="max-w-md w-full">
           <CardHeader className="flex flex-col items-center gap-2">
             <ShieldX className="w-12 h-12 text-destructive" />
-            <CardTitle>Access Denied</CardTitle>
+            <CardTitle>{t("accessDenied.title")}</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col items-center gap-4">
             <p className="text-muted-foreground text-center">
-              You do not have permission to access this section. Contact your administrator if you believe this is an error.
+              {t("accessDenied.noPermission")}
             </p>
             <Link href="/">
-              <Button data-testid="link-back-dashboard">Back to Dashboard</Button>
+              <Button data-testid="link-back-dashboard">{t("accessDenied.backToDashboard")}</Button>
             </Link>
           </CardContent>
         </Card>
@@ -77,6 +80,7 @@ function ProtectedRoute({ requiredModule, children }: { requiredModule: string; 
 }
 
 function SuperAdminRoute({ children }: { children: ReactNode }) {
+  const { t } = useTranslation();
   const { data, isLoading } = useQuery<{ isSuperAdmin: boolean }>({
     queryKey: ["/api/global-admin/check"],
   });
@@ -95,14 +99,14 @@ function SuperAdminRoute({ children }: { children: ReactNode }) {
         <Card className="max-w-md w-full">
           <CardHeader className="flex flex-col items-center gap-2">
             <ShieldX className="w-12 h-12 text-destructive" />
-            <CardTitle>Access Denied</CardTitle>
+            <CardTitle>{t("accessDenied.title")}</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col items-center gap-4">
             <p className="text-muted-foreground text-center">
-              This section is restricted to super administrators only.
+              {t("accessDenied.superAdminOnly")}
             </p>
             <Link href="/">
-              <Button data-testid="link-back-dashboard">Back to Dashboard</Button>
+              <Button data-testid="link-back-dashboard">{t("accessDenied.backToDashboard")}</Button>
             </Link>
           </CardContent>
         </Card>
@@ -157,6 +161,7 @@ function getBasePath() {
 
 function AuthenticatedApp() {
   const basePath = getBasePath();
+  useLocale();
 
   return (
     <Router base={basePath}>

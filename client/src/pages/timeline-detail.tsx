@@ -67,6 +67,7 @@ import {
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAppTitle } from "@/hooks/use-app-title";
+import { useTranslation } from "react-i18next";
 import { TimelineView } from "@/components/timeline-view";
 import { ThemePicker } from "@/components/theme-picker";
 import { RaidLog } from "@/components/raid-log";
@@ -1369,6 +1370,7 @@ export default function TimelineDetail() {
   const { id } = useParams<{ id: string }>();
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const appTitleOnly = useAppTitle();
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
   const [editing, setEditing] = useState(false);

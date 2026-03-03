@@ -136,6 +136,238 @@ export const DEFAULT_DATE_FORMATS: FieldOption[] = [
   { value: "Month DD, YYYY", label: "Month DD, YYYY" },
 ];
 
+const LOCALIZED_DEFAULTS: Record<string, Record<string, FieldOption[]>> = {
+  taskStatuses: {
+    en: DEFAULT_TASK_STATUSES,
+    es: [
+      { value: "not_started", label: "No Iniciado" },
+      { value: "in_progress", label: "En Progreso" },
+      { value: "complete", label: "Completado" },
+    ],
+    pt: [
+      { value: "not_started", label: "Não Iniciado" },
+      { value: "in_progress", label: "Em Andamento" },
+      { value: "complete", label: "Concluído" },
+    ],
+  },
+  taskHealthOptions: {
+    en: DEFAULT_TASK_HEALTH,
+    es: [
+      { value: "green", label: "Verde" },
+      { value: "amber", label: "Ámbar" },
+      { value: "red", label: "Rojo" },
+    ],
+    pt: [
+      { value: "green", label: "Verde" },
+      { value: "amber", label: "Âmbar" },
+      { value: "red", label: "Vermelho" },
+    ],
+  },
+  taskItemTypes: {
+    en: DEFAULT_TASK_ITEM_TYPES,
+    es: [
+      { value: "workstream", label: "Flujo de Trabajo" },
+      { value: "phase", label: "Fase" },
+    ],
+    pt: [
+      { value: "workstream", label: "Fluxo de Trabalho" },
+      { value: "phase", label: "Fase" },
+    ],
+  },
+  riskProbabilities: {
+    en: DEFAULT_RISK_PROBABILITIES,
+    es: [
+      { value: "low", label: "Bajo" },
+      { value: "medium", label: "Medio" },
+      { value: "high", label: "Alto" },
+      { value: "very_high", label: "Muy Alto" },
+    ],
+    pt: [
+      { value: "low", label: "Baixo" },
+      { value: "medium", label: "Médio" },
+      { value: "high", label: "Alto" },
+      { value: "very_high", label: "Muito Alto" },
+    ],
+  },
+  riskImpacts: {
+    en: DEFAULT_RISK_IMPACTS,
+    es: [
+      { value: "low", label: "Bajo" },
+      { value: "medium", label: "Medio" },
+      { value: "high", label: "Alto" },
+      { value: "very_high", label: "Muy Alto" },
+    ],
+    pt: [
+      { value: "low", label: "Baixo" },
+      { value: "medium", label: "Médio" },
+      { value: "high", label: "Alto" },
+      { value: "very_high", label: "Muito Alto" },
+    ],
+  },
+  riskStatuses: {
+    en: DEFAULT_RISK_STATUSES,
+    es: [
+      { value: "open", label: "Abierto" },
+      { value: "mitigated", label: "Mitigado" },
+      { value: "closed", label: "Cerrado" },
+      { value: "accepted", label: "Aceptado" },
+    ],
+    pt: [
+      { value: "open", label: "Aberto" },
+      { value: "mitigated", label: "Mitigado" },
+      { value: "closed", label: "Fechado" },
+      { value: "accepted", label: "Aceito" },
+    ],
+  },
+  projectTypes: {
+    en: DEFAULT_PROJECT_TYPES,
+    es: [
+      { value: "billable", label: "Facturable" },
+      { value: "non_billable", label: "No Facturable" },
+    ],
+    pt: [
+      { value: "billable", label: "Faturável" },
+      { value: "non_billable", label: "Não Faturável" },
+    ],
+  },
+  engagementModels: {
+    en: DEFAULT_ENGAGEMENT_MODELS,
+    es: [
+      { value: "fixed_bid", label: "Precio Fijo" },
+      { value: "t_and_m", label: "T&M" },
+      { value: "managed_capacity", label: "Capacidad Gestionada" },
+    ],
+    pt: [
+      { value: "fixed_bid", label: "Preço Fixo" },
+      { value: "t_and_m", label: "T&M" },
+      { value: "managed_capacity", label: "Capacidade Gerenciada" },
+    ],
+  },
+  projectStatuses: {
+    en: DEFAULT_PROJECT_STATUSES,
+    es: [
+      { value: "not_started", label: "No Iniciado" },
+      { value: "in_progress", label: "En Progreso" },
+      { value: "completed", label: "Completado" },
+    ],
+    pt: [
+      { value: "not_started", label: "Não Iniciado" },
+      { value: "in_progress", label: "Em Andamento" },
+      { value: "completed", label: "Concluído" },
+    ],
+  },
+  teamMemberRoles: {
+    en: DEFAULT_TEAM_MEMBER_ROLES,
+    es: [
+      { value: "solution_architect", label: "Arquitecto de Soluciones" },
+      { value: "technical_architect", label: "Arquitecto Técnico" },
+      { value: "project_manager", label: "Gerente de Proyecto" },
+      { value: "business_analyst", label: "Analista de Negocios" },
+      { value: "senior_developer", label: "Desarrollador Senior" },
+      { value: "developer", label: "Desarrollador" },
+      { value: "qa_lead", label: "Líder de QA" },
+      { value: "qa_engineer", label: "Ingeniero de QA" },
+      { value: "data_migration_specialist", label: "Especialista en Migración de Datos" },
+      { value: "integration_specialist", label: "Especialista en Integración" },
+      { value: "admin_config_specialist", label: "Especialista en Configuración" },
+      { value: "change_management", label: "Gestión del Cambio" },
+      { value: "training_specialist", label: "Especialista en Capacitación" },
+      { value: "release_manager", label: "Gerente de Versiones" },
+    ],
+    pt: [
+      { value: "solution_architect", label: "Arquiteto de Soluções" },
+      { value: "technical_architect", label: "Arquiteto Técnico" },
+      { value: "project_manager", label: "Gerente de Projeto" },
+      { value: "business_analyst", label: "Analista de Negócios" },
+      { value: "senior_developer", label: "Desenvolvedor Sênior" },
+      { value: "developer", label: "Desenvolvedor" },
+      { value: "qa_lead", label: "Líder de QA" },
+      { value: "qa_engineer", label: "Engenheiro de QA" },
+      { value: "data_migration_specialist", label: "Especialista em Migração de Dados" },
+      { value: "integration_specialist", label: "Especialista em Integração" },
+      { value: "admin_config_specialist", label: "Especialista em Configuração" },
+      { value: "change_management", label: "Gestão de Mudanças" },
+      { value: "training_specialist", label: "Especialista em Treinamento" },
+      { value: "release_manager", label: "Gerente de Releases" },
+    ],
+  },
+  regions: {
+    en: DEFAULT_REGIONS,
+    es: [
+      { value: "us", label: "EE.UU." },
+      { value: "latam", label: "LATAM" },
+      { value: "caribe", label: "Caribe" },
+    ],
+    pt: [
+      { value: "us", label: "EUA" },
+      { value: "latam", label: "LATAM" },
+      { value: "caribe", label: "Caribe" },
+    ],
+  },
+  industries: {
+    en: DEFAULT_INDUSTRIES,
+    es: [
+      { value: "technology", label: "Tecnología" },
+      { value: "healthcare", label: "Salud" },
+      { value: "finance", label: "Finanzas" },
+      { value: "manufacturing", label: "Manufactura" },
+      { value: "retail", label: "Retail" },
+      { value: "education", label: "Educación" },
+      { value: "consulting", label: "Consultoría" },
+      { value: "government", label: "Gobierno" },
+    ],
+    pt: [
+      { value: "technology", label: "Tecnologia" },
+      { value: "healthcare", label: "Saúde" },
+      { value: "finance", label: "Finanças" },
+      { value: "manufacturing", label: "Manufatura" },
+      { value: "retail", label: "Varejo" },
+      { value: "education", label: "Educação" },
+      { value: "consulting", label: "Consultoria" },
+      { value: "government", label: "Governo" },
+    ],
+  },
+  contactRoles: {
+    en: DEFAULT_CONTACT_ROLES,
+    es: [
+      { value: "executive_sponsor", label: "Patrocinador Ejecutivo" },
+      { value: "project_manager", label: "Gerente de Proyecto" },
+      { value: "technical_lead", label: "Líder Técnico" },
+      { value: "stakeholder", label: "Parte Interesada" },
+      { value: "legal", label: "Legal" },
+    ],
+    pt: [
+      { value: "executive_sponsor", label: "Patrocinador Executivo" },
+      { value: "project_manager", label: "Gerente de Projeto" },
+      { value: "technical_lead", label: "Líder Técnico" },
+      { value: "stakeholder", label: "Parte Interessada" },
+      { value: "legal", label: "Jurídico" },
+    ],
+  },
+  dateFormats: {
+    en: DEFAULT_DATE_FORMATS,
+    es: DEFAULT_DATE_FORMATS,
+    pt: DEFAULT_DATE_FORMATS,
+  },
+  clients: {
+    en: DEFAULT_CLIENTS,
+    es: [
+      { value: "client_a", label: "Cliente A" },
+      { value: "client_b", label: "Cliente B" },
+    ],
+    pt: [
+      { value: "client_a", label: "Cliente A" },
+      { value: "client_b", label: "Cliente B" },
+    ],
+  },
+};
+
+export function getDefaultFieldOptions(category: string, locale: string = "en"): FieldOption[] {
+  const localeDefaults = LOCALIZED_DEFAULTS[category];
+  if (!localeDefaults) return [];
+  return localeDefaults[locale] || localeDefaults["en"] || [];
+}
+
 export const clients = pgTable("clients", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   tenantId: text("tenant_id").notNull().default("default"),
@@ -384,6 +616,7 @@ export const appSettings = pgTable("app_settings", {
   dateFormats: jsonb("date_formats").$type<FieldOption[]>(),
   rbacMigrated: boolean("rbac_migrated").notNull().default(false),
   governanceModelLabel: text("governance_model_label"),
+  locale: text("locale").notNull().default("en"),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 

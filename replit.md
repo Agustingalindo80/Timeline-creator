@@ -11,74 +11,59 @@ The application uses a modern web stack with React, Vite, Tailwind CSS, and shad
 
 **UI/UX Decisions:**
 - Consistent left-hand sidebar navigation with module-permission-gated items. Sections: Workspace (Dashboard, Companies, Contacts, Opportunities, Projects, Reports), Help & Support (Governance Coach), Operations (Team Members, Allocations, Timesheets), Administration (Settings, Security, About), Super Admin (Global Administration).
-- Supports dark/light mode.
+- Supports dark/light mode with an executive-grade dark-first design.
 - Project visualizations include horizontal timeline views and Gantt-like bars.
 - Health indicators use colored dots.
-- Data tables support inline editing and CRUD operations.
+- Data tables support inline editing and CRUD operations with a Stripe-style aesthetic.
 - Dynamic forms for project creation and detail management.
-- About page under Admin section with comprehensive feature overview.
+- Mission Control layout dashboard with metric cards and pipeline funnel bars.
+- Detail pages feature KPI cards and inline edit mode.
 - **Color Palette:** Executive-grade dark-first design with a primary blue (`#3B82F6`), slate-900 background for dark mode, and clean whites for light mode.
-- **Component Classes:** Standardized classes for cards, metrics, tables, and financial displays.
-- **Dashboard:** Mission Control layout with metric cards and pipeline funnel bars.
-- **Data Tables:** Stripe-style tight rows with uppercase headers and tabular numbers.
-- **Detail Pages:** Stripe-inspired precision layout with KPI cards and inline edit mode.
 
 **Technical Implementations:**
 - **Project Structure:** Clear separation of client-side and server-side code.
 - **API Design:** RESTful endpoints for all entities.
-- **Database Schema:** Detailed schemas for all project entities with `tenantId` for multi-tenancy. Date fields use PostgreSQL `date` type (Drizzle `date()` in string mode). Event timestamps use `timestamp with time zone`. Status fields use `pgEnum` constraints (`health_status`, `record_type`, `project_status`, `task_status`, `task_item_type`, `gate_status`, `risk_status`). EVM snapshots have a partial unique index (`evm_current_uniq`) preventing duplicate current snapshots. `tasks.parentTaskId` uses `ON DELETE SET NULL` to prevent cascade deletion of task hierarchies.
+- **Database Schema:** Detailed schemas for all project entities with `tenantId` for multi-tenancy and specific `pgEnum` constraints for status fields. Includes partial unique indexes and `ON DELETE SET NULL` for hierarchical data.
 - **Financial Calculations:** Automated calculation of `Approved Budget`, `Total Running Cost`, and `Gross Margin`.
 - **Project Health:** Four configurable health indicators.
 - **Milestones & Tasks:** Milestones are point-in-time events; tasks are duration-based with hierarchical structure and progress tracking.
 - **Resource-Based Estimation:** Workstreams use multi-resource assignments with rate cards, calculating estimated hours, cost, and revenue.
 - **Timesheet Management:** Global page for tracking daily effort.
 - **Progress Tracking:** Project-level tab for weekly % complete per workstream.
-- **EVM Dashboard:** Project-level tab displaying Earned Value Management metrics with historical snapshot tracking and revision versioning. Server-side EVM engine ensures persistence. Includes S-Curve chart (PV/AC/EV over time with BAC reference line) and CPI/SPI Performance Trend chart using Recharts.
+- **EVM Dashboard:** Project-level tab displaying Earned Value Management metrics with historical snapshot tracking, revision versioning, S-Curve, and CPI/SPI charts.
 - **RAID Log:** Supports Risks, Assumptions, Issues, and Dependencies.
-- **Reports Module:** Phase 1 foundation + Phase 2A operational reports. Landing page at `/reports` with categorized report cards. Four operational reports: Portfolio Health Dashboard (KPI cards + health donut chart + filterable data table), Project Status Report (single-project snapshot with health/financials/tasks/milestones/RAID/EVM), Milestone Tracker (cross-project milestones with overdue highlighting and financial obligation tracking), RAID Summary (cross-project RAID items with type/status filtering). All reports support CSV and PDF export (jspdf + html2canvas). Reusable components in `client/src/components/reports/` (report-layout, report-filters, report-export, report-charts). Server-side aggregation in `server/reports.ts` with 4 endpoints under `/api/reports/*`. All tenant-scoped and RBAC-enforced (`module.reports`, `reports.view`). Future phases (Financial, Resources, Pipeline, Executive) shown as "Coming Soon" cards.
-- **Opportunities Module:** Pre-sales entity with a dedicated API, Estimate tab for financial roll-ups (price-driven model), and "Convert to Project" feature.
-- **Estimate Template Import/Export:** Functionality to download an Excel template and import estimates.
-- **Operating Model Governance Framework:** A 5-stage governance engine with deliverables, RACI matrices, and AI-evaluated gate criteria. Tenant-customizable label via `governanceModelLabel` in app settings (default: "Operating Model"). DB tables remain as `flightpath_*` (Path A). API available at both `/api/governance-model/*` (canonical) and `/api/flightpath-*` (backward compat). Frontend uses `/api/governance-model/*` endpoints. Terminology config at `client/src/config/terminology.ts` with i18n foundation (EN/ES/PT).
-- **Governance AI Coach:** Conversational chatbot powered by OpenAI, uses tenant's governance label in system prompt. Hook: `useGovernanceLabel()` from `client/src/hooks/use-governance-label.ts`.
+- **Reports Module:** Provides operational reports (Portfolio Health, Project Status, Milestone Tracker, RAID Summary) with CSV and PDF export, and server-side aggregation.
+- **Opportunities Module:** Pre-sales entity with an Estimate tab and "Convert to Project" feature.
+- **Estimate Template Import/Export:** Functionality for Excel template download and import.
+- **Operating Model Governance Framework:** A 5-stage governance engine with deliverables, RACI matrices, and AI-evaluated gate criteria.
+- **Governance AI Coach:** Conversational chatbot powered by OpenAI.
 - **Document Repository Integration:** Links to Google Drive for artifact management with AI-powered verification.
-- **Team Composition:** Supports role-based assignments for opportunities and required team members for projects, with a "Sync from Estimate" feature.
+- **Team Composition:** Supports role-based assignments and "Sync from Estimate" feature.
 - **Resource Allocation:** Matrix view for team members' weekly hours.
 - **Configurable Fields:** User-configurable dropdown fields.
 - **Branding & Theming:** Database-driven system for app name, logo, favicon, and color scheme.
 - **Authentication:** Replit Auth via OpenID Connect with session storage.
-- **RBAC Security System:** Two-layer access model with full server-side enforcement:
-  - **Layer 1 — Security Roles:** Unlimited admin-configurable roles. Each role defines module access (sidebar visibility), action permissions (what users can do), and a `record.global_access` flag. Users assigned one or more roles; effective access = union of all. 9 seeded default roles: Global Admin, Org Admin, PMO Lead, Finance, Delivery Lead, Project Manager, Contributor, Timesheet Only, Member. Custom roles via Role Builder UI.
-  - **Layer 2 — Record-Level Filtering:** Roles with `record.global_access` see all records. Non-global roles see only records assigned via `project_team_members` or `allocations`. User ↔ Team Member link (`team_members.userId`) is the bridge.
-  - **Server-Side Enforcement:** `requireModuleAccess()` middleware on all write endpoints. `checkTimelineAccess()` on all timeline subresource endpoints (milestones, tasks, timesheets, progress, risks, checkpoints, gates, artifacts, EVM). Admin/RBAC endpoints require `module.admin`.
-  - **Frontend Guards:** Sidebar module-gated via `/api/rbac/my-modules`. `ProtectedRoute` component wraps module routes. Access Denied page for unauthorized direct navigation.
-  - **Admin UI Split:** Settings (`/admin/settings`) for app configuration. Security (`/admin/security`) with Roles, Users, Audit Log, Role Matrix tabs.
-  - **Users Tab — List→Detail Pattern:** Clean summary table (Name, Email, Roles badges, Team Member, chevron). Clicking a row opens `UserDetailView` with Back button, avatar header, and two tabs: **Details** (editable demographics with inline edit mode + team member link/unlink) and **Roles** (role cards with remove + add role dropdown). Follows the same Back+Header+Tabs pattern as client-detail, team-member-detail, etc. Editing user demographics (first name, last name, email) auto-syncs to the linked team member record via `PATCH /api/rbac/users/:userId`.
-  - **Auto-Role Assignment:** New users auto-assigned "Member" role (or "Global Admin" if first user ever). Auto-links team member by email match on first login.
-  - **Team Member ↔ User Linking:** Admin can link/unlink team members to users from Security > Users detail view. API: `POST /api/rbac/users/:userId/link-team-member` and `/unlink-team-member`.
-  - **Permission Cache:** 10-second TTL with explicit invalidation on role changes via API.
-  - Audit logging for sensitive actions.
-- **Multi-Tenancy Architecture:**
-  - `tenants` table: id, name, slug (unique), status (active/suspended/trial), plan (free/pro/enterprise), maxUsers, maxProjects, storageLimit, billingEmail, timestamps.
-  - All 20+ core tables have `tenantId` column (default "default"). `app_settings` and `branding_config` have `UNIQUE(tenant_id)` constraints for tenant isolation.
-  - `server/middleware/tenant.ts`: Derives `req.tenantId` from slug-based URL (`/t/:slug/*`) → session → user_org_roles DB lookup → fallback "default". Slug lookups cached with 30s TTL.
-  - Storage layer methods accept optional `tenantId` for list queries (getClients, getTimelines, getTeamMembers, getRateCards, getAllContacts, getAllAllAllocations). `getSettings()`, `updateSettings()`, `getBranding()`, `updateBranding()` accept `tenantId`.
-  - All route handlers pass `req.tenantId` to storage/rbac calls — no hardcoded "default" in routes.
-  - Performance indexes on 13 key query patterns (timeline tenant+client, tasks timeline, timesheets, progress, EVM, etc.).
-- **Tenant Provisioning Pipeline:**
-  - `server/tenant-provisioning.ts`: `provisionTenant(tenantId, tenantAdmin?, creatorUserId?)` automatically called after `POST /api/global-admin/tenants`.
-  - Seeds: RBAC system roles + permissions, governance stages + deliverables, app settings, branding config.
-  - Tenant Admin (first user) created during provisioning with email/firstName/lastName. Assigned "Global Admin" role within the new tenant only.
-  - Super Admin (creator) is NOT auto-assigned to new tenants — maintains platform operator boundary.
-  - Idempotent: checks for existing roles before inserting (safe to retry on partial failures). Uses `onConflictDoNothing()` for permissions and role-permission mappings.
-  - New tenants are immediately functional after creation — no manual setup required.
-- **Super Admin & Global Admin Console:**
-  - `users.isSuperAdmin` boolean — first user auto-promoted.
-  - `server/middleware/superadmin.ts`: Blocks non-super-admins from global admin endpoints.
-  - API: `GET/POST/PATCH/DELETE /api/global-admin/tenants`, `/tenants/:id/usage`, `/tenants/:id/users`, `/api/global-admin/stats`, `/api/global-admin/check`.
-  - UI: `/global-admin` page with Tenants tab (list→detail, create dialog with Tenant Admin fields, edit inline, suspend) and System tab (aggregate stats). Tenant detail shows metadata + usage stats only (no individual user browsing).
-  - Sidebar: "Super Admin" section with "Global Admin" link, visible only to super admins (via `/api/global-admin/check`). "TESTING MODE" amber badge shown when Super Admin is viewing a tenant they don't belong to.
-  - Tenant switching: `POST /api/tenant/switch`, `GET /api/tenant/current`, `GET /api/tenant/my-tenants`.
-  - Slug-based tenant URL routing: `/t/:slug/*` pattern resolves tenant from URL slug. Client-side uses wouter `Router` with dynamic `base` prop. API calls auto-prefixed with `/t/:slug` via `queryClient.ts`. Server URL rewrite middleware strips `/t/:slug` prefix before Express routing.
+- **RBAC Security System:** Two-layer access model with server-side enforcement: configurable Security Roles and Record-Level Filtering based on assignments. Features include custom role builder, auto-role assignment, and user-team member linking.
+- **Multi-Tenancy Architecture:** All core tables include `tenantId`. Tenant resolution from slug-based URLs with caching. Tenant-specific settings and branding.
+- **Tenant Provisioning Pipeline:** Automates tenant creation, seeding RBAC, governance, app settings, and branding, including the initial tenant admin user.
+- **Super Admin & Global Admin Console:** Dedicated interface for platform administration, tenant management, and system-wide statistics. Supports tenant switching.
+- **Internationalization (i18n):** Uses `i18next` + `react-i18next` for EN, ES, PT. Locale is set per tenant at creation and influences UI translations, picklist defaults, and AI coach responses.
+  - **Library:** Initialized in `client/src/i18n/i18n.ts`, imported in `client/src/main.tsx`.
+  - **Translation files:** `client/src/i18n/{en,es,pt}.json` with ~200+ keys across namespaces: `nav.*`, `common.*`, `dashboard.*`, `clients.*`, `contacts.*`, `opportunities.*`, `projects.*`, `teamMembers.*`, `allocations.*`, `timesheets.*`, `settings.*`, `security.*`, `governance.*`, `reports.*`, `globalAdmin.*`, `accessDenied.*`, `health.*`, `status.*`.
+  - **Locale Selection:** Set by Super Admin at tenant creation only (immutable). Stored in `app_settings.locale`. Read-only display in tenant Settings > General.
+  - **useLocale() Hook:** `client/src/hooks/use-locale.ts` reads `settings?.locale` and calls `i18n.changeLanguage()`. Called in `AuthenticatedApp` component.
+  - **Pre-Translated Picklist Defaults:** `getDefaultFieldOptions(category, locale)` in `shared/schema.ts` returns locale-aware `FieldOption[]` for 12+ dropdown categories.
+  - **Governance Terminology:** `shared/terminology.ts` provides `getTerm()`, `getGovernanceLabel()`, `getCoachLabel()` with locale support.
+  - **Server-Side AI Coach:** Fetches tenant locale; uses localized governance label and instructs OpenAI to respond in the tenant's language.
+  - **Tenant Provisioning:** `provisionTenant()` accepts `locale` parameter; stores in new tenant's `app_settings`.
+
+**Multi-Tenancy Architecture:**
+- All core tables include `tenantId` column for data isolation.
+- Tenant resolution from slug-based URLs with in-memory caching.
+- Tenant-specific settings, branding, and RBAC configuration.
+- Sidebar: "Super Admin" section with "Global Admin" link, visible only to super admins. "TESTING MODE" badge shown when viewing a non-natural tenant.
+- Tenant switching: `POST /api/tenant/switch`, `GET /api/tenant/current`, `GET /api/tenant/my-tenants`.
+- Slug-based URL routing: `/t/:slug/*` pattern. Client-side uses wouter `Router` with dynamic `base` prop. API calls auto-prefixed via `queryClient.ts`. Server URL rewrite middleware strips `/t/:slug` prefix.
 
 ## External Dependencies
 - **React:** Frontend library.
@@ -96,3 +81,4 @@ The application uses a modern web stack with React, Vite, Tailwind CSS, and shad
 - **jspdf:** For client-side PDF generation.
 - **OpenAI (via Replit AI Integrations):** Powers Governance AI Coach and Gate Evaluator (model: gpt-5.2).
 - **Google Drive (via Replit Connector):** For artifact management.
+- **i18next + react-i18next:** Internationalization framework for UI string translation (EN/ES/PT).

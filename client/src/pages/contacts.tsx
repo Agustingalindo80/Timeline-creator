@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Helmet } from "react-helmet-async";
+import { useTranslation } from "react-i18next";
 import { Search, Save, ArrowUpDown, ArrowUp, ArrowDown, X, Filter, Trash2, Users, ExternalLink } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -41,8 +42,9 @@ interface ColumnFilters {
 }
 
 export default function ContactsList() {
+  const { t } = useTranslation();
   const { toast } = useToast();
-  const appTitle = useAppTitle("Contacts");
+  const appTitle = useAppTitle(t("contacts.title"));
   const [searchQuery, setSearchQuery] = useState("");
   const [edits, setEdits] = useState<Record<string, RowEdits>>({});
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
@@ -202,9 +204,9 @@ export default function ContactsList() {
         return next;
       });
       queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
-      toast({ title: "Contact updated" });
+      toast({ title: t("contacts.contactUpdated") });
     } catch {
-      toast({ title: "Failed to save", variant: "destructive" });
+      toast({ title: t("contacts.failedToSave"), variant: "destructive" });
     } finally {
       setSavingIds((prev) => {
         const next = new Set(prev);
@@ -225,9 +227,9 @@ export default function ContactsList() {
     try {
       await apiRequest("DELETE", `/api/contacts/${id}`);
       queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
-      toast({ title: "Contact deleted" });
+      toast({ title: t("contacts.contactDeleted") });
     } catch {
-      toast({ title: "Failed to delete", variant: "destructive" });
+      toast({ title: t("contacts.failedToDelete"), variant: "destructive" });
     }
   }, [toast]);
 
@@ -293,12 +295,12 @@ export default function ContactsList() {
       </Helmet>
 
       <div className="flex items-center justify-between gap-2 mb-4">
-        <h1 className="text-xl font-semibold" data-testid="text-page-title">Contacts</h1>
+        <h1 className="text-xl font-semibold" data-testid="text-page-title">{t("contacts.title")}</h1>
         <div className="flex items-center gap-2">
           {hasAnyEdits && (
             <Button onClick={saveAll} size="sm" disabled={isSaving} data-testid="button-save-all">
               <Save className="w-4 h-4 mr-2" />
-              {isSaving ? "Saving..." : "Save All Changes"}
+              {isSaving ? t("common.saving") : t("common.saveAllChanges")}
             </Button>
           )}
         </div>
@@ -311,7 +313,7 @@ export default function ContactsList() {
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by name, email, or client..."
+              placeholder={t("contacts.searchPlaceholder")}
               className="pl-9 h-8 text-sm"
               data-testid="input-search-contacts"
             />
@@ -324,7 +326,7 @@ export default function ContactsList() {
             data-testid="button-toggle-filters"
           >
             <Filter className="w-3.5 h-3.5 mr-1.5" />
-            Filters
+            {t("common.filters")}
             {activeFilterCount > 0 && (
               <span className="ml-1.5 bg-primary text-primary-foreground rounded-full w-4 h-4 text-[10px] flex items-center justify-center">
                 {activeFilterCount}
@@ -340,7 +342,7 @@ export default function ContactsList() {
               data-testid="button-clear-filters"
             >
               <X className="w-3.5 h-3.5 mr-1" />
-              Clear all
+              {t("common.clearAll")}
             </Button>
           )}
         </div>
@@ -360,20 +362,20 @@ export default function ContactsList() {
           <div className="w-14 h-14 rounded-full bg-muted/60 flex items-center justify-center mb-5">
             <Users className="w-7 h-7 text-muted-foreground/70" />
           </div>
-          <h2 className="text-lg font-semibold mb-1.5" data-testid="text-empty-title">No contacts yet</h2>
+          <h2 className="text-lg font-semibold mb-1.5" data-testid="text-empty-title">{t("contacts.noContactsYet")}</h2>
           <p className="text-sm text-muted-foreground mb-5 max-w-sm" data-testid="text-empty-description">
-            Contacts are created from the client detail page. Navigate to a client and add contacts there.
+            {t("contacts.noContactsDescription")}
           </p>
         </div>
       ) : processedContacts.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center" data-testid="empty-search-results">
           <Search className="w-8 h-8 text-muted-foreground/60 mb-3" />
-          <h2 className="text-base font-semibold mb-1">No matching contacts</h2>
+          <h2 className="text-base font-semibold mb-1">{t("contacts.noMatchingContacts")}</h2>
           <p className="text-xs text-muted-foreground mb-3">
-            No contacts match your current filters. Try adjusting your search or filters.
+            {t("contacts.noMatchingDescription")}
           </p>
           <Button variant="outline" size="sm" onClick={clearAllFilters} data-testid="button-clear-filters-empty">
-            Clear all filters
+            {t("common.clearAllFilters")}
           </Button>
         </div>
       ) : (
@@ -382,13 +384,13 @@ export default function ContactsList() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="bg-muted/50 border-b">
-                  <SortHeader field="name" label="Name" />
-                  <SortHeader field="client" label="Client" />
-                  <SortHeader field="role" label="Role" />
-                  <SortHeader field="email" label="Email" />
-                  <SortHeader field="phone" label="Phone" />
-                  <SortHeader field="legalRep" label="Legal Rep" align="center" />
-                  <th className="text-center font-medium text-muted-foreground px-3 py-2 whitespace-nowrap w-[80px]">Actions</th>
+                  <SortHeader field="name" label={t("common.name")} />
+                  <SortHeader field="client" label={t("common.client")} />
+                  <SortHeader field="role" label={t("common.role")} />
+                  <SortHeader field="email" label={t("common.email")} />
+                  <SortHeader field="phone" label={t("common.phone")} />
+                  <SortHeader field="legalRep" label={t("contacts.legalRep")} align="center" />
+                  <th className="text-center font-medium text-muted-foreground px-3 py-2 whitespace-nowrap w-[80px]">{t("common.actions")}</th>
                 </tr>
                 {showFilters && (
                   <tr className="bg-muted/30 border-b">
@@ -400,7 +402,7 @@ export default function ContactsList() {
                         onChange={(e) => setFilter("clientId", e.target.value)}
                         data-testid="filter-client"
                       >
-                        <option value="">All</option>
+                        <option value="">{t("common.all")}</option>
                         {(clientsList || []).map((cl) => (
                           <option key={cl.id} value={cl.id}>{cl.name}</option>
                         ))}
@@ -413,7 +415,7 @@ export default function ContactsList() {
                         onChange={(e) => setFilter("role", e.target.value)}
                         data-testid="filter-role"
                       >
-                        <option value="">All</option>
+                        <option value="">{t("common.all")}</option>
                         {contactRoleOptions.map((opt) => (
                           <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
@@ -428,9 +430,9 @@ export default function ContactsList() {
                         onChange={(e) => setFilter("legalRep", e.target.value)}
                         data-testid="filter-legalRep"
                       >
-                        <option value="">All</option>
-                        <option value="yes">Yes</option>
-                        <option value="no">No</option>
+                        <option value="">{t("common.all")}</option>
+                        <option value="yes">{t("common.yes")}</option>
+                        <option value="no">{t("common.no")}</option>
                       </select>
                     </th>
                     <th className="px-3 py-1.5" />
@@ -479,7 +481,7 @@ export default function ContactsList() {
                           className={inputClass}
                           value={getVal(contact, "email") as string}
                           onChange={(e) => updateField(contact.id, "email", e.target.value || null, contact)}
-                          placeholder="Email"
+                          placeholder={t("common.email")}
                           data-testid={`input-email-${contact.id}`}
                         />
                       </td>
@@ -489,7 +491,7 @@ export default function ContactsList() {
                           className={inputClass}
                           value={getVal(contact, "phone") as string}
                           onChange={(e) => updateField(contact.id, "phone", e.target.value || null, contact)}
-                          placeholder="Phone"
+                          placeholder={t("common.phone")}
                           data-testid={`input-phone-${contact.id}`}
                         />
                       </td>
@@ -527,18 +529,18 @@ export default function ContactsList() {
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Contact</AlertDialogTitle>
+                                <AlertDialogTitle>{t("contacts.deleteContact")}</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Are you sure you want to delete {contact.firstName} {contact.lastName}? This action cannot be undone.
+                                  {t("contacts.deleteDescription", { name: `${contact.firstName} ${contact.lastName}` })}
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
-                                <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+                                <AlertDialogCancel data-testid="button-cancel-delete">{t("common.cancel")}</AlertDialogCancel>
                                 <AlertDialogAction
                                   onClick={() => deleteContact(contact.id)}
                                   data-testid="button-confirm-delete"
                                 >
-                                  Delete
+                                  {t("common.delete")}
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>

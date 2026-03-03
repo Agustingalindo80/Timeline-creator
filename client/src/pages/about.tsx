@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useBranding } from "@/components/branding-provider";
 import { useAppTitle } from "@/hooks/use-app-title";
+import { useTranslation } from "react-i18next";
 import {
   LayoutDashboard,
   Building2,
@@ -219,6 +220,7 @@ const keyCapabilities = [
 ];
 
 export default function AboutPage() {
+  const { t } = useTranslation();
   const { branding } = useBranding();
   const appTitle = useAppTitle();
   const appName = branding?.appName || "Project High Level Planning";

@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import { Helmet } from "react-helmet-async";
+import { useTranslation } from "react-i18next";
 import {
   BarChart3,
   Activity,
@@ -16,147 +17,167 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 type ReportCard = {
-  title: string;
-  description: string;
+  titleKey: string;
+  descKey: string;
   icon: any;
   href: string;
   available: boolean;
+  testId: string;
 };
 
 type ReportCategory = {
-  title: string;
+  titleKey: string;
+  testId: string;
   reports: ReportCard[];
 };
 
 const reportCategories: ReportCategory[] = [
   {
-    title: "Project & Delivery",
+    titleKey: "reports.projectDelivery",
+    testId: "project-&-delivery",
     reports: [
       {
-        title: "Portfolio Health",
-        description: "Overview of all projects with health indicators, stages, and status across the portfolio.",
+        titleKey: "reports.portfolioHealth",
+        descKey: "reports.portfolioHealthDesc",
         icon: Activity,
         href: "/reports/portfolio-health",
         available: true,
+        testId: "portfolio-health",
       },
       {
-        title: "Project Status",
-        description: "Detailed single-project snapshot with financials, tasks, milestones, and EVM metrics.",
+        titleKey: "reports.projectStatus",
+        descKey: "reports.projectStatusDesc",
         icon: BarChart3,
         href: "/reports/project-status",
         available: true,
+        testId: "project-status",
       },
       {
-        title: "Milestone Tracker",
-        description: "Track upcoming, overdue, and completed milestones with financial obligations across projects.",
+        titleKey: "reports.milestoneTracker",
+        descKey: "reports.milestoneTrackerDesc",
         icon: Target,
         href: "/reports/milestone-tracker",
         available: true,
+        testId: "milestone-tracker",
       },
       {
-        title: "RAID Summary",
-        description: "Consolidated view of Risks, Assumptions, Issues, and Dependencies across all projects.",
+        titleKey: "reports.raidSummary",
+        descKey: "reports.raidSummaryDesc",
         icon: AlertTriangle,
         href: "/reports/raid-summary",
         available: true,
+        testId: "raid-summary",
       },
     ],
   },
   {
-    title: "Financial",
+    titleKey: "reports.financial",
+    testId: "financial",
     reports: [
       {
-        title: "Cost Tracking",
-        description: "Budget vs. actuals analysis with burn rate trends per project.",
+        titleKey: "reports.costTracking",
+        descKey: "reports.costTrackingDesc",
         icon: DollarSign,
         href: "/reports/cost-tracking",
         available: false,
+        testId: "cost-tracking",
       },
       {
-        title: "Margin Analysis",
-        description: "Gross margin breakdown by project, client, and region.",
+        titleKey: "reports.marginAnalysis",
+        descKey: "reports.marginAnalysisDesc",
         icon: TrendingUp,
         href: "/reports/margin-analysis",
         available: false,
+        testId: "margin-analysis",
       },
     ],
   },
   {
-    title: "Resources",
+    titleKey: "reports.resources",
+    testId: "resources",
     reports: [
       {
-        title: "Team Utilization",
-        description: "Allocated vs. available hours per team member across all projects.",
+        titleKey: "reports.teamUtilization",
+        descKey: "reports.teamUtilizationDesc",
         icon: Users,
         href: "/reports/team-utilization",
         available: false,
+        testId: "team-utilization",
       },
       {
-        title: "Timesheet Summary",
-        description: "Actual hours logged by person, project, and week with variance analysis.",
+        titleKey: "reports.timesheetSummary",
+        descKey: "reports.timesheetSummaryDesc",
         icon: Clock,
         href: "/reports/timesheet-summary",
         available: false,
+        testId: "timesheet-summary",
       },
     ],
   },
   {
-    title: "Pipeline",
+    titleKey: "reports.pipeline",
+    testId: "pipeline",
     reports: [
       {
-        title: "Opportunity Pipeline",
-        description: "Funnel view of opportunities by status with estimated revenue and probability.",
+        titleKey: "reports.opportunityPipeline",
+        descKey: "reports.opportunityPipelineDesc",
         icon: Briefcase,
         href: "/reports/opportunity-pipeline",
         available: false,
+        testId: "opportunity-pipeline",
       },
     ],
   },
   {
-    title: "Executive",
+    titleKey: "reports.executive",
+    testId: "executive",
     reports: [
       {
-        title: "Revenue Forecast",
-        description: "Projected revenue from active projects and weighted pipeline.",
+        titleKey: "reports.revenueForecast",
+        descKey: "reports.revenueForecastDesc",
         icon: TrendingUp,
         href: "/reports/revenue-forecast",
         available: false,
+        testId: "revenue-forecast",
       },
       {
-        title: "EVM Executive Summary",
-        description: "Portfolio-level CPI and SPI averages with at-risk project identification.",
+        titleKey: "reports.evmExecutive",
+        descKey: "reports.evmExecutiveDesc",
         icon: Activity,
         href: "/reports/evm-summary",
         available: false,
+        testId: "evm-executive-summary",
       },
     ],
   },
 ];
 
 export default function ReportsPage() {
+  const { t } = useTranslation();
+
   return (
     <>
       <Helmet>
-        <title>Reports | Project Planning</title>
+        <title>{t("reports.title")} | Project Planning</title>
       </Helmet>
       <div className="max-w-[1400px] mx-auto p-6 fade-in" data-testid="reports-page">
         <div className="mb-8">
           <h1 className="page-title text-2xl font-bold tracking-tight" data-testid="text-reports-title">
-            Reports
+            {t("reports.title")}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Operational and executive reporting across your portfolio
+            {t("reports.subtitle")}
           </p>
         </div>
 
         <div className="space-y-8">
           {reportCategories.map((category) => (
-            <div key={category.title}>
+            <div key={category.testId}>
               <h2
                 className="section-title text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3"
-                data-testid={`text-category-${category.title.toLowerCase().replace(/\s+/g, "-")}`}
+                data-testid={`text-category-${category.testId}`}
               >
-                {category.title}
+                {t(category.titleKey)}
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                 {category.reports.map((report) => {
@@ -164,9 +185,9 @@ export default function ReportsPage() {
                   if (!report.available) {
                     return (
                       <Card
-                        key={report.title}
+                        key={report.testId}
                         className="opacity-50 cursor-default"
-                        data-testid={`card-report-${report.title.toLowerCase().replace(/\s+/g, "-")}`}
+                        data-testid={`card-report-${report.testId}`}
                       >
                         <CardContent className="p-4">
                           <div className="flex items-start gap-3">
@@ -175,13 +196,13 @@ export default function ReportsPage() {
                             </div>
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-2">
-                                <h3 className="text-sm font-semibold truncate">{report.title}</h3>
-                                <Badge variant="outline" className="text-[10px] shrink-0" data-testid={`badge-coming-soon-${report.title.toLowerCase().replace(/\s+/g, "-")}`}>
-                                  Coming Soon
+                                <h3 className="text-sm font-semibold truncate">{t(report.titleKey)}</h3>
+                                <Badge variant="outline" className="text-[10px] shrink-0" data-testid={`badge-coming-soon-${report.testId}`}>
+                                  {t("common.comingSoon")}
                                 </Badge>
                               </div>
                               <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                                {report.description}
+                                {t(report.descKey)}
                               </p>
                             </div>
                           </div>
@@ -190,10 +211,10 @@ export default function ReportsPage() {
                     );
                   }
                   return (
-                    <Link key={report.title} href={report.href}>
+                    <Link key={report.testId} href={report.href}>
                       <Card
                         className="card-interactive cursor-pointer group"
-                        data-testid={`card-report-${report.title.toLowerCase().replace(/\s+/g, "-")}`}
+                        data-testid={`card-report-${report.testId}`}
                       >
                         <CardContent className="p-4">
                           <div className="flex items-start gap-3">
@@ -202,11 +223,11 @@ export default function ReportsPage() {
                             </div>
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-2">
-                                <h3 className="text-sm font-semibold truncate">{report.title}</h3>
+                                <h3 className="text-sm font-semibold truncate">{t(report.titleKey)}</h3>
                                 <ArrowRight className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                               </div>
                               <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                                {report.description}
+                                {t(report.descKey)}
                               </p>
                             </div>
                           </div>

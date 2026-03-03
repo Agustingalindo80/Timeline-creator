@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { apiRequest } from "@/lib/queryClient";
 import { useAppTitle } from "@/hooks/use-app-title";
 import { useGovernanceLabel } from "@/hooks/use-governance-label";
+import { useTranslation } from "react-i18next";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -15,6 +16,7 @@ interface ChatMessage {
 }
 
 export default function ChatPage() {
+  const { t } = useTranslation();
   const appTitle = useAppTitle();
   const { label: govLabel, coachLabel } = useGovernanceLabel();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -72,7 +74,7 @@ export default function ChatPage() {
           </div>
           <div>
             <h1 className="text-lg font-semibold" data-testid="text-chat-title">{coachLabel}</h1>
-            <p className="text-xs text-muted-foreground">AI-powered governance framework assistant</p>
+            <p className="text-xs text-muted-foreground">{t("governance.aiAssistant")}</p>
           </div>
         </div>
       </div>
@@ -83,16 +85,16 @@ export default function ChatPage() {
             <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
               <Bot className="w-8 h-8 text-primary" />
             </div>
-            <h2 className="text-lg font-semibold mb-2" data-testid="text-welcome-title">Welcome to {coachLabel}</h2>
+            <h2 className="text-lg font-semibold mb-2" data-testid="text-welcome-title">{t("governance.welcomeTo", { label: coachLabel })}</h2>
             <p className="text-sm text-muted-foreground mb-6">
-              I can help you navigate the {govLabel} governance framework. Ask me about stages, gates, deliverables, RACI responsibilities, or how to prepare for your next gate review.
+              {t("governance.aiAssistant")}
             </p>
             <div className="grid gap-2 w-full">
               {[
-                `What are the 5 stages of the ${govLabel}?`,
-                "What deliverables do I need for Stage 0?",
-                "How do I prepare for Gate 1: Value Approval?",
-                "Explain the RACI for the Value Narrative deliverable",
+                t("governance.whatAreStages", { label: govLabel }),
+                t("governance.whatDeliverables"),
+                t("governance.howToPrepare"),
+                t("governance.explainRaci"),
               ].map((suggestion) => (
                 <Button
                   key={suggestion}
@@ -147,7 +149,7 @@ export default function ChatPage() {
             <Card className="px-4 py-3 bg-muted">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Thinking...
+                {t("governance.thinking")}
               </div>
             </Card>
           </div>
@@ -163,7 +165,7 @@ export default function ChatPage() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ask about stages, gates, deliverables, RACI..."
+            placeholder={t("governance.askPlaceholder")}
             className="min-h-[44px] max-h-[120px] resize-none"
             rows={1}
             data-testid="input-chat-message"
