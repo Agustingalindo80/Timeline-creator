@@ -72,7 +72,7 @@ export async function provisionTenant(
 
     const settings = await storage.getSettings(tenantId);
     if (settings && locale !== "en") {
-      await storage.updateSettings(tenantId, { locale });
+      await storage.updateSettings({ locale }, tenantId);
     }
     await storage.getBranding(tenantId);
     console.log(`  Settings and branding initialized for tenant "${tenantId}" (locale: ${locale})`);
