@@ -3188,6 +3188,14 @@ Respond ONLY with valid JSON:
     try {
       const userId = extractUserId(req);
       if (!userId) return res.status(401).json({ message: "Authentication required" });
+
+      // TODO: Remove before commercial launch — Super Admins should not see all tenants in production
+      const [user] = await db.select({ isSuperAdmin: users.isSuperAdmin }).from(users).where(eq(users.id, userId));
+      if (user?.isSuperAdmin) {
+        const allTenants = await storage.getTenants();
+        return res.json(allTenants);
+      }
+
       const roles = await db.selectDistinct({ tenantId: userOrgRoles.tenantId })
         .from(userOrgRoles)
         .where(eq(userOrgRoles.userId, userId));
