@@ -31,7 +31,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Client, AppSettings } from "@shared/schema";
-import { DEFAULT_INDUSTRIES } from "@shared/schema";
+import { getDefaultFieldOptions } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { useAppTitle } from "@/hooks/use-app-title";
 
@@ -72,7 +72,7 @@ export default function Clients() {
     queryKey: ["/api/settings"],
   });
 
-  const industryOptions = settings?.industries || DEFAULT_INDUSTRIES;
+  const industryOptions = settings?.industries || getDefaultFieldOptions("industries", settings?.locale || "en");
 
   const createMutation = useMutation({
     mutationFn: async (data: { name: string; industry?: string }) => {

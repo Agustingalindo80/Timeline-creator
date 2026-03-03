@@ -47,7 +47,7 @@ import { EstimateTab } from "@/components/estimate-tab";
 import { GovernanceTab } from "@/components/governance-tab";
 import { RaidLog } from "@/components/raid-log";
 import type { TimelineWithMilestones, Client, AppSettings, FlightpathStage, ProjectGate } from "@shared/schema";
-import { DEFAULT_REGIONS, DEFAULT_ENGAGEMENT_MODELS, DEFAULT_PROJECT_TYPES } from "@shared/schema";
+import { getDefaultFieldOptions } from "@shared/schema";
 
 const OPP_STATUS_OPTIONS = [
   { value: "qualifying", label: "Qualifying", color: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20" },
@@ -239,9 +239,9 @@ export default function OpportunityDetail() {
   const clientName = clients.find(c => c.id === opp.clientId)?.name;
   const convertedProject = projects.find(p => p.sourceOpportunityId === opp.id);
 
-  const regionOptions = (settings as any)?.regions || DEFAULT_REGIONS;
-  const engagementOptions = (settings as any)?.engagementModels || DEFAULT_ENGAGEMENT_MODELS;
-  const projectTypeOptions = (settings as any)?.projectTypes || DEFAULT_PROJECT_TYPES;
+  const regionOptions = (settings as any)?.regions || getDefaultFieldOptions("regions", settings?.locale || "en");
+  const engagementOptions = (settings as any)?.engagementModels || getDefaultFieldOptions("engagementModels", settings?.locale || "en");
+  const projectTypeOptions = (settings as any)?.projectTypes || getDefaultFieldOptions("projectTypes", settings?.locale || "en");
 
   const price = parseFloat(opp.approvedBudget || "0");
   const cost = parseFloat(opp.totalRunningCost || "0");

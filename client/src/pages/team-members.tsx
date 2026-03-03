@@ -31,7 +31,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { TeamMember, AppSettings } from "@shared/schema";
-import { DEFAULT_TEAM_MEMBER_ROLES } from "@shared/schema";
+import { getDefaultFieldOptions } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 
@@ -75,7 +75,7 @@ export default function TeamMembers() {
   const { data: settings } = useQuery<AppSettings>({
     queryKey: ["/api/settings"],
   });
-  const roleOptions = settings?.teamMemberRoles || DEFAULT_TEAM_MEMBER_ROLES;
+  const roleOptions = settings?.teamMemberRoles || getDefaultFieldOptions("teamMemberRoles", settings?.locale || "en");
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {

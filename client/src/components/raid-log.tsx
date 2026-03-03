@@ -16,7 +16,7 @@ import {
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Risk, AppSettings } from "@shared/schema";
-import { DEFAULT_RISK_PROBABILITIES, DEFAULT_RISK_IMPACTS, DEFAULT_RISK_STATUSES } from "@shared/schema";
+import { getDefaultFieldOptions } from "@shared/schema";
 
 const SCORE_MAP: Record<string, number> = { low: 1, medium: 2, high: 3, very_high: 4 };
 function riskScore(probability: string, impact: string): number {
@@ -56,9 +56,9 @@ export function RaidLog({ timelineId }: RaidLogProps) {
   const [filterType, setFilterType] = useState("all");
 
   const { data: settings } = useQuery<AppSettings>({ queryKey: ["/api/settings"] });
-  const riskProbabilities = settings?.riskProbabilities || DEFAULT_RISK_PROBABILITIES;
-  const riskImpacts = settings?.riskImpacts || DEFAULT_RISK_IMPACTS;
-  const riskStatuses = settings?.riskStatuses || DEFAULT_RISK_STATUSES;
+  const riskProbabilities = settings?.riskProbabilities || getDefaultFieldOptions("riskProbabilities", settings?.locale || "en");
+  const riskImpacts = settings?.riskImpacts || getDefaultFieldOptions("riskImpacts", settings?.locale || "en");
+  const riskStatuses = settings?.riskStatuses || getDefaultFieldOptions("riskStatuses", settings?.locale || "en");
   const probLabel = (v: string) => riskProbabilities.find(o => o.value === v)?.label || v;
   const impactLabel = (v: string) => riskImpacts.find(o => o.value === v)?.label || v;
   const statusLabel = (v: string) => riskStatuses.find(o => o.value === v)?.label || v;

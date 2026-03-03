@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Checkbox } from "@/components/ui/checkbox";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { ClientWithProjects, Task, Contact, AppSettings } from "@shared/schema";
-import { DEFAULT_CONTACT_ROLES, DEFAULT_INDUSTRIES } from "@shared/schema";
+import { getDefaultFieldOptions } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 
@@ -81,8 +81,8 @@ export default function ClientDetail() {
     queryKey: ["/api/settings"],
   });
 
-  const roleOptions = settings?.contactRoles || DEFAULT_CONTACT_ROLES;
-  const industryOptions = settings?.industries || DEFAULT_INDUSTRIES;
+  const roleOptions = settings?.contactRoles || getDefaultFieldOptions("contactRoles", settings?.locale || "en");
+  const industryOptions = settings?.industries || getDefaultFieldOptions("industries", settings?.locale || "en");
 
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({

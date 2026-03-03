@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { TimelineWithMilestones, Task, AppSettings, Client } from "@shared/schema";
-import { DEFAULT_TASK_HEALTH, DEFAULT_PROJECT_TYPES, DEFAULT_ENGAGEMENT_MODELS, DEFAULT_PROJECT_STATUSES, DEFAULT_REGIONS } from "@shared/schema";
+import { getDefaultFieldOptions } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { useAppTitle } from "@/hooks/use-app-title";
 
@@ -122,11 +122,11 @@ export default function Home() {
     queryKey: ["/api/clients"],
   });
 
-  const healthOptions = settings?.taskHealthOptions || DEFAULT_TASK_HEALTH;
-  const projectTypeOptions = settings?.projectTypes || DEFAULT_PROJECT_TYPES;
-  const engagementModelOptions = settings?.engagementModels || DEFAULT_ENGAGEMENT_MODELS;
-  const projectStatusOptions = settings?.projectStatuses || DEFAULT_PROJECT_STATUSES;
-  const regionOptions = settings?.regions || DEFAULT_REGIONS;
+  const healthOptions = settings?.taskHealthOptions || getDefaultFieldOptions("taskHealthOptions", settings?.locale || "en");
+  const projectTypeOptions = settings?.projectTypes || getDefaultFieldOptions("projectTypes", settings?.locale || "en");
+  const engagementModelOptions = settings?.engagementModels || getDefaultFieldOptions("engagementModels", settings?.locale || "en");
+  const projectStatusOptions = settings?.projectStatuses || getDefaultFieldOptions("projectStatuses", settings?.locale || "en");
+  const regionOptions = settings?.regions || getDefaultFieldOptions("regions", settings?.locale || "en");
 
   const getClientName = useCallback((clientId: string | null | undefined): string => {
     if (!clientId || !clientsList) return "";

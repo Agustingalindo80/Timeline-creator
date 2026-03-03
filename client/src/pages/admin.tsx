@@ -29,22 +29,7 @@ import { useTranslation } from "react-i18next";
 import { Label } from "@/components/ui/label";
 import { PermissionGuard } from "@/components/permission-guard";
 import type { AppSettings, FieldOption, TeamMember, RateCard, AllocationWithProject, TimelineWithMilestones, BrandingConfig, FlightpathStage, FlightpathDeliverable } from "@shared/schema";
-import {
-  DEFAULT_TASK_STATUSES,
-  DEFAULT_TASK_HEALTH,
-  DEFAULT_TASK_ITEM_TYPES,
-  DEFAULT_RISK_PROBABILITIES,
-  DEFAULT_RISK_IMPACTS,
-  DEFAULT_RISK_STATUSES,
-  DEFAULT_PROJECT_TYPES,
-  DEFAULT_ENGAGEMENT_MODELS,
-  DEFAULT_PROJECT_STATUSES,
-  DEFAULT_CONTACT_ROLES,
-  DEFAULT_INDUSTRIES,
-  DEFAULT_TEAM_MEMBER_ROLES,
-  DEFAULT_REGIONS,
-  DEFAULT_DATE_FORMATS,
-} from "@shared/schema";
+import { getDefaultFieldOptions } from "@shared/schema";
 
 interface FieldOptionEditorProps {
   title: string;
@@ -535,7 +520,7 @@ function TeamMembersManager() {
   const { data: settings } = useQuery<AppSettings>({
     queryKey: ["/api/settings"],
   });
-  const roleOptions = settings?.teamMemberRoles || DEFAULT_TEAM_MEMBER_ROLES;
+  const roleOptions = settings?.teamMemberRoles || getDefaultFieldOptions("teamMemberRoles", settings?.locale || "en");
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -771,8 +756,8 @@ function RateCardsManager() {
   const { data: settings } = useQuery<AppSettings>({
     queryKey: ["/api/settings"],
   });
-  const roleOptions = settings?.teamMemberRoles || DEFAULT_TEAM_MEMBER_ROLES;
-  const regionOptions = settings?.regions || DEFAULT_REGIONS;
+  const roleOptions = settings?.teamMemberRoles || getDefaultFieldOptions("teamMemberRoles", settings?.locale || "en");
+  const regionOptions = settings?.regions || getDefaultFieldOptions("regions", settings?.locale || "en");
 
   const cardsByRegion = useMemo(() => {
     const grouped: Record<string, RateCard[]> = {};
@@ -1756,24 +1741,24 @@ export default function Admin() {
           title: "Health",
           description: "Health indicator options shared across projects and tasks (traffic light colors).",
           key: "taskHealthOptions",
-          defaults: DEFAULT_TASK_HEALTH,
-          current: settings?.taskHealthOptions || DEFAULT_TASK_HEALTH,
+          defaults: getDefaultFieldOptions("taskHealthOptions", settings?.locale || "en"),
+          current: settings?.taskHealthOptions || getDefaultFieldOptions("taskHealthOptions", settings?.locale || "en"),
           testId: "task-health",
         },
         {
           title: "Roles",
           description: "Role options for team members and rate cards (Salesforce implementation roles).",
           key: "teamMemberRoles",
-          defaults: DEFAULT_TEAM_MEMBER_ROLES,
-          current: settings?.teamMemberRoles || DEFAULT_TEAM_MEMBER_ROLES,
+          defaults: getDefaultFieldOptions("teamMemberRoles", settings?.locale || "en"),
+          current: settings?.teamMemberRoles || getDefaultFieldOptions("teamMemberRoles", settings?.locale || "en"),
           testId: "team-member-roles",
         },
         {
           title: "Regions",
           description: "Region options for rate cards and projects.",
           key: "regions",
-          defaults: DEFAULT_REGIONS,
-          current: settings?.regions || DEFAULT_REGIONS,
+          defaults: getDefaultFieldOptions("regions", settings?.locale || "en"),
+          current: settings?.regions || getDefaultFieldOptions("regions", settings?.locale || "en"),
           testId: "regions",
         },
       ],
@@ -1786,32 +1771,32 @@ export default function Admin() {
           title: "Project Status",
           description: "Status options for projects (e.g., Not Started, In Progress, Completed).",
           key: "projectStatuses",
-          defaults: DEFAULT_PROJECT_STATUSES,
-          current: settings?.projectStatuses || DEFAULT_PROJECT_STATUSES,
+          defaults: getDefaultFieldOptions("projectStatuses", settings?.locale || "en"),
+          current: settings?.projectStatuses || getDefaultFieldOptions("projectStatuses", settings?.locale || "en"),
           testId: "project-statuses",
         },
         {
           title: "Project Type",
           description: "Type classifications for projects (e.g., Billable, Non-Billable).",
           key: "projectTypes",
-          defaults: DEFAULT_PROJECT_TYPES,
-          current: settings?.projectTypes || DEFAULT_PROJECT_TYPES,
+          defaults: getDefaultFieldOptions("projectTypes", settings?.locale || "en"),
+          current: settings?.projectTypes || getDefaultFieldOptions("projectTypes", settings?.locale || "en"),
           testId: "project-types",
         },
         {
           title: "Engagement Model",
           description: "Engagement model options for projects (e.g., Fixed Bid, T&M, Managed Capacity).",
           key: "engagementModels",
-          defaults: DEFAULT_ENGAGEMENT_MODELS,
-          current: settings?.engagementModels || DEFAULT_ENGAGEMENT_MODELS,
+          defaults: getDefaultFieldOptions("engagementModels", settings?.locale || "en"),
+          current: settings?.engagementModels || getDefaultFieldOptions("engagementModels", settings?.locale || "en"),
           testId: "engagement-models",
         },
         {
           title: "Date Formats",
           description: "Available date format options for projects. Each project selects one format at creation.",
           key: "dateFormats",
-          defaults: DEFAULT_DATE_FORMATS,
-          current: settings?.dateFormats || DEFAULT_DATE_FORMATS,
+          defaults: getDefaultFieldOptions("dateFormats", settings?.locale || "en"),
+          current: settings?.dateFormats || getDefaultFieldOptions("dateFormats", settings?.locale || "en"),
           testId: "date-formats",
         },
       ],
@@ -1824,8 +1809,8 @@ export default function Admin() {
           title: "Industry",
           description: "Industry options for clients (e.g., Technology, Healthcare, Finance).",
           key: "industries",
-          defaults: DEFAULT_INDUSTRIES,
-          current: settings?.industries || DEFAULT_INDUSTRIES,
+          defaults: getDefaultFieldOptions("industries", settings?.locale || "en"),
+          current: settings?.industries || getDefaultFieldOptions("industries", settings?.locale || "en"),
           testId: "industries",
         },
       ],
@@ -1838,8 +1823,8 @@ export default function Admin() {
           title: "Contact Role",
           description: "Role options for contacts (e.g., Executive Sponsor, Project Manager).",
           key: "contactRoles",
-          defaults: DEFAULT_CONTACT_ROLES,
-          current: settings?.contactRoles || DEFAULT_CONTACT_ROLES,
+          defaults: getDefaultFieldOptions("contactRoles", settings?.locale || "en"),
+          current: settings?.contactRoles || getDefaultFieldOptions("contactRoles", settings?.locale || "en"),
           testId: "contact-roles",
         },
       ],
@@ -1852,16 +1837,16 @@ export default function Admin() {
           title: "Task Status",
           description: "Status options for tasks (e.g., Not Started, In Progress, Complete).",
           key: "taskStatuses",
-          defaults: DEFAULT_TASK_STATUSES,
-          current: settings?.taskStatuses || DEFAULT_TASK_STATUSES,
+          defaults: getDefaultFieldOptions("taskStatuses", settings?.locale || "en"),
+          current: settings?.taskStatuses || getDefaultFieldOptions("taskStatuses", settings?.locale || "en"),
           testId: "task-statuses",
         },
         {
           title: "Task Item Type",
           description: "Type categories for tasks (e.g., Workstream, Phase).",
           key: "taskItemTypes",
-          defaults: DEFAULT_TASK_ITEM_TYPES,
-          current: settings?.taskItemTypes || DEFAULT_TASK_ITEM_TYPES,
+          defaults: getDefaultFieldOptions("taskItemTypes", settings?.locale || "en"),
+          current: settings?.taskItemTypes || getDefaultFieldOptions("taskItemTypes", settings?.locale || "en"),
           testId: "task-item-types",
         },
       ],
@@ -1874,24 +1859,24 @@ export default function Admin() {
           title: "Risk Probability",
           description: "Probability levels for risks in the risk register.",
           key: "riskProbabilities",
-          defaults: DEFAULT_RISK_PROBABILITIES,
-          current: settings?.riskProbabilities || DEFAULT_RISK_PROBABILITIES,
+          defaults: getDefaultFieldOptions("riskProbabilities", settings?.locale || "en"),
+          current: settings?.riskProbabilities || getDefaultFieldOptions("riskProbabilities", settings?.locale || "en"),
           testId: "risk-probabilities",
         },
         {
           title: "Risk Impact",
           description: "Impact levels for risks in the risk register.",
           key: "riskImpacts",
-          defaults: DEFAULT_RISK_IMPACTS,
-          current: settings?.riskImpacts || DEFAULT_RISK_IMPACTS,
+          defaults: getDefaultFieldOptions("riskImpacts", settings?.locale || "en"),
+          current: settings?.riskImpacts || getDefaultFieldOptions("riskImpacts", settings?.locale || "en"),
           testId: "risk-impacts",
         },
         {
           title: "Risk Status",
           description: "Status options for risks in the risk register.",
           key: "riskStatuses",
-          defaults: DEFAULT_RISK_STATUSES,
-          current: settings?.riskStatuses || DEFAULT_RISK_STATUSES,
+          defaults: getDefaultFieldOptions("riskStatuses", settings?.locale || "en"),
+          current: settings?.riskStatuses || getDefaultFieldOptions("riskStatuses", settings?.locale || "en"),
           testId: "risk-statuses",
         },
       ],

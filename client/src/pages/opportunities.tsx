@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/select";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { TimelineWithMilestones, AppSettings, Client } from "@shared/schema";
-import { DEFAULT_REGIONS } from "@shared/schema";
+import { getDefaultFieldOptions } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { useAppTitle } from "@/hooks/use-app-title";
 import { useForm } from "react-hook-form";
@@ -99,7 +99,7 @@ export default function OpportunitiesPage() {
     queryKey: ["/api/clients"],
   });
 
-  const regionOptions = settings?.regions || DEFAULT_REGIONS;
+  const regionOptions = settings?.regions || getDefaultFieldOptions("regions", settings?.locale || "en");
 
   const form = useForm<CreateOpportunityForm>({
     resolver: zodResolver(createOpportunitySchema),

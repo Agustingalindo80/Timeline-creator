@@ -27,7 +27,7 @@ import { TimelineView } from "@/components/timeline-view";
 import { ThemePicker } from "@/components/theme-picker";
 import { formatDateForProject } from "@/lib/date-format";
 import type { Milestone, AppSettings } from "@shared/schema";
-import { DEFAULT_DATE_FORMATS } from "@shared/schema";
+import { getDefaultFieldOptions } from "@shared/schema";
 
 interface MilestoneForm {
   tempId: string;
@@ -47,7 +47,7 @@ export default function CreateTimeline() {
   const appTitle = useAppTitle("Create Project");
 
   const { data: settings } = useQuery<AppSettings>({ queryKey: ["/api/settings"] });
-  const dateFormats = settings?.dateFormats || DEFAULT_DATE_FORMATS;
+  const dateFormats = settings?.dateFormats || getDefaultFieldOptions("dateFormats", settings?.locale || "en");
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");

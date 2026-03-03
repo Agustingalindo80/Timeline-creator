@@ -213,6 +213,13 @@ export async function registerRoutes(
     const userId = extractUserId(req);
     if (!userId) return null;
     const tenantId = req.tenantId || "default";
+
+    // TODO: Remove before commercial launch — Super Admins get global access in all tenants for testing
+    const [superCheck] = await db.select({ isSuperAdmin: users.isSuperAdmin }).from(users).where(eq(users.id, userId));
+    if (superCheck?.isSuperAdmin) {
+      return { userId, isGlobal: true, teamMemberId: null, assignedTimelineIds: [] };
+    }
+
     const isGlobal = await hasGlobalRecordAccess(userId, tenantId);
     if (isGlobal) {
       return { userId, isGlobal: true, teamMemberId: null, assignedTimelineIds: [] };
@@ -333,6 +340,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Client name is required" });
       }
       const client = await storage.createClient({
+        tenantId: req.tenantId || "default",
         name: name.trim(),
         industry: industry || null,
         contactPhone: contactPhone || null,
@@ -419,6 +427,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: "First name and last name are required" });
       }
       const contact = await storage.createContact({
+        tenantId: req.tenantId || "default",
         clientId: req.params.clientId,
         firstName: firstName.trim(),
         lastName: lastName.trim(),
@@ -518,6 +527,7 @@ export async function registerRoutes(
       const { title, description, color, milestones: milestonesData } = parsed.data;
 
       const timeline = await storage.createTimeline({
+        tenantId: req.tenantId || "default",
         title,
         description: description || null,
         color,
@@ -526,6 +536,7 @@ export async function registerRoutes(
       if (milestonesData && Array.isArray(milestonesData)) {
         for (const m of milestonesData) {
           await storage.createMilestone({
+            tenantId: req.tenantId || "default",
             timelineId: timeline.id,
             title: m.title,
             description: m.description || null,
@@ -618,6 +629,7 @@ export async function registerRoutes(
       }
 
       const milestone = await storage.createMilestone({
+        tenantId: req.tenantId || "default",
         timelineId: req.params.id,
         title,
         description: description || null,
@@ -720,6 +732,7 @@ export async function registerRoutes(
       const { percentComplete } = req.body;
       const clampedPercent = Math.max(0, Math.min(100, parseInt(percentComplete) || 0));
       const task = await storage.createTask({
+        tenantId: req.tenantId || "default",
         timelineId: req.params.id,
         title,
         description: description || null,
@@ -881,6 +894,7 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Team member does not have an active allocation to this project" });
       }
       const entry = await storage.createTimesheetEntry({
+        tenantId: req.tenantId || "default",
         timelineId,
         teamMemberId,
         taskId: taskId || null,
@@ -959,6 +973,7 @@ export async function registerRoutes(
       }
 
       const entry = await storage.createProgressEntry({
+        tenantId: req.tenantId || "default",
         timelineId: req.params.id,
         taskId,
         weekEnding,
@@ -1035,6 +1050,7 @@ export async function registerRoutes(
       }
 
       const risk = await storage.createRisk({
+        tenantId: req.tenantId || "default",
         timelineId: req.params.id,
         title,
         description: description || null,
@@ -1121,6 +1137,7 @@ export async function registerRoutes(
       const { name, email, role, department, monthlyCost, hourlyCost } = req.body;
       if (!name?.trim()) return res.status(400).json({ message: "Name is required" });
       const member = await storage.createTeamMember({
+        tenantId: req.tenantId || "default",
         name: name.trim(),
         email: email || null,
         role: role || null,
@@ -1177,6 +1194,7 @@ export async function registerRoutes(
       const { name, role, region, costRate, billRate } = req.body;
       if (!name?.trim()) return res.status(400).json({ message: "Name is required" });
       const card = await storage.createRateCard({
+        tenantId: req.tenantId || "default",
         name: name.trim(),
         role: role || null,
         region: region || null,
@@ -1239,6 +1257,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Either a team member or a role (rate card) is required" });
       }
       const assignment = await storage.createProjectTeamMember({
+        tenantId: req.tenantId || "default",
         timelineId: req.params.id,
         teamMemberId: teamMemberId || null,
         rateCardId: rateCardId || null,
@@ -1326,6 +1345,7 @@ export async function registerRoutes(
 
         for (let i = 0; i < toCreate; i++) {
           const entry = await storage.createProjectTeamMember({
+            tenantId: req.tenantId || "default",
             timelineId,
             teamMemberId: null,
             rateCardId,
@@ -1429,6 +1449,7 @@ export async function registerRoutes(
   app.post("/api/team-members/:id/allocations", async (req, res) => {
     try {
       const data = {
+        tenantId: req.tenantId || "default",
         teamMemberId: req.params.id,
         timelineId: req.body.timelineId,
         weeklyHours: req.body.weeklyHours || null,
@@ -1615,6 +1636,7 @@ export async function registerRoutes(
         let phaseId = phaseMap.get(phaseName.toLowerCase());
         if (!phaseId) {
           const phase = await storage.createTask({
+            tenantId: req.tenantId || "default",
             timelineId,
             title: phaseName,
             itemType: "phase",
@@ -1634,6 +1656,7 @@ export async function registerRoutes(
           const validConfidence = ["high", "medium", "low"].includes(confidence) ? confidence : "medium";
           const count = wsCountByPhase.get(phaseId) || 0;
           const ws = await storage.createTask({
+            tenantId: req.tenantId || "default",
             timelineId,
             title: wsName,
             itemType: "workstream",
@@ -1656,6 +1679,7 @@ export async function registerRoutes(
             const validTaskType = ["pm", "functional", "technical", "qa"].includes(taskType) ? taskType : "technical";
             if (hpw > 0) {
               await storage.createWorkstreamResource({
+                tenantId: req.tenantId || "default",
                 taskId: wsId,
                 rateCardId: rc.id,
                 hoursPerWeek: String(hpw),
@@ -1767,7 +1791,7 @@ export async function registerRoutes(
 
   app.post("/api/flightpath-stages", async (req, res) => {
     try {
-      const stage = await storage.createFlightpathStage(req.body);
+      const stage = await storage.createFlightpathStage({ ...req.body, tenantId: req.tenantId || "default" });
       res.status(201).json(stage);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
@@ -1797,7 +1821,7 @@ export async function registerRoutes(
 
   app.post("/api/flightpath-stages/:stageId/deliverables", async (req, res) => {
     try {
-      const deliverable = await storage.createDeliverable({ ...req.body, stageId: req.params.stageId });
+      const deliverable = await storage.createDeliverable({ ...req.body, stageId: req.params.stageId, tenantId: req.tenantId || "default" });
       res.status(201).json(deliverable);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
@@ -1833,7 +1857,7 @@ export async function registerRoutes(
   });
   app.post("/api/governance-model/stages", async (req, res) => {
     try {
-      const stage = await storage.createFlightpathStage(req.body);
+      const stage = await storage.createFlightpathStage({ ...req.body, tenantId: req.tenantId || "default" });
       res.status(201).json(stage);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
@@ -1858,7 +1882,7 @@ export async function registerRoutes(
   });
   app.post("/api/governance-model/stages/:stageId/deliverables", async (req, res) => {
     try {
-      const deliverable = await storage.createDeliverable({ ...req.body, stageId: req.params.stageId });
+      const deliverable = await storage.createDeliverable({ ...req.body, stageId: req.params.stageId, tenantId: req.tenantId || "default" });
       res.status(201).json(deliverable);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
@@ -1891,7 +1915,7 @@ export async function registerRoutes(
   app.post("/api/timelines/:id/checkpoints", requireModuleAccess("projects"), async (req, res) => {
     try {
       if (!(await checkTimelineAccess(req, res, req.params.id))) return;
-      const checkpoint = await storage.createProjectCheckpoint({ ...req.body, timelineId: req.params.id });
+      const checkpoint = await storage.createProjectCheckpoint({ ...req.body, timelineId: req.params.id, tenantId: req.tenantId || "default" });
       res.status(201).json(checkpoint);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
@@ -1923,7 +1947,7 @@ export async function registerRoutes(
   app.post("/api/timelines/:id/gates", requireModuleAccess("projects"), async (req, res) => {
     try {
       if (!(await checkTimelineAccess(req, res, req.params.id))) return;
-      const gate = await storage.createProjectGate({ ...req.body, timelineId: req.params.id });
+      const gate = await storage.createProjectGate({ ...req.body, timelineId: req.params.id, tenantId: req.tenantId || "default" });
       res.status(201).json(gate);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
@@ -1952,6 +1976,7 @@ export async function registerRoutes(
       const checkpoints = [];
       for (const d of deliverables.sort((a, b) => a.sortOrder - b.sortOrder)) {
         const cp = await storage.createProjectCheckpoint({
+          tenantId: req.tenantId || "default",
           timelineId: req.params.id,
           stageId,
           deliverableId: d.id,
@@ -2185,6 +2210,7 @@ Respond ONLY with valid JSON in this exact format:
       let gate = await storage.getProjectGate(req.params.id, stageId);
       if (!gate) {
         gate = await storage.createProjectGate({
+          tenantId: req.tenantId || "default",
           timelineId: req.params.id,
           stageId,
           status: evaluatorResult.status === "pass" ? "passed" : "failed",
@@ -2472,6 +2498,7 @@ Respond ONLY with valid JSON:
       if (!rateCardId) return res.status(400).json({ message: "Rate card is required" });
       if (!hoursPerWeek && hoursPerWeek !== 0) return res.status(400).json({ message: "Hours per week is required" });
       const resource = await storage.createWorkstreamResource({
+        tenantId: req.tenantId || "default",
         taskId: req.params.taskId,
         rateCardId,
         teamMemberId: teamMemberId || null,
@@ -2532,6 +2559,7 @@ Respond ONLY with valid JSON:
       if (!title || !title.trim()) return res.status(400).json({ message: "Title is required" });
 
       const opp = await storage.createTimeline({
+        tenantId: req.tenantId || "default",
         title: title.trim(),
         description: description || null,
         color: color || "#8b5cf6",
@@ -2553,6 +2581,7 @@ Respond ONLY with valid JSON:
         const deliverables = await storage.getStageDeliverables(stage0.id);
         for (const d of deliverables.sort((a, b) => a.sortOrder - b.sortOrder)) {
           await storage.createProjectCheckpoint({
+            tenantId: req.tenantId || "default",
             timelineId: opp.id,
             stageId: stage0.id,
             deliverableId: d.id,
@@ -2653,6 +2682,7 @@ Respond ONLY with valid JSON:
       }
 
       const project = await storage.createTimeline({
+        tenantId: req.tenantId || "default",
         title: opp.title,
         description: opp.description,
         color: opp.color,
@@ -2684,6 +2714,7 @@ Respond ONLY with valid JSON:
       const phases = oppTasks.filter(t => t.itemType === "phase").sort((a, b) => a.sortOrder - b.sortOrder);
       for (const phase of phases) {
         const newPhase = await storage.createTask({
+          tenantId: req.tenantId || "default",
           timelineId: project.id,
           title: phase.title,
           description: phase.description,
@@ -2707,6 +2738,7 @@ Respond ONLY with valid JSON:
       for (const ws of workstreams) {
         const newParentId = ws.parentTaskId ? taskIdMap.get(ws.parentTaskId) || null : null;
         const newWs = await storage.createTask({
+          tenantId: req.tenantId || "default",
           timelineId: project.id,
           title: ws.title,
           description: ws.description,
@@ -2733,6 +2765,7 @@ Respond ONLY with valid JSON:
         const resources = await storage.getWorkstreamResources(oldTaskId);
         for (const resource of resources) {
           await storage.createWorkstreamResource({
+            tenantId: req.tenantId || "default",
             taskId: newTaskId,
             rateCardId: resource.rateCardId,
             teamMemberId: resource.teamMemberId,
@@ -2747,6 +2780,7 @@ Respond ONLY with valid JSON:
       const oppTeamMembers = await storage.getProjectTeamMembers(opp.id);
       for (const ptm of oppTeamMembers) {
         await storage.createProjectTeamMember({
+          tenantId: req.tenantId || "default",
           timelineId: project.id,
           teamMemberId: ptm.teamMemberId,
           rateCardId: ptm.rateCardId,
@@ -2761,6 +2795,7 @@ Respond ONLY with valid JSON:
       const oppAllocations = await storage.getAllocationsByTimeline(opp.id);
       for (const alloc of oppAllocations) {
         await storage.createAllocation({
+          tenantId: req.tenantId || "default",
           teamMemberId: alloc.teamMemberId,
           timelineId: project.id,
           weeklyHours: alloc.weeklyHours,
@@ -2774,6 +2809,7 @@ Respond ONLY with valid JSON:
       const oppRisks = await storage.getRisks(opp.id);
       for (const risk of oppRisks) {
         await storage.createRisk({
+          tenantId: req.tenantId || "default",
           timelineId: project.id,
           title: risk.title,
           description: risk.description,
@@ -2797,6 +2833,7 @@ Respond ONLY with valid JSON:
         const deliverables = await storage.getStageDeliverables(stage1.id);
         for (const d of deliverables.sort((a, b) => a.sortOrder - b.sortOrder)) {
           await storage.createProjectCheckpoint({
+            tenantId: req.tenantId || "default",
             timelineId: project.id,
             stageId: stage1.id,
             deliverableId: d.id,

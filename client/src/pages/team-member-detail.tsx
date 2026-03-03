@@ -24,7 +24,7 @@ import {
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatDateForProject } from "@/lib/date-format";
 import type { TeamMember, AppSettings, AllocationWithProject, TimelineWithMilestones } from "@shared/schema";
-import { DEFAULT_TEAM_MEMBER_ROLES } from "@shared/schema";
+import { getDefaultFieldOptions } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 
@@ -63,7 +63,7 @@ export default function TeamMemberDetail() {
   const { data: settings } = useQuery<AppSettings>({
     queryKey: ["/api/settings"],
   });
-  const roleOptions = settings?.teamMemberRoles || DEFAULT_TEAM_MEMBER_ROLES;
+  const roleOptions = settings?.teamMemberRoles || getDefaultFieldOptions("teamMemberRoles", settings?.locale || "en");
 
   const updateMutation = useMutation({
     mutationFn: async (data: any) => {

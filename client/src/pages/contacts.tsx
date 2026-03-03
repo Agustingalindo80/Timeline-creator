@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Contact, Client, AppSettings } from "@shared/schema";
-import { DEFAULT_CONTACT_ROLES } from "@shared/schema";
+import { getDefaultFieldOptions } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { useAppTitle } from "@/hooks/use-app-title";
 
@@ -65,7 +65,7 @@ export default function ContactsList() {
     queryKey: ["/api/clients"],
   });
 
-  const contactRoleOptions = settings?.contactRoles || DEFAULT_CONTACT_ROLES;
+  const contactRoleOptions = settings?.contactRoles || getDefaultFieldOptions("contactRoles", settings?.locale || "en");
 
   const getClientName = useCallback((clientId: string | null | undefined): string => {
     if (!clientId || !clientsList) return "";

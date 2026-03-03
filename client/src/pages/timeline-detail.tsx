@@ -74,16 +74,7 @@ import { RaidLog } from "@/components/raid-log";
 import { GovernanceTab } from "@/components/governance-tab";
 import { formatDateForProject, parseDateToISO } from "@/lib/date-format";
 import type { TimelineWithMilestones, AppSettings, FieldOption, Client, AllocationWithTeamMember, Task, ProgressEntry, TimesheetEntry, ProjectTeamMemberWithDetails, TeamMember, FlightpathStage, EvmSnapshot } from "@shared/schema";
-import {
-  DEFAULT_TASK_STATUSES,
-  DEFAULT_TASK_HEALTH,
-  DEFAULT_TASK_ITEM_TYPES,
-  DEFAULT_PROJECT_TYPES,
-  DEFAULT_ENGAGEMENT_MODELS,
-  DEFAULT_PROJECT_STATUSES,
-  DEFAULT_REGIONS,
-  DEFAULT_DATE_FORMATS,
-} from "@shared/schema";
+import { getDefaultFieldOptions } from "@shared/schema";
 
 type FilterMode = "all" | "milestones";
 
@@ -1388,13 +1379,13 @@ export default function TimelineDetail() {
     queryKey: ["/api/settings"],
   });
 
-  const taskStatuses = settings?.taskStatuses || DEFAULT_TASK_STATUSES;
-  const taskHealthOptions = settings?.taskHealthOptions || DEFAULT_TASK_HEALTH;
-  const taskItemTypes = settings?.taskItemTypes || DEFAULT_TASK_ITEM_TYPES;
-  const projectTypes = settings?.projectTypes || DEFAULT_PROJECT_TYPES;
-  const engagementModels = settings?.engagementModels || DEFAULT_ENGAGEMENT_MODELS;
-  const projectStatuses = settings?.projectStatuses || DEFAULT_PROJECT_STATUSES;
-  const regionOptions = settings?.regions || DEFAULT_REGIONS;
+  const taskStatuses = settings?.taskStatuses || getDefaultFieldOptions("taskStatuses", settings?.locale || "en");
+  const taskHealthOptions = settings?.taskHealthOptions || getDefaultFieldOptions("taskHealthOptions", settings?.locale || "en");
+  const taskItemTypes = settings?.taskItemTypes || getDefaultFieldOptions("taskItemTypes", settings?.locale || "en");
+  const projectTypes = settings?.projectTypes || getDefaultFieldOptions("projectTypes", settings?.locale || "en");
+  const engagementModels = settings?.engagementModels || getDefaultFieldOptions("engagementModels", settings?.locale || "en");
+  const projectStatuses = settings?.projectStatuses || getDefaultFieldOptions("projectStatuses", settings?.locale || "en");
+  const regionOptions = settings?.regions || getDefaultFieldOptions("regions", settings?.locale || "en");
   const { data: clientsList } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
   });
