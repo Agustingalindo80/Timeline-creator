@@ -2419,7 +2419,7 @@ export default function TimelineDetail() {
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">Client</label>
+                  <label className="text-xs font-medium text-muted-foreground">{t("common.client")}</label>
                   <select
                     className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
                     value={timeline.clientId || ""}

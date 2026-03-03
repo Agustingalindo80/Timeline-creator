@@ -101,7 +101,7 @@ export default function PortfolioHealthReport() {
 
   const csvColumns = [
     { key: "title", label: "Project" },
-    { key: "clientName", label: "Client" },
+    { key: "clientName", label: t("common.client") },
     { key: "region", label: "Region" },
     { key: "healthOverall", label: "Overall Health" },
     { key: "scopeHealth", label: "Scope" },
@@ -120,11 +120,11 @@ export default function PortfolioHealthReport() {
   const filters = (
     <>
       <DropdownFilter
-        label="Client"
+        label={t("common.client")}
         value={clientFilter}
         onValueChange={setClientFilter}
         options={clients.map((c) => ({ value: c.id, label: c.name }))}
-        placeholder="All Clients"
+        placeholder={t("reports.allClients")}
         testId="select-filter-client"
       />
       <DropdownFilter

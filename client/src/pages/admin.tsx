@@ -1803,11 +1803,11 @@ export default function Admin() {
     },
     {
       value: "clients_settings",
-      label: "Clients",
+      label: t("nav.companies"),
       fields: [
         {
-          title: "Industry",
-          description: "Industry options for clients (e.g., Technology, Healthcare, Finance).",
+          title: t("clients.industry"),
+          description: "Industry options for companies (e.g., Technology, Healthcare, Finance).",
           key: "industries",
           defaults: getDefaultFieldOptions("industries", settings?.locale || "en"),
           current: settings?.industries || getDefaultFieldOptions("industries", settings?.locale || "en"),

@@ -46,8 +46,8 @@ const coreModules = [
   },
   {
     icon: Building2,
-    title: "Client & Contact Management",
-    description: "Centralised directory of clients, contacts, industries, and relationships. Link projects to clients for full traceability across the portfolio.",
+    title: "Company & Contact Management",
+    description: "Centralised directory of companies, contacts, industries, and relationships. Link projects to companies for full traceability across the portfolio.",
   },
   {
     icon: FolderKanban,

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -141,13 +142,14 @@ export function ClientFilter({
   onValueChange,
   clients,
 }: ClientFilterProps) {
+  const { t } = useTranslation();
   return (
     <DropdownFilter
-      label="Client"
+      label={t("common.client")}
       value={value}
       onValueChange={onValueChange}
       options={clients.map((c) => ({ value: c.id, label: c.name }))}
-      placeholder="All Clients"
+      placeholder={t("reports.allClients")}
       testId="select-filter-client"
     />
   );

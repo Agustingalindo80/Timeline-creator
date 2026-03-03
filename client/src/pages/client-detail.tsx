@@ -72,7 +72,7 @@ export default function ClientDetail() {
     queryKey: ["/api/clients", params.id],
     queryFn: async () => {
       const res = await fetch(`/api/clients/${params.id}`);
-      if (!res.ok) throw new Error("Client not found");
+      if (!res.ok) throw new Error("Company not found");
       return res.json();
     },
   });
@@ -117,11 +117,11 @@ export default function ClientDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/clients", params.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
-      toast({ title: "Client updated" });
+      toast({ title: t("clients.clientUpdated") });
       setEditing(false);
     },
     onError: () => {
-      toast({ title: "Failed to update client", variant: "destructive" });
+      toast({ title: t("clients.failedToSave"), variant: "destructive" });
     },
   });
 
@@ -150,9 +150,9 @@ export default function ClientDetail() {
     return (
       <div className="p-6">
         <div className="text-center py-16">
-          <h2 className="text-lg font-semibold mb-2">Client not found</h2>
+          <h2 className="text-lg font-semibold mb-2">{t("clients.title")} — {t("common.notFound")}</h2>
           <Button variant="outline" onClick={() => navigate("/clients")} data-testid="button-back-clients">
-            <ArrowLeft className="w-4 h-4 mr-2" /> Back to Clients
+            <ArrowLeft className="w-4 h-4 mr-2" /> {t("clients.title")}
           </Button>
         </div>
       </div>

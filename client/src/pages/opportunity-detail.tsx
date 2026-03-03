@@ -297,9 +297,9 @@ export default function OpportunityDetail() {
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium text-muted-foreground">{t("common.client")}</label>
                     <Select value={editClientId} onValueChange={setEditClientId}>
-                      <SelectTrigger data-testid="select-edit-client"><SelectValue placeholder="Client" /></SelectTrigger>
+                      <SelectTrigger data-testid="select-edit-client"><SelectValue placeholder={t("common.client")} /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">No client</SelectItem>
+                        <SelectItem value="none">—</SelectItem>
                         {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
