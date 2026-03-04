@@ -49,7 +49,8 @@ The application uses a modern web stack with React, Vite, Tailwind CSS, and shad
 - **Super Admin & Global Admin Console:** Dedicated interface for platform administration, tenant management, and system-wide statistics. Supports tenant switching.
 - **Internationalization (i18n):** Uses `i18next` + `react-i18next` for EN, ES, PT. Locale is set per tenant at creation and influences UI translations, picklist defaults, and AI coach responses.
   - **Library:** Initialized in `client/src/i18n/i18n.ts`, imported in `client/src/main.tsx`.
-  - **Translation files:** `client/src/i18n/{en,es,pt}.json` with ~200+ keys across namespaces: `nav.*`, `common.*`, `dashboard.*`, `clients.*`, `contacts.*`, `opportunities.*`, `projects.*`, `teamMembers.*`, `allocations.*`, `timesheets.*`, `settings.*`, `security.*`, `governance.*`, `reports.*`, `globalAdmin.*`, `accessDenied.*`, `health.*`, `status.*`.
+  - **Translation files:** `client/src/i18n/{en,es,pt}.json` with ~300+ keys across namespaces: `nav.*`, `common.*`, `dashboard.*`, `clients.*`, `contacts.*`, `opportunities.*`, `projects.*`, `teamMembers.*`, `allocations.*`, `timesheets.*`, `settings.*`, `security.*`, `governance.*`, `reports.*`, `globalAdmin.*`, `accessDenied.*`, `health.*`, `status.*`, `about.*`.
+  - **Terminology:** "Company/Companies" used everywhere in UI (not "Client/Clients"). DB/API routes still use `/clients` internally.
   - **Locale Selection:** Set by Super Admin at tenant creation only (immutable). Stored in `app_settings.locale`. Read-only display in tenant Settings > General.
   - **useLocale() Hook:** `client/src/hooks/use-locale.ts` reads `settings?.locale` and calls `i18n.changeLanguage()`. Called in `AuthenticatedApp` component.
   - **Pre-Translated Picklist Defaults:** `getDefaultFieldOptions(category, locale)` in `shared/schema.ts` returns locale-aware `FieldOption[]` for 12+ dropdown categories.
