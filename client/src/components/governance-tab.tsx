@@ -18,6 +18,8 @@ import {
 } from "@/components/ui/dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { usePermissions } from "@/hooks/use-permissions";
+import { useTranslation } from "react-i18next";
 import type { Risk, FlightpathStage, FlightpathDeliverable, ProjectCheckpoint, ProjectGate, TimelineWithMilestones } from "@shared/schema";
 
 type StageWithDeliverables = FlightpathStage & { deliverables: FlightpathDeliverable[] };
@@ -41,6 +43,8 @@ interface GovernanceTabProps {
 
 export function GovernanceTab({ timelineId, currentStageId, onStageChange, opportunityMode = false }: GovernanceTabProps) {
   const { toast } = useToast();
+  const { hasPermission } = usePermissions();
+  const { t } = useTranslation();
   const [selectedStageId, setSelectedStageId] = useState<string | null>(null);
   const [expandedRaci, setExpandedRaci] = useState<string | null>(null);
   const [gateNotes, setGateNotes] = useState("");
@@ -166,14 +170,33 @@ export function GovernanceTab({ timelineId, currentStageId, onStageChange, oppor
     },
   });
 
-  const exceptionMutation = useMutation({
-    mutationFn: async ({ gateId, notes }: { gateId: string; notes: string }) => {
-      await apiRequest("PATCH", `/api/gates/${gateId}`, { status: "exception", notes });
+  const requestExceptionMutation = useMutation({
+    mutationFn: async ({ stageId, notes }: { stageId: string; notes: string }) => {
+      const res = await apiRequest("POST", `/api/timelines/${timelineId}/request-exception`, { stageId, notes });
+      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/timelines", timelineId, "gates"] });
-      toast({ title: "Exception recorded" });
+      toast({ title: t("governance.exceptionRequested"), description: t("governance.exceptionRequestSubmitted") });
       setGateNotes("");
+    },
+    onError: () => {
+      toast({ title: t("governance.requestException"), variant: "destructive" });
+    },
+  });
+
+  const approveExceptionMutation = useMutation({
+    mutationFn: async ({ stageId, approved, notes }: { stageId: string; approved: boolean; notes?: string }) => {
+      const res = await apiRequest("POST", `/api/timelines/${timelineId}/approve-exception`, { stageId, approved, notes });
+      return res.json();
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/timelines", timelineId, "gates"] });
+      toast({ title: variables.approved ? t("governance.exceptionApproved") : t("governance.exceptionRejected") });
+      setGateNotes("");
+    },
+    onError: () => {
+      toast({ title: t("governance.approveException"), variant: "destructive" });
     },
   });
 
@@ -269,15 +292,17 @@ export function GovernanceTab({ timelineId, currentStageId, onStageChange, oppor
       case "passed": return <ShieldCheck className="w-5 h-5 text-green-600" />;
       case "failed": return <ShieldX className="w-5 h-5 text-red-600" />;
       case "exception": return <ShieldAlert className="w-5 h-5 text-amber-600" />;
+      case "exception_requested": return <AlertTriangle className="w-5 h-5 text-orange-500" />;
       default: return <Circle className="w-5 h-5 text-muted-foreground" />;
     }
   };
 
   const gateStatusBadge = (status: string | undefined) => {
     switch (status) {
-      case "passed": return <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">Passed</Badge>;
-      case "failed": return <Badge className="bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300">Failed</Badge>;
-      case "exception": return <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300">Exception</Badge>;
+      case "passed": return <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">{t("governance.gatePassed")}</Badge>;
+      case "failed": return <Badge className="bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300">{t("governance.gateFailed")}</Badge>;
+      case "exception": return <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300">{t("governance.exceptionApprovedBadge")}</Badge>;
+      case "exception_requested": return <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300">{t("governance.exceptionPendingBadge")}</Badge>;
       default: return <Badge variant="secondary">Pending</Badge>;
     }
   };
@@ -785,12 +810,12 @@ export function GovernanceTab({ timelineId, currentStageId, onStageChange, oppor
                 </Button>
               )}
 
-              {stageGate?.status === "failed" && (
+              {stageGate?.status === "failed" && hasPermission("gate.submit") && (
                 <div className="flex items-center gap-2 ml-auto">
                   <Textarea
                     value={gateNotes}
                     onChange={(e) => setGateNotes(e.target.value)}
-                    placeholder="Justification for exception..."
+                    placeholder={t("governance.justificationPlaceholder")}
                     className="h-9 min-h-[36px] text-xs w-64"
                     data-testid="input-exception-notes"
                   />
@@ -799,16 +824,54 @@ export function GovernanceTab({ timelineId, currentStageId, onStageChange, oppor
                     variant="outline"
                     onClick={() => {
                       if (!gateNotes.trim()) {
-                        toast({ title: "Justification required", variant: "destructive" });
+                        toast({ title: t("governance.justificationRequired"), variant: "destructive" });
                         return;
                       }
-                      exceptionMutation.mutate({ gateId: stageGate.id, notes: gateNotes.trim() });
+                      requestExceptionMutation.mutate({ stageId: selectedStage.id, notes: gateNotes.trim() });
                     }}
-                    disabled={exceptionMutation.isPending}
+                    disabled={requestExceptionMutation.isPending}
                     data-testid="button-request-exception"
                   >
-                    Request Exception
+                    {requestExceptionMutation.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : null}
+                    {t("governance.requestException")}
                   </Button>
+                </div>
+              )}
+
+              {stageGate?.status === "exception_requested" && (
+                <div className="flex flex-col gap-2 w-full mt-2 p-3 rounded-md bg-orange-50 dark:bg-orange-950 border border-orange-200 dark:border-orange-800">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-orange-600" />
+                    <span className="text-sm font-medium text-orange-700 dark:text-orange-300">{t("governance.exceptionPendingApproval")}</span>
+                  </div>
+                  {stageGate.notes && (
+                    <p className="text-xs text-muted-foreground ml-6" data-testid="text-exception-justification">
+                      <span className="font-medium">{t("governance.justification")}:</span> {stageGate.notes}
+                    </p>
+                  )}
+                  {hasPermission("gate.approve") && (
+                    <div className="flex items-center gap-2 ml-6 mt-1">
+                      <Button
+                        size="sm"
+                        variant="default"
+                        onClick={() => approveExceptionMutation.mutate({ stageId: selectedStage.id, approved: true })}
+                        disabled={approveExceptionMutation.isPending}
+                        data-testid="button-approve-exception"
+                      >
+                        {approveExceptionMutation.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5 mr-1" />}
+                        {t("governance.approveException")}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => approveExceptionMutation.mutate({ stageId: selectedStage.id, approved: false })}
+                        disabled={approveExceptionMutation.isPending}
+                        data-testid="button-reject-exception"
+                      >
+                        {t("governance.rejectException")}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

@@ -1960,6 +1960,41 @@ export async function registerRoutes(
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
+  app.post("/api/timelines/:id/request-exception", requirePermission("gate.submit"), async (req, res) => {
+    try {
+      if (!(await checkTimelineAccess(req, res, req.params.id))) return;
+      const { stageId, notes } = req.body;
+      if (!stageId) return res.status(400).json({ message: "stageId is required" });
+      if (!notes || !notes.trim()) return res.status(400).json({ message: "Justification notes are required" });
+      const allStages = await storage.getFlightpathStages(req.tenantId || "default");
+      if (!allStages.some(s => s.id === stageId)) return res.status(400).json({ message: "Invalid stageId for this governance model" });
+      let gate = await storage.getProjectGate(req.params.id, stageId);
+      if (!gate) {
+        gate = await storage.createProjectGate({ timelineId: req.params.id, stageId, status: "exception_requested", notes: notes.trim(), tenantId: req.tenantId || "default" });
+      } else {
+        gate = await storage.updateProjectGate(gate.id, { status: "exception_requested", notes: notes.trim() }) || gate;
+      }
+      res.json(gate);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.post("/api/timelines/:id/approve-exception", requirePermission("gate.approve"), async (req, res) => {
+    try {
+      if (!(await checkTimelineAccess(req, res, req.params.id))) return;
+      const { stageId, approved, notes } = req.body;
+      if (!stageId) return res.status(400).json({ message: "stageId is required" });
+      if (typeof approved !== "boolean") return res.status(400).json({ message: "approved (boolean) is required" });
+      const gate = await storage.getProjectGate(req.params.id, stageId);
+      if (!gate) return res.status(404).json({ message: "Gate not found" });
+      if (gate.status !== "exception_requested") return res.status(400).json({ message: "Gate is not in exception_requested status" });
+      const updatedGate = await storage.updateProjectGate(gate.id, {
+        status: approved ? "exception" : "failed",
+        notes: notes ? `${gate.notes || ""}\n---\nReviewer: ${approved ? "Approved" : "Rejected"}${notes ? ` — ${notes}` : ""}`.trim() : gate.notes,
+      });
+      res.json(updatedGate);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
   // ── Stage initialization: auto-create checkpoints from deliverables ──
   app.post("/api/timelines/:id/initialize-stage", requireModuleAccess("projects"), async (req, res) => {
     try {

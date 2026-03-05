@@ -13,7 +13,7 @@ export const recordTypeEnum = pgEnum("record_type", ["project", "opportunity"]);
 export const projectStatusEnum = pgEnum("project_status", ["not_started", "in_progress", "completed"]);
 export const taskStatusEnum = pgEnum("task_status", ["not_started", "in_progress", "complete"]);
 export const taskItemTypeEnum = pgEnum("task_item_type", ["workstream", "phase"]);
-export const gateStatusEnum = pgEnum("gate_status", ["pending", "in_review", "approved", "rejected", "failed"]);
+export const gateStatusEnum = pgEnum("gate_status", ["pending", "in_review", "approved", "rejected", "failed", "passed", "exception", "exception_requested"]);
 export const riskStatusEnum = pgEnum("risk_status", ["open", "mitigated", "closed", "accepted"]);
 
 export const tenants = pgTable("tenants", {
