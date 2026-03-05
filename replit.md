@@ -35,7 +35,7 @@ The application uses a modern web stack with React, Vite, Tailwind CSS, and shad
 - **Reports Module:** Provides operational reports (Portfolio Health, Project Status, Milestone Tracker, RAID Summary) with CSV and PDF export, and server-side aggregation.
 - **Opportunities Module:** Pre-sales entity with an Estimate tab and "Convert to Project" feature.
 - **Estimate Template Import/Export:** Functionality for Excel template download and import.
-- **Operating Model Governance Framework:** A 5-stage governance engine with deliverables, RACI matrices, and AI-evaluated gate criteria.
+- **Operating Model Governance Framework:** Fully configurable stage-gated governance engine. Tenant admins can add, edit, reorder, and delete stages and deliverables. Editable RACI matrices per deliverable with custom roles. Gate enforcement with AI-evaluated readiness criteria.
 - **Governance AI Coach:** Conversational chatbot powered by OpenAI.
 - **Document Repository Integration:** Links to Google Drive for artifact management with AI-powered verification.
 - **Team Composition:** Supports role-based assignments and "Sync from Estimate" feature.
