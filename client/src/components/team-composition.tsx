@@ -8,7 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -65,9 +67,19 @@ export function TeamComposition({ timelineId, opportunityMode = false, region }:
     queryKey: ["/api/rate-cards"],
   });
 
-  const filteredRateCards = region
-    ? allRateCards.filter(c => !c.region || c.region === region)
-    : allRateCards;
+  const filteredRateCards = allRateCards;
+
+  const rateCardsByRegion = allRateCards.reduce<Record<string, RateCard[]>>((groups, rc) => {
+    const regionKey = rc.region || "Global";
+    if (!groups[regionKey]) groups[regionKey] = [];
+    groups[regionKey].push(rc);
+    return groups;
+  }, {});
+  const sortedRegions = Object.keys(rateCardsByRegion).sort((a, b) => {
+    if (a === "Global") return -1;
+    if (b === "Global") return 1;
+    return a.localeCompare(b);
+  });
 
   const addMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -260,7 +272,7 @@ export function TeamComposition({ timelineId, opportunityMode = false, region }:
 
       {opportunityMode && filteredRateCards.length === 0 && (
         <Card className="p-6 text-center">
-          <p className="text-sm text-muted-foreground mb-2">No rate cards available{region ? ` for region "${region}"` : ""}.</p>
+          <p className="text-sm text-muted-foreground mb-2">No rate cards available.</p>
           <p className="text-xs text-muted-foreground">Go to Settings to add Rate Cards first.</p>
         </Card>
       )}
@@ -287,10 +299,15 @@ export function TeamComposition({ timelineId, opportunityMode = false, region }:
                       <SelectValue placeholder="Select role" />
                     </SelectTrigger>
                     <SelectContent>
-                      {filteredRateCards.map(c => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.name}{c.role ? ` — ${c.role}` : ""}{c.costRate ? ` ($${c.costRate}/hr)` : ""}
-                        </SelectItem>
+                      {sortedRegions.map(regionKey => (
+                        <SelectGroup key={regionKey}>
+                          <SelectLabel className="text-xs font-semibold text-muted-foreground">{regionKey}</SelectLabel>
+                          {rateCardsByRegion[regionKey].map(c => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.name}{c.role ? ` — ${c.role}` : ""}{c.costRate ? ` ($${c.costRate}/hr)` : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
                       ))}
                     </SelectContent>
                   </Select>
@@ -465,8 +482,13 @@ export function TeamComposition({ timelineId, opportunityMode = false, region }:
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">None</SelectItem>
-                        {(opportunityMode ? filteredRateCards : allRateCards).map(c => (
-                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                        {sortedRegions.map(regionKey => (
+                          <SelectGroup key={regionKey}>
+                            <SelectLabel className="text-xs font-semibold text-muted-foreground">{regionKey}</SelectLabel>
+                            {rateCardsByRegion[regionKey].map(c => (
+                              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                            ))}
+                          </SelectGroup>
                         ))}
                       </SelectContent>
                     </Select>

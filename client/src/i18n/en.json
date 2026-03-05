@@ -682,7 +682,7 @@
     "mod4Title": "Opportunities & Pre-Sales",
     "mod4Desc": "Full pre-sales pipeline with opportunity lifecycle management (Qualifying, Estimating, Proposed, Won, Lost). Price-driven financial model with risk and buffer adjustments. Stage 0 governance gate and one-click conversion to delivery projects.",
     "mod5Title": "Resource-Based Estimation",
-    "mod5Desc": "Build detailed estimates with hierarchical phases and workstreams. Assign multiple resources per workstream using rate cards, with duration-based hour calculations, confidence levels, and automatic financial roll-ups for pricing and cost.",
+    "mod5Desc": "Build detailed estimates with hierarchical phases and workstreams. Assign multiple resources per workstream using rate cards from any region, with duration-based hour calculations, confidence levels, and automatic financial roll-ups for pricing and cost. Select rate cards from multiple regions within a single estimate for hybrid delivery models.",
     "mod6Title": "Team & Resource Management",
     "mod6Desc": "Track team members, define rate cards by role and region, assign resources to projects, and plan weekly allocations across the portfolio. Supports role-only entries for pre-sales planning with automatic team sync from estimates.",
     "mod7Title": "Resource Allocation",

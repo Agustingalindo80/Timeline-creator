@@ -682,7 +682,7 @@
     "mod4Title": "Oportunidades y Pre-Venta",
     "mod4Desc": "Pipeline completo de pre-venta con gestión del ciclo de vida de oportunidades (Calificación, Estimación, Propuesta, Ganada, Perdida). Modelo financiero basado en precios con ajustes de riesgo y colchón. Compuerta de gobernanza Etapa 0 y conversión a proyectos de entrega con un clic.",
     "mod5Title": "Estimación Basada en Recursos",
-    "mod5Desc": "Construya estimaciones detalladas con fases y flujos de trabajo jerárquicos. Asigne múltiples recursos por flujo de trabajo usando tarjetas de tarifas, con cálculos de horas basados en duración, niveles de confianza y consolidaciones financieras automáticas para precios y costos.",
+    "mod5Desc": "Construya estimaciones detalladas con fases y flujos de trabajo jerárquicos. Asigne múltiples recursos por flujo de trabajo usando tarjetas de tarifas de cualquier región, con cálculos de horas basados en duración, niveles de confianza y consolidaciones financieras automáticas para precios y costos. Seleccione tarjetas de tarifas de múltiples regiones dentro de una misma estimación para modelos de entrega híbridos.",
     "mod6Title": "Gestión de Equipo y Recursos",
     "mod6Desc": "Rastree miembros del equipo, defina tarjetas de tarifas por rol y región, asigne recursos a proyectos y planifique asignaciones semanales en todo el portafolio. Soporta entradas solo de rol para planificación de pre-venta con sincronización automática del equipo desde estimaciones.",
     "mod7Title": "Asignación de Recursos",

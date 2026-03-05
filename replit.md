@@ -27,7 +27,7 @@ The application uses a modern web stack with React, Vite, Tailwind CSS, and shad
 - **Financial Calculations:** Automated calculation of `Approved Budget`, `Total Running Cost`, and `Gross Margin`.
 - **Project Health:** Four configurable health indicators.
 - **Milestones & Tasks:** Milestones are point-in-time events; tasks are duration-based with hierarchical structure and progress tracking.
-- **Resource-Based Estimation:** Workstreams use multi-resource assignments with rate cards, calculating estimated hours, cost, and revenue.
+- **Resource-Based Estimation:** Workstreams use multi-resource assignments with rate cards from any region (multi-region selection), calculating estimated hours, cost, and revenue. Rate card dropdowns are grouped by region for clarity.
 - **Timesheet Management:** Global page for tracking daily effort.
 - **Progress Tracking:** Project-level tab for weekly % complete per workstream.
 - **EVM Dashboard:** Project-level tab displaying Earned Value Management metrics with historical snapshot tracking, revision versioning, S-Curve, and CPI/SPI charts.

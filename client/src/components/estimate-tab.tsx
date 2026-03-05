@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -90,9 +90,19 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
     queryKey: ["/api/team-members"],
   });
 
-  const rateCards = timeline.region
-    ? allRateCards.filter(rc => rc.region === timeline.region)
-    : allRateCards;
+  const rateCards = allRateCards;
+
+  const rateCardsByRegion = rateCards.reduce<Record<string, RateCard[]>>((groups, rc) => {
+    const region = rc.region || "Global";
+    if (!groups[region]) groups[region] = [];
+    groups[region].push(rc);
+    return groups;
+  }, {});
+  const sortedRegions = Object.keys(rateCardsByRegion).sort((a, b) => {
+    if (a === "Global") return -1;
+    if (b === "Global") return 1;
+    return a.localeCompare(b);
+  });
 
   const tasks = timeline.tasks || [];
   const phases = tasks.filter(t => t.itemType === "phase").sort((a, b) => a.sortOrder - b.sortOrder);
@@ -491,6 +501,7 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
             {rc?.name || rc?.role || "Unknown Role"}
           </div>
           <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+            {rc?.region && <Badge variant="outline" className="text-[10px] border-blue-300 text-blue-600 dark:border-blue-700 dark:text-blue-400">{rc.region}</Badge>}
             {taskTypeLabel && <Badge variant="outline" className="text-[10px]">{taskTypeLabel}</Badge>}
             <span className="text-[10px] text-muted-foreground tabular-nums">{hpw}h/wk × {duration} wks</span>
             {tm && <Badge variant="secondary" className="text-[10px]">{tm.name}</Badge>}
@@ -543,7 +554,7 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
               <label className="text-sm font-medium mb-1 block">Role (Rate Card)</label>
               {rateCards.length === 0 ? (
                 <div className="text-xs text-muted-foreground border rounded-md p-2.5 bg-muted/30">
-                  No rate cards found{timeline.region ? ` for region "${timeline.region}"` : ""}. Add rate cards in <a href="/settings" className="underline text-primary">Settings → Rate Cards</a>.
+                  No rate cards found. Add rate cards in <a href="/settings" className="underline text-primary">Settings → Rate Cards</a>.
                 </div>
               ) : (
                 <Select value={newResRoleId} onValueChange={setNewResRoleId}>
@@ -551,12 +562,17 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
                   <SelectContent>
-                    {rateCards.map(rc => (
-                      <SelectItem key={rc.id} value={rc.id}>
-                        {rc.name || rc.role || rc.id}
-                        {rc.costRate ? ` · $${rc.costRate}/hr` : ""}
-                        {rc.billRate ? ` → $${rc.billRate}/hr` : ""}
-                      </SelectItem>
+                    {sortedRegions.map(region => (
+                      <SelectGroup key={region}>
+                        <SelectLabel className="text-xs font-semibold text-muted-foreground">{region}</SelectLabel>
+                        {rateCardsByRegion[region].map(rc => (
+                          <SelectItem key={rc.id} value={rc.id}>
+                            {rc.name || rc.role || rc.id}
+                            {rc.costRate ? ` · $${rc.costRate}/hr` : ""}
+                            {rc.billRate ? ` → $${rc.billRate}/hr` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
                     ))}
                   </SelectContent>
                 </Select>
