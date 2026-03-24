@@ -1922,7 +1922,14 @@ export async function registerRoutes(
 
   app.patch("/api/checkpoints/:id", async (req, res) => {
     try {
-      const checkpoint = await storage.updateProjectCheckpoint(req.params.id, req.body);
+      const data = { ...req.body };
+      if (typeof data.completedAt === "string") {
+        data.completedAt = new Date(data.completedAt);
+      }
+      if (typeof data.artifactVerifiedAt === "string") {
+        data.artifactVerifiedAt = new Date(data.artifactVerifiedAt);
+      }
+      const checkpoint = await storage.updateProjectCheckpoint(req.params.id, data);
       if (!checkpoint) return res.status(404).json({ message: "Checkpoint not found" });
       res.json(checkpoint);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
@@ -2095,7 +2102,7 @@ export async function registerRoutes(
           inputsHash: evmResult.inputsHash,
           notes: `Auto-generated on ${stageName} gate approval`,
           generatedBy: (req as any).user?.id || null,
-          generatedAt: new Date().toISOString(),
+          generatedAt: new Date(),
         });
 
         await storage.createAuditEntry({
@@ -2255,7 +2262,7 @@ Respond ONLY with valid JSON in this exact format:
         gate = await storage.updateProjectGate(gate.id, {
           status: evaluatorResult.status === "pass" ? "passed" : "failed",
           evaluatorResult,
-          approvedAt: evaluatorResult.status === "pass" ? new Date().toISOString() : null,
+          approvedAt: evaluatorResult.status === "pass" ? new Date() : null,
         });
       }
 
@@ -2412,7 +2419,7 @@ Respond ONLY with valid JSON:
 
           await storage.updateProjectCheckpoint(cp.id, {
             artifactVerified: result.verified === true,
-            artifactVerifiedAt: new Date().toISOString(),
+            artifactVerifiedAt: new Date(),
             artifactSummary: summary,
           });
 
@@ -2881,7 +2888,7 @@ Respond ONLY with valid JSON:
 
       await storage.updateTimeline(opp.id, {
         opportunityStatus: "won",
-        convertedAt: new Date().toISOString(),
+        convertedAt: new Date(),
       });
 
       const fullProject = await storage.getTimeline(project.id);
@@ -3166,7 +3173,7 @@ Respond ONLY with valid JSON:
         inputsHash: evmResult.inputsHash,
         notes: notes || null,
         generatedBy: (req as any).user?.id || null,
-        generatedAt: new Date().toISOString(),
+        generatedAt: new Date(),
       });
 
       await storage.createAuditEntry({

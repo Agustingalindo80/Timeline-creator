@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, useLocation, Link } from "wouter";
 import { Helmet } from "react-helmet-async";
@@ -522,18 +522,20 @@ export default function OpportunityDetail() {
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Convert to Delivery Project</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will create a new Project from this Opportunity. The following data will be copied:
-                <ul className="list-disc pl-5 mt-2 space-y-1">
-                  <li>All phases and workstreams (as delivery baseline)</li>
-                  <li>Team composition and rate cards</li>
-                  <li>Resource allocations</li>
-                  <li>RAID log items</li>
-                  <li>Document repository connection</li>
-                  <li>Budget and financial estimates</li>
-                </ul>
-                <p className="mt-2 font-medium">The new project will start at Stage 1: Structured Initiation.</p>
-                <p className="mt-1">This opportunity will be marked as "Won".</p>
+              <AlertDialogDescription asChild>
+                <div>
+                  <span>This will create a new Project from this Opportunity. The following data will be copied:</span>
+                  <ul className="list-disc pl-5 mt-2 space-y-1">
+                    <li>All phases and workstreams (as delivery baseline)</li>
+                    <li>Team composition and rate cards</li>
+                    <li>Resource allocations</li>
+                    <li>RAID log items</li>
+                    <li>Document repository connection</li>
+                    <li>Budget and financial estimates</li>
+                  </ul>
+                  <p className="mt-2 font-medium">The new project will start at Stage 1: Structured Initiation.</p>
+                  <p className="mt-1">This opportunity will be marked as "Won".</p>
+                </div>
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -556,10 +558,13 @@ export default function OpportunityDetail() {
 function TeamCompositionWrapper({ timelineId, region }: { timelineId: string; region?: string }) {
   const [TeamComposition, setTeamComp] = useState<any>(null);
 
-  if (!TeamComposition) {
+  useEffect(() => {
     import("@/components/team-composition").then(mod => {
       setTeamComp(() => mod.TeamComposition || mod.default);
     });
+  }, []);
+
+  if (!TeamComposition) {
     return (
       <div className="p-6 space-y-3">
         <Skeleton className="h-8 w-48" />
