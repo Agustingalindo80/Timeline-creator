@@ -119,7 +119,7 @@ export function GovernanceTab({ timelineId, currentStageId, onStageChange, oppor
     mutationFn: async ({ id, completed }: { id: string; completed: boolean }) => {
       await apiRequest("PATCH", `/api/checkpoints/${id}`, {
         completed,
-        completedAt: completed ? new Date().toISOString() : null,
+        completedAt: completed ? new Date() : null,
       });
     },
     onSuccess: () => {
