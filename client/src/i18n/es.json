@@ -564,7 +564,12 @@
     "gatePassed": "Aprobado",
     "gateFailed": "No Aprobado",
     "exceptionApprovedBadge": "Excepción Aprobada",
-    "exceptionPendingBadge": "Excepción Pendiente"
+    "exceptionPendingBadge": "Excepción Pendiente",
+    "convertToProject": "Convertir a Proyecto",
+    "converting": "Convirtiendo...",
+    "evaluating": "Evaluando...",
+    "requestGateEvaluation": "Solicitar Evaluación de Compuerta",
+    "reEvaluateGate": "Re-evaluar Compuerta"
   },
   "reports": {
     "title": "Informes",
@@ -744,7 +749,7 @@
     "mod11Title": "Registro RAID",
     "mod11Desc": "Seguimiento completo de Riesgos, Supuestos, Problemas y Dependencias por proyecto con campos específicos por tipo, puntuación de probabilidad/impacto para riesgos y vinculación a etapas de gobernanza.",
     "mod12Title": "Gobernanza del Modelo Operativo",
-    "mod12Desc": "Ciclo de vida de proyectos con etapas completamente configurable. Agregue, edite, reordene y elimine etapas de gobernanza y entregables por inquilino. Defina matrices de responsabilidad RACI con roles personalizados por entregable. Aplicación de compuertas con evaluación de preparación con IA e integración con repositorio de documentos para verificación de artefactos. Flujo de solicitud de excepciones: los PMs solicitan excepciones con justificación, los aprobadores revisan y aprueban o rechazan.",
+    "mod12Desc": "Ciclo de vida de proyectos con etapas completamente configurable. Agregue, edite, reordene y elimine etapas de gobernanza y entregables por inquilino. Defina matrices de responsabilidad RACI con roles personalizados por entregable. Aplicación de compuertas con evaluación de preparación con IA e integración con repositorio de documentos para verificación de artefactos. Flujo de solicitud de excepciones: los PMs solicitan excepciones con justificación, los aprobadores revisan y aprueban o rechazan. Las oportunidades deben tener estado 'ganada' y la compuerta de Etapa 0 aprobada antes de convertirse en proyectos de entrega.",
     "mod13Title": "Coach de Gobernanza",
     "mod13Desc": "Asistente de lenguaje natural con IA (OpenAI) que guía a los gerentes de proyecto a través del marco de gobernanza, explica los requisitos de las etapas, los roles RACI y recomienda próximas acciones. Se adapta dinámicamente a las etiquetas de gobernanza específicas del tenant.",
     "mod14Title": "Sistema de Seguridad RBAC",

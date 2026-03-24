@@ -234,8 +234,8 @@ export default function OpportunityDetail() {
   const statusOption = OPP_STATUS_OPTIONS.find(s => s.value === opp.opportunityStatus) || OPP_STATUS_OPTIONS[0];
   const stage0 = stages.find(s => s.stageNumber === 0);
   const stage0Gate = stage0 ? gates.find(g => g.stageId === stage0.id) : null;
-  const canConvert = stage0Gate && (stage0Gate.status === "passed" || stage0Gate.status === "exception");
   const isWon = opp.opportunityStatus === "won";
+  const canConvert = isWon && stage0Gate && (stage0Gate.status === "passed" || stage0Gate.status === "exception");
   const clientName = clients.find(c => c.id === opp.clientId)?.name;
   const convertedProject = projects.find(p => p.sourceOpportunityId === opp.id);
 
@@ -406,21 +406,21 @@ export default function OpportunityDetail() {
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 {!isWon && (
+                  <Button variant="outline" size="sm" onClick={startEditing} data-testid="button-edit-opp">
+                    <Edit3 className="w-4 h-4 mr-1" /> {t("common.edit")}
+                  </Button>
+                )}
+                {isWon && (
                   <>
-                    <Button variant="outline" size="sm" onClick={startEditing} data-testid="button-edit-opp">
-                      <Edit3 className="w-4 h-4 mr-1" /> {t("common.edit")}
-                    </Button>
+                    <Badge variant="outline" className="text-emerald-600 dark:text-emerald-400 border-emerald-500/30 gap-1" data-testid="badge-won-status">
+                      Won{opp.convertedAt ? " · Converted" : ""}
+                    </Badge>
                     {canConvert && (
                       <Button size="sm" onClick={() => setConvertDialogOpen(true)} data-testid="button-convert-to-project">
-                        <ArrowRightCircle className="w-4 h-4 mr-1" /> Convert to Project
+                        <ArrowRightCircle className="w-4 h-4 mr-1" /> {t("governance.convertToProject")}
                       </Button>
                     )}
                   </>
-                )}
-                {isWon && (
-                  <Badge variant="outline" className="text-emerald-600 dark:text-emerald-400 border-emerald-500/30 gap-1" data-testid="badge-won-status">
-                    Won{opp.convertedAt ? " · Converted" : ""}
-                  </Badge>
                 )}
               </div>
             </div>
@@ -543,7 +543,7 @@ export default function OpportunityDetail() {
                 disabled={convertMutation.isPending}
                 data-testid="button-confirm-convert"
               >
-                {convertMutation.isPending ? "Converting..." : "Convert to Project"}
+                {convertMutation.isPending ? t("governance.converting") : t("governance.convertToProject")}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

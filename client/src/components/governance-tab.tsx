@@ -794,7 +794,7 @@ export function GovernanceTab({ timelineId, currentStageId, onStageChange, oppor
                 data-testid="button-evaluate-gate"
               >
                 {evaluateMutation.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5 mr-1" />}
-                {evaluateMutation.isPending ? "Evaluating..." : "Request Gate Evaluation"}
+                {evaluateMutation.isPending ? t("governance.evaluating") : (stageGate?.status === "failed" ? t("governance.reEvaluateGate") : t("governance.requestGateEvaluation"))}
               </Button>
 
               {!opportunityMode && (stageGate?.status === "passed" || stageGate?.status === "exception") && nextStage && (

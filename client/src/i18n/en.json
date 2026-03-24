@@ -564,7 +564,12 @@
     "gatePassed": "Passed",
     "gateFailed": "Failed",
     "exceptionApprovedBadge": "Exception Approved",
-    "exceptionPendingBadge": "Exception Pending"
+    "exceptionPendingBadge": "Exception Pending",
+    "convertToProject": "Convert to Project",
+    "converting": "Converting...",
+    "evaluating": "Evaluating...",
+    "requestGateEvaluation": "Request Gate Evaluation",
+    "reEvaluateGate": "Re-evaluate Gate"
   },
   "reports": {
     "title": "Reports",
@@ -744,7 +749,7 @@
     "mod11Title": "RAID Log",
     "mod11Desc": "Full Risks, Assumptions, Issues, and Dependencies tracking per project with type-specific fields, probability/impact scoring for risks, and linkage to governance stages.",
     "mod12Title": "Operating Model Governance",
-    "mod12Desc": "Fully configurable stage-gated project lifecycle. Add, edit, reorder, and delete governance stages and deliverables per tenant. Define RACI accountability matrices with custom roles per deliverable. Gate enforcement with AI-powered readiness evaluation and document repository integration for artifact verification. Exception request workflow: PMs request exceptions with justification, approvers review and approve or reject.",
+    "mod12Desc": "Fully configurable stage-gated project lifecycle. Add, edit, reorder, and delete governance stages and deliverables per tenant. Define RACI accountability matrices with custom roles per deliverable. Gate enforcement with AI-powered readiness evaluation and document repository integration for artifact verification. Exception request workflow: PMs request exceptions with justification, approvers review and approve or reject. Opportunities must have 'won' status and a passed Stage 0 gate before converting to delivery projects.",
     "mod13Title": "Governance Coach",
     "mod13Desc": "AI-powered natural language assistant (OpenAI) that guides project managers through the governance framework, explains stage requirements, RACI roles, and recommends next actions. Dynamically adapts to tenant-specific governance labels.",
     "mod14Title": "RBAC Security System",

@@ -2702,6 +2702,7 @@ Respond ONLY with valid JSON:
       const opp = await storage.getTimeline(req.params.id);
       if (!opp) return res.status(404).json({ message: "Opportunity not found" });
       if (opp.recordType !== "opportunity") return res.status(400).json({ message: "Not an opportunity" });
+      if (opp.opportunityStatus !== "won") return res.status(400).json({ message: "Opportunity must have status 'won' before converting to a project" });
 
       const allStages = await storage.getFlightpathStages();
       const sortedStages = allStages.sort((a, b) => a.stageNumber - b.stageNumber);

@@ -564,7 +564,12 @@
     "gatePassed": "Aprovado",
     "gateFailed": "Reprovado",
     "exceptionApprovedBadge": "Exceção Aprovada",
-    "exceptionPendingBadge": "Exceção Pendente"
+    "exceptionPendingBadge": "Exceção Pendente",
+    "convertToProject": "Converter para Projeto",
+    "converting": "Convertendo...",
+    "evaluating": "Avaliando...",
+    "requestGateEvaluation": "Solicitar Avaliação do Gate",
+    "reEvaluateGate": "Reavaliar Gate"
   },
   "reports": {
     "title": "Relatórios",
@@ -744,7 +749,7 @@
     "mod11Title": "Registro RAID",
     "mod11Desc": "Rastreamento completo de Riscos, Premissas, Problemas e Dependências por projeto com campos específicos por tipo, pontuação de probabilidade/impacto para riscos e vinculação a etapas de governança.",
     "mod12Title": "Governança do Modelo Operacional",
-    "mod12Desc": "Ciclo de vida de projetos com etapas totalmente configurável. Adicione, edite, reordene e exclua etapas de governança e entregáveis por tenant. Defina matrizes de responsabilidade RACI com funções personalizadas por entregável. Aplicação de portões com avaliação de prontidão com IA e integração com repositório de documentos para verificação de artefatos. Fluxo de solicitação de exceções: PMs solicitam exceções com justificativa, aprovadores revisam e aprovam ou rejeitam.",
+    "mod12Desc": "Ciclo de vida de projetos com etapas totalmente configurável. Adicione, edite, reordene e exclua etapas de governança e entregáveis por tenant. Defina matrizes de responsabilidade RACI com funções personalizadas por entregável. Aplicação de portões com avaliação de prontidão com IA e integração com repositório de documentos para verificação de artefatos. Fluxo de solicitação de exceções: PMs solicitam exceções com justificativa, aprovadores revisam e aprovam ou rejeitam. As oportunidades devem ter status 'ganha' e o portão da Etapa 0 aprovado antes de serem convertidas em projetos de entrega.",
     "mod13Title": "Coach de Governança",
     "mod13Desc": "Assistente de linguagem natural com IA (OpenAI) que orienta gerentes de projeto através do framework de governança, explica os requisitos das etapas, os papéis RACI e recomenda próximas ações. Adapta-se dinamicamente aos rótulos de governança específicos do tenant.",
     "mod14Title": "Sistema de Segurança RBAC",
