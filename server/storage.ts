@@ -97,6 +97,7 @@ export interface IStorage {
   deleteContact(id: string): Promise<void>;
   getTimelines(recordType?: string, tenantId?: string): Promise<TimelineWithMilestones[]>;
   getTimeline(id: string): Promise<TimelineWithMilestones | undefined>;
+  getTimelinesBySource(sourceOpportunityId: string): Promise<Timeline | undefined>;
   createTimeline(data: InsertTimeline): Promise<Timeline>;
   updateTimeline(id: string, data: Partial<InsertTimeline>): Promise<Timeline | undefined>;
   deleteTimeline(id: string): Promise<void>;
@@ -335,6 +336,15 @@ export class DatabaseStorage implements IStorage {
       milestones: timelineMilestones.sort((a, b) => a.sortOrder - b.sortOrder),
       tasks: timelineTasks.sort((a, b) => a.sortOrder - b.sortOrder),
     };
+  }
+
+  async getTimelinesBySource(sourceOpportunityId: string): Promise<Timeline | undefined> {
+    const [timeline] = await db
+      .select()
+      .from(timelines)
+      .where(eq(timelines.sourceOpportunityId, sourceOpportunityId))
+      .limit(1);
+    return timeline;
   }
 
   async createTimeline(data: InsertTimeline): Promise<Timeline> {

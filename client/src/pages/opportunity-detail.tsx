@@ -20,12 +20,17 @@ import {
   Cloud,
   Briefcase,
   Calendar,
+  Plus,
+  Check,
+  Trash2,
+  Milestone as MilestoneIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -38,6 +43,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -101,6 +107,18 @@ export default function OpportunityDetail() {
   const appTitle = useAppTitle("Opportunity");
   const [editing, setEditing] = useState(false);
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
+  const [showAddMilestone, setShowAddMilestone] = useState(false);
+  const [newMTitle, setNewMTitle] = useState("");
+  const [newMDate, setNewMDate] = useState("");
+  const [newMDesc, setNewMDesc] = useState("");
+  const [newMIsFinancial, setNewMIsFinancial] = useState(false);
+  const [newMAmount, setNewMAmount] = useState("");
+  const [editingMilestoneId, setEditingMilestoneId] = useState<string | null>(null);
+  const [editMTitle, setEditMTitle] = useState("");
+  const [editMDate, setEditMDate] = useState("");
+  const [editMDesc, setEditMDesc] = useState("");
+  const [editMIsFinancial, setEditMIsFinancial] = useState(false);
+  const [editMAmount, setEditMAmount] = useState("");
 
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
@@ -164,6 +182,41 @@ export default function OpportunityDetail() {
     },
     onError: (err: Error) => {
       toast({ title: "Conversion failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const addMilestoneMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("POST", `/api/timelines/${id}/milestones`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/opportunities", id] });
+      toast({ title: t("projects.milestoneAdded") });
+      setShowAddMilestone(false);
+      setNewMTitle(""); setNewMDate(""); setNewMDesc(""); setNewMIsFinancial(false); setNewMAmount("");
+    },
+  });
+
+  const updateMilestoneMutation = useMutation({
+    mutationFn: async ({ milestoneId, data }: { milestoneId: string; data: any }) => {
+      const res = await apiRequest("PATCH", `/api/milestones/${milestoneId}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/opportunities", id] });
+      toast({ title: t("projects.milestoneUpdated") });
+      setEditingMilestoneId(null);
+    },
+  });
+
+  const deleteMilestoneMutation = useMutation({
+    mutationFn: async (milestoneId: string) => {
+      await apiRequest("DELETE", `/api/milestones/${milestoneId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/opportunities", id] });
+      toast({ title: t("projects.milestoneDeleted") });
     },
   });
 
@@ -235,9 +288,9 @@ export default function OpportunityDetail() {
   const stage0 = stages.find(s => s.stageNumber === 0);
   const stage0Gate = stage0 ? gates.find(g => g.stageId === stage0.id) : null;
   const isWon = opp.opportunityStatus === "won";
-  const canConvert = isWon && stage0Gate && (stage0Gate.status === "passed" || stage0Gate.status === "exception");
-  const clientName = clients.find(c => c.id === opp.clientId)?.name;
   const convertedProject = projects.find(p => p.sourceOpportunityId === opp.id);
+  const canConvert = isWon && !convertedProject && !opp.convertedAt && stage0Gate && (stage0Gate.status === "passed" || stage0Gate.status === "exception");
+  const clientName = clients.find(c => c.id === opp.clientId)?.name;
 
   const regionOptions = (settings as any)?.regions || getDefaultFieldOptions("regions", settings?.locale || "en");
   const engagementOptions = (settings as any)?.engagementModels || getDefaultFieldOptions("engagementModels", settings?.locale || "en");
@@ -498,6 +551,9 @@ export default function OpportunityDetail() {
             <TabsTrigger value="raid" className="gap-1.5 data-[state=active]:shadow-sm" data-testid="tab-raid">
               <AlertTriangle className="w-3.5 h-3.5" /> RAID Log
             </TabsTrigger>
+            <TabsTrigger value="milestones" className="gap-1.5 data-[state=active]:shadow-sm" data-testid="tab-milestones">
+              <MilestoneIcon className="w-3.5 h-3.5" /> {t("projects.milestones")} ({opp.milestones?.length || 0})
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="estimate">
@@ -516,6 +572,141 @@ export default function OpportunityDetail() {
             <RaidLog timelineId={opp.id} />
           </TabsContent>
 
+          <TabsContent value="milestones">
+            <Card>
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-semibold">{t("projects.milestones")}</h3>
+                  {!showAddMilestone && (
+                    <Button size="sm" variant="outline" onClick={() => setShowAddMilestone(true)} data-testid="button-add-opp-milestone">
+                      <Plus className="w-3.5 h-3.5 mr-1" /> {t("common.add")}
+                    </Button>
+                  )}
+                </div>
+
+                {showAddMilestone && (
+                  <div className="space-y-2 mb-4 p-3 border rounded-md bg-muted/30">
+                    <div className="flex gap-2 flex-wrap">
+                      <div className="flex-1 min-w-[140px]">
+                        <Input value={newMTitle} onChange={(e) => setNewMTitle(e.target.value)} placeholder={t("common.title")} data-testid="input-new-opp-milestone-title" />
+                      </div>
+                      <div className="w-40">
+                        <Input type="date" value={newMDate} onChange={(e) => setNewMDate(e.target.value)} placeholder={t("common.date")} data-testid="input-new-opp-milestone-date" />
+                      </div>
+                    </div>
+                    <Input value={newMDesc} onChange={(e) => setNewMDesc(e.target.value)} placeholder={t("common.description")} data-testid="input-new-opp-milestone-desc" />
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <div className="flex items-center gap-2">
+                        <Checkbox id="new-opp-fin-obligation" checked={newMIsFinancial} onCheckedChange={(checked) => setNewMIsFinancial(checked === true)} data-testid="checkbox-new-opp-milestone-financial" />
+                        <label htmlFor="new-opp-fin-obligation" className="text-xs font-medium text-muted-foreground cursor-pointer">Financial Obligation</label>
+                      </div>
+                      {newMIsFinancial && (
+                        <div className="w-36">
+                          <Input type="number" step="0.01" min="0" value={newMAmount} onChange={(e) => setNewMAmount(e.target.value)} placeholder={`${t("common.amount")} ($)`} data-testid="input-new-opp-milestone-amount" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 justify-end">
+                      <Button size="sm" variant="ghost" onClick={() => { setShowAddMilestone(false); setNewMTitle(""); setNewMDate(""); setNewMDesc(""); setNewMIsFinancial(false); setNewMAmount(""); }} data-testid="button-cancel-add-opp-milestone">
+                        <X className="w-3.5 h-3.5 mr-1" /> {t("common.cancel")}
+                      </Button>
+                      <Button size="sm" disabled={!newMTitle.trim() || !newMDate.trim() || addMilestoneMutation.isPending} onClick={() => addMilestoneMutation.mutate({ title: newMTitle.trim(), date: newMDate, description: newMDesc.trim() || null, sortOrder: (opp.milestones?.length || 0), isFinancialObligation: newMIsFinancial, amount: newMIsFinancial && newMAmount ? newMAmount : null })} data-testid="button-save-add-opp-milestone">
+                        <Check className="w-3.5 h-3.5 mr-1" /> {addMilestoneMutation.isPending ? t("common.saving") : t("common.save")}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  {(!opp.milestones || opp.milestones.length === 0) ? (
+                    <p className="text-sm text-muted-foreground py-4 text-center" data-testid="text-no-opp-milestones">{t("projects.noMilestonesAdded")}</p>
+                  ) : (
+                    [...opp.milestones].sort((a, b) => a.sortOrder - b.sortOrder).map((m) => (
+                      <Card key={m.id} className="p-3" data-testid={`opp-milestone-${m.id}`}>
+                        {editingMilestoneId === m.id ? (
+                          <div className="space-y-2">
+                            <div className="flex gap-2 flex-wrap">
+                              <div className="flex-1 min-w-[140px]">
+                                <Input value={editMTitle} onChange={(e) => setEditMTitle(e.target.value)} placeholder={t("common.title")} data-testid={`input-edit-opp-milestone-title-${m.id}`} />
+                              </div>
+                              <div className="w-40">
+                                <Input type="date" value={editMDate} onChange={(e) => setEditMDate(e.target.value)} data-testid={`input-edit-opp-milestone-date-${m.id}`} />
+                              </div>
+                            </div>
+                            <Input value={editMDesc} onChange={(e) => setEditMDesc(e.target.value)} placeholder={t("common.description")} data-testid={`input-edit-opp-milestone-desc-${m.id}`} />
+                            <div className="flex items-center gap-3 flex-wrap">
+                              <div className="flex items-center gap-2">
+                                <Checkbox id={`edit-opp-fin-${m.id}`} checked={editMIsFinancial} onCheckedChange={(checked) => setEditMIsFinancial(checked === true)} data-testid={`checkbox-edit-opp-milestone-financial-${m.id}`} />
+                                <label htmlFor={`edit-opp-fin-${m.id}`} className="text-xs font-medium text-muted-foreground cursor-pointer">Financial Obligation</label>
+                              </div>
+                              {editMIsFinancial && (
+                                <div className="w-36">
+                                  <Input type="number" step="0.01" min="0" value={editMAmount} onChange={(e) => setEditMAmount(e.target.value)} placeholder={`${t("common.amount")} ($)`} data-testid={`input-edit-opp-milestone-amount-${m.id}`} />
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 justify-end">
+                              <Button size="sm" variant="ghost" onClick={() => setEditingMilestoneId(null)} data-testid={`button-cancel-edit-opp-milestone-${m.id}`}>
+                                <X className="w-3.5 h-3.5 mr-1" /> {t("common.cancel")}
+                              </Button>
+                              <Button size="sm" disabled={!editMTitle.trim() || !editMDate.trim() || updateMilestoneMutation.isPending} onClick={() => updateMilestoneMutation.mutate({ milestoneId: m.id, data: { title: editMTitle.trim(), date: editMDate, description: editMDesc.trim() || null, isFinancialObligation: editMIsFinancial, amount: editMIsFinancial && editMAmount ? editMAmount : null } })} data-testid={`button-save-edit-opp-milestone-${m.id}`}>
+                                <Check className="w-3.5 h-3.5 mr-1" /> {updateMilestoneMutation.isPending ? t("common.saving") : t("common.save")}
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-2 h-2 rounded-full shrink-0 bg-primary" />
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <p className="text-sm font-medium truncate" data-testid={`text-opp-milestone-title-${m.id}`}>{m.title}</p>
+                                  {m.isFinancialObligation && (
+                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-500 text-amber-600 dark:text-amber-400" data-testid={`badge-opp-financial-${m.id}`}>
+                                      ${m.amount ? parseFloat(m.amount).toLocaleString("en-US", { minimumFractionDigits: 2 }) : "0.00"}
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="text-xs text-muted-foreground">{t("common.date")}: {m.date}</p>
+                                {m.description && <p className="text-xs text-muted-foreground truncate max-w-md">{m.description}</p>}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Button size="icon" variant="ghost" onClick={() => { setEditingMilestoneId(m.id); setEditMTitle(m.title); setEditMDate(m.date); setEditMDesc(m.description || ""); setEditMIsFinancial(m.isFinancialObligation); setEditMAmount(m.amount || ""); }} data-testid={`button-edit-opp-milestone-${m.id}`}>
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button size="icon" variant="ghost" data-testid={`button-delete-opp-milestone-${m.id}`}>
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>{t("common.delete")}?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      This will permanently remove "{m.title}" from this opportunity.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => deleteMilestoneMutation.mutate(m.id)} data-testid={`button-confirm-delete-opp-milestone-${m.id}`}>
+                                      {t("common.delete")}
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
+                          </div>
+                        )}
+                      </Card>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
         </Tabs>
 
         <AlertDialog open={convertDialogOpen} onOpenChange={setConvertDialogOpen}>
@@ -527,6 +718,7 @@ export default function OpportunityDetail() {
                   <span>This will create a new Project from this Opportunity. The following data will be copied:</span>
                   <ul className="list-disc pl-5 mt-2 space-y-1">
                     <li>All phases and workstreams (as delivery baseline)</li>
+                    <li>Milestones</li>
                     <li>Team composition and rate cards</li>
                     <li>Resource allocations</li>
                     <li>RAID log items</li>

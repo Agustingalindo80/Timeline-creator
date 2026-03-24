@@ -2711,6 +2711,14 @@ Respond ONLY with valid JSON:
       if (opp.recordType !== "opportunity") return res.status(400).json({ message: "Not an opportunity" });
       if (opp.opportunityStatus !== "won") return res.status(400).json({ message: "Opportunity must have status 'won' before converting to a project" });
 
+      if (opp.convertedAt) {
+        return res.status(400).json({ message: "This opportunity has already been converted to a project" });
+      }
+      const existingProject = await storage.getTimelinesBySource(opp.id);
+      if (existingProject) {
+        return res.status(400).json({ message: "A project already exists for this opportunity" });
+      }
+
       const allStages = await storage.getFlightpathStages();
       const sortedStages = allStages.sort((a, b) => a.stageNumber - b.stageNumber);
       const stage0 = sortedStages.find(s => s.stageNumber === 0);
@@ -2872,6 +2880,25 @@ Respond ONLY with valid JSON:
         });
       }
 
+      let milestonesCopied = 0;
+      const oppMilestones = opp.milestones || [];
+      for (const m of oppMilestones) {
+        await storage.createMilestone({
+          tenantId: req.tenantId || "default",
+          timelineId: project.id,
+          title: m.title,
+          description: m.description,
+          date: m.date,
+          actualDate: m.actualDate,
+          color: m.color,
+          icon: m.icon,
+          sortOrder: m.sortOrder,
+          isFinancialObligation: m.isFinancialObligation,
+          amount: m.amount,
+        });
+        milestonesCopied++;
+      }
+
       if (stage1) {
         const deliverables = await storage.getStageDeliverables(stage1.id);
         for (const d of deliverables.sort((a, b) => a.sortOrder - b.sortOrder)) {
@@ -2900,6 +2927,7 @@ Respond ONLY with valid JSON:
           teamMembersCopied: oppTeamMembers.length,
           allocationsCopied: oppAllocations.length,
           raidItemsCopied: oppRisks.length,
+          milestonesCopied,
           governanceStage: stage1 ? `Stage 1: ${stage1.name}` : "None",
         },
       });
