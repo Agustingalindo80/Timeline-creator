@@ -39,6 +39,7 @@ import ProjectStatusReport from "@/pages/reports/project-status";
 import MilestoneTrackerReport from "@/pages/reports/milestone-tracker";
 import RaidSummaryReport from "@/pages/reports/raid-summary";
 import Landing from "@/pages/landing";
+import GuidePage from "@/pages/guide";
 import NotFound from "@/pages/not-found";
 
 function ProtectedRoute({ requiredModule, children }: { requiredModule: string; children: ReactNode }) {
@@ -140,6 +141,7 @@ function AppRouter() {
       <Route path="/reports">{() => <ProtectedRoute requiredModule="module.reports"><ReportsPage /></ProtectedRoute>}</Route>
       <Route path="/about" component={AboutPage} />
       <Route path="/chat" component={ChatPage} />
+      <Route path="/guide" component={GuidePage} />
       <Route path="/admin/security">{() => <ProtectedRoute requiredModule="module.admin"><AdminSecurity /></ProtectedRoute>}</Route>
       <Route path="/admin/settings">{() => <ProtectedRoute requiredModule="module.admin"><Admin /></ProtectedRoute>}</Route>
       <Route path="/admin"><Redirect to="/admin/settings" /></Route>

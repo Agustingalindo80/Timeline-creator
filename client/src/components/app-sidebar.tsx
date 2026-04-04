@@ -1,4 +1,4 @@
-import { LayoutDashboard, FolderKanban, Settings, Building2, Users, UserCheck, CalendarRange, Clock, LogOut, Info, Bot, Target, Shield, ChevronRight, Globe, ChevronsUpDown, FlaskConical, BarChart3 } from "lucide-react";
+import { LayoutDashboard, FolderKanban, Settings, Building2, Users, UserCheck, CalendarRange, Clock, LogOut, Info, Bot, Target, Shield, ChevronRight, Globe, ChevronsUpDown, FlaskConical, BarChart3, BookOpen } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -109,6 +109,7 @@ export function AppSidebar() {
 
   const helpItems = [
     { title: coachLabel, url: "/chat", icon: Bot, visible: hasModule("coach") },
+    { title: t("guide.title"), url: "/guide", icon: BookOpen, visible: true },
   ].filter(i => i.visible);
 
   const workItems = [
