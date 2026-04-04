@@ -53,6 +53,11 @@ async function resolveTenantBySlug(slug: string): Promise<string | null> {
 
 export function tenantContext() {
   return async (req: Request, _res: Response, next: NextFunction) => {
+    if ((req as any).isApiToken && (req as any).apiTokenTenantId) {
+      req.tenantId = (req as any).apiTokenTenantId;
+      return next();
+    }
+
     const slugMatch = req.originalUrl.match(/^\/t\/([a-z0-9-]+)(\/|$)/);
     if (slugMatch) {
       const slug = slugMatch[1];

@@ -30,6 +30,7 @@ import {
   auditLog,
   evmSnapshots,
   users,
+  apiTokens,
   type BrandingConfig,
   type InsertBranding,
   type Client,
@@ -215,6 +216,13 @@ export interface IStorage {
   getOrgRolePermissions(roleId: string, tenantId: string): Promise<string[]>;
   setOrgRolePermissions(roleId: string, tenantId: string, permissionKeys: string[]): Promise<void>;
   getOrgRoleUserCount(roleId: string, tenantId: string): Promise<number>;
+
+  getApiTokens(tenantId: string): Promise<import("@shared/schema").ApiToken[]>;
+  getApiToken(id: string): Promise<import("@shared/schema").ApiToken | undefined>;
+  getApiTokenByHash(tokenHash: string): Promise<import("@shared/schema").ApiToken | undefined>;
+  createApiToken(data: import("@shared/schema").InsertApiToken): Promise<import("@shared/schema").ApiToken>;
+  revokeApiToken(id: string): Promise<import("@shared/schema").ApiToken | undefined>;
+  updateApiTokenLastUsed(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1204,6 +1212,34 @@ export class DatabaseStorage implements IStorage {
       projectCount: projectRows.length,
       opportunityCount: oppRows.length,
     };
+  }
+
+  async getApiTokens(tenantId: string): Promise<import("@shared/schema").ApiToken[]> {
+    return db.select().from(apiTokens).where(eq(apiTokens.tenantId, tenantId)).orderBy(desc(apiTokens.createdAt));
+  }
+
+  async getApiToken(id: string): Promise<import("@shared/schema").ApiToken | undefined> {
+    const [token] = await db.select().from(apiTokens).where(eq(apiTokens.id, id));
+    return token;
+  }
+
+  async getApiTokenByHash(tokenHash: string): Promise<import("@shared/schema").ApiToken | undefined> {
+    const [token] = await db.select().from(apiTokens).where(eq(apiTokens.tokenHash, tokenHash));
+    return token;
+  }
+
+  async createApiToken(data: import("@shared/schema").InsertApiToken): Promise<import("@shared/schema").ApiToken> {
+    const [token] = await db.insert(apiTokens).values(data).returning();
+    return token;
+  }
+
+  async revokeApiToken(id: string): Promise<import("@shared/schema").ApiToken | undefined> {
+    const [token] = await db.update(apiTokens).set({ revokedAt: new Date() }).where(eq(apiTokens.id, id)).returning();
+    return token;
+  }
+
+  async updateApiTokenLastUsed(id: string): Promise<void> {
+    await db.update(apiTokens).set({ lastUsedAt: new Date() }).where(eq(apiTokens.id, id));
   }
 }
 

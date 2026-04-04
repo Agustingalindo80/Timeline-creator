@@ -1540,6 +1540,82 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/api-tokens", requireModuleAccess("admin"), requirePermission("org.settings.manage"), async (req, res) => {
+    try {
+      const tokens = await storage.getApiTokens(req.tenantId);
+      const safe = tokens.map(t => ({
+        id: t.id,
+        name: t.name,
+        tokenPrefix: t.tokenPrefix,
+        expiresAt: t.expiresAt,
+        lastUsedAt: t.lastUsedAt,
+        revokedAt: t.revokedAt,
+        createdAt: t.createdAt,
+        userId: t.userId,
+      }));
+      res.json(safe);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/api-tokens", requireModuleAccess("admin"), requirePermission("org.settings.manage"), async (req, res) => {
+    try {
+      const createTokenSchema = z.object({
+        name: z.string().min(1, "Token name is required").max(100, "Token name too long"),
+        expiresAt: z.string().nullable().optional().refine(val => {
+          if (!val) return true;
+          const d = new Date(val);
+          return !isNaN(d.getTime()) && d > new Date();
+        }, "Expiration date must be a valid future date"),
+      });
+      const parsed = createTokenSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: parsed.error.errors[0]?.message || "Invalid input" });
+      }
+      const { name, expiresAt } = parsed.data;
+      const { randomBytes, createHash } = await import("crypto");
+      const rawToken = randomBytes(32).toString("hex");
+      const tokenHash = createHash("sha256").update(rawToken).digest("hex");
+      const tokenPrefix = rawToken.slice(0, 8);
+      const userId = extractUserId(req);
+      if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+      const token = await storage.createApiToken({
+        tenantId: req.tenantId,
+        userId,
+        name: name!.trim(),
+        tokenHash,
+        tokenPrefix,
+        expiresAt: expiresAt ? new Date(expiresAt) : null,
+      });
+
+      res.json({
+        id: token.id,
+        name: token.name,
+        tokenPrefix: token.tokenPrefix,
+        expiresAt: token.expiresAt,
+        createdAt: token.createdAt,
+        plainToken: rawToken,
+      });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.delete("/api/api-tokens/:id", requireModuleAccess("admin"), requirePermission("org.settings.manage"), async (req, res) => {
+    try {
+      const token = await storage.getApiToken(req.params.id);
+      if (!token || token.tenantId !== req.tenantId) {
+        return res.status(404).json({ message: "Token not found" });
+      }
+      const revoked = await storage.revokeApiToken(req.params.id);
+      res.json({ id: revoked?.id, revokedAt: revoked?.revokedAt });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   app.get("/api/estimate-template", async (req, res) => {
     try {
       const allRateCards = await storage.getRateCards(req.tenantId);

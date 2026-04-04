@@ -36,6 +36,7 @@ import {
   ShieldCheck,
   Database,
   ServerCog,
+  Key,
 } from "lucide-react";
 
 const coreModuleIcons = [
@@ -47,7 +48,7 @@ const coreModuleIcons = [
 const capabilityIcons = [
   Layers, DollarSign, Heart, BarChart3, Shield, Compass, Bot, FolderKanban,
   ArrowRightLeft, Milestone, Upload, UserCheck, Lock, Database, ServerCog,
-  FileSpreadsheet, Moon, SlidersHorizontal,
+  FileSpreadsheet, Moon, SlidersHorizontal, Key,
 ];
 
 export default function AboutPage() {

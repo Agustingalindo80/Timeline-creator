@@ -42,7 +42,7 @@ The application uses a modern web stack with React, Vite, Tailwind CSS, and shad
 - **Resource Allocation:** Matrix view for team members' weekly hours.
 - **Configurable Fields:** User-configurable dropdown fields.
 - **Branding & Theming:** Database-driven system for app name, logo, favicon, and color scheme.
-- **Authentication:** Replit Auth via OpenID Connect with session storage.
+- **Authentication:** Replit Auth via OpenID Connect with session storage. Optional Bearer token authentication for external API integrations via `api_tokens` table (SHA-256 hashed, tenant-scoped, configurable expiration). Managed from Settings > API Tokens tab.
 - **RBAC Security System:** Two-layer access model with server-side enforcement: configurable Security Roles and Record-Level Filtering based on assignments. Features include custom role builder, auto-role assignment, and user-team member linking.
 - **Multi-Tenancy Architecture:** All core tables include `tenantId`. Tenant resolution from slug-based URLs with caching. Tenant-specific settings and branding.
 - **Tenant Provisioning Pipeline:** Automates tenant creation, seeding RBAC, governance, app settings, and branding, including the initial tenant admin user.

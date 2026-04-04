@@ -846,6 +846,26 @@ export const insertAllocationSchema = createInsertSchema(allocations).omit({ id:
     return !isNaN(n) && n >= 0;
   }, { message: "Weekly hours must be 0 or greater" }).optional(),
 });
+export const apiTokens = pgTable("api_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: text("tenant_id").notNull(),
+  userId: varchar("user_id").notNull(),
+  name: text("name").notNull(),
+  tokenHash: text("token_hash").notNull(),
+  tokenPrefix: text("token_prefix").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_api_tokens_hash").on(table.tokenHash),
+  index("idx_api_tokens_tenant").on(table.tenantId),
+]);
+
+export const insertApiTokenSchema = createInsertSchema(apiTokens).omit({ id: true, createdAt: true });
+export type InsertApiToken = z.infer<typeof insertApiTokenSchema>;
+export type ApiToken = typeof apiTokens.$inferSelect;
+
 export const insertTimesheetEntrySchema = createInsertSchema(timesheetEntries).omit({ id: true, createdAt: true, updatedAt: true }).extend({
   hours: z.string().refine((val) => {
     const n = parseFloat(val);

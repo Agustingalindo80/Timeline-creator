@@ -131,6 +131,33 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    const rawToken = authHeader.slice(7);
+    try {
+      const { createHash } = await import("crypto");
+      const tokenHash = createHash("sha256").update(rawToken).digest("hex");
+      const { storage } = await import("../../storage");
+      const apiToken = await storage.getApiTokenByHash(tokenHash);
+      if (!apiToken || apiToken.revokedAt) {
+        return res.status(401).json({ message: "Invalid or revoked API token" });
+      }
+      if (apiToken.expiresAt && new Date(apiToken.expiresAt) < new Date()) {
+        return res.status(401).json({ message: "API token expired" });
+      }
+      storage.updateApiTokenLastUsed(apiToken.id).catch(() => {});
+      (req as any).user = {
+        claims: { sub: apiToken.userId },
+        id: apiToken.userId,
+      };
+      (req as any).apiTokenTenantId = apiToken.tenantId;
+      (req as any).isApiToken = true;
+      return next();
+    } catch (error) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+  }
+
   const user = req.user as any;
 
   if (!req.isAuthenticated() || !user.expires_at) {

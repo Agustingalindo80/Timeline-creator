@@ -422,7 +422,32 @@
     "unassigned": "Unassigned",
     "costLabel": "Cost",
     "billLabel": "Bill",
-    "marginLabel": "Margin"
+    "marginLabel": "Margin",
+    "apiTokensTab": "API Tokens",
+    "apiTokensTitle": "API Tokens",
+    "apiTokensDescription": "Generate Bearer tokens for external API access. Tokens inherit the creating user's permissions and are scoped to this tenant.",
+    "apiTokenCreate": "Create New Token",
+    "apiTokenName": "Token Name",
+    "apiTokenNamePlaceholder": "e.g. External Integration",
+    "apiTokenExpiry": "Expiration",
+    "apiTokenExpiryNever": "Never",
+    "apiTokenExpiry30d": "30 days",
+    "apiTokenExpiry90d": "90 days",
+    "apiTokenExpiry1y": "1 year",
+    "apiTokenGenerate": "Generate",
+    "apiTokenCreated": "API token created",
+    "apiTokenRevoked": "API token revoked",
+    "apiTokenCopyWarning": "Copy this token now — it will not be shown again.",
+    "apiTokenDismiss": "Dismiss",
+    "apiTokenEmpty": "No API tokens have been created yet.",
+    "apiTokenStatusRevoked": "Revoked",
+    "apiTokenStatusExpired": "Expired",
+    "apiTokenCreatedAt": "Created",
+    "apiTokenLastUsed": "Last used",
+    "apiTokenExpiresAt": "Expires",
+    "apiTokenRevokeTitle": "Revoke API Token?",
+    "apiTokenRevokeDescription": "This will immediately invalidate this token. Any integrations using it will stop working.",
+    "apiTokenRevokeConfirm": "Revoke"
   },
   "security": {
     "title": "Security",
@@ -725,7 +750,7 @@
     "keyCapabilitiesHeading": "Key Capabilities",
     "architectureBadge": "Architecture",
     "technicalSummaryHeading": "Technical Summary",
-    "technicalSummaryText": "Built on a modern web stack with React, Tailwind CSS, and shadcn/ui on the frontend, Express.js on Node.js with PostgreSQL and Drizzle ORM on the backend. Full multi-tenant architecture with tenant isolation across all data tables, automated provisioning pipeline, and a two-layer RBAC security system with server-side enforcement. AI-powered features leverage OpenAI integration for intelligent gate evaluation and conversational governance coaching. Real-time data updates via TanStack React Query, secure session-based authentication via Replit Auth (OpenID Connect), and a responsive design ensure the platform works reliably across devices and team sizes. All configuration, branding, governance frameworks, and field options are database-driven for easy customisation without code changes.",
+    "technicalSummaryText": "Built on a modern web stack with React, Tailwind CSS, and shadcn/ui on the frontend, Express.js on Node.js with PostgreSQL and Drizzle ORM on the backend. Full multi-tenant architecture with tenant isolation across all data tables, automated provisioning pipeline, and a two-layer RBAC security system with server-side enforcement. AI-powered features leverage OpenAI integration for intelligent gate evaluation and conversational governance coaching. Real-time data updates via TanStack React Query, secure session-based authentication via Replit Auth (OpenID Connect) with optional Bearer token authentication for external API integrations, and a responsive design ensure the platform works reliably across devices and team sizes. All configuration, branding, governance frameworks, and field options are database-driven for easy customisation without code changes.",
     "mod1Title": "Dashboard",
     "mod1Desc": "Mission Control layout with portfolio-level metric cards, pipeline funnel bars, and a consolidated view of all active projects, health status, budgets, and key performance indicators.",
     "mod2Title": "Company & Contact Management",
@@ -795,6 +820,8 @@
     "cap17Title": "Dark & Light Themes",
     "cap17Desc": "Toggle between dark and light modes. Theme preference is persisted and applied consistently across all pages.",
     "cap18Title": "Dynamic Framework Configuration",
-    "cap18Desc": "Tenant-customisable governance framework with configurable labels, stages, deliverables, RACI roles, and gate criteria. AI Coach dynamically adapts to your framework."
+    "cap18Desc": "Tenant-customisable governance framework with configurable labels, stages, deliverables, RACI roles, and gate criteria. AI Coach dynamically adapts to your framework.",
+    "cap19Title": "API Token Authentication",
+    "cap19Desc": "Generate secure Bearer tokens for external API access. Tokens are SHA-256 hashed, scoped to a single tenant, support configurable expiration (30 days, 90 days, 1 year, or never), and inherit the creating user's RBAC permissions. Create, list, and revoke tokens from the Settings page."
   }
 }

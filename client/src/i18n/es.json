@@ -422,7 +422,32 @@
     "unassigned": "Sin asignar",
     "costLabel": "Costo",
     "billLabel": "Facturación",
-    "marginLabel": "Margen"
+    "marginLabel": "Margen",
+    "apiTokensTab": "Tokens API",
+    "apiTokensTitle": "Tokens API",
+    "apiTokensDescription": "Genere tokens Bearer para acceso externo a la API. Los tokens heredan los permisos del usuario que los crea y están limitados a este tenant.",
+    "apiTokenCreate": "Crear Nuevo Token",
+    "apiTokenName": "Nombre del Token",
+    "apiTokenNamePlaceholder": "ej. Integración Externa",
+    "apiTokenExpiry": "Expiración",
+    "apiTokenExpiryNever": "Nunca",
+    "apiTokenExpiry30d": "30 días",
+    "apiTokenExpiry90d": "90 días",
+    "apiTokenExpiry1y": "1 año",
+    "apiTokenGenerate": "Generar",
+    "apiTokenCreated": "Token API creado",
+    "apiTokenRevoked": "Token API revocado",
+    "apiTokenCopyWarning": "Copie este token ahora — no se mostrará de nuevo.",
+    "apiTokenDismiss": "Descartar",
+    "apiTokenEmpty": "Aún no se han creado tokens API.",
+    "apiTokenStatusRevoked": "Revocado",
+    "apiTokenStatusExpired": "Expirado",
+    "apiTokenCreatedAt": "Creado",
+    "apiTokenLastUsed": "Último uso",
+    "apiTokenExpiresAt": "Expira",
+    "apiTokenRevokeTitle": "¿Revocar Token API?",
+    "apiTokenRevokeDescription": "Esto invalidará inmediatamente este token. Las integraciones que lo usen dejarán de funcionar.",
+    "apiTokenRevokeConfirm": "Revocar"
   },
   "security": {
     "title": "Seguridad",
@@ -725,7 +750,7 @@
     "keyCapabilitiesHeading": "Capacidades Clave",
     "architectureBadge": "Arquitectura",
     "technicalSummaryHeading": "Resumen Técnico",
-    "technicalSummaryText": "Construida sobre una stack web moderna con React, Tailwind CSS y shadcn/ui en el frontend, Express.js sobre Node.js con PostgreSQL y Drizzle ORM en el backend. Arquitectura multi-tenant completa con aislamiento de datos en todas las tablas, pipeline de aprovisionamiento automatizado y un sistema de seguridad RBAC de dos capas con aplicación del lado del servidor. Las funcionalidades con IA aprovechan la integración con OpenAI para evaluación inteligente de compuertas y coaching conversacional de gobernanza. Actualizaciones de datos en tiempo real mediante TanStack React Query, autenticación segura basada en sesiones vía Replit Auth (OpenID Connect), y un diseño responsivo garantizan que la plataforma funcione de manera confiable en diferentes dispositivos y tamaños de equipo. Toda la configuración, marca, marcos de gobernanza y opciones de campos son impulsados por base de datos para una fácil personalización sin cambios de código.",
+    "technicalSummaryText": "Construida sobre una stack web moderna con React, Tailwind CSS y shadcn/ui en el frontend, Express.js sobre Node.js con PostgreSQL y Drizzle ORM en el backend. Arquitectura multi-tenant completa con aislamiento de datos en todas las tablas, pipeline de aprovisionamiento automatizado y un sistema de seguridad RBAC de dos capas con aplicación del lado del servidor. Las funcionalidades con IA aprovechan la integración con OpenAI para evaluación inteligente de compuertas y coaching conversacional de gobernanza. Actualizaciones de datos en tiempo real mediante TanStack React Query, autenticación segura basada en sesiones vía Replit Auth (OpenID Connect) con autenticación opcional por token Bearer para integraciones API externas, y un diseño responsivo garantizan que la plataforma funcione de manera confiable en diferentes dispositivos y tamaños de equipo. Toda la configuración, marca, marcos de gobernanza y opciones de campos son impulsados por base de datos para una fácil personalización sin cambios de código.",
     "mod1Title": "Panel de Control",
     "mod1Desc": "Diseño de Centro de Mando con tarjetas de métricas a nivel de portafolio, barras de embudo del pipeline y una vista consolidada de todos los proyectos activos, estado de salud, presupuestos e indicadores clave de rendimiento.",
     "mod2Title": "Gestión de Empresas y Contactos",
@@ -795,6 +820,8 @@
     "cap17Title": "Temas Oscuro y Claro",
     "cap17Desc": "Alterne entre modos oscuro y claro. La preferencia de tema se persiste y aplica consistentemente en todas las páginas.",
     "cap18Title": "Configuración Dinámica del Marco",
-    "cap18Desc": "Marco de gobernanza personalizable por tenant con etiquetas, etapas, entregables, roles RACI y criterios de compuerta configurables. El Coach con IA se adapta dinámicamente a su marco."
+    "cap18Desc": "Marco de gobernanza personalizable por tenant con etiquetas, etapas, entregables, roles RACI y criterios de compuerta configurables. El Coach con IA se adapta dinámicamente a su marco.",
+    "cap19Title": "Autenticación por Token API",
+    "cap19Desc": "Genere tokens Bearer seguros para acceso externo a la API. Los tokens se hashean con SHA-256, están limitados a un único tenant, soportan expiración configurable (30 días, 90 días, 1 año o nunca) y heredan los permisos RBAC del usuario que los crea. Cree, liste y revoque tokens desde la página de Configuración."
   }
 }
