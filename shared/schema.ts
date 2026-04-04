@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, pgEnum, text, varchar, integer, boolean, jsonb, numeric, timestamp, date, index, unique } from "drizzle-orm/pg-core";
+import { pgTable, pgEnum, text, varchar, integer, boolean, jsonb, numeric, timestamp, date, index, unique, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { users } from "./models/auth";
@@ -858,7 +858,7 @@ export const apiTokens = pgTable("api_tokens", {
   revokedAt: timestamp("revoked_at", { withTimezone: true }),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
-  index("idx_api_tokens_hash").on(table.tokenHash),
+  uniqueIndex("idx_api_tokens_hash_unique").on(table.tokenHash),
   index("idx_api_tokens_tenant").on(table.tenantId),
 ]);
 
