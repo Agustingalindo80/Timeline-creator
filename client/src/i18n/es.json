@@ -743,14 +743,14 @@
   },
   "about": {
     "tagline": "Plataforma Integral de Planificación Visual de Proyectos, EVM y Gobernanza con IA",
-    "overview": "Una plataforma unificada y multi-tenant para que los gerentes de proyecto planifiquen, ejecuten y monitoreen proyectos con visibilidad completa del alcance, cronograma, costo y rendimiento del equipo. Desde la estimación de oportunidades de pre-venta, pasando por la entrega con control de etapas, hasta la realización del valor, la plataforma combina precios basados en recursos, gestión de proyectos tradicional, coaching de gobernanza con IA, análisis de valor ganado y seguridad basada en roles para mantener los proyectos en curso y a las partes interesadas informadas.",
+    "overview": "Una plataforma unificada y multi-tenant para que los gerentes de proyecto planifiquen, ejecuten y monitoreen proyectos con visibilidad completa del alcance, cronograma, costo y rendimiento del equipo. Desde la estimación de oportunidades de pre-venta, pasando por la entrega con control de etapas, hasta la realización del valor, la plataforma combina precios basados en recursos, gestión de proyectos tradicional, coaching de gobernanza con IA, análisis de valor ganado, reportes operacionales y seguridad basada en roles para mantener los proyectos en curso y a las partes interesadas informadas. Disponible en inglés, español y portugués con configuración de idioma a nivel de tenant.",
     "platformModulesBadge": "Módulos de la Plataforma",
     "coreModulesHeading": "Módulos Principales",
     "highlightsBadge": "Destacados",
     "keyCapabilitiesHeading": "Capacidades Clave",
     "architectureBadge": "Arquitectura",
     "technicalSummaryHeading": "Resumen Técnico",
-    "technicalSummaryText": "Construida sobre una stack web moderna con React, Tailwind CSS y shadcn/ui en el frontend, Express.js sobre Node.js con PostgreSQL y Drizzle ORM en el backend. Arquitectura multi-tenant completa con aislamiento de datos en todas las tablas, pipeline de aprovisionamiento automatizado y un sistema de seguridad RBAC de dos capas con aplicación del lado del servidor. Las funcionalidades con IA aprovechan la integración con OpenAI para evaluación inteligente de compuertas y coaching conversacional de gobernanza. Actualizaciones de datos en tiempo real mediante TanStack React Query, autenticación segura basada en sesiones vía Replit Auth (OpenID Connect) con autenticación opcional por token Bearer para integraciones API externas, y un diseño responsivo garantizan que la plataforma funcione de manera confiable en diferentes dispositivos y tamaños de equipo. Toda la configuración, marca, marcos de gobernanza y opciones de campos son impulsados por base de datos para una fácil personalización sin cambios de código.",
+    "technicalSummaryText": "Construida sobre una stack web moderna con React, Tailwind CSS y shadcn/ui en el frontend, Express.js sobre Node.js con PostgreSQL y Drizzle ORM en el backend. Arquitectura multi-tenant completa con aislamiento de datos en todas las tablas, pipeline de aprovisionamiento automatizado y un sistema de seguridad RBAC de dos capas con aplicación del lado del servidor y registro de auditoría. Las funcionalidades con IA aprovechan la integración con OpenAI para evaluación inteligente de compuertas y coaching conversacional de gobernanza. Internacionalizada para inglés, español y portugués con selección de idioma a nivel de tenant usando i18next. Reportes operacionales con agregación del lado del servidor y exportación a CSV/PDF. Actualizaciones de datos en tiempo real mediante TanStack React Query, autenticación segura basada en sesiones vía Replit Auth (OpenID Connect) con autenticación opcional por token Bearer para integraciones API externas, y un diseño responsivo garantizan que la plataforma funcione de manera confiable en diferentes dispositivos y tamaños de equipo. Toda la configuración, marca, marcos de gobernanza y opciones de campos son impulsados por base de datos para una fácil personalización sin cambios de código.",
     "mod1Title": "Panel de Control",
     "mod1Desc": "Diseño de Centro de Mando con tarjetas de métricas a nivel de portafolio, barras de embudo del pipeline y una vista consolidada de todos los proyectos activos, estado de salud, presupuestos e indicadores clave de rendimiento.",
     "mod2Title": "Gestión de Empresas y Contactos",
@@ -785,6 +785,8 @@
     "mod16Desc": "Personalización impulsada por base de datos con nombre de aplicación, logotipo, favicon y esquema de colores personalizados por tenant. Soporta temas oscuro y claro con preferencia persistente.",
     "mod17Title": "Campos Configurables",
     "mod17Desc": "Opciones de menú desplegable configurables por el administrador para tipos de proyecto, modelos de contratación, estados, roles, regiones, formatos de fecha y más. Adapte la plataforma a la terminología de su organización.",
+    "mod18Title": "Reportes y Analítica",
+    "mod18Desc": "Reportes operacionales y ejecutivos con agregación del lado del servidor. Vista general de Salud del Portafolio, instantáneas de Estado de Proyecto individual, Seguimiento de Hitos con obligaciones financieras y Resumen RAID de todos los proyectos. Exportación a CSV y PDF para distribución fuera de línea.",
     "cap1Title": "Estructura Jerárquica de Tareas",
     "cap1Desc": "Organice el trabajo en fases y flujos de trabajo con relaciones padre-hijo automáticas, cascada de estados y validación de fechas.",
     "cap2Title": "Modelo Financiero Basado en Precios",
@@ -822,6 +824,10 @@
     "cap18Title": "Configuración Dinámica del Marco",
     "cap18Desc": "Marco de gobernanza personalizable por tenant con etiquetas, etapas, entregables, roles RACI y criterios de compuerta configurables. El Coach con IA se adapta dinámicamente a su marco.",
     "cap19Title": "Autenticación por Token API",
-    "cap19Desc": "Genere tokens Bearer seguros para acceso externo a la API. Los tokens se hashean con SHA-256, están limitados a un único tenant, soportan expiración configurable (30 días, 90 días, 1 año o nunca) y heredan los permisos RBAC del usuario que los crea. Cree, liste y revoque tokens desde la página de Configuración."
+    "cap19Desc": "Genere tokens Bearer seguros para acceso externo a la API. Los tokens se hashean con SHA-256, están limitados a un único tenant, soportan expiración configurable (30 días, 90 días, 1 año o nunca) y heredan los permisos RBAC del usuario que los crea. Cree, liste y revoque tokens desde la página de Configuración.",
+    "cap20Title": "Internacionalización (i18n)",
+    "cap20Desc": "Soporte completo multilenguaje para inglés, español y portugués. El idioma se configura por tenant en la creación y se aplica en toda la interfaz, valores predeterminados de listas, etiquetas de gobernanza y respuestas del Coach con IA. La traducción cubre más de 300 claves en todos los módulos.",
+    "cap21Title": "Registro de Auditoría",
+    "cap21Desc": "Registro cronológico de acciones sensibles en toda la plataforma. Rastrea actividad de usuarios, cambios de roles, actualizaciones de permisos y eventos de seguridad con marcas de tiempo e identificación del actor para cumplimiento y rendición de cuentas."
   }
 }
