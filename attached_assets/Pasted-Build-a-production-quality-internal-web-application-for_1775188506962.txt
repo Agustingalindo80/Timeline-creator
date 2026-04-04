@@ -1,0 +1,552 @@
+Build a production-quality internal web application for VOGARA NOVA Products, S.A.P.I. de C.V. called:
+
+Vogara Flightpath – Business Requirements Studio
+
+Purpose:
+This is Phase 1 of a larger transformation platform. Phase 1 is NOT the final operational product for the client. Phase 1 is an internal Vogara accelerator used to capture, structure, govern, and generate business requirements and delivery-ready artifacts for transformation initiatives.
+
+Business context:
+We are working with a prospect whose current operation is fragmented across Salesforce, SAP, Asana, WhatsApp, email, spreadsheets, and manual reporting. There is poor end-to-end traceability across sales, PMO, operations, service, and compliance. The larger future program may include commercial processes, PMO, operations, service, integrations, and a regulated ports-oriented compliance/control model in Mexico. For this phase, we must build the requirements-generation and requirements-governance engine first.
+
+Core outcome of this app:
+Convert raw discovery inputs into a structured, governed, reusable set of requirements artifacts aligned to Vogara Flightpath.
+
+The app must help us go from:
+raw notes / documents / transcripts / workshop findings
+to
+business outcomes / process maps / requirements / user stories / acceptance criteria / traceability / approval-ready artifacts / knowledge assets.
+
+This app is for INTERNAL USE by Vogara only.
+
+==================================================
+1. PRODUCT VISION
+==================================================
+
+Build an internal SaaS-style web app where Vogara consultants, BAs, architects, and delivery leads can:
+
+1) Create a new initiative or prospect workspace
+2) Capture discovery inputs:
+   - uploaded files
+   - workshop notes
+   - meeting transcripts
+   - screenshots
+   - pasted text
+   - initiative descriptions
+3) Extract and manage:
+   - business outcomes
+   - current state pains
+   - future state opportunities
+   - stakeholders
+   - business processes
+   - requirements
+   - user stories
+   - dependencies
+   - assumptions
+   - risks
+   - compliance considerations
+4) Generate:
+   - structured BRD-style output
+   - process inventory
+   - capability map
+   - initiative catalog
+   - user story backlog
+   - acceptance criteria
+   - traceability matrix
+   - workshop summaries
+   - knowledge-base articles
+   - implementation-ready handoff package
+5) Maintain versioning, comments, approvals, and audit history
+6) Support reusable templates and accelerators for future projects
+7) Support a future expansion to regulated Mexican port implementations
+
+==================================================
+2. PRIMARY USERS
+==================================================
+
+The app must support these personas:
+
+1) Admin
+   - manages global settings, templates, users, roles, taxonomy, prompt presets
+
+2) Engagement Lead / Delivery Lead
+   - owns initiative setup
+   - reviews business outcomes and scope
+   - approves baseline requirements package
+
+3) Business Analyst
+   - captures workshops
+   - structures requirements
+   - writes user stories
+   - manages traceability and clarifications
+
+4) Solution Architect
+   - validates solution implications
+   - classifies config / integration / custom build
+   - adds architecture notes and constraints
+
+5) Compliance / Governance Reviewer
+   - reviews regulated requirements
+   - checks evidence, auditability, approvals, privacy, and retention needs
+
+6) Observer / Executive
+   - consumes dashboards and approved outputs
+   - does not edit requirements deeply
+
+==================================================
+3. PHASE 1 SCOPE
+==================================================
+
+This phase must include the following modules:
+
+A. Initiative Workspace
+- Create initiative
+- Define client / prospect
+- define industry
+- define business domain
+- define project type
+- define implementation type
+- define regulatory sensitivity
+- define country = Mexico by default
+- optional flag: port / logistics / public sector / B2G / B2B
+- define stage in Vogara Flightpath
+- support multiple workstreams per initiative
+
+B. Discovery Intake
+- Upload files
+- Paste transcript text
+- Paste workshop notes
+- Capture manual observations
+- Tag source type
+- Tag source confidence
+- Tag workstream
+- Tag confidentiality
+- Save and version all inputs
+
+C. Business Outcomes Manager
+- Capture up to many business outcomes
+- For each business outcome store:
+  - title
+  - description
+  - problem being solved
+  - measurable target
+  - business owner
+  - related workstreams
+  - priority
+  - status
+- Must support a “BOR-style” view (Business Outcome Register)
+
+D. Process Inventory
+- Create and manage current-state and future-state processes
+- support macroprocess > process > subprocess hierarchy
+- each process must include:
+  - name
+  - workstream
+  - current state description
+  - pain points
+  - future state description
+  - systems involved
+  - actors involved
+  - inputs / outputs
+  - SLA / timing if applicable
+  - control points
+  - evidence generated
+  - compliance relevance
+- Must allow linking processes to business outcomes and requirements
+
+E. Requirements Repository
+- Support these requirement types:
+  - business requirement
+  - stakeholder requirement
+  - functional requirement
+  - non-functional requirement
+  - integration requirement
+  - data requirement
+  - reporting requirement
+  - security requirement
+  - compliance requirement
+  - operational support requirement
+- Each requirement must include:
+  - unique ID
+  - title
+  - description
+  - rationale
+  - source reference
+  - workstream
+  - process link
+  - business outcome link
+  - priority
+  - status
+  - owner
+  - dependencies
+  - assumptions
+  - risks
+  - notes
+- Must support duplicate detection / merge suggestions
+
+F. User Story Studio
+- Convert requirements into user stories
+- Each story must include:
+  - unique story ID
+  - epic / feature
+  - user story statement
+  - acceptance criteria
+  - business value
+  - dependencies
+  - size placeholder
+  - complexity placeholder
+  - out-of-scope notes
+  - traceability back to requirement and business outcome
+- Include INVEST validation helper
+- Include Definition of Ready checklist
+- Include placeholder for future estimation inputs
+
+G. Traceability Matrix
+- Build a full traceability model:
+  Source Input -> Business Outcome -> Process -> Requirement -> Story -> Future Deliverable
+- Must render in table format with filters and export
+- Must highlight gaps and orphan records
+- Must show missing links visually
+
+H. Compliance and Control Requirements
+- Add a dedicated section for control and compliance requirements, especially for future Mexican port-oriented projects
+- Even though this is Phase 1, the design must be ready to capture:
+  - permits
+  - inspections
+  - cases/incidents
+  - approvals
+  - evidence
+  - audit trail
+  - document retention
+  - roles and permissions
+  - privacy and access controls
+  - external stakeholder portal needs
+- Do not provide legal advice
+- Build this as a structured compliance-capture module
+- Allow “compliance topic” tags and “evidence required” tags
+
+I. Knowledge Asset Generator
+- Generate reusable internal assets from approved requirements:
+  - workshop summary
+  - discovery recap
+  - BRD draft
+  - functional design outline
+  - user story pack
+  - process summary
+  - executive summary
+  - risks and assumptions list
+  - glossary
+  - reusable accelerator notes
+- Save these as generated artifacts inside the initiative
+
+J. Review / Approval Workflow
+- Draft
+- In Review
+- Needs Revision
+- Approved Baseline
+- Archived / Superseded
+- Add comment threads
+- Approval log
+- Version history
+- record who changed what and when
+
+K. Dashboard
+- At minimum show:
+  - number of business outcomes
+  - number of processes
+  - number of requirements
+  - number of stories
+  - traceability completeness %
+  - requirements by workstream
+  - requirements by type
+  - top open risks
+  - top open assumptions
+  - review status
+  - compliance-tagged items
+  - orphan items needing attention
+
+==================================================
+4. KEY WORKSTREAMS FOR DEFAULT TAXONOMY
+==================================================
+
+Preload these workstreams as system defaults:
+- Marketing
+- Commercial / Sales
+- PMO / Project Governance
+- Operations / Deliveries
+- Customer Service
+- Data / Reporting / BI
+- Integration
+- Security / Compliance
+- Adoption / Training
+- Platform / Architecture
+
+==================================================
+5. DATA MODEL EXPECTATIONS
+==================================================
+
+Use PostgreSQL.
+Use a clean relational schema.
+Prefer Drizzle ORM with migrations.
+Design for extensibility, not overengineering.
+
+Minimum core entities:
+- users
+- roles
+- initiatives
+- workstreams
+- source_inputs
+- business_outcomes
+- stakeholders
+- processes
+- subprocesses
+- requirements
+- requirement_links
+- user_stories
+- acceptance_criteria
+- assumptions
+- risks
+- dependencies
+- comments
+- approvals
+- generated_artifacts
+- tags
+- audit_logs
+- templates
+
+Add join tables where needed.
+Everything must support created_at, updated_at, created_by, updated_by.
+Important records must support version_number and is_current.
+
+==================================================
+6. UX / UI REQUIREMENTS
+==================================================
+
+Build a clean, modern, executive-grade UI.
+Use:
+- React / Next.js
+- TypeScript
+- Tailwind
+- shadcn/ui components
+- responsive layout
+
+UI style:
+- serious
+- enterprise-ready
+- elegant but not flashy
+- clean spacing
+- excellent readability
+- strong filtering and search UX
+
+Main screens required:
+1) Login
+2) Initiative list
+3) Create initiative
+4) Initiative overview dashboard
+5) Discovery intake screen
+6) Business outcomes screen
+7) Process inventory screen
+8) Requirements repository screen
+9) User story studio screen
+10) Traceability matrix screen
+11) Knowledge assets screen
+12) Review and approvals screen
+13) Settings / templates / taxonomy admin
+
+For the requirements and stories screens:
+- include left-side filters
+- main table/grid
+- right-side detail drawer or modal
+- bulk actions
+- inline tags
+- status chips
+- saved views
+
+==================================================
+7. AI-ASSISTED FEATURES
+==================================================
+
+Design the codebase so AI-assisted generation can be added cleanly.
+For now, create a provider abstraction.
+
+Do not hardwire one LLM vendor deep into the app.
+Create an AI service layer with adapters.
+Include a mock adapter first and structure for future adapters such as Gemini / Claude / OpenAI.
+
+Phase 1 AI-assisted use cases:
+- summarize workshop notes
+- suggest business outcomes
+- suggest requirement candidates
+- convert requirement to user story
+- generate acceptance criteria
+- identify duplicates
+- identify missing traceability links
+- generate executive summary
+- generate glossary candidates
+- generate assumptions and risks suggestions
+
+Important:
+Every AI-generated item must be marked as:
+- AI Draft
+- Needs Human Review
+- Approved by Human
+No AI output should be auto-approved.
+
+==================================================
+8. SECURITY / GOVERNANCE
+==================================================
+
+This is internal, but it must still be disciplined.
+
+Implement:
+- authentication
+- RBAC
+- protected routes
+- initiative-level access control
+- audit log
+- version history
+- soft delete where appropriate
+- validation on all key forms
+- secure file metadata handling
+- secrets through environment variables only
+
+If Replit-native authentication is the fastest secure option, use it.
+If needed, structure the code so auth can be swapped later.
+
+==================================================
+9. FILES / DOCUMENTS
+==================================================
+
+Phase 1 can store metadata and uploaded file references.
+Do NOT build a massive document processing engine first.
+Keep it pragmatic.
+
+Support:
+- upload record
+- file metadata
+- source classification
+- link to initiative
+- link to generated artifacts
+- downloadable stored files if feasible
+
+==================================================
+10. NON-FUNCTIONAL REQUIREMENTS
+==================================================
+
+- Production-quality code
+- Strong typing
+- Reusable component structure
+- Clear folder organization
+- Error states and empty states
+- Input validation
+- Basic automated tests for core flows
+- Seed script with demo data
+- Fast local and deployed startup
+- Clean README
+- Clean env.example
+- Good comments only where useful
+- No junk code
+- No fake enterprise complexity
+
+==================================================
+11. SAMPLE DEMO DATA
+==================================================
+
+Seed one realistic demo initiative based on this kind of scenario:
+- Mexican organization
+- fragmented processes across Salesforce, SAP, Asana, WhatsApp
+- workstreams in sales, PMO, operations, and service
+- need for visibility, traceability, control, and future compliance readiness
+- future possibility of a regulated ports implementation
+
+The seeded demo should include:
+- 5 business outcomes
+- 10+ processes
+- 25+ requirements
+- 15+ user stories
+- 8+ assumptions
+- 8+ risks
+- some missing traceability links on purpose, so dashboard shows issues
+
+==================================================
+12. EXPORTS
+==================================================
+
+Implement export for:
+- business outcomes register
+- requirements list
+- user story backlog
+- traceability matrix
+- executive summary
+Use CSV and simple PDF-friendly print views where practical.
+
+==================================================
+13. DELIVERY EXPECTATION
+==================================================
+
+Build this in iterative milestones:
+
+Milestone 1:
+- project setup
+- auth
+- database schema
+- initiative management
+- seed data
+- dashboard skeleton
+
+Milestone 2:
+- discovery intake
+- business outcomes
+- process inventory
+- requirements repository
+
+Milestone 3:
+- user story studio
+- traceability matrix
+- assumptions / risks / dependencies
+
+Milestone 4:
+- generated artifacts
+- review / approval workflow
+- audit history
+- exports
+
+Milestone 5:
+- polish
+- tests
+- README
+- deployment readiness
+
+==================================================
+14. IMPORTANT CONSTRAINTS
+==================================================
+
+- Do not build CRM, PMO, logistics, or service execution systems in this phase
+- This is a requirements-generation and governance product first
+- The app must be extensible to future phases
+- Keep architecture modular so later phases can add:
+  - implementation planning
+  - estimations
+  - release management
+  - operational execution
+  - knowledge base expansion
+  - regulatory control modules for ports
+- Build a real working app, not a prototype mockup
+- Use real relational design and clean CRUD
+- Keep naming business-friendly
+
+==================================================
+15. OUTPUT FORMAT EXPECTATION
+==================================================
+
+Start by generating:
+1) folder structure
+2) architecture summary
+3) database schema
+4) main route map
+5) implementation plan by milestone
+6) then begin building the app
+
+Do not ask unnecessary questions.
+Make sensible assumptions.
+Document assumptions clearly.
+Prefer completeness and clean structure over gimmicks.
