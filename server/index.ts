@@ -49,11 +49,12 @@ app.use((req, res, next) => {
 
   res.on("finish", () => {
     const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
+    if (path.startsWith("/api") || path.match(/^\/t\/[a-z0-9-]+\/api\//)) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
+        const normalizedPath = path.replace(/^\/t\/[a-z0-9-]+/, "");
         const sensitiveRoutes = ["/api/api-tokens"];
-        const isSensitive = sensitiveRoutes.some(r => path.startsWith(r));
+        const isSensitive = sensitiveRoutes.some(r => normalizedPath.startsWith(r));
         if (!isSensitive) {
           logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
         }
