@@ -455,43 +455,43 @@ Respond ONLY with valid JSON in this exact format:
       const aiResponse = await openai.chat.completions.create({
         model: "gpt-5.2",
         messages: [{ role: "user", content: evalPrompt }],
-        max_completion_tokens: 4096,
+        response_format: { type: "json_object" },
+        max_completion_tokens: 8192,
       });
 
-      const content = aiResponse.choices[0]?.message?.content || "{}";
-      let result: any;
+      let evaluatorResult;
       try {
-        const jsonMatch = content.match(/\{[\s\S]*\}/);
-        result = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(content);
+        evaluatorResult = JSON.parse(aiResponse.choices[0]?.message?.content || "{}");
       } catch {
-        result = { status: "fail", recommendations: ["AI evaluation could not be parsed. Manual review recommended."], raw: content };
+        evaluatorResult = {
+          status: completionPercentage >= 100 && raidFlags.length === 0 ? "pass" : "fail",
+          completionPercentage,
+          missingItems,
+          artifactFlags,
+          raidFlags,
+          evmFlags,
+          recommendations: ["AI evaluation parsing failed — review manually"],
+        };
       }
 
-      result.completionPercentage = completionPercentage;
-      result.missingItems = result.missingItems || missingItems;
-      result.raidFlags = result.raidFlags || raidFlags;
-      result.evmFlags = result.evmFlags || evmFlags;
-      result.artifactFlags = result.artifactFlags || artifactFlags;
-
-      if (result.status === "pass") {
-        let gate = await storage.getProjectGate(req.params.id, stageId, req.tenantId || "default");
-        if (!gate) {
-          gate = await storage.createProjectGate({
-            timelineId: req.params.id,
-            stageId,
-            status: "passed",
-            notes: `AI evaluation: Pass (${completionPercentage}% complete)`,
-            tenantId: req.tenantId || "default",
-          });
-        } else {
-          await storage.updateProjectGate(gate.id, req.tenantId || "default", {
-            status: "passed",
-            notes: `AI evaluation: Pass (${completionPercentage}% complete)`,
-          });
-        }
+      let gate = await storage.getProjectGate(req.params.id, stageId, req.tenantId || "default");
+      if (!gate) {
+        gate = await storage.createProjectGate({
+          tenantId: req.tenantId || "default",
+          timelineId: req.params.id,
+          stageId,
+          status: evaluatorResult.status === "pass" ? "passed" : "failed",
+          evaluatorResult,
+        });
+      } else {
+        gate = await storage.updateProjectGate(gate.id, req.tenantId || "default", {
+          status: evaluatorResult.status === "pass" ? "passed" : "failed",
+          evaluatorResult,
+          approvedAt: evaluatorResult.status === "pass" ? new Date() : null,
+        });
       }
 
-      res.json(result);
+      res.json({ gate, evaluatorResult });
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 

@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { storage } from "../storage";
 import { db } from "../db";
 import { isAuthenticated } from "../replit_integrations/auth";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { users, userOrgRoles } from "@shared/schema";
 import { extractUserId } from "./helpers";
 
@@ -19,7 +19,7 @@ export function registerTenantRoutes(app: Express) {
       const [userRecord] = await db.select({ isSuperAdmin: users.isSuperAdmin }).from(users).where(eq(users.id, userId)).limit(1);
       if (!userRecord?.isSuperAdmin) {
         const membership = await db.select({ tenantId: userOrgRoles.tenantId }).from(userOrgRoles)
-          .where(eq(userOrgRoles.userId, userId)).limit(1);
+          .where(and(eq(userOrgRoles.userId, userId), eq(userOrgRoles.tenantId, tenantId))).limit(1);
         if (membership.length === 0) return res.status(403).json({ message: "You do not have access to this tenant" });
       }
 

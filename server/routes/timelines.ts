@@ -319,17 +319,22 @@ export function registerTimelineRoutes(app: Express) {
       if (assignedRoleId !== undefined) updates.assignedRoleId = assignedRoleId;
       if (durationWeeks !== undefined) updates.durationWeeks = durationWeeks;
 
-      const existingTask = await storage.getTask(req.params.id, req.tenantId || "default");
-
-      if (startDate !== undefined && endDate !== undefined && existingTask?.parentTaskId && existingTask?.itemType === "workstream") {
-        const parentPhase = await storage.getTask(existingTask.parentTaskId, req.tenantId || "default");
-        if (parentPhase && parentPhase.startDate && parentPhase.endDate) {
-          const phaseStart = parseDateToNum(parentPhase.startDate);
-          const phaseEnd = parseDateToNum(parentPhase.endDate);
-          const wsStart = parseDateToNum(startDate);
-          const wsEnd = parseDateToNum(endDate);
-          if (wsStart < phaseStart || wsEnd > phaseEnd) {
-            return res.status(400).json({ message: `Workstream dates must fall within the parent Phase date range (${parentPhase.startDate} — ${parentPhase.endDate})` });
+      const currentTask = await storage.getTask(req.params.id, req.tenantId || "default");
+      if (currentTask) {
+        const resolvedParentId = parentTaskId !== undefined ? parentTaskId : currentTask.parentTaskId;
+        const resolvedType = itemType !== undefined ? itemType : currentTask.itemType;
+        const resolvedStartDate = startDate !== undefined ? startDate : currentTask.startDate;
+        const resolvedEndDate = endDate !== undefined ? endDate : currentTask.endDate;
+        if (resolvedParentId && resolvedType === "workstream" && resolvedStartDate && resolvedEndDate) {
+          const parentPhase = await storage.getTask(resolvedParentId, req.tenantId || "default");
+          if (parentPhase && parentPhase.startDate && parentPhase.endDate) {
+            const wsStart = parseDateToNum(resolvedStartDate);
+            const wsEnd = parseDateToNum(resolvedEndDate);
+            const phaseStart = parseDateToNum(parentPhase.startDate);
+            const phaseEnd = parseDateToNum(parentPhase.endDate);
+            if (wsStart < phaseStart || wsEnd > phaseEnd) {
+              return res.status(400).json({ message: `Workstream dates must fall within the parent Phase date range (${parentPhase.startDate} — ${parentPhase.endDate})` });
+            }
           }
         }
       }
@@ -337,8 +342,12 @@ export function registerTimelineRoutes(app: Express) {
       const task = await storage.updateTask(req.params.id, req.tenantId || "default", updates);
       if (!task) return res.status(404).json({ message: "Task not found" });
 
-      if (existingTask?.parentTaskId) {
-        await recalcPhaseProgress(existingTask.parentTaskId, req.tenantId || "default");
+      const resolvedParentId = parentTaskId !== undefined ? parentTaskId : currentTask?.parentTaskId;
+      if (resolvedParentId) {
+        await recalcPhaseProgress(resolvedParentId, req.tenantId || "default");
+      }
+      if (task.itemType === "phase") {
+        await recalcPhaseProgress(task.id, req.tenantId || "default");
       }
 
       res.json(task);
