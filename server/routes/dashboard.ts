@@ -1,8 +1,8 @@
 import type { Express } from "express";
 import { db } from "../db";
-import { timelines, milestones, risks, projectGates, businessOutcomes, tenants } from "@shared/schema";
+import { timelines, milestones, risks, projectGates, tenants } from "@shared/schema";
 import { users } from "@shared/models/auth";
-import { eq, and, sql, lte, gte, ne } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { requireModuleAccess } from "../middleware/permissions";
 import { getRecordAccessContext, extractUserId } from "./helpers";
 
