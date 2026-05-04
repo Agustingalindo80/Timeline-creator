@@ -1,9 +1,19 @@
 import type { Express } from "express";
 import { db } from "../db";
-import { timelines, milestones, risks, projectGates, businessOutcomes } from "@shared/schema";
-import { eq, and, sql, lte, gte } from "drizzle-orm";
+import { timelines, milestones, risks, projectGates, businessOutcomes, tenants } from "@shared/schema";
+import { users } from "@shared/models/auth";
+import { eq, and, sql, lte, gte, ne } from "drizzle-orm";
 import { requireModuleAccess } from "../middleware/permissions";
-import { getRecordAccessContext } from "./helpers";
+import { getRecordAccessContext, extractUserId } from "./helpers";
+
+type TenantPerformance = {
+  tenantId: string;
+  tenantName: string;
+  activeProjects: number;
+  totalBudget: number;
+  atRiskCount: number;
+  health: { green: number; amber: number; red: number };
+};
 
 export function registerDashboardRoutes(app: Express) {
   app.get("/api/dashboard/summary", requireModuleAccess("dashboard"), async (req, res) => {
@@ -41,9 +51,14 @@ export function registerDashboardRoutes(app: Express) {
 
       const atRiskProjects = activeProjects.filter(p => p.healthOverall === "red" || p.healthOverall === "amber");
 
-      const pipelineValue = accessibleOpportunities
-        .filter(o => o.opportunityStatus !== "won" && o.opportunityStatus !== "lost")
-        .reduce((sum, o) => sum + (parseFloat(o.estimatedRevenue || "0") || 0), 0);
+      const openOpps = accessibleOpportunities.filter(o => o.opportunityStatus !== "won" && o.opportunityStatus !== "lost");
+      const pipelineValue = openOpps.reduce((sum, o) => sum + (parseFloat(o.estimatedRevenue || "0") || 0), 0);
+
+      const wonOpps = accessibleOpportunities.filter(o => o.opportunityStatus === "won");
+      const lostOpps = accessibleOpportunities.filter(o => o.opportunityStatus === "lost");
+      const closedCount = wonOpps.length + lostOpps.length;
+      const conversionRate = closedCount > 0 ? Math.round((wonOpps.length / closedCount) * 100) : 0;
+      const convertedRevenue = wonOpps.reduce((sum, o) => sum + (parseFloat(o.estimatedRevenue || "0") || 0), 0);
 
       const projectIds = accessibleProjects.map(p => p.id);
 
@@ -117,6 +132,31 @@ export function registerDashboardRoutes(app: Express) {
         projectStatus: p.projectStatus,
       }));
 
+      let tenantPerformance: TenantPerformance[] | null = null;
+      const userId = extractUserId(req);
+      if (userId) {
+        const [userRecord] = await db.select({ isSuperAdmin: users.isSuperAdmin }).from(users).where(eq(users.id, userId));
+        if (userRecord?.isSuperAdmin) {
+          const allTenants = await db.select({ id: tenants.id, name: tenants.name }).from(tenants)
+            .where(eq(tenants.status, "active"));
+
+          const allTenantProjects = await db.select().from(timelines)
+            .where(eq(timelines.recordType, "project"));
+
+          tenantPerformance = allTenants.map(t => {
+            const tProjects = allTenantProjects.filter(p => p.tenantId === t.id && p.projectStatus !== "completed");
+            const tHealth = { green: 0, amber: 0, red: 0 };
+            tProjects.forEach(p => {
+              const h = p.healthOverall || "green";
+              if (h in tHealth) tHealth[h as keyof typeof tHealth]++;
+            });
+            const tBudget = tProjects.reduce((sum, p) => sum + (parseFloat(p.approvedBudget || "0") || 0), 0);
+            const tAtRisk = tProjects.filter(p => p.healthOverall === "red" || p.healthOverall === "amber").length;
+            return { tenantId: t.id, tenantName: t.name, activeProjects: tProjects.length, totalBudget: tBudget, atRiskCount: tAtRisk, health: tHealth };
+          }).filter(t => t.activeProjects > 0);
+        }
+      }
+
       res.json({
         portfolioHealth: healthSummary,
         totalProjects: accessibleProjects.length,
@@ -126,6 +166,10 @@ export function registerDashboardRoutes(app: Express) {
         forecastedRevenue,
         grossMarginPercent: Math.round(grossMarginPercent * 10) / 10,
         pipelineValue,
+        conversionRate,
+        convertedRevenue,
+        totalOpportunities: accessibleOpportunities.length,
+        wonOpportunities: wonOpps.length,
         atRiskCount: atRiskProjects.length,
         openEscalations,
         atRiskProjects: atRiskProjects.map(p => ({ id: p.id, title: p.title, healthOverall: p.healthOverall })),
@@ -134,6 +178,7 @@ export function registerDashboardRoutes(app: Express) {
         criticalRaidItems,
         gateExceptions,
         healthHeatmap,
+        tenantPerformance,
       });
     } catch (err: unknown) {
       console.error("Dashboard summary error:", err);

@@ -14,6 +14,7 @@ import {
   Target,
   FolderOpen,
   Bell,
+  Building2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +22,15 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAppTitle } from "@/hooks/use-app-title";
 import type { AppSettings } from "@shared/schema";
+
+type TenantPerformance = {
+  tenantId: string;
+  tenantName: string;
+  activeProjects: number;
+  totalBudget: number;
+  atRiskCount: number;
+  health: { green: number; amber: number; red: number };
+};
 
 type DashboardSummary = {
   portfolioHealth: { green: number; amber: number; red: number };
@@ -31,6 +41,10 @@ type DashboardSummary = {
   forecastedRevenue: number;
   grossMarginPercent: number;
   pipelineValue: number;
+  conversionRate: number;
+  convertedRevenue: number;
+  totalOpportunities: number;
+  wonOpportunities: number;
   atRiskCount: number;
   openEscalations: number;
   atRiskProjects: { id: string; title: string; healthOverall: string }[];
@@ -39,6 +53,7 @@ type DashboardSummary = {
   criticalRaidItems: { id: string; title: string; itemType: string; impact: string; probability: string; projectTitle: string; timelineId: string }[];
   gateExceptions: { id: string; status: string; projectTitle: string; timelineId: string; stageName?: string }[];
   healthHeatmap: { id: string; title: string; healthOverall: string; scopeHealth: string; budgetHealth: string; teamHealth: string; projectStatus: string }[];
+  tenantPerformance: TenantPerformance[] | null;
 };
 
 function MetricCardSkeleton() {
@@ -83,6 +98,11 @@ export default function Dashboard() {
     queryKey: ["/api/dashboard/summary"],
   });
 
+  const { data: superAdminCheck } = useQuery<{ isSuperAdmin: boolean }>({
+    queryKey: ["/api/global-admin/check"],
+  });
+
+  const isSuperAdmin = superAdminCheck?.isSuperAdmin || false;
   const oppsEnabled = !!settings?.opportunitiesEnabled;
   const health = summary?.portfolioHealth || { green: 0, amber: 0, red: 0 };
   const totalHealthed = health.green + health.amber + health.red;
@@ -261,11 +281,26 @@ export default function Dashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col items-center justify-center py-6">
-                <div className="text-3xl font-bold tracking-tight tabular-nums text-primary">
-                  {formatCurrency(summary?.pipelineValue || 0)}
+              <div className="space-y-4 py-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-2xl font-bold tracking-tight tabular-nums text-primary">
+                      {formatCurrency(summary?.pipelineValue || 0)}
+                    </div>
+                    <div className="text-xs text-muted-foreground">{t("dashboard.pipelineValue")}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold tracking-tight tabular-nums">
+                      {summary?.conversionRate || 0}%
+                    </div>
+                    <div className="text-xs text-muted-foreground">{t("dashboard.winRate")}</div>
+                  </div>
                 </div>
-                <div className="text-sm text-muted-foreground mt-1">{t("dashboard.pipelineValue")}</div>
+                <div className="flex items-center gap-4 text-xs text-muted-foreground border-t pt-3">
+                  <span>{t("dashboard.totalOpps")}: {summary?.totalOpportunities || 0}</span>
+                  <span>{t("dashboard.won")}: {summary?.wonOpportunities || 0}</span>
+                  <span>{t("dashboard.converted")}: {formatCurrency(summary?.convertedRevenue || 0)}</span>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -300,6 +335,47 @@ export default function Dashboard() {
           </Card>
         )}
       </div>
+
+      {isSuperAdmin && summary?.tenantPerformance && summary.tenantPerformance.length > 0 && (
+        <Card data-testid="card-tenant-performance">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5 uppercase tracking-wider">
+              <Building2 className="w-3.5 h-3.5" /> {t("dashboard.tenantPerformance")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-1">
+              <div className="grid grid-cols-[1fr,80px,100px,80px,120px] gap-1 text-[10px] font-medium text-muted-foreground uppercase tracking-wider px-2 pb-1">
+                <span>{t("dashboard.tenant")}</span>
+                <span className="text-center">{t("dashboard.activeProjects")}</span>
+                <span className="text-right">{t("dashboard.totalBudget")}</span>
+                <span className="text-center">{t("dashboard.atRisk")}</span>
+                <span className="text-center">{t("dashboard.health")}</span>
+              </div>
+              {summary.tenantPerformance.map(tp => {
+                const tTotal = tp.health.green + tp.health.amber + tp.health.red;
+                return (
+                  <div key={tp.tenantId} className="grid grid-cols-[1fr,80px,100px,80px,120px] gap-1 items-center px-2 py-1.5 rounded-md hover:bg-muted/50" data-testid={`tenant-perf-${tp.tenantId}`}>
+                    <span className="text-sm font-medium truncate">{tp.tenantName}</span>
+                    <span className="text-sm text-center tabular-nums">{tp.activeProjects}</span>
+                    <span className="text-sm text-right tabular-nums">{formatCurrency(tp.totalBudget)}</span>
+                    <span className={`text-sm text-center tabular-nums ${tp.atRiskCount > 0 ? "text-red-500 font-medium" : ""}`}>{tp.atRiskCount}</span>
+                    <div className="flex items-center gap-2 justify-center">
+                      {tTotal > 0 && (
+                        <div className="flex gap-0.5 flex-1 h-2 rounded-full overflow-hidden bg-muted max-w-[80px]">
+                          <div className="bg-emerald-500" style={{ width: `${(tp.health.green / tTotal) * 100}%` }} />
+                          <div className="bg-amber-500" style={{ width: `${(tp.health.amber / tTotal) * 100}%` }} />
+                          <div className="bg-red-500" style={{ width: `${(tp.health.red / tTotal) * 100}%` }} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card data-testid="card-overdue-milestones">
