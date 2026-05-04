@@ -21,7 +21,7 @@ The application uses a modern web stack with React, Vite, Tailwind CSS, and shad
 - **Color Palette:** Executive-grade dark-first design with a primary blue (`#3B82F6`), slate-900 background for dark mode, and clean whites for light mode.
 
 **Technical Implementations:**
-- **Project Structure:** Clear separation of client-side and server-side code. Backend routes are modularized into domain-specific files under `server/routes/` (19 files) with shared helpers in `server/routes/helpers.ts`. Business logic for financial calculations and progress tracking is extracted into `server/services/`. The main `server/routes.ts` is a thin orchestrator that sets up auth, middleware, and delegates to domain route modules.
+- **Project Structure:** Clear separation of client-side and server-side code. Backend routes are modularized into domain-specific files under `server/routes/` (19 files) with shared helpers in `server/routes/helpers.ts`. Business logic is extracted into `server/services/` (6 files: financials, project-progress, gate-evaluator, artifact-verification, opportunity-conversion, estimate-import). The main `server/routes.ts` is a thin orchestrator that sets up auth, middleware, and delegates to domain route modules. Route handlers are thin — they validate input, call services, and return responses.
 - **API Design:** RESTful endpoints for all entities.
 - **Database Schema:** Detailed schemas for all project entities with `tenantId` for multi-tenancy and specific `pgEnum` constraints for status fields. Includes partial unique indexes and `ON DELETE SET NULL` for hierarchical data.
 - **Financial Calculations:** Automated calculation of `Approved Budget`, `Total Running Cost`, and `Gross Margin`.
