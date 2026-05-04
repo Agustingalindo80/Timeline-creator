@@ -620,7 +620,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/timelines/:id/milestones", requireModuleAccess("projects"), async (req, res) => {
+  app.post("/api/timelines/:id/milestones", requireModuleAccess("projects"), requirePermission("project.edit"), async (req, res) => {
     try {
       if (!(await checkTimelineAccess(req, res, req.params.id))) return;
       const { title, description, date, actualDate, color, icon, sortOrder, isFinancialObligation, amount } = req.body;
@@ -651,7 +651,7 @@ export async function registerRoutes(
   });
 
   // UPDATE milestone
-  app.patch("/api/milestones/:id", async (req, res) => {
+  app.patch("/api/milestones/:id", requirePermission("project.edit"), async (req, res) => {
     try {
       const { title, description, date, actualDate, color, icon, sortOrder, isFinancialObligation, amount } = req.body;
       const updates: any = {};
@@ -678,7 +678,7 @@ export async function registerRoutes(
   });
 
   // DELETE milestone
-  app.delete("/api/milestones/:id", async (req, res) => {
+  app.delete("/api/milestones/:id", requirePermission("project.edit"), async (req, res) => {
     try {
       const { milestones: milestonesTable } = await import("@shared/schema");
       const { eq: eqOp, and: andOp } = await import("drizzle-orm");
@@ -704,7 +704,7 @@ export async function registerRoutes(
   });
 
   // ADD task to timeline
-  app.post("/api/timelines/:id/tasks", requireModuleAccess("projects"), async (req, res) => {
+  app.post("/api/timelines/:id/tasks", requireModuleAccess("projects"), requirePermission("project.edit"), async (req, res) => {
     try {
       const { title, description, startDate, endDate, actualStartDate, actualEndDate, color, sortOrder, status, health, itemType, parentTaskId, estimatedHours, confidenceLevel, taskType, assignedRoleId, durationWeeks } = req.body;
       if (!title) {
@@ -765,7 +765,7 @@ export async function registerRoutes(
   });
 
   // UPDATE task
-  app.patch("/api/tasks/:id", async (req, res) => {
+  app.patch("/api/tasks/:id", requirePermission("project.edit"), async (req, res) => {
     try {
       const { title, description, startDate, endDate, actualStartDate, actualEndDate, color, percentComplete, sortOrder, status, health, itemType, parentTaskId, estimatedHours, confidenceLevel, taskType, assignedRoleId, durationWeeks } = req.body;
       const updates: any = {};
@@ -826,7 +826,7 @@ export async function registerRoutes(
   });
 
   // DELETE task
-  app.delete("/api/tasks/:id", async (req, res) => {
+  app.delete("/api/tasks/:id", requirePermission("project.edit"), async (req, res) => {
     try {
       const taskToDelete = await storage.getTask(req.params.id, req.tenantId || "default");
       await storage.deleteTask(req.params.id, req.tenantId || "default");
@@ -882,7 +882,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/timesheets", async (req, res) => {
+  app.post("/api/timesheets", requireModuleAccess("timesheets"), requirePermission("timesheet.submit"), async (req, res) => {
     try {
       const { timelineId, teamMemberId, taskId, weekEnding, dayDate, hours, billableType, notes } = req.body;
       if (!timelineId || !teamMemberId || !weekEnding || hours === undefined) {
@@ -910,7 +910,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/timesheets/:entryId", async (req, res) => {
+  app.patch("/api/timesheets/:entryId", requireModuleAccess("timesheets"), requirePermission("timesheet.submit"), async (req, res) => {
     try {
       const updates: any = {};
       if (req.body.hours !== undefined) updates.hours = String(req.body.hours);
@@ -929,7 +929,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/timesheets/:entryId", async (req, res) => {
+  app.delete("/api/timesheets/:entryId", requireModuleAccess("timesheets"), requirePermission("timesheet.submit"), async (req, res) => {
     try {
       await storage.deleteTimesheetEntry(req.params.entryId, req.tenantId || "default");
       res.json({ success: true });
@@ -955,7 +955,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/timelines/:id/progress", requireModuleAccess("projects"), async (req, res) => {
+  app.post("/api/timelines/:id/progress", requireModuleAccess("projects"), requirePermission("project.edit"), async (req, res) => {
     try {
       if (!(await checkTimelineAccess(req, res, req.params.id))) return;
       const { taskId, weekEnding, percentComplete, notes } = req.body;
@@ -992,7 +992,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/progress/:entryId", async (req, res) => {
+  app.patch("/api/progress/:entryId", requirePermission("project.edit"), async (req, res) => {
     try {
       const existing = await storage.getProgressEntry(req.params.entryId, req.tenantId || "default");
       if (!existing) return res.status(404).json({ message: "Progress entry not found" });
@@ -1021,7 +1021,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/progress/:entryId", async (req, res) => {
+  app.delete("/api/progress/:entryId", requirePermission("project.edit"), async (req, res) => {
     try {
       await storage.deleteProgressEntry(req.params.entryId, req.tenantId || "default");
       res.json({ success: true });
@@ -1245,7 +1245,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/timelines/:id/team", requireModuleAccess("projects"), async (req, res) => {
+  app.post("/api/timelines/:id/team", requireModuleAccess("projects"), requirePermission("project.edit"), async (req, res) => {
     try {
       if (!(await checkTimelineAccess(req, res, req.params.id))) return;
       const { teamMemberId, rateCardId, monthlyCost, hourlyCost, allocation, startDate, endDate } = req.body;
@@ -1273,7 +1273,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/timelines/:id/team/sync-from-estimate", requireModuleAccess("projects"), async (req, res) => {
+  app.post("/api/timelines/:id/team/sync-from-estimate", requireModuleAccess("projects"), requirePermission("project.edit"), async (req, res) => {
     try {
       if (!(await checkTimelineAccess(req, res, req.params.id))) return;
       const timelineId = req.params.id;
@@ -1365,7 +1365,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/project-team/:id", async (req, res) => {
+  app.patch("/api/project-team/:id", requirePermission("project.edit"), async (req, res) => {
     try {
       const { teamMemberId, rateCardId, monthlyCost, hourlyCost, allocation, startDate, endDate } = req.body;
       const updates: any = {};
@@ -1397,7 +1397,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/project-team/:id", async (req, res) => {
+  app.delete("/api/project-team/:id", requirePermission("project.edit"), async (req, res) => {
     try {
       await storage.deleteProjectTeamMember(req.params.id, req.tenantId || "default");
       res.json({ success: true });
@@ -1446,7 +1446,7 @@ export async function registerRoutes(
   });
 
   // CREATE allocation for a team member
-  app.post("/api/team-members/:id/allocations", async (req, res) => {
+  app.post("/api/team-members/:id/allocations", requireModuleAccess("allocations"), requirePermission("project.edit"), async (req, res) => {
     try {
       const data = {
         tenantId: req.tenantId || "default",
@@ -1470,7 +1470,7 @@ export async function registerRoutes(
   });
 
   // UPDATE allocation
-  app.patch("/api/allocations/:id", async (req, res) => {
+  app.patch("/api/allocations/:id", requireModuleAccess("allocations"), requirePermission("project.edit"), async (req, res) => {
     try {
       const existing = await storage.getAllocation(req.params.id, req.tenantId || "default");
       if (!existing) return res.status(404).json({ message: "Allocation not found" });
@@ -1496,7 +1496,7 @@ export async function registerRoutes(
   });
 
   // DELETE allocation
-  app.delete("/api/allocations/:id", async (req, res) => {
+  app.delete("/api/allocations/:id", requireModuleAccess("allocations"), requirePermission("project.edit"), async (req, res) => {
     try {
       const existing = await storage.getAllocation(req.params.id, req.tenantId || "default");
       await storage.deleteAllocation(req.params.id, req.tenantId || "default");
@@ -1786,7 +1786,7 @@ export async function registerRoutes(
   });
 
   // PARSE Excel/CSV file
-  app.post("/api/parse-excel", upload.single("file"), async (req, res) => {
+  app.post("/api/parse-excel", requireModuleAccess("projects"), upload.single("file"), async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
@@ -1865,14 +1865,14 @@ export async function registerRoutes(
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
-  app.post("/api/flightpath-stages", async (req, res) => {
+  app.post("/api/flightpath-stages", requireModuleAccess("admin"), requirePermission("org.settings.manage"), async (req, res) => {
     try {
       const stage = await storage.createFlightpathStage({ ...req.body, tenantId: req.tenantId || "default" });
       res.status(201).json(stage);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
-  app.patch("/api/flightpath-stages/:id", async (req, res) => {
+  app.patch("/api/flightpath-stages/:id", requireModuleAccess("admin"), requirePermission("org.settings.manage"), async (req, res) => {
     try {
       const stage = await storage.updateFlightpathStage(req.params.id, req.tenantId || "default", req.body);
       if (!stage) return res.status(404).json({ message: "Stage not found" });
@@ -1880,7 +1880,7 @@ export async function registerRoutes(
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
-  app.delete("/api/flightpath-stages/:id", async (req, res) => {
+  app.delete("/api/flightpath-stages/:id", requireModuleAccess("admin"), requirePermission("org.settings.manage"), async (req, res) => {
     try {
       await storage.deleteFlightpathStage(req.params.id, req.tenantId || "default");
       res.status(204).send();
@@ -1895,14 +1895,14 @@ export async function registerRoutes(
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
-  app.post("/api/flightpath-stages/:stageId/deliverables", async (req, res) => {
+  app.post("/api/flightpath-stages/:stageId/deliverables", requireModuleAccess("admin"), requirePermission("org.settings.manage"), async (req, res) => {
     try {
       const deliverable = await storage.createDeliverable({ ...req.body, stageId: req.params.stageId, tenantId: req.tenantId || "default" });
       res.status(201).json(deliverable);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
-  app.patch("/api/flightpath-deliverables/:id", async (req, res) => {
+  app.patch("/api/flightpath-deliverables/:id", requireModuleAccess("admin"), requirePermission("org.settings.manage"), async (req, res) => {
     try {
       const deliverable = await storage.updateDeliverable(req.params.id, req.tenantId || "default", req.body);
       if (!deliverable) return res.status(404).json({ message: "Deliverable not found" });
@@ -1910,7 +1910,7 @@ export async function registerRoutes(
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
-  app.delete("/api/flightpath-deliverables/:id", async (req, res) => {
+  app.delete("/api/flightpath-deliverables/:id", requireModuleAccess("admin"), requirePermission("org.settings.manage"), async (req, res) => {
     try {
       await storage.deleteDeliverable(req.params.id, req.tenantId || "default");
       res.status(204).send();
@@ -1931,20 +1931,20 @@ export async function registerRoutes(
       res.json(result);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
-  app.post("/api/governance-model/stages", async (req, res) => {
+  app.post("/api/governance-model/stages", requireModuleAccess("admin"), requirePermission("org.settings.manage"), async (req, res) => {
     try {
       const stage = await storage.createFlightpathStage({ ...req.body, tenantId: req.tenantId || "default" });
       res.status(201).json(stage);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
-  app.patch("/api/governance-model/stages/:id", async (req, res) => {
+  app.patch("/api/governance-model/stages/:id", requireModuleAccess("admin"), requirePermission("org.settings.manage"), async (req, res) => {
     try {
       const stage = await storage.updateFlightpathStage(req.params.id, req.tenantId || "default", req.body);
       if (!stage) return res.status(404).json({ message: "Stage not found" });
       res.json(stage);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
-  app.delete("/api/governance-model/stages/:id", async (req, res) => {
+  app.delete("/api/governance-model/stages/:id", requireModuleAccess("admin"), requirePermission("org.settings.manage"), async (req, res) => {
     try {
       await storage.deleteFlightpathStage(req.params.id, req.tenantId || "default");
       res.status(204).send();
@@ -1956,20 +1956,20 @@ export async function registerRoutes(
       res.json(deliverables.sort((a, b) => a.sortOrder - b.sortOrder));
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
-  app.post("/api/governance-model/stages/:stageId/deliverables", async (req, res) => {
+  app.post("/api/governance-model/stages/:stageId/deliverables", requireModuleAccess("admin"), requirePermission("org.settings.manage"), async (req, res) => {
     try {
       const deliverable = await storage.createDeliverable({ ...req.body, stageId: req.params.stageId, tenantId: req.tenantId || "default" });
       res.status(201).json(deliverable);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
-  app.patch("/api/governance-model/deliverables/:id", async (req, res) => {
+  app.patch("/api/governance-model/deliverables/:id", requireModuleAccess("admin"), requirePermission("org.settings.manage"), async (req, res) => {
     try {
       const deliverable = await storage.updateDeliverable(req.params.id, req.tenantId || "default", req.body);
       if (!deliverable) return res.status(404).json({ message: "Deliverable not found" });
       res.json(deliverable);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
-  app.delete("/api/governance-model/deliverables/:id", async (req, res) => {
+  app.delete("/api/governance-model/deliverables/:id", requireModuleAccess("admin"), requirePermission("org.settings.manage"), async (req, res) => {
     try {
       await storage.deleteDeliverable(req.params.id, req.tenantId || "default");
       res.status(204).send();
@@ -1988,7 +1988,7 @@ export async function registerRoutes(
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
-  app.post("/api/timelines/:id/checkpoints", requireModuleAccess("projects"), async (req, res) => {
+  app.post("/api/timelines/:id/checkpoints", requireModuleAccess("projects"), requirePermission("project.edit"), async (req, res) => {
     try {
       if (!(await checkTimelineAccess(req, res, req.params.id))) return;
       const checkpoint = await storage.createProjectCheckpoint({ ...req.body, timelineId: req.params.id, tenantId: req.tenantId || "default" });
@@ -1996,7 +1996,7 @@ export async function registerRoutes(
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
-  app.patch("/api/checkpoints/:id", async (req, res) => {
+  app.patch("/api/checkpoints/:id", requirePermission("project.edit"), async (req, res) => {
     try {
       const data = { ...req.body };
       if (typeof data.completedAt === "string") {
@@ -2011,7 +2011,7 @@ export async function registerRoutes(
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
-  app.delete("/api/checkpoints/:id", async (req, res) => {
+  app.delete("/api/checkpoints/:id", requirePermission("project.edit"), async (req, res) => {
     try {
       await storage.deleteProjectCheckpoint(req.params.id, req.tenantId || "default");
       res.status(204).send();
@@ -2367,7 +2367,7 @@ Respond ONLY with valid JSON in this exact format:
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
-  app.post("/api/timelines/:id/link-artifact", requireModuleAccess("projects"), async (req, res) => {
+  app.post("/api/timelines/:id/link-artifact", requireModuleAccess("projects"), requirePermission("artifacts.manage"), async (req, res) => {
     try {
       if (!(await checkTimelineAccess(req, res, req.params.id))) return;
       const { checkpointId, fileId, fileName, fileUrl } = req.body;
@@ -2389,7 +2389,7 @@ Respond ONLY with valid JSON in this exact format:
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
-  app.delete("/api/timelines/:id/unlink-artifact", requireModuleAccess("projects"), async (req, res) => {
+  app.delete("/api/timelines/:id/unlink-artifact", requireModuleAccess("projects"), requirePermission("artifacts.manage"), async (req, res) => {
     try {
       if (!(await checkTimelineAccess(req, res, req.params.id))) return;
       const { checkpointId } = req.body;
@@ -2409,7 +2409,7 @@ Respond ONLY with valid JSON in this exact format:
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
-  app.post("/api/timelines/:id/verify-artifacts", requireModuleAccess("projects"), async (req, res) => {
+  app.post("/api/timelines/:id/verify-artifacts", requireModuleAccess("projects"), requirePermission("artifacts.manage"), async (req, res) => {
     try {
       if (!(await checkTimelineAccess(req, res, req.params.id))) return;
       const { stageId } = req.body;
@@ -2525,7 +2525,7 @@ Respond ONLY with valid JSON:
   });
 
   // ── Coach Chat API ──
-  app.post("/api/chat", async (req, res) => {
+  app.post("/api/chat", requireModuleAccess("coach"), async (req, res) => {
     try {
       const { messages } = req.body;
       if (!messages || !Array.isArray(messages)) {
@@ -2780,7 +2780,7 @@ Respond ONLY with valid JSON:
   });
 
   // ── Convert Opportunity to Project ──
-  app.post("/api/opportunities/:id/convert", async (req, res) => {
+  app.post("/api/opportunities/:id/convert", requirePermission("opp.edit"), requirePermission("project.create"), async (req, res) => {
     try {
       const opp = await storage.getTimeline(req.params.id, req.tenantId || "default");
       if (!opp) return res.status(404).json({ message: "Opportunity not found" });
