@@ -38,7 +38,7 @@ export interface EVMResult {
   inputsHash: string;
 }
 
-export async function calculateEVMForWeek(timelineId: string, targetWeekEnding: string, tenantId: string = "default"): Promise<EVMResult> {
+export async function calculateEVMForWeek(timelineId: string, targetWeekEnding: string, tenantId: string): Promise<EVMResult> {
   const timeline = await storage.getTimeline(timelineId, tenantId);
   if (!timeline) throw new Error("Timeline not found");
 
