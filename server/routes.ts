@@ -29,8 +29,8 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-async function recalcApprovedBudget(timelineId: string) {
-  const timeline = await storage.getTimeline(timelineId);
+async function recalcApprovedBudget(timelineId: string, tenantId: string) {
+  const timeline = await storage.getTimeline(timelineId, tenantId);
   if (!timeline) return;
 
   const totalAmount = timeline.milestones
@@ -46,14 +46,14 @@ async function recalcApprovedBudget(timelineId: string) {
     grossMargin = "100.00";
   }
 
-  await storage.updateTimeline(timelineId, {
+  await storage.updateTimeline(timelineId, tenantId, {
     approvedBudget: budgetStr,
     grossMargin,
   });
 }
 
-async function recalcTotalRunningCost(timelineId: string) {
-  const timeline = await storage.getTimeline(timelineId);
+async function recalcTotalRunningCost(timelineId: string, tenantId: string) {
+  const timeline = await storage.getTimeline(timelineId, tenantId);
   if (!timeline) return;
 
   const allocs = await storage.getAllocationsByTimeline(timelineId);
@@ -112,7 +112,7 @@ async function recalcTotalRunningCost(timelineId: string) {
     grossMargin = "100.00";
   }
 
-  await storage.updateTimeline(timelineId, {
+  await storage.updateTimeline(timelineId, tenantId, {
     totalRunningCost: costStr,
     grossMargin,
   });
@@ -139,7 +139,7 @@ function parseDateToNum(dateStr: string): number {
   return 999999;
 }
 
-async function recalcPhaseProgress(phaseId: string) {
+async function recalcPhaseProgress(phaseId: string, tenantId: string) {
   const children = await storage.getTasksByParent(phaseId);
   if (children.length === 0) return;
 
@@ -159,7 +159,7 @@ async function recalcPhaseProgress(phaseId: string) {
   const updates: any = {};
   updates.percentComplete = totalWeight > 0 ? Math.round(weightedSum / totalWeight) : 0;
 
-  const phase = await storage.getTask(phaseId);
+  const phase = await storage.getTask(phaseId, tenantId);
   if (phase) {
     if (allComplete) {
       updates.status = "complete";
@@ -168,7 +168,7 @@ async function recalcPhaseProgress(phaseId: string) {
     }
   }
 
-  await storage.updateTask(phaseId, updates);
+  await storage.updateTask(phaseId, tenantId, updates);
 }
 
 export async function registerRoutes(
@@ -325,7 +325,7 @@ export async function registerRoutes(
           return res.status(403).json({ message: "You don't have access to this client" });
         }
       }
-      const client = await storage.getClientWithProjects(req.params.id);
+      const client = await storage.getClientWithProjects(req.params.id, req.tenantId || "default");
       if (!client) return res.status(404).json({ message: "Client not found" });
       res.json(client);
     } catch (err: any) {
@@ -367,7 +367,7 @@ export async function registerRoutes(
       if (notes !== undefined) updates.notes = notes;
       if (status !== undefined) updates.status = status;
 
-      const client = await storage.updateClient(req.params.id, updates);
+      const client = await storage.updateClient(req.params.id, req.tenantId || "default", updates);
       if (!client) return res.status(404).json({ message: "Client not found" });
       res.json(client);
     } catch (err: any) {
@@ -377,7 +377,7 @@ export async function registerRoutes(
 
   app.delete("/api/clients/:id", requireModuleAccess("clients"), async (req, res) => {
     try {
-      await storage.deleteClient(req.params.id);
+      await storage.deleteClient(req.params.id, req.tenantId || "default");
       res.json({ success: true });
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -453,7 +453,7 @@ export async function registerRoutes(
       if (role !== undefined) updates.role = role;
       if (isLegalRepresentative !== undefined) updates.isLegalRepresentative = isLegalRepresentative;
 
-      const contact = await storage.updateContact(req.params.id, updates);
+      const contact = await storage.updateContact(req.params.id, req.tenantId || "default", updates);
       if (!contact) return res.status(404).json({ message: "Contact not found" });
       res.json(contact);
     } catch (err: any) {
@@ -463,7 +463,7 @@ export async function registerRoutes(
 
   app.delete("/api/contacts/:id", requireModuleAccess("contacts"), async (req, res) => {
     try {
-      await storage.deleteContact(req.params.id);
+      await storage.deleteContact(req.params.id, req.tenantId || "default");
       res.json({ success: true });
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -494,7 +494,7 @@ export async function registerRoutes(
       if (!ctx.isGlobal && !ctx.assignedTimelineIds.includes(req.params.id)) {
         return res.status(403).json({ message: "You don't have access to this project" });
       }
-      const timeline = await storage.getTimeline(req.params.id);
+      const timeline = await storage.getTimeline(req.params.id, req.tenantId || "default");
       if (!timeline) return res.status(404).json({ message: "Timeline not found" });
       res.json(timeline);
     } catch (err: any) {
@@ -549,7 +549,7 @@ export async function registerRoutes(
         }
       }
 
-      const full = await storage.getTimeline(timeline.id);
+      const full = await storage.getTimeline(timeline.id, req.tenantId || "default");
       res.status(201).json(full);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -583,7 +583,7 @@ export async function registerRoutes(
       }
 
       if (updates.approvedBudget !== undefined || updates.totalRunningCost !== undefined) {
-        const existing = await storage.getTimeline(req.params.id);
+        const existing = await storage.getTimeline(req.params.id, req.tenantId || "default");
         if (existing) {
           const budget = parseFloat(updates.approvedBudget !== undefined ? updates.approvedBudget : existing.approvedBudget ?? "0") || 0;
           const cost = parseFloat(updates.totalRunningCost !== undefined ? updates.totalRunningCost : existing.totalRunningCost ?? "0") || 0;
@@ -595,12 +595,12 @@ export async function registerRoutes(
         }
       }
 
-      const timeline = await storage.updateTimeline(req.params.id, updates);
+      const timeline = await storage.updateTimeline(req.params.id, req.tenantId || "default", updates);
       if (!timeline) return res.status(404).json({ message: "Timeline not found" });
 
       if (updates.engagementModel !== undefined || updates.startDate !== undefined || updates.endDate !== undefined) {
-        await recalcTotalRunningCost(req.params.id);
-        const refreshed = await storage.getTimeline(req.params.id);
+        await recalcTotalRunningCost(req.params.id, req.tenantId || "default");
+        const refreshed = await storage.getTimeline(req.params.id, req.tenantId || "default");
         if (refreshed) return res.json(refreshed);
       }
 
@@ -613,7 +613,7 @@ export async function registerRoutes(
   // DELETE timeline
   app.delete("/api/timelines/:id", requirePermission("project.edit"), async (req, res) => {
     try {
-      await storage.deleteTimeline(req.params.id);
+      await storage.deleteTimeline(req.params.id, req.tenantId || "default");
       res.json({ success: true });
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -642,7 +642,7 @@ export async function registerRoutes(
         amount: amount || null,
       });
       if (isFinancialObligation && amount) {
-        await recalcApprovedBudget(req.params.id);
+        await recalcApprovedBudget(req.params.id, req.tenantId || "default");
       }
       res.status(201).json(milestone);
     } catch (err: any) {
@@ -665,11 +665,11 @@ export async function registerRoutes(
       if (isFinancialObligation !== undefined) updates.isFinancialObligation = isFinancialObligation;
       if (amount !== undefined) updates.amount = amount;
 
-      const milestone = await storage.updateMilestone(req.params.id, updates);
+      const milestone = await storage.updateMilestone(req.params.id, req.tenantId || "default", updates);
       if (!milestone) return res.status(404).json({ message: "Milestone not found" });
 
       if (isFinancialObligation !== undefined || amount !== undefined) {
-        await recalcApprovedBudget(milestone.timelineId);
+        await recalcApprovedBudget(milestone.timelineId, req.tenantId || "default");
       }
       res.json(milestone);
     } catch (err: any) {
@@ -683,9 +683,9 @@ export async function registerRoutes(
       const { milestones: milestonesTable } = await import("@shared/schema");
       const { eq: eqOp } = await import("drizzle-orm");
       const [existing] = await db.select({ timelineId: milestonesTable.timelineId, isFinancialObligation: milestonesTable.isFinancialObligation }).from(milestonesTable).where(eqOp(milestonesTable.id, req.params.id));
-      await storage.deleteMilestone(req.params.id);
+      await storage.deleteMilestone(req.params.id, req.tenantId || "default");
       if (existing?.isFinancialObligation) {
-        await recalcApprovedBudget(existing.timelineId);
+        await recalcApprovedBudget(existing.timelineId, req.tenantId || "default");
       }
       res.json({ success: true });
     } catch (err: any) {
@@ -711,13 +711,13 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Title is required" });
       }
 
-      const parentTimeline = await storage.getTimeline(req.params.id);
+      const parentTimeline = await storage.getTimeline(req.params.id, req.tenantId || "default");
       if (parentTimeline && parentTimeline.recordType === "project" && (!startDate || !endDate)) {
         return res.status(400).json({ message: "Start date and end date are required for project tasks" });
       }
 
       if (startDate && endDate && parentTaskId && (itemType || "workstream") === "workstream") {
-        const parentPhase = await storage.getTask(parentTaskId);
+        const parentPhase = await storage.getTask(parentTaskId, req.tenantId || "default");
         if (parentPhase && parentPhase.startDate && parentPhase.endDate) {
           const phaseStart = parseDateToNum(parentPhase.startDate);
           const phaseEnd = parseDateToNum(parentPhase.endDate);
@@ -755,7 +755,7 @@ export async function registerRoutes(
       });
 
       if (parentTaskId) {
-        await recalcPhaseProgress(parentTaskId);
+        await recalcPhaseProgress(parentTaskId, req.tenantId || "default");
       }
 
       res.status(201).json(task);
@@ -788,14 +788,14 @@ export async function registerRoutes(
       if (assignedRoleId !== undefined) updates.assignedRoleId = assignedRoleId;
       if (durationWeeks !== undefined) updates.durationWeeks = durationWeeks;
 
-      const currentTask = await storage.getTask(req.params.id);
+      const currentTask = await storage.getTask(req.params.id, req.tenantId || "default");
       if (currentTask) {
         const resolvedParentId = parentTaskId !== undefined ? parentTaskId : currentTask.parentTaskId;
         const resolvedType = itemType !== undefined ? itemType : currentTask.itemType;
         const resolvedStartDate = startDate !== undefined ? startDate : currentTask.startDate;
         const resolvedEndDate = endDate !== undefined ? endDate : currentTask.endDate;
         if (resolvedParentId && resolvedType === "workstream" && resolvedStartDate && resolvedEndDate) {
-          const parentPhase = await storage.getTask(resolvedParentId);
+          const parentPhase = await storage.getTask(resolvedParentId, req.tenantId || "default");
           if (parentPhase && parentPhase.startDate && parentPhase.endDate) {
             const wsStart = parseDateToNum(resolvedStartDate);
             const wsEnd = parseDateToNum(resolvedEndDate);
@@ -808,15 +808,15 @@ export async function registerRoutes(
         }
       }
 
-      const task = await storage.updateTask(req.params.id, updates);
+      const task = await storage.updateTask(req.params.id, req.tenantId || "default", updates);
       if (!task) return res.status(404).json({ message: "Task not found" });
 
       const resolvedParentId = parentTaskId !== undefined ? parentTaskId : currentTask?.parentTaskId;
       if (resolvedParentId) {
-        await recalcPhaseProgress(resolvedParentId);
+        await recalcPhaseProgress(resolvedParentId, req.tenantId || "default");
       }
       if (task.itemType === "phase") {
-        await recalcPhaseProgress(task.id);
+        await recalcPhaseProgress(task.id, req.tenantId || "default");
       }
 
       res.json(task);
@@ -828,10 +828,10 @@ export async function registerRoutes(
   // DELETE task
   app.delete("/api/tasks/:id", async (req, res) => {
     try {
-      const taskToDelete = await storage.getTask(req.params.id);
-      await storage.deleteTask(req.params.id);
+      const taskToDelete = await storage.getTask(req.params.id, req.tenantId || "default");
+      await storage.deleteTask(req.params.id, req.tenantId || "default");
       if (taskToDelete?.parentTaskId) {
-        await recalcPhaseProgress(taskToDelete.parentTaskId);
+        await recalcPhaseProgress(taskToDelete.parentTaskId, req.tenantId || "default");
       }
       res.json({ success: true });
     } catch (err: any) {
@@ -921,7 +921,7 @@ export async function registerRoutes(
       if (req.body.notes !== undefined) updates.notes = req.body.notes;
       if (req.body.teamMemberId !== undefined) updates.teamMemberId = req.body.teamMemberId;
       if (req.body.timelineId !== undefined) updates.timelineId = req.body.timelineId;
-      const entry = await storage.updateTimesheetEntry(req.params.entryId, updates);
+      const entry = await storage.updateTimesheetEntry(req.params.entryId, req.tenantId || "default", updates);
       if (!entry) return res.status(404).json({ message: "Timesheet entry not found" });
       res.json(entry);
     } catch (err: any) {
@@ -931,7 +931,7 @@ export async function registerRoutes(
 
   app.delete("/api/timesheets/:entryId", async (req, res) => {
     try {
-      await storage.deleteTimesheetEntry(req.params.entryId);
+      await storage.deleteTimesheetEntry(req.params.entryId, req.tenantId || "default");
       res.json({ success: true });
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -964,7 +964,7 @@ export async function registerRoutes(
       }
       const pct = Math.max(0, Math.min(100, parseInt(percentComplete) || 0));
 
-      const task = await storage.getTask(taskId);
+      const task = await storage.getTask(taskId, req.tenantId || "default");
       if (!task || task.timelineId !== req.params.id) {
         return res.status(400).json({ message: "Task not found in this project" });
       }
@@ -981,9 +981,9 @@ export async function registerRoutes(
         notes: notes || null,
       });
 
-      await storage.updateTask(taskId, { percentComplete: pct });
+      await storage.updateTask(taskId, req.tenantId || "default", { percentComplete: pct });
       if (task.parentTaskId) {
-        await recalcPhaseProgress(task.parentTaskId);
+        await recalcPhaseProgress(task.parentTaskId, req.tenantId || "default");
       }
 
       res.status(201).json(entry);
@@ -994,7 +994,7 @@ export async function registerRoutes(
 
   app.patch("/api/progress/:entryId", async (req, res) => {
     try {
-      const existing = await storage.getProgressEntry(req.params.entryId);
+      const existing = await storage.getProgressEntry(req.params.entryId, req.tenantId || "default");
       if (!existing) return res.status(404).json({ message: "Progress entry not found" });
 
       const updates: any = {};
@@ -1002,15 +1002,15 @@ export async function registerRoutes(
       if (req.body.weekEnding !== undefined) updates.weekEnding = req.body.weekEnding;
       if (req.body.notes !== undefined) updates.notes = req.body.notes;
 
-      const entry = await storage.updateProgressEntry(req.params.entryId, updates);
+      const entry = await storage.updateProgressEntry(req.params.entryId, req.tenantId || "default", updates);
       if (!entry) return res.status(404).json({ message: "Progress entry not found" });
 
       if (updates.percentComplete !== undefined) {
-        const task = await storage.getTask(existing.taskId);
+        const task = await storage.getTask(existing.taskId, req.tenantId || "default");
         if (task) {
-          await storage.updateTask(existing.taskId, { percentComplete: updates.percentComplete });
+          await storage.updateTask(existing.taskId, req.tenantId || "default", { percentComplete: updates.percentComplete });
           if (task.parentTaskId) {
-            await recalcPhaseProgress(task.parentTaskId);
+            await recalcPhaseProgress(task.parentTaskId, req.tenantId || "default");
           }
         }
       }
@@ -1023,7 +1023,7 @@ export async function registerRoutes(
 
   app.delete("/api/progress/:entryId", async (req, res) => {
     try {
-      await storage.deleteProgressEntry(req.params.entryId);
+      await storage.deleteProgressEntry(req.params.entryId, req.tenantId || "default");
       res.json({ success: true });
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -1087,7 +1087,7 @@ export async function registerRoutes(
       if (dueDate !== undefined) updates.dueDate = dueDate;
       if (sortOrder !== undefined) updates.sortOrder = sortOrder;
 
-      const risk = await storage.updateRisk(req.params.id, updates);
+      const risk = await storage.updateRisk(req.params.id, req.tenantId || "default", updates);
       if (!risk) return res.status(404).json({ message: "Risk not found" });
       res.json(risk);
     } catch (err: any) {
@@ -1098,7 +1098,7 @@ export async function registerRoutes(
   // DELETE risk
   app.delete("/api/risks/:id", requirePermission("raid.edit"), async (req, res) => {
     try {
-      await storage.deleteRisk(req.params.id);
+      await storage.deleteRisk(req.params.id, req.tenantId || "default");
       res.json({ success: true });
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -1124,7 +1124,7 @@ export async function registerRoutes(
 
   app.get("/api/team-members/:id", async (req, res) => {
     try {
-      const member = await storage.getTeamMember(req.params.id);
+      const member = await storage.getTeamMember(req.params.id, req.tenantId || "default");
       if (!member) return res.status(404).json({ message: "Team member not found" });
       res.json(member);
     } catch (err: any) {
@@ -1161,7 +1161,7 @@ export async function registerRoutes(
       if (department !== undefined) updates.department = department;
       if (monthlyCost !== undefined) updates.monthlyCost = monthlyCost;
       if (hourlyCost !== undefined) updates.hourlyCost = hourlyCost;
-      const member = await storage.updateTeamMember(req.params.id, updates);
+      const member = await storage.updateTeamMember(req.params.id, req.tenantId || "default", updates);
       if (!member) return res.status(404).json({ message: "Team member not found" });
       res.json(member);
     } catch (err: any) {
@@ -1171,7 +1171,7 @@ export async function registerRoutes(
 
   app.delete("/api/team-members/:id", requireModuleAccess("team_members"), async (req, res) => {
     try {
-      await storage.deleteTeamMember(req.params.id);
+      await storage.deleteTeamMember(req.params.id, req.tenantId || "default");
       res.json({ success: true });
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -1216,7 +1216,7 @@ export async function registerRoutes(
       if (region !== undefined) updates.region = region;
       if (costRate !== undefined) updates.costRate = costRate;
       if (billRate !== undefined) updates.billRate = billRate;
-      const card = await storage.updateRateCard(req.params.id, updates);
+      const card = await storage.updateRateCard(req.params.id, req.tenantId || "default", updates);
       if (!card) return res.status(404).json({ message: "Rate card not found" });
       res.json(card);
     } catch (err: any) {
@@ -1226,7 +1226,7 @@ export async function registerRoutes(
 
   app.delete("/api/rate-cards/:id", requirePermission("rates.edit"), async (req, res) => {
     try {
-      await storage.deleteRateCard(req.params.id);
+      await storage.deleteRateCard(req.params.id, req.tenantId || "default");
       res.json({ success: true });
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -1249,7 +1249,7 @@ export async function registerRoutes(
     try {
       if (!(await checkTimelineAccess(req, res, req.params.id))) return;
       const { teamMemberId, rateCardId, monthlyCost, hourlyCost, allocation, startDate, endDate } = req.body;
-      const parentTimeline = await storage.getTimeline(req.params.id);
+      const parentTimeline = await storage.getTimeline(req.params.id, req.tenantId || "default");
       if (parentTimeline && parentTimeline.recordType === "project" && !teamMemberId) {
         return res.status(400).json({ message: "Team member is required for projects" });
       }
@@ -1277,7 +1277,7 @@ export async function registerRoutes(
     try {
       if (!(await checkTimelineAccess(req, res, req.params.id))) return;
       const timelineId = req.params.id;
-      const timeline = await storage.getTimeline(timelineId);
+      const timeline = await storage.getTimeline(timelineId, req.tenantId || "default");
       if (!timeline) return res.status(404).json({ message: "Timeline not found" });
       if (timeline.recordType !== "opportunity") {
         return res.status(400).json({ message: "Sync from estimate is only available for opportunities" });
@@ -1377,11 +1377,11 @@ export async function registerRoutes(
       if (startDate !== undefined) updates.startDate = startDate;
       if (endDate !== undefined) updates.endDate = endDate;
 
-      const existing = await storage.getProjectTeamMemberById(req.params.id);
+      const existing = await storage.getProjectTeamMemberById(req.params.id, req.tenantId || "default");
       if (!existing) return res.status(404).json({ message: "Assignment not found" });
       const finalTeamMemberId = updates.teamMemberId !== undefined ? updates.teamMemberId : existing.teamMemberId;
       const finalRateCardId = updates.rateCardId !== undefined ? updates.rateCardId : existing.rateCardId;
-      const parentTimeline = await storage.getTimeline(existing.timelineId);
+      const parentTimeline = await storage.getTimeline(existing.timelineId, req.tenantId || "default");
       if (parentTimeline && parentTimeline.recordType === "project" && !finalTeamMemberId) {
         return res.status(400).json({ message: "Team member is required for projects" });
       }
@@ -1389,7 +1389,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Either a team member or a role (rate card) is required" });
       }
 
-      const assignment = await storage.updateProjectTeamMember(req.params.id, updates);
+      const assignment = await storage.updateProjectTeamMember(req.params.id, req.tenantId || "default", updates);
       if (!assignment) return res.status(404).json({ message: "Assignment not found" });
       res.json(assignment);
     } catch (err: any) {
@@ -1399,7 +1399,7 @@ export async function registerRoutes(
 
   app.delete("/api/project-team/:id", async (req, res) => {
     try {
-      await storage.deleteProjectTeamMember(req.params.id);
+      await storage.deleteProjectTeamMember(req.params.id, req.tenantId || "default");
       res.json({ success: true });
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -1462,7 +1462,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: "timelineId is required" });
       }
       const allocation = await storage.createAllocation(data);
-      await recalcTotalRunningCost(data.timelineId);
+      await recalcTotalRunningCost(data.timelineId, req.tenantId || "default");
       res.json(allocation);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -1472,7 +1472,7 @@ export async function registerRoutes(
   // UPDATE allocation
   app.patch("/api/allocations/:id", async (req, res) => {
     try {
-      const existing = await storage.getAllocation(req.params.id);
+      const existing = await storage.getAllocation(req.params.id, req.tenantId || "default");
       if (!existing) return res.status(404).json({ message: "Allocation not found" });
 
       const updates: any = {};
@@ -1482,12 +1482,12 @@ export async function registerRoutes(
       if (req.body.endDate !== undefined) updates.endDate = req.body.endDate;
       if (req.body.status !== undefined) updates.status = req.body.status;
       if (req.body.notes !== undefined) updates.notes = req.body.notes;
-      const allocation = await storage.updateAllocation(req.params.id, updates);
+      const allocation = await storage.updateAllocation(req.params.id, req.tenantId || "default", updates);
       if (!allocation) return res.status(404).json({ message: "Allocation not found" });
 
-      await recalcTotalRunningCost(allocation.timelineId);
+      await recalcTotalRunningCost(allocation.timelineId, req.tenantId || "default");
       if (existing.timelineId !== allocation.timelineId) {
-        await recalcTotalRunningCost(existing.timelineId);
+        await recalcTotalRunningCost(existing.timelineId, req.tenantId || "default");
       }
       res.json(allocation);
     } catch (err: any) {
@@ -1498,10 +1498,10 @@ export async function registerRoutes(
   // DELETE allocation
   app.delete("/api/allocations/:id", async (req, res) => {
     try {
-      const existing = await storage.getAllocation(req.params.id);
-      await storage.deleteAllocation(req.params.id);
+      const existing = await storage.getAllocation(req.params.id, req.tenantId || "default");
+      await storage.deleteAllocation(req.params.id, req.tenantId || "default");
       if (existing) {
-        await recalcTotalRunningCost(existing.timelineId);
+        await recalcTotalRunningCost(existing.timelineId, req.tenantId || "default");
       }
       res.json({ success: true });
     } catch (err: any) {
@@ -1605,11 +1605,11 @@ export async function registerRoutes(
 
   app.delete("/api/api-tokens/:id", requireModuleAccess("admin"), requirePermission("org.settings.manage"), async (req, res) => {
     try {
-      const token = await storage.getApiToken(req.params.id);
-      if (!token || token.tenantId !== req.tenantId) {
+      const token = await storage.getApiToken(req.params.id, req.tenantId || "default");
+      if (!token) {
         return res.status(404).json({ message: "Token not found" });
       }
-      const revoked = await storage.revokeApiToken(req.params.id);
+      const revoked = await storage.revokeApiToken(req.params.id, req.tenantId || "default");
       res.json({ id: revoked?.id, revokedAt: revoked?.revokedAt });
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -1660,7 +1660,7 @@ export async function registerRoutes(
     try {
       if (!req.file) return res.status(400).json({ message: "No file uploaded" });
       const timelineId = req.params.id;
-      const timeline = await storage.getTimeline(timelineId);
+      const timeline = await storage.getTimeline(timelineId, req.tenantId || "default");
       if (!timeline) return res.status(404).json({ message: "Timeline not found" });
 
       const wb = XLSX.read(req.file.buffer, { type: "buffer" });
@@ -1874,7 +1874,7 @@ export async function registerRoutes(
 
   app.patch("/api/flightpath-stages/:id", async (req, res) => {
     try {
-      const stage = await storage.updateFlightpathStage(req.params.id, req.body);
+      const stage = await storage.updateFlightpathStage(req.params.id, req.tenantId || "default", req.body);
       if (!stage) return res.status(404).json({ message: "Stage not found" });
       res.json(stage);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
@@ -1882,7 +1882,7 @@ export async function registerRoutes(
 
   app.delete("/api/flightpath-stages/:id", async (req, res) => {
     try {
-      await storage.deleteFlightpathStage(req.params.id);
+      await storage.deleteFlightpathStage(req.params.id, req.tenantId || "default");
       res.status(204).send();
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
@@ -1904,7 +1904,7 @@ export async function registerRoutes(
 
   app.patch("/api/flightpath-deliverables/:id", async (req, res) => {
     try {
-      const deliverable = await storage.updateDeliverable(req.params.id, req.body);
+      const deliverable = await storage.updateDeliverable(req.params.id, req.tenantId || "default", req.body);
       if (!deliverable) return res.status(404).json({ message: "Deliverable not found" });
       res.json(deliverable);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
@@ -1912,7 +1912,7 @@ export async function registerRoutes(
 
   app.delete("/api/flightpath-deliverables/:id", async (req, res) => {
     try {
-      await storage.deleteDeliverable(req.params.id);
+      await storage.deleteDeliverable(req.params.id, req.tenantId || "default");
       res.status(204).send();
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
@@ -1939,14 +1939,14 @@ export async function registerRoutes(
   });
   app.patch("/api/governance-model/stages/:id", async (req, res) => {
     try {
-      const stage = await storage.updateFlightpathStage(req.params.id, req.body);
+      const stage = await storage.updateFlightpathStage(req.params.id, req.tenantId || "default", req.body);
       if (!stage) return res.status(404).json({ message: "Stage not found" });
       res.json(stage);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
   app.delete("/api/governance-model/stages/:id", async (req, res) => {
     try {
-      await storage.deleteFlightpathStage(req.params.id);
+      await storage.deleteFlightpathStage(req.params.id, req.tenantId || "default");
       res.status(204).send();
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
@@ -1964,14 +1964,14 @@ export async function registerRoutes(
   });
   app.patch("/api/governance-model/deliverables/:id", async (req, res) => {
     try {
-      const deliverable = await storage.updateDeliverable(req.params.id, req.body);
+      const deliverable = await storage.updateDeliverable(req.params.id, req.tenantId || "default", req.body);
       if (!deliverable) return res.status(404).json({ message: "Deliverable not found" });
       res.json(deliverable);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
   app.delete("/api/governance-model/deliverables/:id", async (req, res) => {
     try {
-      await storage.deleteDeliverable(req.params.id);
+      await storage.deleteDeliverable(req.params.id, req.tenantId || "default");
       res.status(204).send();
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
@@ -2005,7 +2005,7 @@ export async function registerRoutes(
       if (typeof data.artifactVerifiedAt === "string") {
         data.artifactVerifiedAt = new Date(data.artifactVerifiedAt);
       }
-      const checkpoint = await storage.updateProjectCheckpoint(req.params.id, data);
+      const checkpoint = await storage.updateProjectCheckpoint(req.params.id, req.tenantId || "default", data);
       if (!checkpoint) return res.status(404).json({ message: "Checkpoint not found" });
       res.json(checkpoint);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
@@ -2013,7 +2013,7 @@ export async function registerRoutes(
 
   app.delete("/api/checkpoints/:id", async (req, res) => {
     try {
-      await storage.deleteProjectCheckpoint(req.params.id);
+      await storage.deleteProjectCheckpoint(req.params.id, req.tenantId || "default");
       res.status(204).send();
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
@@ -2037,7 +2037,7 @@ export async function registerRoutes(
 
   app.patch("/api/gates/:id", requirePermission("gate.approve"), async (req, res) => {
     try {
-      const gate = await storage.updateProjectGate(req.params.id, req.body);
+      const gate = await storage.updateProjectGate(req.params.id, req.tenantId || "default", req.body);
       if (!gate) return res.status(404).json({ message: "Gate not found" });
       res.json(gate);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
@@ -2055,7 +2055,7 @@ export async function registerRoutes(
       if (!gate) {
         gate = await storage.createProjectGate({ timelineId: req.params.id, stageId, status: "exception_requested", notes: notes.trim(), tenantId: req.tenantId || "default" });
       } else {
-        gate = await storage.updateProjectGate(gate.id, { status: "exception_requested", notes: notes.trim() }) || gate;
+        gate = await storage.updateProjectGate(gate.id, req.tenantId || "default", { status: "exception_requested", notes: notes.trim() }) || gate;
       }
       res.json(gate);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
@@ -2070,7 +2070,7 @@ export async function registerRoutes(
       const gate = await storage.getProjectGate(req.params.id, stageId);
       if (!gate) return res.status(404).json({ message: "Gate not found" });
       if (gate.status !== "exception_requested") return res.status(400).json({ message: "Gate is not in exception_requested status" });
-      const updatedGate = await storage.updateProjectGate(gate.id, {
+      const updatedGate = await storage.updateProjectGate(gate.id, req.tenantId || "default", {
         status: approved ? "exception" : "failed",
         notes: notes ? `${gate.notes || ""}\n---\nReviewer: ${approved ? "Approved" : "Rejected"}${notes ? ` — ${notes}` : ""}`.trim() : gate.notes,
       });
@@ -2114,10 +2114,10 @@ export async function registerRoutes(
       const { nextStageId } = req.body;
       if (!nextStageId) return res.status(400).json({ message: "nextStageId is required" });
 
-      const timeline = await storage.getTimeline(req.params.id);
+      const timeline = await storage.getTimeline(req.params.id, req.tenantId || "default");
       if (!timeline) return res.status(404).json({ message: "Timeline not found" });
 
-      const allStages = await storage.getFlightpathStages();
+      const allStages = await storage.getFlightpathStages(req.tenantId || "default");
       const sortedStages = allStages.sort((a, b) => a.stageNumber - b.stageNumber);
       const nextStage = sortedStages.find(s => s.id === nextStageId);
       if (!nextStage) return res.status(400).json({ message: "Invalid stage" });
@@ -2141,7 +2141,7 @@ export async function registerRoutes(
         }
       }
 
-      const updated = await storage.updateTimeline(req.params.id, { flightpathStageId: nextStageId });
+      const updated = await storage.updateTimeline(req.params.id, req.tenantId || "default", { flightpathStageId: nextStageId });
 
       try {
         const now = new Date();
@@ -2154,7 +2154,7 @@ export async function registerRoutes(
         const currentStage = sortedStages.find(s => s.id === timeline.flightpathStageId);
         const stageName = currentStage ? `Stage ${currentStage.stageNumber}` : "Stage";
 
-        const evmResult = await calculateEVMForWeek(req.params.id, weekEnding);
+        const evmResult = await calculateEVMForWeek(req.params.id, weekEnding, req.tenantId || "default");
         await storage.createEvmSnapshot({
           tenantId: req.tenantId || "default",
           timelineId: req.params.id,
@@ -2203,7 +2203,7 @@ export async function registerRoutes(
       const { stageId } = req.body;
       if (!stageId) return res.status(400).json({ message: "stageId is required" });
 
-      const stage = await storage.getFlightpathStage(stageId);
+      const stage = await storage.getFlightpathStage(stageId, req.tenantId || "default");
       if (!stage) return res.status(404).json({ message: "Stage not found" });
 
       const allCheckpoints = await storage.getProjectCheckpointsByStage(req.params.id, stageId);
@@ -2335,7 +2335,7 @@ Respond ONLY with valid JSON in this exact format:
           evaluatorResult,
         });
       } else {
-        gate = await storage.updateProjectGate(gate.id, {
+        gate = await storage.updateProjectGate(gate.id, req.tenantId || "default", {
           status: evaluatorResult.status === "pass" ? "passed" : "failed",
           evaluatorResult,
           approvedAt: evaluatorResult.status === "pass" ? new Date() : null,
@@ -2351,7 +2351,7 @@ Respond ONLY with valid JSON in this exact format:
   app.get("/api/timelines/:id/artifacts", async (req, res) => {
     try {
       if (!(await checkTimelineAccess(req, res, req.params.id))) return;
-      const timeline = await storage.getTimeline(req.params.id);
+      const timeline = await storage.getTimeline(req.params.id, req.tenantId || "default");
       if (!timeline) return res.status(404).json({ message: "Timeline not found" });
 
       if (!timeline.docRepositoryType || !timeline.docRepositoryFolderId) {
@@ -2375,7 +2375,7 @@ Respond ONLY with valid JSON in this exact format:
         return res.status(400).json({ message: "checkpointId and fileName are required" });
       }
 
-      const checkpoint = await storage.updateProjectCheckpoint(checkpointId, {
+      const checkpoint = await storage.updateProjectCheckpoint(checkpointId, req.tenantId || "default", {
         artifactUrl: fileUrl || null,
         artifactFileId: fileId || null,
         artifactFileName: fileName,
@@ -2395,7 +2395,7 @@ Respond ONLY with valid JSON in this exact format:
       const { checkpointId } = req.body;
       if (!checkpointId) return res.status(400).json({ message: "checkpointId is required" });
 
-      const checkpoint = await storage.updateProjectCheckpoint(checkpointId, {
+      const checkpoint = await storage.updateProjectCheckpoint(checkpointId, req.tenantId || "default", {
         artifactUrl: null,
         artifactFileId: null,
         artifactFileName: null,
@@ -2415,7 +2415,7 @@ Respond ONLY with valid JSON in this exact format:
       const { stageId } = req.body;
       if (!stageId) return res.status(400).json({ message: "stageId is required" });
 
-      const timeline = await storage.getTimeline(req.params.id);
+      const timeline = await storage.getTimeline(req.params.id, req.tenantId || "default");
       if (!timeline) return res.status(404).json({ message: "Timeline not found" });
 
       const checkpoints = await storage.getProjectCheckpointsByStage(req.params.id, stageId);
@@ -2425,7 +2425,7 @@ Respond ONLY with valid JSON in this exact format:
         return res.json({ verified: 0, total: checkpoints.length, results: [] });
       }
 
-      const stage = await storage.getFlightpathStage(stageId);
+      const stage = await storage.getFlightpathStage(stageId, req.tenantId || "default");
       const deliverables = await storage.getStageDeliverables(stageId);
 
       const openai = new OpenAI({
@@ -2493,7 +2493,7 @@ Respond ONLY with valid JSON:
 
           const summary = result.summary + (result.concerns?.length > 0 ? `\nConcerns: ${result.concerns.join("; ")}` : "");
 
-          await storage.updateProjectCheckpoint(cp.id, {
+          await storage.updateProjectCheckpoint(cp.id, req.tenantId || "default", {
             artifactVerified: result.verified === true,
             artifactVerifiedAt: new Date(),
             artifactSummary: summary,
@@ -2636,7 +2636,7 @@ Respond ONLY with valid JSON:
       if (req.body.hoursPerWeek !== undefined) updates.hoursPerWeek = String(req.body.hoursPerWeek);
       if (req.body.taskType !== undefined) updates.taskType = req.body.taskType;
       if (req.body.notes !== undefined) updates.notes = req.body.notes;
-      const resource = await storage.updateWorkstreamResource(req.params.id, updates);
+      const resource = await storage.updateWorkstreamResource(req.params.id, req.tenantId || "default", updates);
       if (!resource) return res.status(404).json({ message: "Resource not found" });
       res.json(resource);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
@@ -2644,7 +2644,7 @@ Respond ONLY with valid JSON:
 
   app.delete("/api/workstream-resources/:id", requirePermission("estimate.edit"), async (req, res) => {
     try {
-      await storage.deleteWorkstreamResource(req.params.id);
+      await storage.deleteWorkstreamResource(req.params.id, req.tenantId || "default");
       res.json({ success: true });
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
@@ -2692,10 +2692,10 @@ Respond ONLY with valid JSON:
         projectStatus: "not_started",
       });
 
-      const allStages = await storage.getFlightpathStages();
+      const allStages = await storage.getFlightpathStages(req.tenantId || "default");
       const stage0 = allStages.sort((a, b) => a.stageNumber - b.stageNumber).find(s => s.stageNumber === 0);
       if (stage0) {
-        await storage.updateTimeline(opp.id, { flightpathStageId: stage0.id });
+        await storage.updateTimeline(opp.id, req.tenantId || "default", { flightpathStageId: stage0.id });
         const deliverables = await storage.getStageDeliverables(stage0.id);
         for (const d of deliverables.sort((a, b) => a.sortOrder - b.sortOrder)) {
           await storage.createProjectCheckpoint({
@@ -2709,7 +2709,7 @@ Respond ONLY with valid JSON:
         }
       }
 
-      const full = await storage.getTimeline(opp.id);
+      const full = await storage.getTimeline(opp.id, req.tenantId || "default");
       res.status(201).json(full);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
@@ -2721,7 +2721,7 @@ Respond ONLY with valid JSON:
       if (!ctx.isGlobal && !ctx.assignedTimelineIds.includes(req.params.id)) {
         return res.status(403).json({ message: "You don't have access to this opportunity" });
       }
-      const opp = await storage.getTimeline(req.params.id);
+      const opp = await storage.getTimeline(req.params.id, req.tenantId || "default");
       if (!opp) return res.status(404).json({ message: "Opportunity not found" });
       if (opp.recordType !== "opportunity") return res.status(404).json({ message: "Not an opportunity" });
       res.json(opp);
@@ -2730,7 +2730,7 @@ Respond ONLY with valid JSON:
 
   app.patch("/api/opportunities/:id", requirePermission("opp.edit"), async (req, res) => {
     try {
-      const existing = await storage.getTimeline(req.params.id);
+      const existing = await storage.getTimeline(req.params.id, req.tenantId || "default");
       if (!existing) return res.status(404).json({ message: "Opportunity not found" });
       if (existing.recordType !== "opportunity") return res.status(404).json({ message: "Not an opportunity" });
 
@@ -2764,17 +2764,17 @@ Respond ONLY with valid JSON:
         }
       }
 
-      const updated = await storage.updateTimeline(req.params.id, updates);
+      const updated = await storage.updateTimeline(req.params.id, req.tenantId || "default", updates);
       res.json(updated);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
   app.delete("/api/opportunities/:id", requirePermission("opp.edit"), async (req, res) => {
     try {
-      const existing = await storage.getTimeline(req.params.id);
+      const existing = await storage.getTimeline(req.params.id, req.tenantId || "default");
       if (!existing) return res.status(404).json({ message: "Opportunity not found" });
       if (existing.recordType !== "opportunity") return res.status(404).json({ message: "Not an opportunity" });
-      await storage.deleteTimeline(req.params.id);
+      await storage.deleteTimeline(req.params.id, req.tenantId || "default");
       res.status(204).send();
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
@@ -2782,7 +2782,7 @@ Respond ONLY with valid JSON:
   // ── Convert Opportunity to Project ──
   app.post("/api/opportunities/:id/convert", async (req, res) => {
     try {
-      const opp = await storage.getTimeline(req.params.id);
+      const opp = await storage.getTimeline(req.params.id, req.tenantId || "default");
       if (!opp) return res.status(404).json({ message: "Opportunity not found" });
       if (opp.recordType !== "opportunity") return res.status(400).json({ message: "Not an opportunity" });
       if (opp.opportunityStatus !== "won") return res.status(400).json({ message: "Opportunity must have status 'won' before converting to a project" });
@@ -2795,7 +2795,7 @@ Respond ONLY with valid JSON:
         return res.status(400).json({ message: "A project already exists for this opportunity" });
       }
 
-      const allStages = await storage.getFlightpathStages();
+      const allStages = await storage.getFlightpathStages(req.tenantId || "default");
       const sortedStages = allStages.sort((a, b) => a.stageNumber - b.stageNumber);
       const stage0 = sortedStages.find(s => s.stageNumber === 0);
       const stage1 = sortedStages.find(s => s.stageNumber === 1);
@@ -2989,12 +2989,12 @@ Respond ONLY with valid JSON:
         }
       }
 
-      await storage.updateTimeline(opp.id, {
+      await storage.updateTimeline(opp.id, req.tenantId || "default", {
         opportunityStatus: "won",
         convertedAt: new Date(),
       });
 
-      const fullProject = await storage.getTimeline(project.id);
+      const fullProject = await storage.getTimeline(project.id, req.tenantId || "default");
       res.status(201).json({
         project: fullProject,
         summary: {
@@ -3057,7 +3057,7 @@ Respond ONLY with valid JSON:
         if (newName) syncData.name = newName;
         if (email !== undefined) syncData.email = email;
         if (Object.keys(syncData).length > 0) {
-          await storage.updateTeamMember(tm.id, syncData);
+          await storage.updateTeamMember(tm.id, req.tenantId || "default", syncData);
         }
       }
 
@@ -3104,7 +3104,7 @@ Respond ONLY with valid JSON:
 
   app.delete("/api/rbac/assignments/:assignmentId", requirePermission("project.edit"), async (req, res) => {
     try {
-      await storage.removeObjectAssignment(req.params.assignmentId);
+      await storage.removeObjectAssignment(req.params.assignmentId, req.tenantId || "default");
       res.json({ success: true });
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
@@ -3191,7 +3191,7 @@ Respond ONLY with valid JSON:
       if (name && !role.isSystem) updateData.name = name.trim();
       if (description !== undefined) updateData.description = description;
       if (Object.keys(updateData).length > 0) {
-        await storage.updateOrgRole(req.params.id, updateData);
+        await storage.updateOrgRole(req.params.id, req.tenantId || "default", updateData);
       }
       if (permissions && Array.isArray(permissions)) {
         await storage.setOrgRolePermissions(req.params.id, req.tenantId || "default", permissions);
@@ -3211,7 +3211,7 @@ Respond ONLY with valid JSON:
       if (role.isSystem) return res.status(400).json({ message: "Cannot delete system roles" });
       const userCount = await storage.getOrgRoleUserCount(req.params.id, req.tenantId || "default");
       if (userCount > 0) return res.status(400).json({ message: `Cannot delete role with ${userCount} assigned user(s). Remove assignments first.` });
-      await storage.deleteOrgRole(req.params.id);
+      await storage.deleteOrgRole(req.params.id, req.tenantId || "default");
       invalidatePermissionCache();
       res.json({ success: true });
     } catch (err: any) { res.status(500).json({ message: err.message }); }
@@ -3226,7 +3226,7 @@ Respond ONLY with valid JSON:
 
   app.post("/api/team-members/:id/enable-access", requirePermission("users.manage"), async (req, res) => {
     try {
-      const member = await storage.getTeamMember(req.params.id);
+      const member = await storage.getTeamMember(req.params.id, req.tenantId || "default");
       if (!member) return res.status(404).json({ message: "Team member not found" });
       if (!member.email) return res.status(400).json({ message: "Team member has no email address" });
       const user = await storage.createUserFromTeamMember(member.email, req.params.id);
@@ -3236,7 +3236,7 @@ Respond ONLY with valid JSON:
 
   app.post("/api/team-members/:id/disable-access", requirePermission("users.manage"), async (req, res) => {
     try {
-      const member = await storage.getTeamMember(req.params.id);
+      const member = await storage.getTeamMember(req.params.id, req.tenantId || "default");
       if (!member) return res.status(404).json({ message: "Team member not found" });
       await storage.unlinkTeamMemberFromUser(req.params.id);
       res.json({ success: true });
@@ -3249,10 +3249,10 @@ Respond ONLY with valid JSON:
       const { weekEnding, notes } = req.body;
       if (!weekEnding) return res.status(400).json({ message: "weekEnding is required" });
 
-      const timeline = await storage.getTimeline(req.params.id);
+      const timeline = await storage.getTimeline(req.params.id, req.tenantId || "default");
       if (!timeline) return res.status(404).json({ message: "Timeline not found" });
 
-      const evmResult = await calculateEVMForWeek(req.params.id, weekEnding);
+      const evmResult = await calculateEVMForWeek(req.params.id, weekEnding, req.tenantId || "default");
 
       const snapshot = await storage.createEvmSnapshot({
         tenantId: req.tenantId || "default",
@@ -3318,7 +3318,7 @@ Respond ONLY with valid JSON:
 
   app.delete("/api/timelines/:id/evm-snapshots/:snapshotId", requirePermission("org.settings.manage"), async (req, res) => {
     try {
-      await storage.deleteEvmSnapshot(req.params.snapshotId);
+      await storage.deleteEvmSnapshot(req.params.snapshotId, req.tenantId || "default");
 
       await storage.createAuditEntry({
         tenantId: req.tenantId || "default",

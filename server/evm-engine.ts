@@ -38,8 +38,8 @@ export interface EVMResult {
   inputsHash: string;
 }
 
-export async function calculateEVMForWeek(timelineId: string, targetWeekEnding: string): Promise<EVMResult> {
-  const timeline = await storage.getTimeline(timelineId);
+export async function calculateEVMForWeek(timelineId: string, targetWeekEnding: string, tenantId: string = "default"): Promise<EVMResult> {
+  const timeline = await storage.getTimeline(timelineId, tenantId);
   if (!timeline) throw new Error("Timeline not found");
 
   const bac = parseFloat(timeline.approvedBudget || "0");

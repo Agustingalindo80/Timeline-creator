@@ -85,96 +85,96 @@ import {
 
 export interface IStorage {
   getClients(tenantId?: string): Promise<Client[]>;
-  getClient(id: string): Promise<Client | undefined>;
-  getClientWithProjects(id: string): Promise<ClientWithProjects | undefined>;
+  getClient(id: string, tenantId: string): Promise<Client | undefined>;
+  getClientWithProjects(id: string, tenantId: string): Promise<ClientWithProjects | undefined>;
   createClient(data: InsertClient): Promise<Client>;
-  updateClient(id: string, data: Partial<InsertClient>): Promise<Client | undefined>;
-  deleteClient(id: string): Promise<void>;
+  updateClient(id: string, tenantId: string, data: Partial<InsertClient>): Promise<Client | undefined>;
+  deleteClient(id: string, tenantId: string): Promise<void>;
   getAllContacts(tenantId?: string): Promise<Contact[]>;
   getContacts(clientId: string): Promise<Contact[]>;
-  getContact(id: string): Promise<Contact | undefined>;
+  getContact(id: string, tenantId: string): Promise<Contact | undefined>;
   createContact(data: InsertContact): Promise<Contact>;
-  updateContact(id: string, data: Partial<InsertContact>): Promise<Contact | undefined>;
-  deleteContact(id: string): Promise<void>;
+  updateContact(id: string, tenantId: string, data: Partial<InsertContact>): Promise<Contact | undefined>;
+  deleteContact(id: string, tenantId: string): Promise<void>;
   getTimelines(recordType?: string, tenantId?: string): Promise<TimelineWithMilestones[]>;
-  getTimeline(id: string): Promise<TimelineWithMilestones | undefined>;
+  getTimeline(id: string, tenantId: string): Promise<TimelineWithMilestones | undefined>;
   getTimelinesBySource(sourceOpportunityId: string): Promise<Timeline | undefined>;
   createTimeline(data: InsertTimeline): Promise<Timeline>;
-  updateTimeline(id: string, data: Partial<InsertTimeline>): Promise<Timeline | undefined>;
-  deleteTimeline(id: string): Promise<void>;
+  updateTimeline(id: string, tenantId: string, data: Partial<InsertTimeline>): Promise<Timeline | undefined>;
+  deleteTimeline(id: string, tenantId: string): Promise<void>;
   createMilestone(data: InsertMilestone): Promise<Milestone>;
-  updateMilestone(id: string, data: Partial<InsertMilestone>): Promise<Milestone | undefined>;
-  deleteMilestone(id: string): Promise<void>;
-  getTask(id: string): Promise<Task | undefined>;
+  updateMilestone(id: string, tenantId: string, data: Partial<InsertMilestone>): Promise<Milestone | undefined>;
+  deleteMilestone(id: string, tenantId: string): Promise<void>;
+  getTask(id: string, tenantId: string): Promise<Task | undefined>;
   getTasksByTimeline(timelineId: string): Promise<Task[]>;
   getTasksByParent(parentTaskId: string): Promise<Task[]>;
   createTask(data: InsertTask): Promise<Task>;
-  updateTask(id: string, data: Partial<InsertTask>): Promise<Task | undefined>;
-  deleteTask(id: string): Promise<void>;
+  updateTask(id: string, tenantId: string, data: Partial<InsertTask>): Promise<Task | undefined>;
+  deleteTask(id: string, tenantId: string): Promise<void>;
   getRisks(timelineId: string): Promise<Risk[]>;
   createRisk(data: InsertRisk): Promise<Risk>;
-  updateRisk(id: string, data: Partial<InsertRisk>): Promise<Risk | undefined>;
-  deleteRisk(id: string): Promise<void>;
+  updateRisk(id: string, tenantId: string, data: Partial<InsertRisk>): Promise<Risk | undefined>;
+  deleteRisk(id: string, tenantId: string): Promise<void>;
   getTeamMembers(tenantId?: string): Promise<TeamMember[]>;
-  getTeamMember(id: string): Promise<TeamMember | undefined>;
+  getTeamMember(id: string, tenantId: string): Promise<TeamMember | undefined>;
   createTeamMember(data: InsertTeamMember): Promise<TeamMember>;
-  updateTeamMember(id: string, data: Partial<InsertTeamMember>): Promise<TeamMember | undefined>;
-  deleteTeamMember(id: string): Promise<void>;
+  updateTeamMember(id: string, tenantId: string, data: Partial<InsertTeamMember>): Promise<TeamMember | undefined>;
+  deleteTeamMember(id: string, tenantId: string): Promise<void>;
   getRateCards(tenantId?: string): Promise<RateCard[]>;
-  getRateCard(id: string): Promise<RateCard | undefined>;
+  getRateCard(id: string, tenantId: string): Promise<RateCard | undefined>;
   createRateCard(data: InsertRateCard): Promise<RateCard>;
-  updateRateCard(id: string, data: Partial<InsertRateCard>): Promise<RateCard | undefined>;
-  deleteRateCard(id: string): Promise<void>;
+  updateRateCard(id: string, tenantId: string, data: Partial<InsertRateCard>): Promise<RateCard | undefined>;
+  deleteRateCard(id: string, tenantId: string): Promise<void>;
   getProjectTeamMembers(timelineId: string): Promise<ProjectTeamMemberWithDetails[]>;
-  getProjectTeamMemberById(id: string): Promise<ProjectTeamMember | undefined>;
+  getProjectTeamMemberById(id: string, tenantId: string): Promise<ProjectTeamMember | undefined>;
   createProjectTeamMember(data: InsertProjectTeamMember): Promise<ProjectTeamMember>;
-  updateProjectTeamMember(id: string, data: Partial<InsertProjectTeamMember>): Promise<ProjectTeamMember | undefined>;
-  deleteProjectTeamMember(id: string): Promise<void>;
-  getAllocation(id: string): Promise<Allocation | undefined>;
+  updateProjectTeamMember(id: string, tenantId: string, data: Partial<InsertProjectTeamMember>): Promise<ProjectTeamMember | undefined>;
+  deleteProjectTeamMember(id: string, tenantId: string): Promise<void>;
+  getAllocation(id: string, tenantId: string): Promise<Allocation | undefined>;
   getAllocations(teamMemberId: string): Promise<AllocationWithProject[]>;
   getAllAllAllocations(tenantId?: string): Promise<import("@shared/schema").AllocationFull[]>;
   getAllocationsByTimeline(timelineId: string): Promise<AllocationWithTeamMember[]>;
   createAllocation(data: InsertAllocation): Promise<Allocation>;
-  updateAllocation(id: string, data: Partial<InsertAllocation>): Promise<Allocation | undefined>;
-  deleteAllocation(id: string): Promise<void>;
+  updateAllocation(id: string, tenantId: string, data: Partial<InsertAllocation>): Promise<Allocation | undefined>;
+  deleteAllocation(id: string, tenantId: string): Promise<void>;
   getSettings(tenantId?: string): Promise<AppSettings>;
   updateSettings(data: Partial<Omit<AppSettings, "id">>, tenantId?: string): Promise<AppSettings>;
   getBranding(tenantId?: string): Promise<BrandingConfig>;
   updateBranding(data: Partial<InsertBranding>, tenantId?: string): Promise<BrandingConfig>;
   getTimesheetEntries(filters?: { timelineId?: string; teamMemberId?: string; weekEnding?: string; taskId?: string; dayDate?: string }): Promise<TimesheetEntry[]>;
-  getTimesheetEntry(id: string): Promise<TimesheetEntry | undefined>;
+  getTimesheetEntry(id: string, tenantId: string): Promise<TimesheetEntry | undefined>;
   createTimesheetEntry(data: InsertTimesheetEntry): Promise<TimesheetEntry>;
-  updateTimesheetEntry(id: string, data: Partial<InsertTimesheetEntry>): Promise<TimesheetEntry | undefined>;
-  deleteTimesheetEntry(id: string): Promise<void>;
+  updateTimesheetEntry(id: string, tenantId: string, data: Partial<InsertTimesheetEntry>): Promise<TimesheetEntry | undefined>;
+  deleteTimesheetEntry(id: string, tenantId: string): Promise<void>;
   getProgressEntries(filters?: { timelineId?: string; taskId?: string; weekEnding?: string }): Promise<ProgressEntry[]>;
-  getProgressEntry(id: string): Promise<ProgressEntry | undefined>;
+  getProgressEntry(id: string, tenantId: string): Promise<ProgressEntry | undefined>;
   createProgressEntry(data: InsertProgressEntry): Promise<ProgressEntry>;
-  updateProgressEntry(id: string, data: Partial<InsertProgressEntry>): Promise<ProgressEntry | undefined>;
-  deleteProgressEntry(id: string): Promise<void>;
+  updateProgressEntry(id: string, tenantId: string, data: Partial<InsertProgressEntry>): Promise<ProgressEntry | undefined>;
+  deleteProgressEntry(id: string, tenantId: string): Promise<void>;
   getFlightpathStages(tenantId?: string): Promise<FlightpathStage[]>;
-  getFlightpathStage(id: string): Promise<FlightpathStage | undefined>;
+  getFlightpathStage(id: string, tenantId: string): Promise<FlightpathStage | undefined>;
   createFlightpathStage(data: InsertFlightpathStage): Promise<FlightpathStage>;
-  updateFlightpathStage(id: string, data: Partial<InsertFlightpathStage>): Promise<FlightpathStage | undefined>;
-  deleteFlightpathStage(id: string): Promise<void>;
+  updateFlightpathStage(id: string, tenantId: string, data: Partial<InsertFlightpathStage>): Promise<FlightpathStage | undefined>;
+  deleteFlightpathStage(id: string, tenantId: string): Promise<void>;
   getStageDeliverables(stageId: string): Promise<FlightpathDeliverable[]>;
   getAllDeliverables(tenantId?: string): Promise<FlightpathDeliverable[]>;
   createDeliverable(data: InsertFlightpathDeliverable): Promise<FlightpathDeliverable>;
-  updateDeliverable(id: string, data: Partial<InsertFlightpathDeliverable>): Promise<FlightpathDeliverable | undefined>;
-  deleteDeliverable(id: string): Promise<void>;
+  updateDeliverable(id: string, tenantId: string, data: Partial<InsertFlightpathDeliverable>): Promise<FlightpathDeliverable | undefined>;
+  deleteDeliverable(id: string, tenantId: string): Promise<void>;
   getProjectCheckpoints(timelineId: string): Promise<ProjectCheckpoint[]>;
   getProjectCheckpointsByStage(timelineId: string, stageId: string): Promise<ProjectCheckpoint[]>;
   createProjectCheckpoint(data: InsertProjectCheckpoint): Promise<ProjectCheckpoint>;
-  updateProjectCheckpoint(id: string, data: Partial<InsertProjectCheckpoint>): Promise<ProjectCheckpoint | undefined>;
-  deleteProjectCheckpoint(id: string): Promise<void>;
+  updateProjectCheckpoint(id: string, tenantId: string, data: Partial<InsertProjectCheckpoint>): Promise<ProjectCheckpoint | undefined>;
+  deleteProjectCheckpoint(id: string, tenantId: string): Promise<void>;
   getProjectGates(timelineId: string): Promise<ProjectGate[]>;
   getProjectGate(timelineId: string, stageId: string): Promise<ProjectGate | undefined>;
   createProjectGate(data: InsertProjectGate): Promise<ProjectGate>;
-  updateProjectGate(id: string, data: Partial<InsertProjectGate>): Promise<ProjectGate | undefined>;
+  updateProjectGate(id: string, tenantId: string, data: Partial<InsertProjectGate>): Promise<ProjectGate | undefined>;
   getWorkstreamResources(taskId: string): Promise<WorkstreamResource[]>;
   getWorkstreamResourcesByTimeline(timelineId: string): Promise<WorkstreamResource[]>;
   createWorkstreamResource(data: InsertWorkstreamResource): Promise<WorkstreamResource>;
-  updateWorkstreamResource(id: string, data: Partial<InsertWorkstreamResource>): Promise<WorkstreamResource | undefined>;
-  deleteWorkstreamResource(id: string): Promise<void>;
+  updateWorkstreamResource(id: string, tenantId: string, data: Partial<InsertWorkstreamResource>): Promise<WorkstreamResource | undefined>;
+  deleteWorkstreamResource(id: string, tenantId: string): Promise<void>;
 
   getTenants(): Promise<import("@shared/schema").Tenant[]>;
   getTenant(id: string): Promise<import("@shared/schema").Tenant | undefined>;
@@ -189,7 +189,7 @@ export interface IStorage {
   getObjectAssignments(objectType: string, objectId: string, tenantId: string): Promise<(ObjectAssignment & { user?: User | null; teamMember?: TeamMember | null })[]>;
   getObjectAssignmentsByUser(userId: string, tenantId: string): Promise<ObjectAssignment[]>;
   assignObjectRole(objectType: string, objectId: string, userId: string, objectRole: string, tenantId: string): Promise<ObjectAssignment>;
-  removeObjectAssignment(id: string): Promise<void>;
+  removeObjectAssignment(id: string, tenantId: string): Promise<void>;
   getAuditLog(tenantId: string, filters?: { action?: string; limit?: number; offset?: number }): Promise<AuditLog[]>;
   createAuditEntry(entry: InsertAuditLog): Promise<AuditLog>;
   getUsersByTenant(tenantId: string): Promise<(User & { orgRoles?: OrgRole[]; teamMember?: TeamMember | null })[]>;
@@ -202,7 +202,6 @@ export interface IStorage {
   getEvmSnapshotAllVersions(timelineId: string, weekEnding: string): Promise<EvmSnapshot[]>;
   getEvmSnapshot(timelineId: string, weekEnding: string): Promise<EvmSnapshot | undefined>;
   createEvmSnapshot(data: InsertEvmSnapshot): Promise<EvmSnapshot>;
-  deleteEvmSnapshot(id: string): Promise<void>;
   getLatestEvmSnapshot(timelineId: string): Promise<EvmSnapshot | undefined>;
   getAssignedTimelineIds(teamMemberId: string): Promise<string[]>;
   getTimelinesByIds(ids: string[], recordType?: string): Promise<TimelineWithMilestones[]>;
@@ -211,18 +210,19 @@ export interface IStorage {
   getTeamMembersByTimelineIds(timelineIds: string[]): Promise<TeamMember[]>;
   getTenantBySlug(slug: string): Promise<import("@shared/schema").Tenant | undefined>;
   createOrgRole(data: { tenantId: string; name: string; description?: string; isSystem?: boolean }): Promise<OrgRole>;
-  updateOrgRole(id: string, data: { name?: string; description?: string }): Promise<OrgRole | undefined>;
-  deleteOrgRole(id: string): Promise<void>;
   getOrgRolePermissions(roleId: string, tenantId: string): Promise<string[]>;
   setOrgRolePermissions(roleId: string, tenantId: string, permissionKeys: string[]): Promise<void>;
   getOrgRoleUserCount(roleId: string, tenantId: string): Promise<number>;
 
   getApiTokens(tenantId: string): Promise<import("@shared/schema").ApiToken[]>;
-  getApiToken(id: string): Promise<import("@shared/schema").ApiToken | undefined>;
+  getApiToken(id: string, tenantId: string): Promise<import("@shared/schema").ApiToken | undefined>;
   getApiTokenByHash(tokenHash: string): Promise<import("@shared/schema").ApiToken | undefined>;
   createApiToken(data: import("@shared/schema").InsertApiToken): Promise<import("@shared/schema").ApiToken>;
-  revokeApiToken(id: string): Promise<import("@shared/schema").ApiToken | undefined>;
+  revokeApiToken(id: string, tenantId: string): Promise<import("@shared/schema").ApiToken | undefined>;
   updateApiTokenLastUsed(id: string): Promise<void>;
+  deleteEvmSnapshot(id: string, tenantId: string): Promise<void>;
+  deleteOrgRole(id: string, tenantId: string): Promise<void>;
+  updateOrgRole(id: string, tenantId: string, data: { name?: string; description?: string }): Promise<OrgRole | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -231,19 +231,20 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(clients);
   }
 
-  async getClient(id: string): Promise<Client | undefined> {
-    const [client] = await db.select().from(clients).where(eq(clients.id, id));
+  async getClient(id: string, tenantId: string): Promise<Client | undefined> {
+    const [client] = await db.select().from(clients).where(and(eq(clients.id, id), eq(clients.tenantId, tenantId)));
     return client;
   }
 
-  async getClientWithProjects(id: string): Promise<ClientWithProjects | undefined> {
-    const [client] = await db.select().from(clients).where(eq(clients.id, id));
+  async getClientWithProjects(id: string, tenantId: string): Promise<ClientWithProjects | undefined> {
+    const [client] = await db.select().from(clients).where(and(eq(clients.id, id), eq(clients.tenantId, tenantId)));
     if (!client) return undefined;
 
-    const allTimelines = await db.select().from(timelines).where(eq(timelines.clientId, id));
-    const allMilestones = await db.select().from(milestones);
-    const allTasks = await db.select().from(tasks);
-    const clientContacts = await db.select().from(contacts).where(eq(contacts.clientId, id));
+    const allTimelines = await db.select().from(timelines).where(and(eq(timelines.clientId, id), eq(timelines.tenantId, tenantId)));
+    const timelineIds = allTimelines.map(t => t.id);
+    const allMilestones = timelineIds.length > 0 ? await db.select().from(milestones).where(inArray(milestones.timelineId, timelineIds)) : [];
+    const allTasks = timelineIds.length > 0 ? await db.select().from(tasks).where(inArray(tasks.timelineId, timelineIds)) : [];
+    const clientContacts = await db.select().from(contacts).where(and(eq(contacts.clientId, id), eq(contacts.tenantId, tenantId)));
 
     const projects = allTimelines.map((t) => ({
       ...t,
@@ -263,19 +264,19 @@ export class DatabaseStorage implements IStorage {
     return client;
   }
 
-  async updateClient(id: string, data: Partial<InsertClient>): Promise<Client | undefined> {
+  async updateClient(id: string, tenantId: string, data: Partial<InsertClient>): Promise<Client | undefined> {
     const [client] = await db
       .update(clients)
       .set(data)
-      .where(eq(clients.id, id))
+      .where(and(eq(clients.id, id), eq(clients.tenantId, tenantId)))
       .returning();
     return client;
   }
 
-  async deleteClient(id: string): Promise<void> {
-    await db.update(timelines).set({ clientId: null }).where(eq(timelines.clientId, id));
-    await db.delete(contacts).where(eq(contacts.clientId, id));
-    await db.delete(clients).where(eq(clients.id, id));
+  async deleteClient(id: string, tenantId: string): Promise<void> {
+    await db.update(timelines).set({ clientId: null }).where(and(eq(timelines.clientId, id), eq(timelines.tenantId, tenantId)));
+    await db.delete(contacts).where(and(eq(contacts.clientId, id), eq(contacts.tenantId, tenantId)));
+    await db.delete(clients).where(and(eq(clients.id, id), eq(clients.tenantId, tenantId)));
   }
 
   async getAllContacts(tenantId?: string): Promise<Contact[]> {
@@ -287,8 +288,8 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(contacts).where(eq(contacts.clientId, clientId));
   }
 
-  async getContact(id: string): Promise<Contact | undefined> {
-    const [contact] = await db.select().from(contacts).where(eq(contacts.id, id));
+  async getContact(id: string, tenantId: string): Promise<Contact | undefined> {
+    const [contact] = await db.select().from(contacts).where(and(eq(contacts.id, id), eq(contacts.tenantId, tenantId)));
     return contact;
   }
 
@@ -297,13 +298,13 @@ export class DatabaseStorage implements IStorage {
     return contact;
   }
 
-  async updateContact(id: string, data: Partial<InsertContact>): Promise<Contact | undefined> {
-    const [contact] = await db.update(contacts).set(data).where(eq(contacts.id, id)).returning();
+  async updateContact(id: string, tenantId: string, data: Partial<InsertContact>): Promise<Contact | undefined> {
+    const [contact] = await db.update(contacts).set(data).where(and(eq(contacts.id, id), eq(contacts.tenantId, tenantId))).returning();
     return contact;
   }
 
-  async deleteContact(id: string): Promise<void> {
-    await db.delete(contacts).where(eq(contacts.id, id));
+  async deleteContact(id: string, tenantId: string): Promise<void> {
+    await db.delete(contacts).where(and(eq(contacts.id, id), eq(contacts.tenantId, tenantId)));
   }
 
   async getTimelines(recordType?: string, tenantId?: string): Promise<TimelineWithMilestones[]> {
@@ -325,8 +326,8 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  async getTimeline(id: string): Promise<TimelineWithMilestones | undefined> {
-    const [timeline] = await db.select().from(timelines).where(eq(timelines.id, id));
+  async getTimeline(id: string, tenantId: string): Promise<TimelineWithMilestones | undefined> {
+    const [timeline] = await db.select().from(timelines).where(and(eq(timelines.id, id), eq(timelines.tenantId, tenantId)));
     if (!timeline) return undefined;
 
     const timelineMilestones = await db
@@ -360,21 +361,21 @@ export class DatabaseStorage implements IStorage {
     return timeline;
   }
 
-  async updateTimeline(id: string, data: Partial<InsertTimeline>): Promise<Timeline | undefined> {
+  async updateTimeline(id: string, tenantId: string, data: Partial<InsertTimeline>): Promise<Timeline | undefined> {
     const [timeline] = await db
       .update(timelines)
       .set(data)
-      .where(eq(timelines.id, id))
+      .where(and(eq(timelines.id, id), eq(timelines.tenantId, tenantId)))
       .returning();
     return timeline;
   }
 
-  async deleteTimeline(id: string): Promise<void> {
-    await db.delete(projectTeamMembers).where(eq(projectTeamMembers.timelineId, id));
-    await db.delete(risks).where(eq(risks.timelineId, id));
-    await db.delete(tasks).where(eq(tasks.timelineId, id));
-    await db.delete(milestones).where(eq(milestones.timelineId, id));
-    await db.delete(timelines).where(eq(timelines.id, id));
+  async deleteTimeline(id: string, tenantId: string): Promise<void> {
+    await db.delete(projectTeamMembers).where(and(eq(projectTeamMembers.timelineId, id), eq(projectTeamMembers.tenantId, tenantId)));
+    await db.delete(risks).where(and(eq(risks.timelineId, id), eq(risks.tenantId, tenantId)));
+    await db.delete(tasks).where(and(eq(tasks.timelineId, id), eq(tasks.tenantId, tenantId)));
+    await db.delete(milestones).where(and(eq(milestones.timelineId, id), eq(milestones.tenantId, tenantId)));
+    await db.delete(timelines).where(and(eq(timelines.id, id), eq(timelines.tenantId, tenantId)));
   }
 
   async createMilestone(data: InsertMilestone): Promise<Milestone> {
@@ -382,21 +383,21 @@ export class DatabaseStorage implements IStorage {
     return milestone;
   }
 
-  async updateMilestone(id: string, data: Partial<InsertMilestone>): Promise<Milestone | undefined> {
+  async updateMilestone(id: string, tenantId: string, data: Partial<InsertMilestone>): Promise<Milestone | undefined> {
     const [milestone] = await db
       .update(milestones)
       .set(data)
-      .where(eq(milestones.id, id))
+      .where(and(eq(milestones.id, id), eq(milestones.tenantId, tenantId)))
       .returning();
     return milestone;
   }
 
-  async deleteMilestone(id: string): Promise<void> {
-    await db.delete(milestones).where(eq(milestones.id, id));
+  async deleteMilestone(id: string, tenantId: string): Promise<void> {
+    await db.delete(milestones).where(and(eq(milestones.id, id), eq(milestones.tenantId, tenantId)));
   }
 
-  async getTask(id: string): Promise<Task | undefined> {
-    const [task] = await db.select().from(tasks).where(eq(tasks.id, id));
+  async getTask(id: string, tenantId: string): Promise<Task | undefined> {
+    const [task] = await db.select().from(tasks).where(and(eq(tasks.id, id), eq(tasks.tenantId, tenantId)));
     return task;
   }
 
@@ -413,17 +414,17 @@ export class DatabaseStorage implements IStorage {
     return task;
   }
 
-  async updateTask(id: string, data: Partial<InsertTask>): Promise<Task | undefined> {
+  async updateTask(id: string, tenantId: string, data: Partial<InsertTask>): Promise<Task | undefined> {
     const [task] = await db
       .update(tasks)
       .set(data)
-      .where(eq(tasks.id, id))
+      .where(and(eq(tasks.id, id), eq(tasks.tenantId, tenantId)))
       .returning();
     return task;
   }
 
-  async deleteTask(id: string): Promise<void> {
-    await db.delete(tasks).where(eq(tasks.id, id));
+  async deleteTask(id: string, tenantId: string): Promise<void> {
+    await db.delete(tasks).where(and(eq(tasks.id, id), eq(tasks.tenantId, tenantId)));
   }
 
   async getRisks(timelineId: string): Promise<Risk[]> {
@@ -438,17 +439,17 @@ export class DatabaseStorage implements IStorage {
     return risk;
   }
 
-  async updateRisk(id: string, data: Partial<InsertRisk>): Promise<Risk | undefined> {
+  async updateRisk(id: string, tenantId: string, data: Partial<InsertRisk>): Promise<Risk | undefined> {
     const [risk] = await db
       .update(risks)
       .set(data)
-      .where(eq(risks.id, id))
+      .where(and(eq(risks.id, id), eq(risks.tenantId, tenantId)))
       .returning();
     return risk;
   }
 
-  async deleteRisk(id: string): Promise<void> {
-    await db.delete(risks).where(eq(risks.id, id));
+  async deleteRisk(id: string, tenantId: string): Promise<void> {
+    await db.delete(risks).where(and(eq(risks.id, id), eq(risks.tenantId, tenantId)));
   }
 
   async getTeamMembers(tenantId?: string): Promise<TeamMember[]> {
@@ -456,8 +457,8 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(teamMembers);
   }
 
-  async getTeamMember(id: string): Promise<TeamMember | undefined> {
-    const [member] = await db.select().from(teamMembers).where(eq(teamMembers.id, id));
+  async getTeamMember(id: string, tenantId: string): Promise<TeamMember | undefined> {
+    const [member] = await db.select().from(teamMembers).where(and(eq(teamMembers.id, id), eq(teamMembers.tenantId, tenantId)));
     return member;
   }
 
@@ -466,14 +467,14 @@ export class DatabaseStorage implements IStorage {
     return member;
   }
 
-  async updateTeamMember(id: string, data: Partial<InsertTeamMember>): Promise<TeamMember | undefined> {
-    const [member] = await db.update(teamMembers).set(data).where(eq(teamMembers.id, id)).returning();
+  async updateTeamMember(id: string, tenantId: string, data: Partial<InsertTeamMember>): Promise<TeamMember | undefined> {
+    const [member] = await db.update(teamMembers).set(data).where(and(eq(teamMembers.id, id), eq(teamMembers.tenantId, tenantId))).returning();
     return member;
   }
 
-  async deleteTeamMember(id: string): Promise<void> {
-    await db.delete(projectTeamMembers).where(eq(projectTeamMembers.teamMemberId, id));
-    await db.delete(teamMembers).where(eq(teamMembers.id, id));
+  async deleteTeamMember(id: string, tenantId: string): Promise<void> {
+    await db.delete(projectTeamMembers).where(and(eq(projectTeamMembers.teamMemberId, id), eq(projectTeamMembers.tenantId, tenantId)));
+    await db.delete(teamMembers).where(and(eq(teamMembers.id, id), eq(teamMembers.tenantId, tenantId)));
   }
 
   async getRateCards(tenantId?: string): Promise<RateCard[]> {
@@ -481,8 +482,8 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(rateCards);
   }
 
-  async getRateCard(id: string): Promise<RateCard | undefined> {
-    const [card] = await db.select().from(rateCards).where(eq(rateCards.id, id));
+  async getRateCard(id: string, tenantId: string): Promise<RateCard | undefined> {
+    const [card] = await db.select().from(rateCards).where(and(eq(rateCards.id, id), eq(rateCards.tenantId, tenantId)));
     return card;
   }
 
@@ -491,14 +492,14 @@ export class DatabaseStorage implements IStorage {
     return card;
   }
 
-  async updateRateCard(id: string, data: Partial<InsertRateCard>): Promise<RateCard | undefined> {
-    const [card] = await db.update(rateCards).set(data).where(eq(rateCards.id, id)).returning();
+  async updateRateCard(id: string, tenantId: string, data: Partial<InsertRateCard>): Promise<RateCard | undefined> {
+    const [card] = await db.update(rateCards).set(data).where(and(eq(rateCards.id, id), eq(rateCards.tenantId, tenantId))).returning();
     return card;
   }
 
-  async deleteRateCard(id: string): Promise<void> {
-    await db.update(projectTeamMembers).set({ rateCardId: null }).where(eq(projectTeamMembers.rateCardId, id));
-    await db.delete(rateCards).where(eq(rateCards.id, id));
+  async deleteRateCard(id: string, tenantId: string): Promise<void> {
+    await db.update(projectTeamMembers).set({ rateCardId: null }).where(and(eq(projectTeamMembers.rateCardId, id), eq(projectTeamMembers.tenantId, tenantId)));
+    await db.delete(rateCards).where(and(eq(rateCards.id, id), eq(rateCards.tenantId, tenantId)));
   }
 
   async getProjectTeamMembers(timelineId: string): Promise<ProjectTeamMemberWithDetails[]> {
@@ -516,8 +517,8 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  async getProjectTeamMemberById(id: string): Promise<ProjectTeamMember | undefined> {
-    const [member] = await db.select().from(projectTeamMembers).where(eq(projectTeamMembers.id, id));
+  async getProjectTeamMemberById(id: string, tenantId: string): Promise<ProjectTeamMember | undefined> {
+    const [member] = await db.select().from(projectTeamMembers).where(and(eq(projectTeamMembers.id, id), eq(projectTeamMembers.tenantId, tenantId)));
     return member;
   }
 
@@ -526,13 +527,13 @@ export class DatabaseStorage implements IStorage {
     return assignment;
   }
 
-  async updateProjectTeamMember(id: string, data: Partial<InsertProjectTeamMember>): Promise<ProjectTeamMember | undefined> {
-    const [assignment] = await db.update(projectTeamMembers).set(data).where(eq(projectTeamMembers.id, id)).returning();
+  async updateProjectTeamMember(id: string, tenantId: string, data: Partial<InsertProjectTeamMember>): Promise<ProjectTeamMember | undefined> {
+    const [assignment] = await db.update(projectTeamMembers).set(data).where(and(eq(projectTeamMembers.id, id), eq(projectTeamMembers.tenantId, tenantId))).returning();
     return assignment;
   }
 
-  async deleteProjectTeamMember(id: string): Promise<void> {
-    await db.delete(projectTeamMembers).where(eq(projectTeamMembers.id, id));
+  async deleteProjectTeamMember(id: string, tenantId: string): Promise<void> {
+    await db.delete(projectTeamMembers).where(and(eq(projectTeamMembers.id, id), eq(projectTeamMembers.tenantId, tenantId)));
   }
 
   async getSettings(tenantId: string = "default"): Promise<AppSettings> {
@@ -575,8 +576,8 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async getAllocation(id: string): Promise<Allocation | undefined> {
-    const [row] = await db.select().from(allocations).where(eq(allocations.id, id));
+  async getAllocation(id: string, tenantId: string): Promise<Allocation | undefined> {
+    const [row] = await db.select().from(allocations).where(and(eq(allocations.id, id), eq(allocations.tenantId, tenantId)));
     return row;
   }
 
@@ -600,13 +601,13 @@ export class DatabaseStorage implements IStorage {
     return allocation;
   }
 
-  async updateAllocation(id: string, data: Partial<InsertAllocation>): Promise<Allocation | undefined> {
-    const [allocation] = await db.update(allocations).set(data).where(eq(allocations.id, id)).returning();
+  async updateAllocation(id: string, tenantId: string, data: Partial<InsertAllocation>): Promise<Allocation | undefined> {
+    const [allocation] = await db.update(allocations).set(data).where(and(eq(allocations.id, id), eq(allocations.tenantId, tenantId))).returning();
     return allocation;
   }
 
-  async deleteAllocation(id: string): Promise<void> {
-    await db.delete(allocations).where(eq(allocations.id, id));
+  async deleteAllocation(id: string, tenantId: string): Promise<void> {
+    await db.delete(allocations).where(and(eq(allocations.id, id), eq(allocations.tenantId, tenantId)));
   }
 
   async updateSettings(data: Partial<Omit<AppSettings, "id">>, tenantId: string = "default"): Promise<AppSettings> {
@@ -650,8 +651,8 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(timesheetEntries).where(and(...conditions));
   }
 
-  async getTimesheetEntry(id: string): Promise<TimesheetEntry | undefined> {
-    const [entry] = await db.select().from(timesheetEntries).where(eq(timesheetEntries.id, id));
+  async getTimesheetEntry(id: string, tenantId: string): Promise<TimesheetEntry | undefined> {
+    const [entry] = await db.select().from(timesheetEntries).where(and(eq(timesheetEntries.id, id), eq(timesheetEntries.tenantId, tenantId)));
     return entry;
   }
 
@@ -660,13 +661,13 @@ export class DatabaseStorage implements IStorage {
     return entry;
   }
 
-  async updateTimesheetEntry(id: string, data: Partial<InsertTimesheetEntry>): Promise<TimesheetEntry | undefined> {
-    const [entry] = await db.update(timesheetEntries).set(data).where(eq(timesheetEntries.id, id)).returning();
+  async updateTimesheetEntry(id: string, tenantId: string, data: Partial<InsertTimesheetEntry>): Promise<TimesheetEntry | undefined> {
+    const [entry] = await db.update(timesheetEntries).set(data).where(and(eq(timesheetEntries.id, id), eq(timesheetEntries.tenantId, tenantId))).returning();
     return entry;
   }
 
-  async deleteTimesheetEntry(id: string): Promise<void> {
-    await db.delete(timesheetEntries).where(eq(timesheetEntries.id, id));
+  async deleteTimesheetEntry(id: string, tenantId: string): Promise<void> {
+    await db.delete(timesheetEntries).where(and(eq(timesheetEntries.id, id), eq(timesheetEntries.tenantId, tenantId)));
   }
 
   async getProgressEntries(filters?: { timelineId?: string; taskId?: string; weekEnding?: string }): Promise<ProgressEntry[]> {
@@ -678,8 +679,8 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(progressEntries).where(and(...conditions));
   }
 
-  async getProgressEntry(id: string): Promise<ProgressEntry | undefined> {
-    const [entry] = await db.select().from(progressEntries).where(eq(progressEntries.id, id));
+  async getProgressEntry(id: string, tenantId: string): Promise<ProgressEntry | undefined> {
+    const [entry] = await db.select().from(progressEntries).where(and(eq(progressEntries.id, id), eq(progressEntries.tenantId, tenantId)));
     return entry;
   }
 
@@ -688,13 +689,13 @@ export class DatabaseStorage implements IStorage {
     return entry;
   }
 
-  async updateProgressEntry(id: string, data: Partial<InsertProgressEntry>): Promise<ProgressEntry | undefined> {
-    const [entry] = await db.update(progressEntries).set(data).where(eq(progressEntries.id, id)).returning();
+  async updateProgressEntry(id: string, tenantId: string, data: Partial<InsertProgressEntry>): Promise<ProgressEntry | undefined> {
+    const [entry] = await db.update(progressEntries).set(data).where(and(eq(progressEntries.id, id), eq(progressEntries.tenantId, tenantId))).returning();
     return entry;
   }
 
-  async deleteProgressEntry(id: string): Promise<void> {
-    await db.delete(progressEntries).where(eq(progressEntries.id, id));
+  async deleteProgressEntry(id: string, tenantId: string): Promise<void> {
+    await db.delete(progressEntries).where(and(eq(progressEntries.id, id), eq(progressEntries.tenantId, tenantId)));
   }
 
   async getFlightpathStages(tenantId?: string): Promise<FlightpathStage[]> {
@@ -702,8 +703,8 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(flightpathStages).where(eq(flightpathStages.tenantId, tid));
   }
 
-  async getFlightpathStage(id: string): Promise<FlightpathStage | undefined> {
-    const [stage] = await db.select().from(flightpathStages).where(eq(flightpathStages.id, id));
+  async getFlightpathStage(id: string, tenantId: string): Promise<FlightpathStage | undefined> {
+    const [stage] = await db.select().from(flightpathStages).where(and(eq(flightpathStages.id, id), eq(flightpathStages.tenantId, tenantId)));
     return stage;
   }
 
@@ -712,14 +713,14 @@ export class DatabaseStorage implements IStorage {
     return stage;
   }
 
-  async updateFlightpathStage(id: string, data: Partial<InsertFlightpathStage>): Promise<FlightpathStage | undefined> {
-    const [stage] = await db.update(flightpathStages).set(data).where(eq(flightpathStages.id, id)).returning();
+  async updateFlightpathStage(id: string, tenantId: string, data: Partial<InsertFlightpathStage>): Promise<FlightpathStage | undefined> {
+    const [stage] = await db.update(flightpathStages).set(data).where(and(eq(flightpathStages.id, id), eq(flightpathStages.tenantId, tenantId))).returning();
     return stage;
   }
 
-  async deleteFlightpathStage(id: string): Promise<void> {
-    await db.delete(flightpathDeliverables).where(eq(flightpathDeliverables.stageId, id));
-    await db.delete(flightpathStages).where(eq(flightpathStages.id, id));
+  async deleteFlightpathStage(id: string, tenantId: string): Promise<void> {
+    await db.delete(flightpathDeliverables).where(and(eq(flightpathDeliverables.stageId, id), eq(flightpathDeliverables.tenantId, tenantId)));
+    await db.delete(flightpathStages).where(and(eq(flightpathStages.id, id), eq(flightpathStages.tenantId, tenantId)));
   }
 
   async getStageDeliverables(stageId: string): Promise<FlightpathDeliverable[]> {
@@ -739,13 +740,13 @@ export class DatabaseStorage implements IStorage {
     return deliverable;
   }
 
-  async updateDeliverable(id: string, data: Partial<InsertFlightpathDeliverable>): Promise<FlightpathDeliverable | undefined> {
-    const [deliverable] = await db.update(flightpathDeliverables).set(data).where(eq(flightpathDeliverables.id, id)).returning();
+  async updateDeliverable(id: string, tenantId: string, data: Partial<InsertFlightpathDeliverable>): Promise<FlightpathDeliverable | undefined> {
+    const [deliverable] = await db.update(flightpathDeliverables).set(data).where(and(eq(flightpathDeliverables.id, id), eq(flightpathDeliverables.tenantId, tenantId))).returning();
     return deliverable;
   }
 
-  async deleteDeliverable(id: string): Promise<void> {
-    await db.delete(flightpathDeliverables).where(eq(flightpathDeliverables.id, id));
+  async deleteDeliverable(id: string, tenantId: string): Promise<void> {
+    await db.delete(flightpathDeliverables).where(and(eq(flightpathDeliverables.id, id), eq(flightpathDeliverables.tenantId, tenantId)));
   }
 
   async getProjectCheckpoints(timelineId: string): Promise<ProjectCheckpoint[]> {
@@ -761,13 +762,13 @@ export class DatabaseStorage implements IStorage {
     return checkpoint;
   }
 
-  async updateProjectCheckpoint(id: string, data: Partial<InsertProjectCheckpoint>): Promise<ProjectCheckpoint | undefined> {
-    const [checkpoint] = await db.update(projectCheckpoints).set(data).where(eq(projectCheckpoints.id, id)).returning();
+  async updateProjectCheckpoint(id: string, tenantId: string, data: Partial<InsertProjectCheckpoint>): Promise<ProjectCheckpoint | undefined> {
+    const [checkpoint] = await db.update(projectCheckpoints).set(data).where(and(eq(projectCheckpoints.id, id), eq(projectCheckpoints.tenantId, tenantId))).returning();
     return checkpoint;
   }
 
-  async deleteProjectCheckpoint(id: string): Promise<void> {
-    await db.delete(projectCheckpoints).where(eq(projectCheckpoints.id, id));
+  async deleteProjectCheckpoint(id: string, tenantId: string): Promise<void> {
+    await db.delete(projectCheckpoints).where(and(eq(projectCheckpoints.id, id), eq(projectCheckpoints.tenantId, tenantId)));
   }
 
   async getProjectGates(timelineId: string): Promise<ProjectGate[]> {
@@ -784,8 +785,8 @@ export class DatabaseStorage implements IStorage {
     return gate;
   }
 
-  async updateProjectGate(id: string, data: Partial<InsertProjectGate>): Promise<ProjectGate | undefined> {
-    const [gate] = await db.update(projectGates).set(data).where(eq(projectGates.id, id)).returning();
+  async updateProjectGate(id: string, tenantId: string, data: Partial<InsertProjectGate>): Promise<ProjectGate | undefined> {
+    const [gate] = await db.update(projectGates).set(data).where(and(eq(projectGates.id, id), eq(projectGates.tenantId, tenantId))).returning();
     return gate;
   }
 
@@ -805,13 +806,13 @@ export class DatabaseStorage implements IStorage {
     return resource;
   }
 
-  async updateWorkstreamResource(id: string, data: Partial<InsertWorkstreamResource>): Promise<WorkstreamResource | undefined> {
-    const [resource] = await db.update(workstreamResources).set(data).where(eq(workstreamResources.id, id)).returning();
+  async updateWorkstreamResource(id: string, tenantId: string, data: Partial<InsertWorkstreamResource>): Promise<WorkstreamResource | undefined> {
+    const [resource] = await db.update(workstreamResources).set(data).where(and(eq(workstreamResources.id, id), eq(workstreamResources.tenantId, tenantId))).returning();
     return resource;
   }
 
-  async deleteWorkstreamResource(id: string): Promise<void> {
-    await db.delete(workstreamResources).where(eq(workstreamResources.id, id));
+  async deleteWorkstreamResource(id: string, tenantId: string): Promise<void> {
+    await db.delete(workstreamResources).where(and(eq(workstreamResources.id, id), eq(workstreamResources.tenantId, tenantId)));
   }
 
   async getOrgRoles(tenantId: string): Promise<OrgRole[]> {
@@ -885,8 +886,8 @@ export class DatabaseStorage implements IStorage {
     return assignment;
   }
 
-  async removeObjectAssignment(id: string): Promise<void> {
-    await db.delete(objectAssignments).where(eq(objectAssignments.id, id));
+  async removeObjectAssignment(id: string, tenantId: string): Promise<void> {
+    await db.delete(objectAssignments).where(and(eq(objectAssignments.id, id), eq(objectAssignments.tenantId, tenantId)));
   }
 
   async getAuditLog(tenantId: string, filters?: { action?: string; limit?: number; offset?: number }): Promise<AuditLog[]> {
@@ -1045,8 +1046,8 @@ export class DatabaseStorage implements IStorage {
     return snapshot;
   }
 
-  async deleteEvmSnapshot(id: string): Promise<void> {
-    await db.delete(evmSnapshots).where(eq(evmSnapshots.id, id));
+  async deleteEvmSnapshot(id: string, tenantId: string): Promise<void> {
+    await db.delete(evmSnapshots).where(and(eq(evmSnapshots.id, id), eq(evmSnapshots.tenantId, tenantId)));
   }
 
   async getLatestEvmSnapshot(timelineId: string): Promise<EvmSnapshot | undefined> {
@@ -1123,16 +1124,16 @@ export class DatabaseStorage implements IStorage {
     return role;
   }
 
-  async updateOrgRole(id: string, data: { name?: string; description?: string }): Promise<OrgRole | undefined> {
+  async updateOrgRole(id: string, tenantId: string, data: { name?: string; description?: string }): Promise<OrgRole | undefined> {
     const [role] = await db.update(orgRoles)
       .set(data)
-      .where(eq(orgRoles.id, id))
+      .where(and(eq(orgRoles.id, id), eq(orgRoles.tenantId, tenantId)))
       .returning();
     return role;
   }
 
-  async deleteOrgRole(id: string): Promise<void> {
-    await db.delete(orgRoles).where(eq(orgRoles.id, id));
+  async deleteOrgRole(id: string, tenantId: string): Promise<void> {
+    await db.delete(orgRoles).where(and(eq(orgRoles.id, id), eq(orgRoles.tenantId, tenantId)));
   }
 
   async getOrgRolePermissions(roleId: string, tenantId: string): Promise<string[]> {
@@ -1218,8 +1219,8 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(apiTokens).where(eq(apiTokens.tenantId, tenantId)).orderBy(desc(apiTokens.createdAt));
   }
 
-  async getApiToken(id: string): Promise<import("@shared/schema").ApiToken | undefined> {
-    const [token] = await db.select().from(apiTokens).where(eq(apiTokens.id, id));
+  async getApiToken(id: string, tenantId: string): Promise<import("@shared/schema").ApiToken | undefined> {
+    const [token] = await db.select().from(apiTokens).where(and(eq(apiTokens.id, id), eq(apiTokens.tenantId, tenantId)));
     return token;
   }
 
@@ -1233,8 +1234,8 @@ export class DatabaseStorage implements IStorage {
     return token;
   }
 
-  async revokeApiToken(id: string): Promise<import("@shared/schema").ApiToken | undefined> {
-    const [token] = await db.update(apiTokens).set({ revokedAt: new Date() }).where(eq(apiTokens.id, id)).returning();
+  async revokeApiToken(id: string, tenantId: string): Promise<import("@shared/schema").ApiToken | undefined> {
+    const [token] = await db.update(apiTokens).set({ revokedAt: new Date() }).where(and(eq(apiTokens.id, id), eq(apiTokens.tenantId, tenantId))).returning();
     return token;
   }
 
