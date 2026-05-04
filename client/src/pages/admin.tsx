@@ -40,7 +40,7 @@ export default function Admin() {
   });
 
   const handleFieldSave = (key: string, options: FieldOption[]) => {
-    updateMutation.mutate({ [key]: options } as any);
+    updateMutation.mutate({ [key]: options } as Partial<Omit<AppSettings, "id">>);
   };
 
   const fieldTabs: TabConfig[] = [
