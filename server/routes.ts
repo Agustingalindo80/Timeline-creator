@@ -2790,7 +2790,7 @@ Respond ONLY with valid JSON:
       if (opp.convertedAt) {
         return res.status(400).json({ message: "This opportunity has already been converted to a project" });
       }
-      const existingProject = await storage.getTimelinesBySource(opp.id);
+      const existingProject = await storage.getTimelinesBySource(opp.id, req.tenantId || "default");
       if (existingProject) {
         return res.status(400).json({ message: "A project already exists for this opportunity" });
       }

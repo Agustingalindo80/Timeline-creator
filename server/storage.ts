@@ -98,7 +98,7 @@ export interface IStorage {
   deleteContact(id: string, tenantId: string): Promise<void>;
   getTimelines(recordType?: string, tenantId?: string): Promise<TimelineWithMilestones[]>;
   getTimeline(id: string, tenantId: string): Promise<TimelineWithMilestones | undefined>;
-  getTimelinesBySource(sourceOpportunityId: string): Promise<Timeline | undefined>;
+  getTimelinesBySource(sourceOpportunityId: string, tenantId: string): Promise<Timeline | undefined>;
   createTimeline(data: InsertTimeline): Promise<Timeline>;
   updateTimeline(id: string, tenantId: string, data: Partial<InsertTimeline>): Promise<Timeline | undefined>;
   deleteTimeline(id: string, tenantId: string): Promise<void>;
@@ -347,11 +347,11 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async getTimelinesBySource(sourceOpportunityId: string): Promise<Timeline | undefined> {
+  async getTimelinesBySource(sourceOpportunityId: string, tenantId: string): Promise<Timeline | undefined> {
     const [timeline] = await db
       .select()
       .from(timelines)
-      .where(eq(timelines.sourceOpportunityId, sourceOpportunityId))
+      .where(and(eq(timelines.sourceOpportunityId, sourceOpportunityId), eq(timelines.tenantId, tenantId)))
       .limit(1);
     return timeline;
   }
