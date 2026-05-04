@@ -91,7 +91,7 @@ export interface IStorage {
   updateClient(id: string, tenantId: string, data: Partial<InsertClient>): Promise<Client | undefined>;
   deleteClient(id: string, tenantId: string): Promise<void>;
   getAllContacts(tenantId?: string): Promise<Contact[]>;
-  getContacts(clientId: string): Promise<Contact[]>;
+  getContacts(clientId: string, tenantId: string): Promise<Contact[]>;
   getContact(id: string, tenantId: string): Promise<Contact | undefined>;
   createContact(data: InsertContact): Promise<Contact>;
   updateContact(id: string, tenantId: string, data: Partial<InsertContact>): Promise<Contact | undefined>;
@@ -106,12 +106,12 @@ export interface IStorage {
   updateMilestone(id: string, tenantId: string, data: Partial<InsertMilestone>): Promise<Milestone | undefined>;
   deleteMilestone(id: string, tenantId: string): Promise<void>;
   getTask(id: string, tenantId: string): Promise<Task | undefined>;
-  getTasksByTimeline(timelineId: string): Promise<Task[]>;
-  getTasksByParent(parentTaskId: string): Promise<Task[]>;
+  getTasksByTimeline(timelineId: string, tenantId: string): Promise<Task[]>;
+  getTasksByParent(parentTaskId: string, tenantId: string): Promise<Task[]>;
   createTask(data: InsertTask): Promise<Task>;
   updateTask(id: string, tenantId: string, data: Partial<InsertTask>): Promise<Task | undefined>;
   deleteTask(id: string, tenantId: string): Promise<void>;
-  getRisks(timelineId: string): Promise<Risk[]>;
+  getRisks(timelineId: string, tenantId: string): Promise<Risk[]>;
   createRisk(data: InsertRisk): Promise<Risk>;
   updateRisk(id: string, tenantId: string, data: Partial<InsertRisk>): Promise<Risk | undefined>;
   deleteRisk(id: string, tenantId: string): Promise<void>;
@@ -125,15 +125,15 @@ export interface IStorage {
   createRateCard(data: InsertRateCard): Promise<RateCard>;
   updateRateCard(id: string, tenantId: string, data: Partial<InsertRateCard>): Promise<RateCard | undefined>;
   deleteRateCard(id: string, tenantId: string): Promise<void>;
-  getProjectTeamMembers(timelineId: string): Promise<ProjectTeamMemberWithDetails[]>;
+  getProjectTeamMembers(timelineId: string, tenantId: string): Promise<ProjectTeamMemberWithDetails[]>;
   getProjectTeamMemberById(id: string, tenantId: string): Promise<ProjectTeamMember | undefined>;
   createProjectTeamMember(data: InsertProjectTeamMember): Promise<ProjectTeamMember>;
   updateProjectTeamMember(id: string, tenantId: string, data: Partial<InsertProjectTeamMember>): Promise<ProjectTeamMember | undefined>;
   deleteProjectTeamMember(id: string, tenantId: string): Promise<void>;
   getAllocation(id: string, tenantId: string): Promise<Allocation | undefined>;
-  getAllocations(teamMemberId: string): Promise<AllocationWithProject[]>;
+  getAllocations(teamMemberId: string, tenantId: string): Promise<AllocationWithProject[]>;
   getAllAllAllocations(tenantId?: string): Promise<import("@shared/schema").AllocationFull[]>;
-  getAllocationsByTimeline(timelineId: string): Promise<AllocationWithTeamMember[]>;
+  getAllocationsByTimeline(timelineId: string, tenantId: string): Promise<AllocationWithTeamMember[]>;
   createAllocation(data: InsertAllocation): Promise<Allocation>;
   updateAllocation(id: string, tenantId: string, data: Partial<InsertAllocation>): Promise<Allocation | undefined>;
   deleteAllocation(id: string, tenantId: string): Promise<void>;
@@ -141,12 +141,12 @@ export interface IStorage {
   updateSettings(data: Partial<Omit<AppSettings, "id">>, tenantId?: string): Promise<AppSettings>;
   getBranding(tenantId?: string): Promise<BrandingConfig>;
   updateBranding(data: Partial<InsertBranding>, tenantId?: string): Promise<BrandingConfig>;
-  getTimesheetEntries(filters?: { timelineId?: string; teamMemberId?: string; weekEnding?: string; taskId?: string; dayDate?: string }): Promise<TimesheetEntry[]>;
+  getTimesheetEntries(tenantId: string, filters?: { timelineId?: string; teamMemberId?: string; weekEnding?: string; taskId?: string; dayDate?: string }): Promise<TimesheetEntry[]>;
   getTimesheetEntry(id: string, tenantId: string): Promise<TimesheetEntry | undefined>;
   createTimesheetEntry(data: InsertTimesheetEntry): Promise<TimesheetEntry>;
   updateTimesheetEntry(id: string, tenantId: string, data: Partial<InsertTimesheetEntry>): Promise<TimesheetEntry | undefined>;
   deleteTimesheetEntry(id: string, tenantId: string): Promise<void>;
-  getProgressEntries(filters?: { timelineId?: string; taskId?: string; weekEnding?: string }): Promise<ProgressEntry[]>;
+  getProgressEntries(tenantId: string, filters?: { timelineId?: string; taskId?: string; weekEnding?: string }): Promise<ProgressEntry[]>;
   getProgressEntry(id: string, tenantId: string): Promise<ProgressEntry | undefined>;
   createProgressEntry(data: InsertProgressEntry): Promise<ProgressEntry>;
   updateProgressEntry(id: string, tenantId: string, data: Partial<InsertProgressEntry>): Promise<ProgressEntry | undefined>;
@@ -156,22 +156,22 @@ export interface IStorage {
   createFlightpathStage(data: InsertFlightpathStage): Promise<FlightpathStage>;
   updateFlightpathStage(id: string, tenantId: string, data: Partial<InsertFlightpathStage>): Promise<FlightpathStage | undefined>;
   deleteFlightpathStage(id: string, tenantId: string): Promise<void>;
-  getStageDeliverables(stageId: string): Promise<FlightpathDeliverable[]>;
+  getStageDeliverables(stageId: string, tenantId: string): Promise<FlightpathDeliverable[]>;
   getAllDeliverables(tenantId?: string): Promise<FlightpathDeliverable[]>;
   createDeliverable(data: InsertFlightpathDeliverable): Promise<FlightpathDeliverable>;
   updateDeliverable(id: string, tenantId: string, data: Partial<InsertFlightpathDeliverable>): Promise<FlightpathDeliverable | undefined>;
   deleteDeliverable(id: string, tenantId: string): Promise<void>;
-  getProjectCheckpoints(timelineId: string): Promise<ProjectCheckpoint[]>;
-  getProjectCheckpointsByStage(timelineId: string, stageId: string): Promise<ProjectCheckpoint[]>;
+  getProjectCheckpoints(timelineId: string, tenantId: string): Promise<ProjectCheckpoint[]>;
+  getProjectCheckpointsByStage(timelineId: string, stageId: string, tenantId: string): Promise<ProjectCheckpoint[]>;
   createProjectCheckpoint(data: InsertProjectCheckpoint): Promise<ProjectCheckpoint>;
   updateProjectCheckpoint(id: string, tenantId: string, data: Partial<InsertProjectCheckpoint>): Promise<ProjectCheckpoint | undefined>;
   deleteProjectCheckpoint(id: string, tenantId: string): Promise<void>;
-  getProjectGates(timelineId: string): Promise<ProjectGate[]>;
-  getProjectGate(timelineId: string, stageId: string): Promise<ProjectGate | undefined>;
+  getProjectGates(timelineId: string, tenantId: string): Promise<ProjectGate[]>;
+  getProjectGate(timelineId: string, stageId: string, tenantId: string): Promise<ProjectGate | undefined>;
   createProjectGate(data: InsertProjectGate): Promise<ProjectGate>;
   updateProjectGate(id: string, tenantId: string, data: Partial<InsertProjectGate>): Promise<ProjectGate | undefined>;
-  getWorkstreamResources(taskId: string): Promise<WorkstreamResource[]>;
-  getWorkstreamResourcesByTimeline(timelineId: string): Promise<WorkstreamResource[]>;
+  getWorkstreamResources(taskId: string, tenantId: string): Promise<WorkstreamResource[]>;
+  getWorkstreamResourcesByTimeline(timelineId: string, tenantId: string): Promise<WorkstreamResource[]>;
   createWorkstreamResource(data: InsertWorkstreamResource): Promise<WorkstreamResource>;
   updateWorkstreamResource(id: string, tenantId: string, data: Partial<InsertWorkstreamResource>): Promise<WorkstreamResource | undefined>;
   deleteWorkstreamResource(id: string, tenantId: string): Promise<void>;
@@ -198,11 +198,11 @@ export interface IStorage {
   unlinkTeamMemberFromUser(teamMemberId: string): Promise<void>;
   getTeamMemberByUserId(userId: string): Promise<TeamMember | undefined>;
   createUserFromTeamMember(email: string, teamMemberId: string): Promise<User>;
-  getEvmSnapshots(timelineId: string): Promise<EvmSnapshot[]>;
-  getEvmSnapshotAllVersions(timelineId: string, weekEnding: string): Promise<EvmSnapshot[]>;
-  getEvmSnapshot(timelineId: string, weekEnding: string): Promise<EvmSnapshot | undefined>;
+  getEvmSnapshots(timelineId: string, tenantId: string): Promise<EvmSnapshot[]>;
+  getEvmSnapshotAllVersions(timelineId: string, weekEnding: string, tenantId: string): Promise<EvmSnapshot[]>;
+  getEvmSnapshot(timelineId: string, weekEnding: string, tenantId: string): Promise<EvmSnapshot | undefined>;
   createEvmSnapshot(data: InsertEvmSnapshot): Promise<EvmSnapshot>;
-  getLatestEvmSnapshot(timelineId: string): Promise<EvmSnapshot | undefined>;
+  getLatestEvmSnapshot(timelineId: string, tenantId: string): Promise<EvmSnapshot | undefined>;
   getAssignedTimelineIds(teamMemberId: string): Promise<string[]>;
   getTimelinesByIds(ids: string[], recordType?: string): Promise<TimelineWithMilestones[]>;
   getClientsByTimelineIds(timelineIds: string[]): Promise<Client[]>;
@@ -284,8 +284,8 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(contacts);
   }
 
-  async getContacts(clientId: string): Promise<Contact[]> {
-    return db.select().from(contacts).where(eq(contacts.clientId, clientId));
+  async getContacts(clientId: string, tenantId: string): Promise<Contact[]> {
+    return db.select().from(contacts).where(and(eq(contacts.clientId, clientId), eq(contacts.tenantId, tenantId)));
   }
 
   async getContact(id: string, tenantId: string): Promise<Contact | undefined> {
@@ -401,12 +401,12 @@ export class DatabaseStorage implements IStorage {
     return task;
   }
 
-  async getTasksByTimeline(timelineId: string): Promise<Task[]> {
-    return db.select().from(tasks).where(eq(tasks.timelineId, timelineId));
+  async getTasksByTimeline(timelineId: string, tenantId: string): Promise<Task[]> {
+    return db.select().from(tasks).where(and(eq(tasks.timelineId, timelineId), eq(tasks.tenantId, tenantId)));
   }
 
-  async getTasksByParent(parentTaskId: string): Promise<Task[]> {
-    return db.select().from(tasks).where(eq(tasks.parentTaskId, parentTaskId));
+  async getTasksByParent(parentTaskId: string, tenantId: string): Promise<Task[]> {
+    return db.select().from(tasks).where(and(eq(tasks.parentTaskId, parentTaskId), eq(tasks.tenantId, tenantId)));
   }
 
   async createTask(data: InsertTask): Promise<Task> {
@@ -427,11 +427,11 @@ export class DatabaseStorage implements IStorage {
     await db.delete(tasks).where(and(eq(tasks.id, id), eq(tasks.tenantId, tenantId)));
   }
 
-  async getRisks(timelineId: string): Promise<Risk[]> {
+  async getRisks(timelineId: string, tenantId: string): Promise<Risk[]> {
     return db
       .select()
       .from(risks)
-      .where(eq(risks.timelineId, timelineId));
+      .where(and(eq(risks.timelineId, timelineId), eq(risks.tenantId, tenantId)));
   }
 
   async createRisk(data: InsertRisk): Promise<Risk> {
@@ -502,8 +502,8 @@ export class DatabaseStorage implements IStorage {
     await db.delete(rateCards).where(and(eq(rateCards.id, id), eq(rateCards.tenantId, tenantId)));
   }
 
-  async getProjectTeamMembers(timelineId: string): Promise<ProjectTeamMemberWithDetails[]> {
-    const assignments = await db.select().from(projectTeamMembers).where(eq(projectTeamMembers.timelineId, timelineId));
+  async getProjectTeamMembers(timelineId: string, tenantId: string): Promise<ProjectTeamMemberWithDetails[]> {
+    const assignments = await db.select().from(projectTeamMembers).where(and(eq(projectTeamMembers.timelineId, timelineId), eq(projectTeamMembers.tenantId, tenantId)));
     const allMembers = await db.select().from(teamMembers);
     const allCards = await db.select().from(rateCards);
 
@@ -546,11 +546,11 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async getAllocations(teamMemberId: string): Promise<AllocationWithProject[]> {
+  async getAllocations(teamMemberId: string, tenantId: string): Promise<AllocationWithProject[]> {
     const rows = await db
       .select()
       .from(allocations)
-      .where(eq(allocations.teamMemberId, teamMemberId));
+      .where(and(eq(allocations.teamMemberId, teamMemberId), eq(allocations.tenantId, tenantId)));
     const result: AllocationWithProject[] = [];
     for (const row of rows) {
       const [project] = await db.select().from(timelines).where(eq(timelines.id, row.timelineId));
@@ -581,11 +581,11 @@ export class DatabaseStorage implements IStorage {
     return row;
   }
 
-  async getAllocationsByTimeline(timelineId: string): Promise<AllocationWithTeamMember[]> {
+  async getAllocationsByTimeline(timelineId: string, tenantId: string): Promise<AllocationWithTeamMember[]> {
     const rows = await db
       .select()
       .from(allocations)
-      .where(eq(allocations.timelineId, timelineId));
+      .where(and(eq(allocations.timelineId, timelineId), eq(allocations.tenantId, tenantId)));
     const result: AllocationWithTeamMember[] = [];
     for (const row of rows) {
       const [member] = await db.select().from(teamMembers).where(eq(teamMembers.id, row.teamMemberId));
@@ -640,14 +640,13 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  async getTimesheetEntries(filters?: { timelineId?: string; teamMemberId?: string; weekEnding?: string; taskId?: string; dayDate?: string }): Promise<TimesheetEntry[]> {
-    const conditions = [];
+  async getTimesheetEntries(tenantId: string, filters?: { timelineId?: string; teamMemberId?: string; weekEnding?: string; taskId?: string; dayDate?: string }): Promise<TimesheetEntry[]> {
+    const conditions = [eq(timesheetEntries.tenantId, tenantId)];
     if (filters?.timelineId) conditions.push(eq(timesheetEntries.timelineId, filters.timelineId));
     if (filters?.teamMemberId) conditions.push(eq(timesheetEntries.teamMemberId, filters.teamMemberId));
     if (filters?.weekEnding) conditions.push(eq(timesheetEntries.weekEnding, filters.weekEnding));
     if (filters?.taskId) conditions.push(eq(timesheetEntries.taskId, filters.taskId));
     if (filters?.dayDate) conditions.push(eq(timesheetEntries.dayDate, filters.dayDate));
-    if (conditions.length === 0) return db.select().from(timesheetEntries);
     return db.select().from(timesheetEntries).where(and(...conditions));
   }
 
@@ -670,12 +669,11 @@ export class DatabaseStorage implements IStorage {
     await db.delete(timesheetEntries).where(and(eq(timesheetEntries.id, id), eq(timesheetEntries.tenantId, tenantId)));
   }
 
-  async getProgressEntries(filters?: { timelineId?: string; taskId?: string; weekEnding?: string }): Promise<ProgressEntry[]> {
-    const conditions = [];
+  async getProgressEntries(tenantId: string, filters?: { timelineId?: string; taskId?: string; weekEnding?: string }): Promise<ProgressEntry[]> {
+    const conditions = [eq(progressEntries.tenantId, tenantId)];
     if (filters?.timelineId) conditions.push(eq(progressEntries.timelineId, filters.timelineId));
     if (filters?.taskId) conditions.push(eq(progressEntries.taskId, filters.taskId));
     if (filters?.weekEnding) conditions.push(eq(progressEntries.weekEnding, filters.weekEnding));
-    if (conditions.length === 0) return db.select().from(progressEntries);
     return db.select().from(progressEntries).where(and(...conditions));
   }
 
@@ -723,8 +721,8 @@ export class DatabaseStorage implements IStorage {
     await db.delete(flightpathStages).where(and(eq(flightpathStages.id, id), eq(flightpathStages.tenantId, tenantId)));
   }
 
-  async getStageDeliverables(stageId: string): Promise<FlightpathDeliverable[]> {
-    return db.select().from(flightpathDeliverables).where(eq(flightpathDeliverables.stageId, stageId));
+  async getStageDeliverables(stageId: string, tenantId: string): Promise<FlightpathDeliverable[]> {
+    return db.select().from(flightpathDeliverables).where(and(eq(flightpathDeliverables.stageId, stageId), eq(flightpathDeliverables.tenantId, tenantId)));
   }
 
   async getAllDeliverables(tenantId?: string): Promise<FlightpathDeliverable[]> {
@@ -749,12 +747,12 @@ export class DatabaseStorage implements IStorage {
     await db.delete(flightpathDeliverables).where(and(eq(flightpathDeliverables.id, id), eq(flightpathDeliverables.tenantId, tenantId)));
   }
 
-  async getProjectCheckpoints(timelineId: string): Promise<ProjectCheckpoint[]> {
-    return db.select().from(projectCheckpoints).where(eq(projectCheckpoints.timelineId, timelineId));
+  async getProjectCheckpoints(timelineId: string, tenantId: string): Promise<ProjectCheckpoint[]> {
+    return db.select().from(projectCheckpoints).where(and(eq(projectCheckpoints.timelineId, timelineId), eq(projectCheckpoints.tenantId, tenantId)));
   }
 
-  async getProjectCheckpointsByStage(timelineId: string, stageId: string): Promise<ProjectCheckpoint[]> {
-    return db.select().from(projectCheckpoints).where(and(eq(projectCheckpoints.timelineId, timelineId), eq(projectCheckpoints.stageId, stageId)));
+  async getProjectCheckpointsByStage(timelineId: string, stageId: string, tenantId: string): Promise<ProjectCheckpoint[]> {
+    return db.select().from(projectCheckpoints).where(and(eq(projectCheckpoints.timelineId, timelineId), eq(projectCheckpoints.stageId, stageId), eq(projectCheckpoints.tenantId, tenantId)));
   }
 
   async createProjectCheckpoint(data: InsertProjectCheckpoint): Promise<ProjectCheckpoint> {
@@ -771,12 +769,12 @@ export class DatabaseStorage implements IStorage {
     await db.delete(projectCheckpoints).where(and(eq(projectCheckpoints.id, id), eq(projectCheckpoints.tenantId, tenantId)));
   }
 
-  async getProjectGates(timelineId: string): Promise<ProjectGate[]> {
-    return db.select().from(projectGates).where(eq(projectGates.timelineId, timelineId));
+  async getProjectGates(timelineId: string, tenantId: string): Promise<ProjectGate[]> {
+    return db.select().from(projectGates).where(and(eq(projectGates.timelineId, timelineId), eq(projectGates.tenantId, tenantId)));
   }
 
-  async getProjectGate(timelineId: string, stageId: string): Promise<ProjectGate | undefined> {
-    const [gate] = await db.select().from(projectGates).where(and(eq(projectGates.timelineId, timelineId), eq(projectGates.stageId, stageId)));
+  async getProjectGate(timelineId: string, stageId: string, tenantId: string): Promise<ProjectGate | undefined> {
+    const [gate] = await db.select().from(projectGates).where(and(eq(projectGates.timelineId, timelineId), eq(projectGates.stageId, stageId), eq(projectGates.tenantId, tenantId)));
     return gate;
   }
 
@@ -790,12 +788,12 @@ export class DatabaseStorage implements IStorage {
     return gate;
   }
 
-  async getWorkstreamResources(taskId: string): Promise<WorkstreamResource[]> {
-    return db.select().from(workstreamResources).where(eq(workstreamResources.taskId, taskId));
+  async getWorkstreamResources(taskId: string, tenantId: string): Promise<WorkstreamResource[]> {
+    return db.select().from(workstreamResources).where(and(eq(workstreamResources.taskId, taskId), eq(workstreamResources.tenantId, tenantId)));
   }
 
-  async getWorkstreamResourcesByTimeline(timelineId: string): Promise<WorkstreamResource[]> {
-    const timelineTasks = await db.select({ id: tasks.id }).from(tasks).where(eq(tasks.timelineId, timelineId));
+  async getWorkstreamResourcesByTimeline(timelineId: string, tenantId: string): Promise<WorkstreamResource[]> {
+    const timelineTasks = await db.select({ id: tasks.id }).from(tasks).where(and(eq(tasks.timelineId, timelineId), eq(tasks.tenantId, tenantId)));
     const taskIds = timelineTasks.map(t => t.id);
     if (taskIds.length === 0) return [];
     return db.select().from(workstreamResources).where(inArray(workstreamResources.taskId, taskIds));
@@ -995,23 +993,24 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async getEvmSnapshots(timelineId: string): Promise<EvmSnapshot[]> {
+  async getEvmSnapshots(timelineId: string, tenantId: string): Promise<EvmSnapshot[]> {
     return db.select().from(evmSnapshots)
-      .where(and(eq(evmSnapshots.timelineId, timelineId), eq(evmSnapshots.isCurrent, true)))
+      .where(and(eq(evmSnapshots.timelineId, timelineId), eq(evmSnapshots.isCurrent, true), eq(evmSnapshots.tenantId, tenantId)))
       .orderBy(evmSnapshots.weekEnding);
   }
 
-  async getEvmSnapshotAllVersions(timelineId: string, weekEnding: string): Promise<EvmSnapshot[]> {
+  async getEvmSnapshotAllVersions(timelineId: string, weekEnding: string, tenantId: string): Promise<EvmSnapshot[]> {
     return db.select().from(evmSnapshots)
-      .where(and(eq(evmSnapshots.timelineId, timelineId), eq(evmSnapshots.weekEnding, weekEnding)))
+      .where(and(eq(evmSnapshots.timelineId, timelineId), eq(evmSnapshots.weekEnding, weekEnding), eq(evmSnapshots.tenantId, tenantId)))
       .orderBy(desc(evmSnapshots.version));
   }
 
-  async getEvmSnapshot(timelineId: string, weekEnding: string): Promise<EvmSnapshot | undefined> {
+  async getEvmSnapshot(timelineId: string, weekEnding: string, tenantId: string): Promise<EvmSnapshot | undefined> {
     const [snapshot] = await db.select().from(evmSnapshots)
       .where(and(
         eq(evmSnapshots.timelineId, timelineId),
         eq(evmSnapshots.weekEnding, weekEnding),
+        eq(evmSnapshots.tenantId, tenantId),
         eq(evmSnapshots.isCurrent, true),
       ));
     return snapshot;
@@ -1050,9 +1049,9 @@ export class DatabaseStorage implements IStorage {
     await db.delete(evmSnapshots).where(and(eq(evmSnapshots.id, id), eq(evmSnapshots.tenantId, tenantId)));
   }
 
-  async getLatestEvmSnapshot(timelineId: string): Promise<EvmSnapshot | undefined> {
+  async getLatestEvmSnapshot(timelineId: string, tenantId: string): Promise<EvmSnapshot | undefined> {
     const [snapshot] = await db.select().from(evmSnapshots)
-      .where(and(eq(evmSnapshots.timelineId, timelineId), eq(evmSnapshots.isCurrent, true)))
+      .where(and(eq(evmSnapshots.timelineId, timelineId), eq(evmSnapshots.isCurrent, true), eq(evmSnapshots.tenantId, tenantId)))
       .orderBy(desc(evmSnapshots.weekEnding))
       .limit(1);
     return snapshot;

@@ -56,7 +56,7 @@ async function recalcTotalRunningCost(timelineId: string, tenantId: string) {
   const timeline = await storage.getTimeline(timelineId, tenantId);
   if (!timeline) return;
 
-  const allocs = await storage.getAllocationsByTimeline(timelineId);
+  const allocs = await storage.getAllocationsByTimeline(timelineId, tenantId);
   const activeAllocs = allocs.filter(a => a.status === "active");
 
   let totalCost = 0;
@@ -140,7 +140,7 @@ function parseDateToNum(dateStr: string): number {
 }
 
 async function recalcPhaseProgress(phaseId: string, tenantId: string) {
-  const children = await storage.getTasksByParent(phaseId);
+  const children = await storage.getTasksByParent(phaseId, tenantId);
   if (children.length === 0) return;
 
   let totalWeight = 0;
@@ -413,7 +413,7 @@ export async function registerRoutes(
           return res.status(403).json({ message: "You don't have access to this client's contacts" });
         }
       }
-      const contacts = await storage.getContacts(req.params.clientId);
+      const contacts = await storage.getContacts(req.params.clientId, req.tenantId || "default");
       res.json(contacts);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -681,8 +681,8 @@ export async function registerRoutes(
   app.delete("/api/milestones/:id", async (req, res) => {
     try {
       const { milestones: milestonesTable } = await import("@shared/schema");
-      const { eq: eqOp } = await import("drizzle-orm");
-      const [existing] = await db.select({ timelineId: milestonesTable.timelineId, isFinancialObligation: milestonesTable.isFinancialObligation }).from(milestonesTable).where(eqOp(milestonesTable.id, req.params.id));
+      const { eq: eqOp, and: andOp } = await import("drizzle-orm");
+      const [existing] = await db.select({ timelineId: milestonesTable.timelineId, isFinancialObligation: milestonesTable.isFinancialObligation }).from(milestonesTable).where(andOp(eqOp(milestonesTable.id, req.params.id), eqOp(milestonesTable.tenantId, req.tenantId || "default")));
       await storage.deleteMilestone(req.params.id, req.tenantId || "default");
       if (existing?.isFinancialObligation) {
         await recalcApprovedBudget(existing.timelineId, req.tenantId || "default");
@@ -696,7 +696,7 @@ export async function registerRoutes(
   app.get("/api/timelines/:id/tasks", async (req, res) => {
     try {
       if (!(await checkTimelineAccess(req, res, req.params.id))) return;
-      const taskList = await storage.getTasksByTimeline(req.params.id);
+      const taskList = await storage.getTasksByTimeline(req.params.id, req.tenantId || "default");
       res.json(taskList);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -848,7 +848,7 @@ export async function registerRoutes(
       if (!ctx) return res.status(401).json({ message: "Authentication required" });
 
       if (!ctx.isGlobal) {
-        const entries = await storage.getTimesheetEntries({
+        const entries = await storage.getTimesheetEntries(req.tenantId || "default", {
           timelineId: timelineId as string | undefined,
           teamMemberId: ctx.teamMemberId || undefined,
           weekEnding: weekEnding as string | undefined,
@@ -856,7 +856,7 @@ export async function registerRoutes(
         return res.json(entries);
       }
 
-      const entries = await storage.getTimesheetEntries({
+      const entries = await storage.getTimesheetEntries(req.tenantId || "default", {
         timelineId: timelineId as string | undefined,
         teamMemberId: teamMemberId as string | undefined,
         weekEnding: weekEnding as string | undefined,
@@ -871,7 +871,7 @@ export async function registerRoutes(
     try {
       if (!(await checkTimelineAccess(req, res, req.params.id))) return;
       const { weekEnding, teamMemberId } = req.query;
-      const entries = await storage.getTimesheetEntries({
+      const entries = await storage.getTimesheetEntries(req.tenantId || "default", {
         timelineId: req.params.id,
         weekEnding: weekEnding as string | undefined,
         teamMemberId: teamMemberId as string | undefined,
@@ -888,7 +888,7 @@ export async function registerRoutes(
       if (!timelineId || !teamMemberId || !weekEnding || hours === undefined) {
         return res.status(400).json({ message: "timelineId, teamMemberId, weekEnding, and hours are required" });
       }
-      const allAllocations = await storage.getAllocations(teamMemberId);
+      const allAllocations = await storage.getAllocations(teamMemberId, req.tenantId || "default");
       const hasActiveAllocation = allAllocations.some(a => a.timelineId === timelineId && a.status === "active");
       if (!hasActiveAllocation) {
         return res.status(403).json({ message: "Team member does not have an active allocation to this project" });
@@ -944,7 +944,7 @@ export async function registerRoutes(
     try {
       if (!(await checkTimelineAccess(req, res, req.params.id))) return;
       const { weekEnding, taskId } = req.query;
-      const entries = await storage.getProgressEntries({
+      const entries = await storage.getProgressEntries(req.tenantId || "default", {
         timelineId: req.params.id,
         weekEnding: weekEnding as string | undefined,
         taskId: taskId as string | undefined,
@@ -1034,7 +1034,7 @@ export async function registerRoutes(
   app.get("/api/timelines/:id/risks", async (req, res) => {
     try {
       if (!(await checkTimelineAccess(req, res, req.params.id))) return;
-      const risks = await storage.getRisks(req.params.id);
+      const risks = await storage.getRisks(req.params.id, req.tenantId || "default");
       res.json(risks);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -1238,7 +1238,7 @@ export async function registerRoutes(
   app.get("/api/timelines/:id/team", async (req, res) => {
     try {
       if (!(await checkTimelineAccess(req, res, req.params.id))) return;
-      const members = await storage.getProjectTeamMembers(req.params.id);
+      const members = await storage.getProjectTeamMembers(req.params.id, req.tenantId || "default");
       res.json(members);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -1283,9 +1283,9 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Sync from estimate is only available for opportunities" });
       }
 
-      const allResources = await storage.getWorkstreamResourcesByTimeline(timelineId);
-      const allTasks = await storage.getTasksByTimeline(timelineId);
-      const existingTeam = await storage.getProjectTeamMembers(timelineId);
+      const allResources = await storage.getWorkstreamResourcesByTimeline(timelineId, req.tenantId || "default");
+      const allTasks = await storage.getTasksByTimeline(timelineId, req.tenantId || "default");
+      const existingTeam = await storage.getProjectTeamMembers(timelineId, req.tenantId || "default");
       const allRateCards = await storage.getRateCards(req.tenantId);
       const rateCardMap = new Map(allRateCards.map(rc => [rc.id, rc]));
       const taskMap = new Map(allTasks.map(t => [t.id, t]));
@@ -1410,7 +1410,7 @@ export async function registerRoutes(
   app.get("/api/timelines/:id/allocations", async (req, res) => {
     try {
       if (!(await checkTimelineAccess(req, res, req.params.id))) return;
-      const allocs = await storage.getAllocationsByTimeline(req.params.id);
+      const allocs = await storage.getAllocationsByTimeline(req.params.id, req.tenantId || "default");
       res.json(allocs);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -1438,7 +1438,7 @@ export async function registerRoutes(
   // GET allocations for a team member
   app.get("/api/team-members/:id/allocations", async (req, res) => {
     try {
-      const allocs = await storage.getAllocations(req.params.id);
+      const allocs = await storage.getAllocations(req.params.id, req.tenantId || "default");
       res.json(allocs);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -1677,7 +1677,7 @@ export async function registerRoutes(
         if (rc.role) rcByName.set(rc.role.toLowerCase().trim(), rc);
       }
 
-      const existingTasks = await storage.getTasksByTimeline(timelineId);
+      const existingTasks = await storage.getTasksByTimeline(timelineId, req.tenantId || "default");
       const existingPhases = existingTasks.filter(t => t.itemType === "phase");
       const existingWorkstreams = existingTasks.filter(t => t.itemType === "workstream");
 
@@ -1858,7 +1858,7 @@ export async function registerRoutes(
       const sorted = stages.sort((a, b) => a.sortOrder - b.sortOrder);
       const result = [];
       for (const stage of sorted) {
-        const deliverables = await storage.getStageDeliverables(stage.id);
+        const deliverables = await storage.getStageDeliverables(stage.id, tenantId);
         result.push({ ...stage, deliverables: deliverables.sort((a, b) => a.sortOrder - b.sortOrder) });
       }
       res.json(result);
@@ -1890,7 +1890,7 @@ export async function registerRoutes(
   // ── FlightPath Deliverables ──
   app.get("/api/flightpath-stages/:stageId/deliverables", async (req, res) => {
     try {
-      const deliverables = await storage.getStageDeliverables(req.params.stageId);
+      const deliverables = await storage.getStageDeliverables(req.params.stageId, req.tenantId || "default");
       res.json(deliverables.sort((a, b) => a.sortOrder - b.sortOrder));
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
@@ -1925,7 +1925,7 @@ export async function registerRoutes(
       const sorted = stages.sort((a, b) => a.sortOrder - b.sortOrder);
       const result = [];
       for (const stage of sorted) {
-        const deliverables = await storage.getStageDeliverables(stage.id);
+        const deliverables = await storage.getStageDeliverables(stage.id, tenantId);
         result.push({ ...stage, deliverables: deliverables.sort((a, b) => a.sortOrder - b.sortOrder) });
       }
       res.json(result);
@@ -1952,7 +1952,7 @@ export async function registerRoutes(
   });
   app.get("/api/governance-model/stages/:stageId/deliverables", async (req, res) => {
     try {
-      const deliverables = await storage.getStageDeliverables(req.params.stageId);
+      const deliverables = await storage.getStageDeliverables(req.params.stageId, req.tenantId || "default");
       res.json(deliverables.sort((a, b) => a.sortOrder - b.sortOrder));
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
@@ -1982,8 +1982,8 @@ export async function registerRoutes(
       if (!(await checkTimelineAccess(req, res, req.params.id))) return;
       const stageId = req.query.stageId as string | undefined;
       const checkpoints = stageId
-        ? await storage.getProjectCheckpointsByStage(req.params.id, stageId)
-        : await storage.getProjectCheckpoints(req.params.id);
+        ? await storage.getProjectCheckpointsByStage(req.params.id, stageId, req.tenantId || "default")
+        : await storage.getProjectCheckpoints(req.params.id, req.tenantId || "default");
       res.json(checkpoints);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
@@ -2022,7 +2022,7 @@ export async function registerRoutes(
   app.get("/api/timelines/:id/gates", async (req, res) => {
     try {
       if (!(await checkTimelineAccess(req, res, req.params.id))) return;
-      const gates = await storage.getProjectGates(req.params.id);
+      const gates = await storage.getProjectGates(req.params.id, req.tenantId || "default");
       res.json(gates);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
@@ -2051,7 +2051,7 @@ export async function registerRoutes(
       if (!notes || !notes.trim()) return res.status(400).json({ message: "Justification notes are required" });
       const allStages = await storage.getFlightpathStages(req.tenantId || "default");
       if (!allStages.some(s => s.id === stageId)) return res.status(400).json({ message: "Invalid stageId for this governance model" });
-      let gate = await storage.getProjectGate(req.params.id, stageId);
+      let gate = await storage.getProjectGate(req.params.id, stageId, req.tenantId || "default");
       if (!gate) {
         gate = await storage.createProjectGate({ timelineId: req.params.id, stageId, status: "exception_requested", notes: notes.trim(), tenantId: req.tenantId || "default" });
       } else {
@@ -2067,7 +2067,7 @@ export async function registerRoutes(
       const { stageId, approved, notes } = req.body;
       if (!stageId) return res.status(400).json({ message: "stageId is required" });
       if (typeof approved !== "boolean") return res.status(400).json({ message: "approved (boolean) is required" });
-      const gate = await storage.getProjectGate(req.params.id, stageId);
+      const gate = await storage.getProjectGate(req.params.id, stageId, req.tenantId || "default");
       if (!gate) return res.status(404).json({ message: "Gate not found" });
       if (gate.status !== "exception_requested") return res.status(400).json({ message: "Gate is not in exception_requested status" });
       const updatedGate = await storage.updateProjectGate(gate.id, req.tenantId || "default", {
@@ -2085,12 +2085,12 @@ export async function registerRoutes(
       const { stageId } = req.body;
       if (!stageId) return res.status(400).json({ message: "stageId is required" });
 
-      const existing = await storage.getProjectCheckpointsByStage(req.params.id, stageId);
+      const existing = await storage.getProjectCheckpointsByStage(req.params.id, stageId, req.tenantId || "default");
       if (existing.length > 0) {
         return res.json({ message: "Stage already initialized", checkpoints: existing });
       }
 
-      const deliverables = await storage.getStageDeliverables(stageId);
+      const deliverables = await storage.getStageDeliverables(stageId, req.tenantId || "default");
       const checkpoints = [];
       for (const d of deliverables.sort((a, b) => a.sortOrder - b.sortOrder)) {
         const cp = await storage.createProjectCheckpoint({
@@ -2134,7 +2134,7 @@ export async function registerRoutes(
           return res.status(400).json({ message: "Can only advance to the next sequential stage" });
         }
 
-        const gates = await storage.getProjectGates(req.params.id);
+        const gates = await storage.getProjectGates(req.params.id, req.tenantId || "default");
         const currentGate = gates.find(g => g.stageId === timeline.flightpathStageId);
         if (!currentGate || (currentGate.status !== "passed" && currentGate.status !== "exception")) {
           return res.status(400).json({ message: "Gate for the current stage must be passed or have an approved exception before advancing" });
@@ -2206,14 +2206,14 @@ export async function registerRoutes(
       const stage = await storage.getFlightpathStage(stageId, req.tenantId || "default");
       if (!stage) return res.status(404).json({ message: "Stage not found" });
 
-      const allCheckpoints = await storage.getProjectCheckpointsByStage(req.params.id, stageId);
+      const allCheckpoints = await storage.getProjectCheckpointsByStage(req.params.id, stageId, req.tenantId || "default");
       const optionalCount = allCheckpoints.filter(c => c.optional).length;
       const checkpoints = allCheckpoints.filter(c => !c.optional);
       const totalCheckpoints = checkpoints.length;
       const completedCheckpoints = checkpoints.filter(c => c.completed).length;
       const missingItems = checkpoints.filter(c => !c.completed).map(c => c.checkpointName);
 
-      const raidItems = await storage.getRisks(req.params.id);
+      const raidItems = await storage.getRisks(req.params.id, req.tenantId || "default");
       const stageRaidItems = raidItems.filter(r => r.relatedStageId === stageId || !r.relatedStageId);
       const openRisks = stageRaidItems.filter(r => r.itemType === "risk" && r.status === "open");
       const openIssues = stageRaidItems.filter(r => r.itemType === "issue" && r.status === "open");
@@ -2229,8 +2229,8 @@ export async function registerRoutes(
       const evmFlags: string[] = [];
       if (stage.stageNumber >= 2) {
         try {
-          const allAllocations = await storage.getAllocationsByTimeline(req.params.id);
-          const tsEntries = await storage.getTimesheetEntries({ timelineId: req.params.id });
+          const allAllocations = await storage.getAllocationsByTimeline(req.params.id, req.tenantId || "default");
+          const tsEntries = await storage.getTimesheetEntries(req.tenantId || "default", { timelineId: req.params.id });
           if (allAllocations.length > 0 && tsEntries.length > 0) {
             evmFlags.push("EVM data available — review SPI/CPI indicators in the EVM tab");
           }
@@ -2325,7 +2325,7 @@ Respond ONLY with valid JSON in this exact format:
         };
       }
 
-      let gate = await storage.getProjectGate(req.params.id, stageId);
+      let gate = await storage.getProjectGate(req.params.id, stageId, req.tenantId || "default");
       if (!gate) {
         gate = await storage.createProjectGate({
           tenantId: req.tenantId || "default",
@@ -2418,7 +2418,7 @@ Respond ONLY with valid JSON in this exact format:
       const timeline = await storage.getTimeline(req.params.id, req.tenantId || "default");
       if (!timeline) return res.status(404).json({ message: "Timeline not found" });
 
-      const checkpoints = await storage.getProjectCheckpointsByStage(req.params.id, stageId);
+      const checkpoints = await storage.getProjectCheckpointsByStage(req.params.id, stageId, req.tenantId || "default");
       const checkpointsWithArtifacts = checkpoints.filter(c => c.artifactFileId || c.artifactUrl || c.artifactFileName);
 
       if (checkpointsWithArtifacts.length === 0) {
@@ -2426,7 +2426,7 @@ Respond ONLY with valid JSON in this exact format:
       }
 
       const stage = await storage.getFlightpathStage(stageId, req.tenantId || "default");
-      const deliverables = await storage.getStageDeliverables(stageId);
+      const deliverables = await storage.getStageDeliverables(stageId, req.tenantId || "default");
 
       const openai = new OpenAI({
         apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
@@ -2545,7 +2545,7 @@ Respond ONLY with valid JSON:
       frameworkContext += `The ${govLabel} is a 5-stage project governance framework (Stage 0 through Stage 4) that guides projects from initial value framing through to value realization and evolution.\n\n`;
 
       for (const stage of sortedStages) {
-        const deliverables = await storage.getStageDeliverables(stage.id);
+        const deliverables = await storage.getStageDeliverables(stage.id, req.tenantId || "default");
         frameworkContext += `### Stage ${stage.stageNumber}: ${stage.name}\n`;
         frameworkContext += `- **Goal**: ${stage.goal}\n`;
         if (stage.description) frameworkContext += `- **Description**: ${stage.description}\n`;
@@ -2605,7 +2605,7 @@ Respond ONLY with valid JSON:
 
   app.get("/api/tasks/:taskId/resources", async (req, res) => {
     try {
-      const resources = await storage.getWorkstreamResources(req.params.taskId);
+      const resources = await storage.getWorkstreamResources(req.params.taskId, req.tenantId || "default");
       res.json(resources);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
@@ -2651,7 +2651,7 @@ Respond ONLY with valid JSON:
 
   app.get("/api/timelines/:timelineId/workstream-resources", async (req, res) => {
     try {
-      const resources = await storage.getWorkstreamResourcesByTimeline(req.params.timelineId);
+      const resources = await storage.getWorkstreamResourcesByTimeline(req.params.timelineId, req.tenantId || "default");
       res.json(resources);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
@@ -2696,7 +2696,7 @@ Respond ONLY with valid JSON:
       const stage0 = allStages.sort((a, b) => a.stageNumber - b.stageNumber).find(s => s.stageNumber === 0);
       if (stage0) {
         await storage.updateTimeline(opp.id, req.tenantId || "default", { flightpathStageId: stage0.id });
-        const deliverables = await storage.getStageDeliverables(stage0.id);
+        const deliverables = await storage.getStageDeliverables(stage0.id, req.tenantId || "default");
         for (const d of deliverables.sort((a, b) => a.sortOrder - b.sortOrder)) {
           await storage.createProjectCheckpoint({
             tenantId: req.tenantId || "default",
@@ -2801,7 +2801,7 @@ Respond ONLY with valid JSON:
       const stage1 = sortedStages.find(s => s.stageNumber === 1);
 
       if (stage0 && opp.flightpathStageId === stage0.id) {
-        const gates = await storage.getProjectGates(req.params.id);
+        const gates = await storage.getProjectGates(req.params.id, req.tenantId || "default");
         const stage0Gate = gates.find(g => g.stageId === stage0.id);
         if (!stage0Gate || (stage0Gate.status !== "passed" && stage0Gate.status !== "exception")) {
           return res.status(400).json({ message: "Stage 0 gate must be passed or have an approved exception before converting to a project" });
@@ -2889,7 +2889,7 @@ Respond ONLY with valid JSON:
       let resourcesCopied = 0;
       const taskIdEntries = Array.from(taskIdMap.entries());
       for (const [oldTaskId, newTaskId] of taskIdEntries) {
-        const resources = await storage.getWorkstreamResources(oldTaskId);
+        const resources = await storage.getWorkstreamResources(oldTaskId, req.tenantId || "default");
         for (const resource of resources) {
           await storage.createWorkstreamResource({
             tenantId: req.tenantId || "default",
@@ -2904,7 +2904,7 @@ Respond ONLY with valid JSON:
         }
       }
 
-      const oppTeamMembers = await storage.getProjectTeamMembers(opp.id);
+      const oppTeamMembers = await storage.getProjectTeamMembers(opp.id, req.tenantId || "default");
       for (const ptm of oppTeamMembers) {
         await storage.createProjectTeamMember({
           tenantId: req.tenantId || "default",
@@ -2919,7 +2919,7 @@ Respond ONLY with valid JSON:
         });
       }
 
-      const oppAllocations = await storage.getAllocationsByTimeline(opp.id);
+      const oppAllocations = await storage.getAllocationsByTimeline(opp.id, req.tenantId || "default");
       for (const alloc of oppAllocations) {
         await storage.createAllocation({
           tenantId: req.tenantId || "default",
@@ -2933,7 +2933,7 @@ Respond ONLY with valid JSON:
         });
       }
 
-      const oppRisks = await storage.getRisks(opp.id);
+      const oppRisks = await storage.getRisks(opp.id, req.tenantId || "default");
       for (const risk of oppRisks) {
         await storage.createRisk({
           tenantId: req.tenantId || "default",
@@ -2976,7 +2976,7 @@ Respond ONLY with valid JSON:
       }
 
       if (stage1) {
-        const deliverables = await storage.getStageDeliverables(stage1.id);
+        const deliverables = await storage.getStageDeliverables(stage1.id, req.tenantId || "default");
         for (const d of deliverables.sort((a, b) => a.sortOrder - b.sortOrder)) {
           await storage.createProjectCheckpoint({
             tenantId: req.tenantId || "default",
@@ -3296,14 +3296,14 @@ Respond ONLY with valid JSON:
   app.get("/api/timelines/:id/evm-snapshots", async (req, res) => {
     try {
       if (!(await checkTimelineAccess(req, res, req.params.id))) return;
-      const snapshots = await storage.getEvmSnapshots(req.params.id);
+      const snapshots = await storage.getEvmSnapshots(req.params.id, req.tenantId || "default");
       res.json(snapshots);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
   app.get("/api/timelines/:id/evm-snapshots/:weekEnding", async (req, res) => {
     try {
-      const snapshot = await storage.getEvmSnapshot(req.params.id, req.params.weekEnding);
+      const snapshot = await storage.getEvmSnapshot(req.params.id, req.params.weekEnding, req.tenantId || "default");
       if (!snapshot) return res.status(404).json({ message: "Snapshot not found" });
       res.json(snapshot);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
@@ -3311,7 +3311,7 @@ Respond ONLY with valid JSON:
 
   app.get("/api/timelines/:id/evm-snapshots/:weekEnding/versions", async (req, res) => {
     try {
-      const versions = await storage.getEvmSnapshotAllVersions(req.params.id, req.params.weekEnding);
+      const versions = await storage.getEvmSnapshotAllVersions(req.params.id, req.params.weekEnding, req.tenantId || "default");
       res.json(versions);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });

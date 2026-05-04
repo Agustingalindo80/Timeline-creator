@@ -43,7 +43,7 @@ export async function calculateEVMForWeek(timelineId: string, targetWeekEnding: 
   if (!timeline) throw new Error("Timeline not found");
 
   const bac = parseFloat(timeline.approvedBudget || "0");
-  const allTasks = await storage.getTasksByTimeline(timelineId);
+  const allTasks = await storage.getTasksByTimeline(timelineId, tenantId);
   const workstreams = allTasks.filter(t => t.itemType === "workstream");
   const phases = allTasks.filter(t => t.itemType === "phase");
 
@@ -62,10 +62,10 @@ export async function calculateEVMForWeek(timelineId: string, targetWeekEnding: 
     workstreamBudgets[ws.id] = totalDuration > 0 ? (durations[ws.id] / totalDuration) * bac : 0;
   });
 
-  const allocations = await storage.getAllocationsByTimeline(timelineId);
-  const timesheetEntries = await storage.getTimesheetEntries({ timelineId });
-  const progressEntries = await storage.getProgressEntries({ timelineId });
-  const projectTeam = await storage.getProjectTeamMembers(timelineId);
+  const allocations = await storage.getAllocationsByTimeline(timelineId, tenantId);
+  const timesheetEntries = await storage.getTimesheetEntries(tenantId, { timelineId });
+  const progressEntries = await storage.getProgressEntries(tenantId, { timelineId });
+  const projectTeam = await storage.getProjectTeamMembers(timelineId, tenantId);
   const allTeamMembers = await storage.getTeamMembers();
 
   const rateByTeamMember: Record<string, number> = {};
