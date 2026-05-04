@@ -95,6 +95,7 @@ export const MODULE_KEYS = [
   "opportunities",
   "clients",
   "contacts",
+  "business_outcomes",
   "allocations",
   "timesheets",
   "team_members",
@@ -110,6 +111,7 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
   opportunities: "Opportunities",
   clients: "Clients",
   contacts: "Contacts",
+  business_outcomes: "Business Outcomes",
   allocations: "Allocations",
   timesheets: "Timesheets",
   team_members: "Team Members",
@@ -124,6 +126,7 @@ export const ALL_PERMISSIONS = [
   { key: "module.opportunities", description: "Access the Opportunities module", category: "module" },
   { key: "module.clients", description: "Access the Clients module", category: "module" },
   { key: "module.contacts", description: "Access the Contacts module", category: "module" },
+  { key: "module.business_outcomes", description: "Access the Business Outcomes module", category: "module" },
   { key: "module.allocations", description: "Access the Allocations module", category: "module" },
   { key: "module.timesheets", description: "Access the Timesheets module", category: "module" },
   { key: "module.team_members", description: "Access the Team Members module", category: "module" },
@@ -201,7 +204,7 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<string, string[]> = {
 
   "PMO Lead": [
     "module.dashboard", "module.projects", "module.clients", "module.allocations",
-    "module.timesheets", "module.team_members", "module.reports", "module.admin", "module.coach",
+    "module.timesheets", "module.team_members", "module.reports", "module.admin", "module.coach", "module.business_outcomes",
     "record.global_access",
     "opp.view", "estimate.view", "rates.view",
     "gate.review", "gate.approve", "artifacts.manage", "raci.manage",
@@ -213,7 +216,7 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<string, string[]> = {
   ],
 
   "Finance": [
-    "module.dashboard", "module.projects", "module.opportunities", "module.clients", "module.reports", "module.admin",
+    "module.dashboard", "module.projects", "module.opportunities", "module.clients", "module.reports", "module.admin", "module.business_outcomes",
     "record.global_access",
     "opp.view", "estimate.view", "rates.view", "rates.edit", "pricing.approve",
     "project.view",
@@ -222,7 +225,7 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<string, string[]> = {
 
   "Delivery Lead": [
     "module.dashboard", "module.projects", "module.clients", "module.allocations",
-    "module.timesheets", "module.team_members", "module.reports", "module.coach",
+    "module.timesheets", "module.team_members", "module.reports", "module.coach", "module.business_outcomes",
     "record.global_access",
     "opp.view", "opp.edit", "estimate.view", "estimate.edit",
     "gate.review", "gate.submit", "gate.approve", "artifacts.manage",
@@ -233,7 +236,7 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<string, string[]> = {
   ],
 
   "Project Manager": [
-    "module.dashboard", "module.projects", "module.timesheets", "module.allocations", "module.reports", "module.coach",
+    "module.dashboard", "module.projects", "module.timesheets", "module.allocations", "module.reports", "module.coach", "module.business_outcomes",
     "gate.submit", "gate.review", "artifacts.manage",
     "project.view", "project.edit",
     "timesheet.submit", "timesheet.approve",

@@ -10,18 +10,18 @@ I prefer iterative development with a focus on delivering core features first. P
 The application uses a modern web stack with React, Vite, Tailwind CSS, and shadcn/ui for the frontend, and Express.js on Node.js with PostgreSQL and Drizzle ORM for the backend.
 
 **UI/UX Decisions:**
-- Consistent left-hand sidebar navigation with module-permission-gated items. Sections: Workspace (Dashboard, Companies, Contacts, Opportunities, Projects, Reports), Help & Support (Governance Coach, User Guide), Operations (Team Members, Allocations, Timesheets), Administration (Settings, Security, About), Super Admin (Global Administration).
+- Consistent left-hand sidebar navigation with module-permission-gated items. Sections: Workspace (Dashboard, Companies, Contacts, Opportunities, Projects, Business Outcomes, Reports), Help & Support (Governance Coach, User Guide), Operations (Team Members, Allocations, Timesheets), Administration (Settings, Security, About), Super Admin (Global Administration).
 - Supports dark/light mode with an executive-grade dark-first design.
 - Project visualizations include horizontal timeline views and Gantt-like bars.
 - Health indicators use colored dots.
 - Data tables support inline editing and CRUD operations with a Stripe-style aesthetic.
 - Dynamic forms for project creation and detail management.
-- Mission Control layout dashboard with metric cards and pipeline funnel bars.
+- Mission Control executive dashboard with portfolio health, margin exposure, at-risk projects, overdue milestones, critical RAID items, gate exceptions, and health heatmap.
 - Detail pages feature KPI cards and inline edit mode.
 - **Color Palette:** Executive-grade dark-first design with a primary blue (`#3B82F6`), slate-900 background for dark mode, and clean whites for light mode.
 
 **Technical Implementations:**
-- **Project Structure:** Clear separation of client-side and server-side code. Backend routes are modularized into domain-specific files under `server/routes/` (19 files) with shared helpers in `server/routes/helpers.ts`. Business logic is extracted into `server/services/` (6 files: financials, project-progress, gate-evaluator, artifact-verification, opportunity-conversion, estimate-import). The main `server/routes.ts` is a thin orchestrator that sets up auth, middleware, and delegates to domain route modules. Route handlers are thin — they validate input, call services, and return responses. Frontend feature components are organized under `client/src/features/` by domain:
+- **Project Structure:** Clear separation of client-side and server-side code. Backend routes are modularized into domain-specific files under `server/routes/` (21 files, including business-outcomes.ts and dashboard.ts) with shared helpers in `server/routes/helpers.ts`. Business logic is extracted into `server/services/` (6 files: financials, project-progress, gate-evaluator, artifact-verification, opportunity-conversion, estimate-import). The main `server/routes.ts` is a thin orchestrator that sets up auth, middleware, and delegates to domain route modules. Route handlers are thin — they validate input, call services, and return responses. Frontend feature components are organized under `client/src/features/` by domain:
   - `features/security/` (6 files): types, RolesManager, UserDetailView, UsersRolesManager, AuditLogViewer, RoleMatrixViewer — extracted from `admin-security.tsx` (now 48-line thin wrapper).
   - `features/admin/` (6 files): FieldOptionEditor, TeamMembersManager, RateCardsManager, BrandingManager, FlightPathManager, ApiTokensManager — extracted from `admin.tsx` (now 382-line wrapper with General tab inline).
   - `features/projects/` (12 files): helpers, ProjectTimesheetsTab, ProgressTrackingTab, EVMTab, ProjectTeamMembersTab, MilestoneManager, TaskManager, ProjectEditForm, ProjectKPI, useTimelineExport, RaidLog — extracted from `timeline-detail.tsx` (reduced from 3050 to 501 lines).
@@ -38,6 +38,7 @@ The application uses a modern web stack with React, Vite, Tailwind CSS, and shad
 - **Progress Tracking:** Project-level tab for weekly % complete per workstream.
 - **EVM Dashboard:** Project-level tab displaying Earned Value Management metrics with historical snapshot tracking, revision versioning, S-Curve, and CPI/SPI charts.
 - **RAID Log:** Supports Risks, Assumptions, Issues, and Dependencies.
+- **Business Outcomes Module:** Strategic outcome register for tracking value realisation. Full CRUD with linking to clients, opportunities, projects, governance stages, and team members. Status tracking (draft/active/achieved/at_risk/cancelled) with baseline, target, and current value measurement.
 - **Reports Module:** Provides operational reports (Portfolio Health, Project Status, Milestone Tracker, RAID Summary) with CSV and PDF export, and server-side aggregation.
 - **Opportunities Module:** Pre-sales entity with an Estimate tab and "Convert to Project" feature.
 - **Estimate Template Import/Export:** Functionality for Excel template download and import.

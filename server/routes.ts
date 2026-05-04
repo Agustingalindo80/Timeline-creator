@@ -26,6 +26,8 @@ import { registerRbacRoutes } from "./routes/rbac";
 import { registerEvmRoutes } from "./routes/evm";
 import { registerTenantRoutes } from "./routes/tenant";
 import { registerGlobalAdminRoutes } from "./routes/global-admin";
+import { registerBusinessOutcomeRoutes } from "./routes/business-outcomes";
+import { registerDashboardRoutes } from "./routes/dashboard";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -74,6 +76,8 @@ export async function registerRoutes(
   registerEvmRoutes(app);
   registerTenantRoutes(app);
   registerGlobalAdminRoutes(app);
+  registerBusinessOutcomeRoutes(app);
+  registerDashboardRoutes(app);
 
   seedFlightpathData().catch(err => console.error("FlightPath seed error:", err));
 

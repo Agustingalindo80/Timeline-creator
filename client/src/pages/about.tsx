@@ -39,18 +39,20 @@ import {
   Key,
   Languages,
   ClipboardList,
+  Crosshair,
+  Activity,
 } from "lucide-react";
 
 const coreModuleIcons = [
   LayoutDashboard, Building2, FolderKanban, Target, Calculator, Users,
   CalendarRange, Clock, TrendingUp, BarChart3, AlertTriangle, Compass,
-  Bot, ShieldCheck, Globe, Palette, SlidersHorizontal, FileSpreadsheet,
+  Bot, ShieldCheck, Globe, Palette, SlidersHorizontal, FileSpreadsheet, Crosshair,
 ];
 
 const capabilityIcons = [
   Layers, DollarSign, Heart, BarChart3, Shield, Compass, Bot, FolderKanban,
   ArrowRightLeft, Milestone, Upload, UserCheck, Lock, Database, ServerCog,
-  FileSpreadsheet, Moon, SlidersHorizontal, Key, Languages, ClipboardList,
+  FileSpreadsheet, Moon, SlidersHorizontal, Key, Languages, ClipboardList, Activity,
 ];
 
 export default function AboutPage() {

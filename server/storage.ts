@@ -81,6 +81,9 @@ import {
   type User,
   type EvmSnapshot,
   type InsertEvmSnapshot,
+  businessOutcomes,
+  type BusinessOutcome,
+  type InsertBusinessOutcome,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -223,6 +226,12 @@ export interface IStorage {
   deleteEvmSnapshot(id: string, tenantId: string): Promise<void>;
   deleteOrgRole(id: string, tenantId: string): Promise<void>;
   updateOrgRole(id: string, tenantId: string, data: { name?: string; description?: string }): Promise<OrgRole | undefined>;
+
+  getBusinessOutcomes(tenantId: string): Promise<BusinessOutcome[]>;
+  getBusinessOutcome(id: string, tenantId: string): Promise<BusinessOutcome | undefined>;
+  createBusinessOutcome(data: InsertBusinessOutcome): Promise<BusinessOutcome>;
+  updateBusinessOutcome(id: string, tenantId: string, data: Partial<InsertBusinessOutcome>): Promise<BusinessOutcome | undefined>;
+  deleteBusinessOutcome(id: string, tenantId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1240,6 +1249,29 @@ export class DatabaseStorage implements IStorage {
 
   async updateApiTokenLastUsed(id: string): Promise<void> {
     await db.update(apiTokens).set({ lastUsedAt: new Date() }).where(eq(apiTokens.id, id));
+  }
+
+  async getBusinessOutcomes(tenantId: string): Promise<BusinessOutcome[]> {
+    return db.select().from(businessOutcomes).where(eq(businessOutcomes.tenantId, tenantId)).orderBy(desc(businessOutcomes.createdAt));
+  }
+
+  async getBusinessOutcome(id: string, tenantId: string): Promise<BusinessOutcome | undefined> {
+    const [outcome] = await db.select().from(businessOutcomes).where(and(eq(businessOutcomes.id, id), eq(businessOutcomes.tenantId, tenantId)));
+    return outcome;
+  }
+
+  async createBusinessOutcome(data: InsertBusinessOutcome): Promise<BusinessOutcome> {
+    const [outcome] = await db.insert(businessOutcomes).values(data).returning();
+    return outcome;
+  }
+
+  async updateBusinessOutcome(id: string, tenantId: string, data: Partial<InsertBusinessOutcome>): Promise<BusinessOutcome | undefined> {
+    const [outcome] = await db.update(businessOutcomes).set({ ...data, updatedAt: new Date() }).where(and(eq(businessOutcomes.id, id), eq(businessOutcomes.tenantId, tenantId))).returning();
+    return outcome;
+  }
+
+  async deleteBusinessOutcome(id: string, tenantId: string): Promise<void> {
+    await db.delete(businessOutcomes).where(and(eq(businessOutcomes.id, id), eq(businessOutcomes.tenantId, tenantId)));
   }
 }
 

@@ -846,6 +846,38 @@ export const insertAllocationSchema = createInsertSchema(allocations).omit({ id:
     return !isNaN(n) && n >= 0;
   }, { message: "Weekly hours must be 0 or greater" }).optional(),
 });
+export const businessOutcomeStatusEnum = pgEnum("business_outcome_status", ["draft", "active", "achieved", "at_risk", "cancelled"]);
+
+export const businessOutcomes = pgTable("business_outcomes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: text("tenant_id").notNull().default("default"),
+  title: text("title").notNull(),
+  strategicObjective: text("strategic_objective"),
+  successMetric: text("success_metric"),
+  baseline: text("baseline"),
+  target: text("target"),
+  currentValue: text("current_value"),
+  status: businessOutcomeStatusEnum("status").notNull().default("draft"),
+  evidence: text("evidence"),
+  valueNotes: text("value_notes"),
+  clientId: varchar("client_id").references(() => clients.id, { onDelete: "set null" }),
+  opportunityId: varchar("opportunity_id").references(() => timelines.id, { onDelete: "set null" }),
+  projectId: varchar("project_id").references(() => timelines.id, { onDelete: "set null" }),
+  stageId: varchar("stage_id").references(() => flightpathStages.id, { onDelete: "set null" }),
+  ownerId: varchar("owner_id").references(() => teamMembers.id, { onDelete: "set null" }),
+  targetDate: date("target_date"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  createdBy: varchar("created_by"),
+}, (table) => [
+  index("idx_bo_tenant").on(table.tenantId),
+  index("idx_bo_project").on(table.tenantId, table.projectId),
+]);
+
+export const insertBusinessOutcomeSchema = createInsertSchema(businessOutcomes).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertBusinessOutcome = z.infer<typeof insertBusinessOutcomeSchema>;
+export type BusinessOutcome = typeof businessOutcomes.$inferSelect;
+
 export const apiTokens = pgTable("api_tokens", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   tenantId: text("tenant_id").notNull(),

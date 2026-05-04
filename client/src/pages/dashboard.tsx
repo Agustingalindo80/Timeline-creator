@@ -3,35 +3,41 @@ import { Helmet } from "react-helmet-async";
 import { Link } from "wouter";
 import { useTranslation } from "react-i18next";
 import {
-  Target,
-  FolderOpen,
+  Activity,
   TrendingUp,
   DollarSign,
+  AlertTriangle,
+  ShieldAlert,
   ArrowRight,
   ChevronRight,
+  Calendar,
+  Target,
+  FolderOpen,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAppTitle } from "@/hooks/use-app-title";
-import type { TimelineWithMilestones, AppSettings } from "@shared/schema";
+import type { AppSettings } from "@shared/schema";
 
-const OPP_STATUS_OPTIONS = [
-  { value: "qualifying", labelKey: "dashboard.qualifying", color: "bg-blue-500/15 text-blue-700 dark:text-blue-300" },
-  { value: "estimating", labelKey: "dashboard.estimating", color: "bg-amber-500/15 text-amber-700 dark:text-amber-300" },
-  { value: "proposed", labelKey: "dashboard.proposed", color: "bg-purple-500/15 text-purple-700 dark:text-purple-300" },
-  { value: "won", labelKey: "dashboard.won", color: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" },
-  { value: "lost", labelKey: "dashboard.lost", color: "bg-red-500/15 text-red-700 dark:text-red-300" },
-];
-
-const FUNNEL_BAR_COLORS = [
-  "bg-blue-500",
-  "bg-amber-500",
-  "bg-purple-500",
-  "bg-emerald-500",
-  "bg-red-500",
-];
+type DashboardSummary = {
+  portfolioHealth: { green: number; amber: number; red: number };
+  totalProjects: number;
+  activeProjects: number;
+  totalBudget: number;
+  totalCost: number;
+  forecastedRevenue: number;
+  grossMarginPercent: number;
+  pipelineValue: number;
+  atRiskCount: number;
+  atRiskProjects: { id: string; title: string; healthOverall: string }[];
+  overdueMilestones: { id: string; title: string; date: string; projectTitle: string; timelineId: string }[];
+  upcomingMilestones: { id: string; title: string; date: string; projectTitle: string; timelineId: string }[];
+  criticalRaidItems: { id: string; title: string; itemType: string; impact: string; probability: string; projectTitle: string; timelineId: string }[];
+  gateExceptions: { id: string; status: string; projectTitle: string; timelineId: string }[];
+  healthHeatmap: { id: string; title: string; healthOverall: string; scopeHealth: string; budgetHealth: string; teamHealth: string; projectStatus: string }[];
+};
 
 function MetricCardSkeleton() {
   return (
@@ -45,66 +51,39 @@ function MetricCardSkeleton() {
   );
 }
 
-function ListRowSkeleton() {
-  return (
-    <div className="flex items-center justify-between py-3 px-3">
-      <div className="space-y-2 flex-1">
-        <Skeleton className="h-4 w-48" />
-        <Skeleton className="h-3 w-24" />
-      </div>
-      <Skeleton className="h-4 w-16 ml-4" />
-    </div>
-  );
-}
-
 function formatCurrency(value: number) {
-  if (value >= 1000000) {
-    return `$${(value / 1000000).toFixed(1)}M`;
-  }
-  if (value >= 1000) {
-    return `$${(value / 1000).toFixed(0)}K`;
-  }
+  if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
+  if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`;
   return `$${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 }
 
-function formatFullCurrency(value: number) {
-  return `$${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
-}
+const HEALTH_COLORS: Record<string, string> = {
+  green: "bg-emerald-500",
+  amber: "bg-amber-500",
+  red: "bg-red-500",
+};
+
+const HEALTH_DOT: Record<string, string> = {
+  green: "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400",
+  amber: "bg-amber-500/20 text-amber-600 dark:text-amber-400",
+  red: "bg-red-500/20 text-red-600 dark:text-red-400",
+};
 
 export default function Dashboard() {
   const { t } = useTranslation();
-  const appTitle = useAppTitle(t("dashboard.title"));
+  const appTitle = useAppTitle(t("dashboard.missionControl"));
 
   const { data: settings } = useQuery<AppSettings>({
     queryKey: ["/api/settings"],
   });
 
-  const { data: projects = [], isLoading: projectsLoading } = useQuery<TimelineWithMilestones[]>({
-    queryKey: ["/api/timelines"],
-  });
-
-  const { data: opportunities = [], isLoading: oppsLoading } = useQuery<TimelineWithMilestones[]>({
-    queryKey: ["/api/opportunities"],
-    enabled: !!(settings as any)?.opportunitiesEnabled,
+  const { data: summary, isLoading, isError, refetch } = useQuery<DashboardSummary>({
+    queryKey: ["/api/dashboard/summary"],
   });
 
   const oppsEnabled = !!(settings as any)?.opportunitiesEnabled;
-
-  const activeProjects = projects.filter(p => p.projectStatus !== "complete" && p.projectStatus !== "cancelled");
-  const activeOpps = opportunities.filter(o => o.opportunityStatus !== "won" && o.opportunityStatus !== "lost");
-
-  const pipelineValue = activeOpps.reduce((sum, o) => sum + (parseFloat(o.estimatedRevenue || "0") || 0), 0);
-  const totalProjectBudget = activeProjects.reduce((sum, p) => sum + (parseFloat(p.approvedBudget || "0") || 0), 0);
-
-  const oppsByStatus = OPP_STATUS_OPTIONS.map((s, i) => ({
-    ...s,
-    label: t(s.labelKey),
-    barColor: FUNNEL_BAR_COLORS[i],
-    count: opportunities.filter(o => o.opportunityStatus === s.value).length,
-    revenue: opportunities.filter(o => o.opportunityStatus === s.value).reduce((sum, o) => sum + (parseFloat(o.estimatedRevenue || "0") || 0), 0),
-  }));
-
-  const maxFunnelCount = Math.max(...oppsByStatus.map(s => s.count), 1);
+  const health = summary?.portfolioHealth || { green: 0, amber: 0, red: 0 };
+  const totalHealthed = health.green + health.amber + health.red;
 
   return (
     <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
@@ -114,172 +93,149 @@ export default function Dashboard() {
 
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="page-title" data-testid="text-dashboard-title">{t("dashboard.title")}</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">{t("dashboard.subtitle")}</p>
+          <h1 className="page-title" data-testid="text-dashboard-title">{t("dashboard.missionControl")}</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">{t("dashboard.missionControlSubtitle")}</p>
         </div>
       </div>
 
-      <div className={`grid grid-cols-1 md:grid-cols-2 ${oppsEnabled ? "lg:grid-cols-4" : "lg:grid-cols-2"} gap-4`}>
-        {projectsLoading ? (
-          <>
-            <MetricCardSkeleton />
-            <MetricCardSkeleton />
-            {oppsEnabled && <MetricCardSkeleton />}
-            {oppsEnabled && <MetricCardSkeleton />}
-          </>
-        ) : (
-          <>
-            <Card data-testid="card-active-projects">
-              <CardContent className="pt-5 pb-5">
-                <div className="metric-label mb-2 flex items-center gap-1.5">
-                  <FolderOpen className="w-3.5 h-3.5" />
-                  {t("dashboard.activeProjects")}
-                </div>
-                <div className="text-3xl font-bold tracking-tight tabular-nums">{activeProjects.length}</div>
-                <div className="flex items-center gap-1 mt-1.5 text-xs text-muted-foreground">
-                  <span>{projects.length} {t("dashboard.total")}</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card data-testid="card-total-budget">
-              <CardContent className="pt-5 pb-5">
-                <div className="metric-label mb-2 flex items-center gap-1.5">
-                  <DollarSign className="w-3.5 h-3.5" />
-                  {t("dashboard.totalBudget")}
-                </div>
-                <div className="text-3xl font-bold tracking-tight tabular-nums">
-                  {formatCurrency(totalProjectBudget)}
-                </div>
-                <div className="flex items-center gap-1 mt-1.5 text-xs text-muted-foreground">
-                  <span>{t("dashboard.across")} {activeProjects.length} {t("dashboard.projectsLabel")}</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            {oppsEnabled && (
-              <>
-                <Card data-testid="card-active-opportunities">
-                  <CardContent className="pt-5 pb-5">
-                    <div className="metric-label mb-2 flex items-center gap-1.5">
-                      <Target className="w-3.5 h-3.5" />
-                      {t("dashboard.activeOpportunities")}
-                    </div>
-                    <div className="text-3xl font-bold tracking-tight tabular-nums">{activeOpps.length}</div>
-                    <div className="flex items-center gap-1 mt-1.5 text-xs text-muted-foreground">
-                      <span>{opportunities.length} {t("dashboard.total")}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card data-testid="card-pipeline-value">
-                  <CardContent className="pt-5 pb-5">
-                    <div className="metric-label mb-2 flex items-center gap-1.5">
-                      <TrendingUp className="w-3.5 h-3.5" />
-                      {t("dashboard.pipelineValue")}
-                    </div>
-                    <div className="text-3xl font-bold tracking-tight tabular-nums text-primary">
-                      {formatCurrency(pipelineValue)}
-                    </div>
-                    <div className="flex items-center gap-1 mt-1.5 text-xs text-muted-foreground">
-                      <span>{activeOpps.length} {t("dashboard.activeDeals")}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              </>
-            )}
-          </>
-        )}
-      </div>
-
-      {oppsEnabled && opportunities.length > 0 && (
-        <Card data-testid="card-pipeline-funnel">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between gap-2 flex-wrap">
-              <span className="flex items-center gap-1.5 uppercase tracking-wider">
-                <Target className="w-3.5 h-3.5" /> {t("dashboard.pipelineFunnel")}
-              </span>
-              <Link href="/opportunities">
-                <Button variant="ghost" size="sm" data-testid="link-view-all-opportunities">
-                  {t("common.viewAll")} <ArrowRight className="w-3.5 h-3.5 ml-1" />
-                </Button>
-              </Link>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-5 gap-4">
-              {oppsByStatus.map(s => (
-                <div key={s.value} className="space-y-2" data-testid={`pipeline-stage-${s.value}`}>
-                  <div className="flex items-center justify-between gap-1">
-                    <span className="text-xs font-medium text-muted-foreground">{t(s.labelKey)}</span>
-                    <span className="text-xs tabular-nums text-muted-foreground">{s.count}</span>
-                  </div>
-                  <div className="h-2 rounded-full bg-muted overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${s.barColor} transition-all duration-500`}
-                      style={{ width: `${(s.count / maxFunnelCount) * 100}%` }}
-                    />
-                  </div>
-                  {s.revenue > 0 && (
-                    <div className="text-sm font-semibold tabular-nums">
-                      {formatCurrency(s.revenue)}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
+      {isError && (
+        <Card className="border-destructive/50">
+          <CardContent className="flex items-center justify-between py-4">
+            <p className="text-sm text-destructive">{t("common.error")}</p>
+            <Button variant="outline" size="sm" onClick={() => refetch()} data-testid="button-retry-dashboard">{t("common.retry")}</Button>
           </CardContent>
         </Card>
       )}
 
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        {isLoading ? (
+          <>
+            <MetricCardSkeleton />
+            <MetricCardSkeleton />
+            <MetricCardSkeleton />
+            <MetricCardSkeleton />
+            <MetricCardSkeleton />
+          </>
+        ) : (
+          <>
+            <Card data-testid="card-portfolio-health">
+              <CardContent className="pt-5 pb-5">
+                <div className="metric-label mb-2 flex items-center gap-1.5">
+                  <Activity className="w-3.5 h-3.5" />
+                  {t("dashboard.portfolioHealth")}
+                </div>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="flex gap-1 flex-1 h-2 rounded-full overflow-hidden bg-muted">
+                    {totalHealthed > 0 && (
+                      <>
+                        <div className="bg-emerald-500 transition-all" style={{ width: `${(health.green / totalHealthed) * 100}%` }} />
+                        <div className="bg-amber-500 transition-all" style={{ width: `${(health.amber / totalHealthed) * 100}%` }} />
+                        <div className="bg-red-500 transition-all" style={{ width: `${(health.red / totalHealthed) * 100}%` }} />
+                      </>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />{health.green}</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />{health.amber}</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500 inline-block" />{health.red}</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card data-testid="card-forecasted-revenue">
+              <CardContent className="pt-5 pb-5">
+                <div className="metric-label mb-2 flex items-center gap-1.5">
+                  <TrendingUp className="w-3.5 h-3.5" />
+                  {t("dashboard.forecastedRevenue")}
+                </div>
+                <div className="text-3xl font-bold tracking-tight tabular-nums">
+                  {formatCurrency(summary?.forecastedRevenue || 0)}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {summary?.activeProjects || 0} {t("dashboard.projectsLabel")}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card data-testid="card-gross-margin">
+              <CardContent className="pt-5 pb-5">
+                <div className="metric-label mb-2 flex items-center gap-1.5">
+                  <DollarSign className="w-3.5 h-3.5" />
+                  {t("dashboard.grossMargin")}
+                </div>
+                <div className="text-3xl font-bold tracking-tight tabular-nums">
+                  {summary?.grossMarginPercent || 0}%
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {t("dashboard.totalBudget")}: {formatCurrency(summary?.totalBudget || 0)}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card data-testid="card-at-risk">
+              <CardContent className="pt-5 pb-5">
+                <div className="metric-label mb-2 flex items-center gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  {t("dashboard.projectsAtRisk")}
+                </div>
+                <div className={`text-3xl font-bold tracking-tight tabular-nums ${(summary?.atRiskCount || 0) > 0 ? "text-red-500" : ""}`}>
+                  {summary?.atRiskCount || 0}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {t("dashboard.across")} {summary?.activeProjects || 0} {t("dashboard.activeProjects").toLowerCase()}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card data-testid="card-gate-exceptions">
+              <CardContent className="pt-5 pb-5">
+                <div className="metric-label mb-2 flex items-center gap-1.5">
+                  <ShieldAlert className="w-3.5 h-3.5" />
+                  {t("dashboard.gateExceptions")}
+                </div>
+                <div className={`text-3xl font-bold tracking-tight tabular-nums ${(summary?.gateExceptions?.length || 0) > 0 ? "text-amber-500" : ""}`}>
+                  {summary?.gateExceptions?.length || 0}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {t("dashboard.decisionsNeeded")}
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card data-testid="card-recent-projects">
+        <Card data-testid="card-health-heatmap">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between gap-2 flex-wrap">
-              <span className="flex items-center gap-1.5 uppercase tracking-wider">
-                <FolderOpen className="w-3.5 h-3.5" /> {t("dashboard.recentProjects")}
-              </span>
-              <Link href="/projects">
-                <Button variant="ghost" size="sm" data-testid="link-view-all-projects">
-                  {t("common.viewAll")} <ArrowRight className="w-3.5 h-3.5 ml-1" />
-                </Button>
-              </Link>
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5 uppercase tracking-wider">
+              <Activity className="w-3.5 h-3.5" /> {t("dashboard.healthHeatmap")}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {projectsLoading ? (
-              <div className="divide-y divide-border">
-                {[1, 2, 3, 4].map(i => <ListRowSkeleton key={i} />)}
-              </div>
-            ) : activeProjects.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-10">
-                <FolderOpen className="w-8 h-8 text-muted-foreground/40 mb-2" />
-                <p className="text-sm text-muted-foreground">{t("dashboard.noActiveProjects")}</p>
-              </div>
+            {isLoading ? (
+              <div className="space-y-2">{[1, 2, 3].map(i => <Skeleton key={i} className="h-8 w-full" />)}</div>
+            ) : !summary?.healthHeatmap?.length ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">{t("dashboard.noActiveProjects")}</p>
             ) : (
-              <div className="divide-y divide-border">
-                {activeProjects.slice(0, 5).map(p => (
+              <div className="space-y-1">
+                <div className="grid grid-cols-[1fr,60px,60px,60px,60px] gap-1 text-[10px] font-medium text-muted-foreground uppercase tracking-wider px-2 pb-1">
+                  <span>{t("common.project")}</span>
+                  <span className="text-center">{t("dashboard.overall")}</span>
+                  <span className="text-center">{t("dashboard.scope")}</span>
+                  <span className="text-center">{t("dashboard.budget")}</span>
+                  <span className="text-center">{t("dashboard.team")}</span>
+                </div>
+                {summary.healthHeatmap.slice(0, 10).map(p => (
                   <Link key={p.id} href={`/timeline/${p.id}`}>
-                    <div className="flex items-center justify-between py-3 px-2 rounded-md hover-elevate cursor-pointer group" data-testid={`project-row-${p.id}`}>
-                      <div className="min-w-0 flex-1">
-                        <div className="text-sm font-medium truncate">{p.title}</div>
-                        <div className="text-xs text-muted-foreground mt-0.5">
-                          {p.projectStatus === "not_started" ? t("dashboard.notStarted") :
-                           p.projectStatus === "in_progress" ? t("dashboard.inProgress") :
-                           p.projectStatus === "on_hold" ? t("dashboard.onHold") :
-                           p.projectStatus === "complete" ? t("dashboard.complete") :
-                           p.projectStatus === "cancelled" ? t("dashboard.cancelled") :
-                           p.projectStatus || t("dashboard.notStarted")}
+                    <div className="grid grid-cols-[1fr,60px,60px,60px,60px] gap-1 items-center px-2 py-1.5 rounded-md hover-elevate cursor-pointer group" data-testid={`heatmap-row-${p.id}`}>
+                      <span className="text-sm font-medium truncate">{p.title}</span>
+                      {[p.healthOverall, p.scopeHealth, p.budgetHealth, p.teamHealth].map((h, i) => (
+                        <div key={i} className="flex justify-center">
+                          <span className={`w-3 h-3 rounded-full ${HEALTH_COLORS[h] || "bg-muted"}`} />
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0 ml-3">
-                        {p.approvedBudget && (
-                          <span className="text-sm font-medium tabular-nums">
-                            {formatFullCurrency(parseFloat(p.approvedBudget))}
-                          </span>
-                        )}
-                        <ChevronRight className="w-4 h-4 text-muted-foreground/50 invisible group-hover:visible" />
-                      </div>
+                      ))}
                     </div>
                   </Link>
                 ))}
@@ -289,66 +245,150 @@ export default function Dashboard() {
         </Card>
 
         {oppsEnabled && (
-          <Card data-testid="card-recent-opportunities">
+          <Card data-testid="card-pipeline-conversion">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between gap-2 flex-wrap">
                 <span className="flex items-center gap-1.5 uppercase tracking-wider">
-                  <Target className="w-3.5 h-3.5" /> {t("dashboard.recentOpportunities")}
+                  <Target className="w-3.5 h-3.5" /> {t("dashboard.pipelineConversion")}
                 </span>
                 <Link href="/opportunities">
-                  <Button variant="ghost" size="sm" data-testid="link-view-recent-opps">
+                  <Button variant="ghost" size="sm" data-testid="link-view-pipeline">
                     {t("common.viewAll")} <ArrowRight className="w-3.5 h-3.5 ml-1" />
                   </Button>
                 </Link>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {oppsLoading ? (
-                <div className="divide-y divide-border">
-                  {[1, 2, 3, 4].map(i => <ListRowSkeleton key={i} />)}
+              <div className="flex flex-col items-center justify-center py-6">
+                <div className="text-3xl font-bold tracking-tight tabular-nums text-primary">
+                  {formatCurrency(summary?.pipelineValue || 0)}
                 </div>
-              ) : opportunities.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-10">
-                  <Target className="w-8 h-8 text-muted-foreground/40 mb-2" />
-                  <p className="text-sm text-muted-foreground">{t("dashboard.noOpportunitiesYet")}</p>
-                </div>
+                <div className="text-sm text-muted-foreground mt-1">{t("dashboard.pipelineValue")}</div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {!oppsEnabled && (
+          <Card data-testid="card-at-risk-projects">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5 uppercase tracking-wider">
+                <AlertTriangle className="w-3.5 h-3.5" /> {t("dashboard.projectsAtRisk")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {!summary?.atRiskProjects?.length ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">{t("dashboard.noAtRiskProjects")}</p>
               ) : (
                 <div className="divide-y divide-border">
-                  {opportunities.slice(0, 5).map(o => {
-                    const statusOpt = OPP_STATUS_OPTIONS.find(s => s.value === o.opportunityStatus);
-                    return (
-                      <Link key={o.id} href={`/opportunities/${o.id}`}>
-                        <div className="flex items-center justify-between py-3 px-2 rounded-md hover-elevate cursor-pointer group" data-testid={`opp-row-${o.id}`}>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-sm font-medium truncate">{o.title}</span>
-                              {statusOpt && (
-                                <Badge className={`${statusOpt.color} border-0 text-[10px]`} variant="secondary">
-                                  {t(statusOpt.labelKey)}
-                                </Badge>
-                              )}
-                            </div>
-                            {(o as any).clientName && (
-                              <div className="text-xs text-muted-foreground mt-0.5">{(o as any).clientName}</div>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0 ml-3">
-                            {o.estimatedRevenue && (
-                              <span className="text-sm font-medium tabular-nums">
-                                {formatFullCurrency(parseFloat(o.estimatedRevenue))}
-                              </span>
-                            )}
-                            <ChevronRight className="w-4 h-4 text-muted-foreground/50 invisible group-hover:visible" />
-                          </div>
+                  {summary.atRiskProjects.slice(0, 5).map(p => (
+                    <Link key={p.id} href={`/timeline/${p.id}`}>
+                      <div className="flex items-center justify-between py-2.5 px-2 rounded-md hover-elevate cursor-pointer group" data-testid={`risk-project-${p.id}`}>
+                        <span className="text-sm font-medium truncate">{p.title}</span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={`w-2.5 h-2.5 rounded-full ${HEALTH_COLORS[p.healthOverall]}`} />
+                          <ChevronRight className="w-4 h-4 text-muted-foreground/50 invisible group-hover:visible" />
                         </div>
-                      </Link>
-                    );
-                  })}
+                      </div>
+                    </Link>
+                  ))}
                 </div>
               )}
             </CardContent>
           </Card>
         )}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card data-testid="card-overdue-milestones">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5 uppercase tracking-wider">
+              <Calendar className="w-3.5 h-3.5 text-red-500" /> {t("dashboard.overdueMilestones")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="space-y-2">{[1, 2, 3].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
+            ) : !summary?.overdueMilestones?.length ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">{t("dashboard.noOverdueMilestones")}</p>
+            ) : (
+              <div className="divide-y divide-border">
+                {summary.overdueMilestones.map(m => (
+                  <Link key={m.id} href={`/timeline/${m.timelineId}`}>
+                    <div className="py-2.5 px-2 rounded-md hover-elevate cursor-pointer" data-testid={`overdue-milestone-${m.id}`}>
+                      <div className="text-sm font-medium truncate">{m.title}</div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                        <span className="text-red-500">{t("dashboard.dueDate")}: {m.date}</span>
+                        <span className="truncate">{m.projectTitle}</span>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-critical-raid">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5 uppercase tracking-wider">
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-500" /> {t("dashboard.criticalRaid")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="space-y-2">{[1, 2, 3].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
+            ) : !summary?.criticalRaidItems?.length ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">{t("dashboard.noCriticalRaid")}</p>
+            ) : (
+              <div className="divide-y divide-border">
+                {summary.criticalRaidItems.map(r => (
+                  <Link key={r.id} href={`/timeline/${r.timelineId}`}>
+                    <div className="py-2.5 px-2 rounded-md hover-elevate cursor-pointer" data-testid={`raid-item-${r.id}`}>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium truncate">{r.title}</span>
+                        <Badge variant="outline" className="text-[10px] shrink-0">{r.itemType}</Badge>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                        <span>{t("dashboard.riskImpact")}: {r.impact}</span>
+                        <span className="truncate">{r.projectTitle}</span>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-upcoming-milestones">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5 uppercase tracking-wider">
+              <Calendar className="w-3.5 h-3.5" /> {t("dashboard.upcomingMilestones")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="space-y-2">{[1, 2, 3].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
+            ) : !summary?.upcomingMilestones?.length ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">{t("dashboard.noUpcomingMilestones")}</p>
+            ) : (
+              <div className="divide-y divide-border">
+                {summary.upcomingMilestones.map(m => (
+                  <Link key={m.id} href={`/timeline/${m.timelineId}`}>
+                    <div className="py-2.5 px-2 rounded-md hover-elevate cursor-pointer" data-testid={`upcoming-milestone-${m.id}`}>
+                      <div className="text-sm font-medium truncate">{m.title}</div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                        <span>{m.date}</span>
+                        <span className="truncate">{m.projectTitle}</span>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
