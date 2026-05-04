@@ -2,10 +2,11 @@ import type { Express } from "express";
 import { db } from "../db";
 import { timelines, milestones, risks, projectGates, businessOutcomes } from "@shared/schema";
 import { eq, and, sql, lte, gte } from "drizzle-orm";
+import { requireModuleAccess } from "../middleware/permissions";
 import { getRecordAccessContext } from "./helpers";
 
 export function registerDashboardRoutes(app: Express) {
-  app.get("/api/dashboard/summary", async (req, res) => {
+  app.get("/api/dashboard/summary", requireModuleAccess("dashboard"), async (req, res) => {
     try {
       const ctx = await getRecordAccessContext(req);
       if (!ctx) return res.status(401).json({ message: "Authentication required" });
@@ -46,8 +47,8 @@ export function registerDashboardRoutes(app: Express) {
 
       const projectIds = accessibleProjects.map(p => p.id);
 
-      let overdueMilestones: any[] = [];
-      let upcomingMilestones: any[] = [];
+      let overdueMilestones: Array<{ id: string; title: string; date: string; projectTitle: string; timelineId: string }> = [];
+      let upcomingMilestones: Array<{ id: string; title: string; date: string; projectTitle: string; timelineId: string }> = [];
       if (projectIds.length > 0) {
         const today = new Date().toISOString().split("T")[0];
         const twoWeeksLater = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
@@ -59,7 +60,7 @@ export function registerDashboardRoutes(app: Express) {
           .filter(m => m.date < today && !m.actualDate)
           .map(m => {
             const proj = accessibleProjects.find(p => p.id === m.timelineId);
-            return { ...m, projectTitle: proj?.title || "" };
+            return { id: m.id, title: m.title, date: m.date, projectTitle: proj?.title || "", timelineId: m.timelineId };
           })
           .slice(0, 10);
 
@@ -68,12 +69,12 @@ export function registerDashboardRoutes(app: Express) {
           .sort((a, b) => a.date.localeCompare(b.date))
           .map(m => {
             const proj = accessibleProjects.find(p => p.id === m.timelineId);
-            return { ...m, projectTitle: proj?.title || "" };
+            return { id: m.id, title: m.title, date: m.date, projectTitle: proj?.title || "", timelineId: m.timelineId };
           })
           .slice(0, 10);
       }
 
-      let criticalRaidItems: any[] = [];
+      let criticalRaidItems: Array<{ id: string; title: string; itemType: string; impact: string; probability: string; projectTitle: string; timelineId: string }> = [];
       if (projectIds.length > 0) {
         const allRisks = await db.select().from(risks)
           .where(sql`${risks.timelineId} IN (${sql.join(projectIds.map(id => sql`${id}`), sql`,`)}) AND ${risks.status} = 'open'`);
@@ -82,21 +83,29 @@ export function registerDashboardRoutes(app: Express) {
           .filter(r => r.impact === "high" || r.impact === "very_high" || r.probability === "high" || r.probability === "very_high")
           .map(r => {
             const proj = accessibleProjects.find(p => p.id === r.timelineId);
-            return { ...r, projectTitle: proj?.title || "" };
+            return { id: r.id, title: r.title, itemType: r.itemType || "risk", impact: r.impact || "", probability: r.probability || "", projectTitle: proj?.title || "", timelineId: r.timelineId };
           })
           .slice(0, 10);
       }
 
-      let gateExceptions: any[] = [];
+      let gateExceptions: Array<{ id: string; status: string; projectTitle: string; timelineId: string; stageName?: string }> = [];
       if (projectIds.length > 0) {
         const gates = await db.select().from(projectGates)
           .where(sql`${projectGates.timelineId} IN (${sql.join(projectIds.map(id => sql`${id}`), sql`,`)}) AND (${projectGates.status} = 'exception' OR ${projectGates.status} = 'exception_requested')`);
 
         gateExceptions = gates.map(g => {
           const proj = accessibleProjects.find(p => p.id === g.timelineId);
-          return { ...g, projectTitle: proj?.title || "" };
+          return {
+            id: g.id,
+            status: g.status,
+            projectTitle: proj?.title || "",
+            timelineId: g.timelineId,
+            stageName: g.stageName || undefined,
+          };
         }).slice(0, 10);
       }
+
+      const openEscalations = gateExceptions.length + criticalRaidItems.filter(r => r.impact === "very_high").length;
 
       const healthHeatmap = activeProjects.map(p => ({
         id: p.id,
@@ -118,6 +127,7 @@ export function registerDashboardRoutes(app: Express) {
         grossMarginPercent: Math.round(grossMarginPercent * 10) / 10,
         pipelineValue,
         atRiskCount: atRiskProjects.length,
+        openEscalations,
         atRiskProjects: atRiskProjects.map(p => ({ id: p.id, title: p.title, healthOverall: p.healthOverall })),
         overdueMilestones,
         upcomingMilestones,
@@ -125,9 +135,10 @@ export function registerDashboardRoutes(app: Express) {
         gateExceptions,
         healthHeatmap,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Dashboard summary error:", err);
-      res.status(500).json({ message: err.message });
+      const message = err instanceof Error ? err.message : "Internal server error";
+      res.status(500).json({ message });
     }
   });
 }

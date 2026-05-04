@@ -13,6 +13,7 @@ import {
   Calendar,
   Target,
   FolderOpen,
+  Bell,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -31,11 +32,12 @@ type DashboardSummary = {
   grossMarginPercent: number;
   pipelineValue: number;
   atRiskCount: number;
+  openEscalations: number;
   atRiskProjects: { id: string; title: string; healthOverall: string }[];
   overdueMilestones: { id: string; title: string; date: string; projectTitle: string; timelineId: string }[];
   upcomingMilestones: { id: string; title: string; date: string; projectTitle: string; timelineId: string }[];
   criticalRaidItems: { id: string; title: string; itemType: string; impact: string; probability: string; projectTitle: string; timelineId: string }[];
-  gateExceptions: { id: string; status: string; projectTitle: string; timelineId: string }[];
+  gateExceptions: { id: string; status: string; projectTitle: string; timelineId: string; stageName?: string }[];
   healthHeatmap: { id: string; title: string; healthOverall: string; scopeHealth: string; budgetHealth: string; teamHealth: string; projectStatus: string }[];
 };
 
@@ -81,7 +83,7 @@ export default function Dashboard() {
     queryKey: ["/api/dashboard/summary"],
   });
 
-  const oppsEnabled = !!(settings as any)?.opportunitiesEnabled;
+  const oppsEnabled = !!settings?.opportunitiesEnabled;
   const health = summary?.portfolioHealth || { green: 0, amber: 0, red: 0 };
   const totalHealthed = health.green + health.amber + health.red;
 
@@ -188,14 +190,14 @@ export default function Dashboard() {
               </CardContent>
             </Card>
 
-            <Card data-testid="card-gate-exceptions">
+            <Card data-testid="card-open-escalations">
               <CardContent className="pt-5 pb-5">
                 <div className="metric-label mb-2 flex items-center gap-1.5">
-                  <ShieldAlert className="w-3.5 h-3.5" />
-                  {t("dashboard.gateExceptions")}
+                  <Bell className="w-3.5 h-3.5" />
+                  {t("dashboard.openEscalations")}
                 </div>
-                <div className={`text-3xl font-bold tracking-tight tabular-nums ${(summary?.gateExceptions?.length || 0) > 0 ? "text-amber-500" : ""}`}>
-                  {summary?.gateExceptions?.length || 0}
+                <div className={`text-3xl font-bold tracking-tight tabular-nums ${(summary?.openEscalations || 0) > 0 ? "text-amber-500" : ""}`}>
+                  {summary?.openEscalations || 0}
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
                   {t("dashboard.decisionsNeeded")}
@@ -299,7 +301,7 @@ export default function Dashboard() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card data-testid="card-overdue-milestones">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5 uppercase tracking-wider">
@@ -353,6 +355,37 @@ export default function Dashboard() {
                         <span>{t("dashboard.riskImpact")}: {r.impact}</span>
                         <span className="truncate">{r.projectTitle}</span>
                       </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-gate-exceptions-list">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5 uppercase tracking-wider">
+              <ShieldAlert className="w-3.5 h-3.5 text-amber-500" /> {t("dashboard.gateExceptions")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="space-y-2">{[1, 2, 3].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
+            ) : !summary?.gateExceptions?.length ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">{t("dashboard.noGateExceptions")}</p>
+            ) : (
+              <div className="divide-y divide-border">
+                {summary.gateExceptions.map(g => (
+                  <Link key={g.id} href={`/timeline/${g.timelineId}`}>
+                    <div className="py-2.5 px-2 rounded-md hover-elevate cursor-pointer" data-testid={`gate-exception-${g.id}`}>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium truncate">{g.projectTitle}</span>
+                        <Badge variant="outline" className="text-[10px] shrink-0">{g.status.replace("_", " ")}</Badge>
+                      </div>
+                      {g.stageName && (
+                        <div className="text-xs text-muted-foreground mt-0.5 truncate">{g.stageName}</div>
+                      )}
                     </div>
                   </Link>
                 ))}

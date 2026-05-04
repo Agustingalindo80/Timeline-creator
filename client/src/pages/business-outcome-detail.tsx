@@ -198,7 +198,7 @@ export default function BusinessOutcomeDetail() {
           <CardContent className="space-y-4">
             <Field label={t("common.status")} editing={editing}>
               {editing ? (
-                <Select value={form.status || "draft"} onValueChange={(v) => setForm({ ...form, status: v as any })}>
+                <Select value={form.status || "draft"} onValueChange={(v: "draft" | "active" | "achieved" | "at_risk" | "cancelled") => setForm({ ...form, status: v })}>
                   <SelectTrigger data-testid="select-edit-status"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="draft">{t("businessOutcomes.draft")}</SelectItem>
