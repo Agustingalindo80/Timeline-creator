@@ -44,7 +44,7 @@ export function UserDetailView({
       toast({ title: "User updated", description: user.teamMember ? "Changes synced to linked team member." : undefined });
       setEditing(false);
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast({ title: "Failed to update user", description: err.message, variant: "destructive" });
     },
   });
@@ -81,7 +81,7 @@ export function UserDetailView({
       setLinkingTm(false);
       setSelectedTeamMemberId("");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast({ title: "Failed to link", description: err.message, variant: "destructive" });
     },
   });
@@ -95,7 +95,7 @@ export function UserDetailView({
       queryClient.invalidateQueries({ queryKey: ["/api/team-members"] });
       toast({ title: "Team member unlinked" });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast({ title: "Failed to unlink", description: err.message, variant: "destructive" });
     },
   });

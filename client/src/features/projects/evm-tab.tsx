@@ -212,7 +212,7 @@ export function EVMTab({ timelineId, tasks, approvedBudget }: { timelineId: stri
       setFreezeDialogOpen(false);
       setFreezeNotes("");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast({ title: "Failed to freeze week", description: err.message, variant: "destructive" });
     },
   });
@@ -367,7 +367,7 @@ export function EVMTab({ timelineId, tasks, approvedBudget }: { timelineId: stri
                     return (
                       <div className="rounded-lg border bg-background p-2 shadow-md text-xs">
                         <div className="font-medium mb-1">{weekLabel}</div>
-                        {payload.map((entry: any) => (
+                        {payload.map((entry: { dataKey: string; color: string; name: string; value: number }) => (
                           <div key={entry.dataKey} className="flex items-center gap-2">
                             <span style={{ color: entry.color }}>{entry.name}:</span>
                             <span className="font-mono">${fmt(entry.value)}</span>
@@ -431,10 +431,10 @@ export function EVMTab({ timelineId, tasks, approvedBudget }: { timelineId: stri
                       return (
                         <div className="rounded-lg border bg-background p-2 shadow-md text-xs">
                           <div className="font-medium mb-1">{weekLabel}</div>
-                          {payload.map((entry: any) => (
+                          {payload.map((entry: { dataKey: string; color: string; name: string; value: number }) => (
                             <div key={entry.dataKey} className="flex items-center gap-2">
                               <span style={{ color: entry.color }}>{entry.name}:</span>
-                              <span className="font-mono">{parseFloat(entry.value).toFixed(2)}</span>
+                              <span className="font-mono">{parseFloat(String(entry.value)).toFixed(2)}</span>
                             </div>
                           ))}
                         </div>

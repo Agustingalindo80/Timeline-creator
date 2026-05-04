@@ -49,9 +49,9 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAppTitle } from "@/hooks/use-app-title";
 import { useTranslation } from "react-i18next";
-import { EstimateTab } from "@/components/estimate-tab";
-import { GovernanceTab } from "@/components/governance-tab";
-import { RaidLog } from "@/components/raid-log";
+import { EstimateTab } from "@/features/estimates/estimate-tab";
+import { GovernanceTab } from "@/features/governance/governance-tab";
+import { RaidLog } from "@/features/projects/raid-log";
 import type { TimelineWithMilestones, Client, AppSettings, FlightpathStage, ProjectGate } from "@shared/schema";
 import { getDefaultFieldOptions } from "@shared/schema";
 

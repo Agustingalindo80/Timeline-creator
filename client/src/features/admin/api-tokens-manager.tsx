@@ -31,7 +31,7 @@ export function ApiTokensManager() {
   const [newToken, setNewToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const { data: tokens = [], isLoading } = useQuery<any[]>({
+  const { data: tokens = [], isLoading } = useQuery<{ id: string; name: string; tokenPrefix: string; revokedAt: string | null; expiresAt: string | null; createdAt: string; lastUsedAt: string | null }[]>({
     queryKey: ["/api/api-tokens"],
   });
 
@@ -40,14 +40,14 @@ export function ApiTokensManager() {
       const res = await apiRequest("POST", "/api/api-tokens", data);
       return res.json();
     },
-    onSuccess: (data: any) => {
+    onSuccess: (data: { plainToken: string }) => {
       setNewToken(data.plainToken);
       setTokenName("");
       setExpiresIn("never");
       queryClient.invalidateQueries({ queryKey: ["/api/api-tokens"] });
       toast({ title: t("settings.apiTokenCreated") });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     },
   });
@@ -151,7 +151,7 @@ export function ApiTokensManager() {
         </Card>
       ) : (
         <div className="space-y-2">
-          {tokens.map((token: any) => (
+          {tokens.map((token) => (
             <Card key={token.id} className={`p-3 flex items-center justify-between gap-3 ${token.revokedAt ? "opacity-50" : ""}`} data-testid={`card-token-${token.id}`}>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">

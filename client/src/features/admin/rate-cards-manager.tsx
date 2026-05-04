@@ -67,7 +67,7 @@ export function RateCardsManager() {
   };
 
   const createMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: Record<string, unknown>) => {
       await apiRequest("POST", "/api/rate-cards", data);
     },
     onSuccess: () => {
@@ -78,7 +78,7 @@ export function RateCardsManager() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+    mutationFn: async ({ id, data }: { id: string; data: Record<string, unknown> }) => {
       await apiRequest("PATCH", `/api/rate-cards/${id}`, data);
     },
     onSuccess: () => {

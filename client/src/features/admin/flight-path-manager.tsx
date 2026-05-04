@@ -58,7 +58,7 @@ export function FlightPathManager() {
   });
 
   const createStageMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: Record<string, unknown>) => {
       await apiRequest("POST", "/api/governance-model/stages", data);
     },
     onSuccess: () => {
@@ -70,7 +70,7 @@ export function FlightPathManager() {
   });
 
   const updateStageMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+    mutationFn: async ({ id, data }: { id: string; data: Record<string, unknown> }) => {
       await apiRequest("PATCH", `/api/governance-model/stages/${id}`, data);
     },
     onSuccess: () => {
@@ -92,7 +92,7 @@ export function FlightPathManager() {
   });
 
   const createDeliverableMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: Record<string, unknown>) => {
       await apiRequest("POST", `/api/flightpath-stages/${data.stageId}/deliverables`, data);
     },
     onSuccess: () => {
@@ -105,7 +105,7 @@ export function FlightPathManager() {
   });
 
   const updateDeliverableMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+    mutationFn: async ({ id, data }: { id: string; data: Record<string, unknown> }) => {
       await apiRequest("PATCH", `/api/governance-model/deliverables/${id}`, data);
     },
     onSuccess: () => {

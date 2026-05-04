@@ -52,7 +52,7 @@ function MemberAllocations({ memberId, memberName }: { memberId: string; memberN
   const availableProjects = projects.filter(p => !assignedProjectIds.includes(p.id));
 
   const createMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: Record<string, unknown>) => {
       await apiRequest("POST", `/api/team-members/${memberId}/allocations`, data);
     },
     onSuccess: () => {
@@ -63,7 +63,7 @@ function MemberAllocations({ memberId, memberName }: { memberId: string; memberN
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+    mutationFn: async ({ id, data }: { id: string; data: Record<string, unknown> }) => {
       await apiRequest("PATCH", `/api/allocations/${id}`, data);
     },
     onSuccess: () => {
@@ -271,7 +271,7 @@ export function TeamMembersManager() {
   const roleOptions = settings?.teamMemberRoles || getDefaultFieldOptions("teamMemberRoles", settings?.locale || "en");
 
   const createMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: Record<string, unknown>) => {
       await apiRequest("POST", "/api/team-members", data);
     },
     onSuccess: () => {
@@ -283,7 +283,7 @@ export function TeamMembersManager() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+    mutationFn: async ({ id, data }: { id: string; data: Record<string, unknown> }) => {
       await apiRequest("PATCH", `/api/team-members/${id}`, data);
     },
     onSuccess: () => {

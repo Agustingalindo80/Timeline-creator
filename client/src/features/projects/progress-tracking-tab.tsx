@@ -133,7 +133,7 @@ export function ProgressTrackingTab({ timelineId, tasks, approvedBudget }: { tim
       queryClient.invalidateQueries({ queryKey: ["/api/timelines", timelineId, "progress"] });
       queryClient.invalidateQueries({ queryKey: ["/api/timelines", timelineId] });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     },
   });
@@ -148,7 +148,7 @@ export function ProgressTrackingTab({ timelineId, tasks, approvedBudget }: { tim
       queryClient.invalidateQueries({ queryKey: ["/api/timelines", timelineId, "progress"] });
       queryClient.invalidateQueries({ queryKey: ["/api/timelines", timelineId] });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     },
   });

@@ -29,7 +29,7 @@ export type AuditEntry = {
   action: string;
   objectType: string | null;
   objectId: string | null;
-  metadata: Record<string, any> | null;
+  metadata: Record<string, unknown> | null;
   createdAt: string | null;
 };
 

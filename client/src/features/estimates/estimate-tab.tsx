@@ -127,7 +127,7 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
   };
 
   const createTaskMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: Record<string, unknown>) => {
       const res = await apiRequest("POST", `/api/timelines/${timeline.id}/tasks`, data);
       return res.json();
     },
@@ -141,7 +141,7 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
   });
 
   const updateTaskMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+    mutationFn: async ({ id, data }: { id: string; data: Record<string, unknown> }) => {
       const res = await apiRequest("PATCH", `/api/tasks/${id}`, data);
       return res.json();
     },
@@ -162,7 +162,7 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
   });
 
   const updateOppMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: Record<string, unknown>) => {
       const res = await apiRequest("PATCH", `/api/opportunities/${timeline.id}`, data);
       return res.json();
     },
@@ -172,7 +172,7 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
   });
 
   const createResourceMutation = useMutation({
-    mutationFn: async ({ taskId, data }: { taskId: string; data: any }) => {
+    mutationFn: async ({ taskId, data }: { taskId: string; data: Record<string, unknown> }) => {
       const res = await apiRequest("POST", `/api/tasks/${taskId}/resources`, data);
       return res.json();
     },
@@ -186,7 +186,7 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
   });
 
   const updateResourceMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+    mutationFn: async ({ id, data }: { id: string; data: Record<string, unknown> }) => {
       const res = await apiRequest("PATCH", `/api/workstream-resources/${id}`, data);
       return res.json();
     },
@@ -236,7 +236,7 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
 
   const handleEditTask = () => {
     if (!editingTask || !newTaskTitle.trim()) return;
-    const data: any = { title: newTaskTitle.trim() };
+    const data: Record<string, unknown> = { title: newTaskTitle.trim() };
     if (editingTask.itemType === "workstream") {
       data.durationWeeks = newTaskDuration ? newTaskDuration : null;
       data.confidenceLevel = newTaskConfidence || null;
@@ -319,8 +319,8 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : "Download failed", variant: "destructive" });
     }
   };
 
@@ -346,8 +346,8 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
         title: "Import Complete",
         description: `${result.phasesCreated} phase(s), ${result.workstreamsCreated} workstream(s), ${result.resourcesCreated} resource(s) created. ${result.rowsSkipped > 0 ? `${result.rowsSkipped} row(s) skipped.` : ""}`,
       });
-    } catch (err: any) {
-      toast({ title: "Import Failed", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Import Failed", description: err instanceof Error ? err.message : "Import failed", variant: "destructive" });
     } finally {
       setIsImporting(false);
       if (fileInputRef.current) fileInputRef.current.value = "";

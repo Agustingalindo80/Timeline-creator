@@ -102,7 +102,7 @@ export function RaidLog({ timelineId }: RaidLogProps) {
   const items = filterType === "all" ? allItems : allItems.filter(r => r.itemType === filterType);
 
   const addMutation = useMutation({
-    mutationFn: async (data: any) => { await apiRequest("POST", `/api/timelines/${timelineId}/risks`, data); },
+    mutationFn: async (data: Record<string, unknown>) => { await apiRequest("POST", `/api/timelines/${timelineId}/risks`, data); },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/timelines", timelineId, "risks"] });
       toast({ title: "Item added" });
@@ -110,7 +110,7 @@ export function RaidLog({ timelineId }: RaidLogProps) {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: any }) => { await apiRequest("PATCH", `/api/risks/${id}`, data); },
+    mutationFn: async ({ id, data }: { id: string; data: Record<string, unknown> }) => { await apiRequest("PATCH", `/api/risks/${id}`, data); },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/timelines", timelineId, "risks"] });
       toast({ title: "Item updated" });

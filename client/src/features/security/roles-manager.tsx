@@ -116,7 +116,7 @@ export function RolesManager() {
       toast({ title: "Role created" });
       setDialogOpen(false);
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     },
   });
@@ -133,7 +133,7 @@ export function RolesManager() {
       toast({ title: "Role updated" });
       setDialogOpen(false);
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     },
   });
@@ -147,7 +147,7 @@ export function RolesManager() {
       queryClient.invalidateQueries({ queryKey: ["/api/rbac/users"] });
       toast({ title: "Role deleted" });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     },
   });

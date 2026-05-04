@@ -24,8 +24,10 @@ The application uses a modern web stack with React, Vite, Tailwind CSS, and shad
 - **Project Structure:** Clear separation of client-side and server-side code. Backend routes are modularized into domain-specific files under `server/routes/` (19 files) with shared helpers in `server/routes/helpers.ts`. Business logic is extracted into `server/services/` (6 files: financials, project-progress, gate-evaluator, artifact-verification, opportunity-conversion, estimate-import). The main `server/routes.ts` is a thin orchestrator that sets up auth, middleware, and delegates to domain route modules. Route handlers are thin — they validate input, call services, and return responses. Frontend feature components are organized under `client/src/features/` by domain:
   - `features/security/` (6 files): types, RolesManager, UserDetailView, UsersRolesManager, AuditLogViewer, RoleMatrixViewer — extracted from `admin-security.tsx` (now 48-line thin wrapper).
   - `features/admin/` (6 files): FieldOptionEditor, TeamMembersManager, RateCardsManager, BrandingManager, FlightPathManager, ApiTokensManager — extracted from `admin.tsx` (now 382-line wrapper with General tab inline).
-  - `features/projects/` (5 files): helpers, ProjectTimesheetsTab, ProgressTrackingTab, EVMTab, ProjectTeamMembersTab — extracted from `timeline-detail.tsx` (reduced from 3050 to 1752 lines).
-  - Previously extracted components remain in `client/src/components/`: estimate-tab, governance-tab, raid-log, timeline-view.
+  - `features/projects/` (12 files): helpers, ProjectTimesheetsTab, ProgressTrackingTab, EVMTab, ProjectTeamMembersTab, MilestoneManager, TaskManager, ProjectEditForm, ProjectKPI, useTimelineExport, RaidLog — extracted from `timeline-detail.tsx` (reduced from 3050 to 501 lines).
+  - `features/estimates/` (1 file): EstimateTab — moved from `client/src/components/`.
+  - `features/governance/` (1 file): GovernanceTab — moved from `client/src/components/`.
+  - Remaining in `client/src/components/`: timeline-view.
 - **API Design:** RESTful endpoints for all entities.
 - **Database Schema:** Detailed schemas for all project entities with `tenantId` for multi-tenancy and specific `pgEnum` constraints for status fields. Includes partial unique indexes and `ON DELETE SET NULL` for hierarchical data.
 - **Financial Calculations:** Automated calculation of `Approved Budget`, `Total Running Cost`, and `Gross Margin`.

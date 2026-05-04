@@ -170,7 +170,8 @@ export function BrandingManager() {
   const getColorValue = (key: string): string | null => {
     if (key in pendingColors) return pendingColors[key];
     if (!branding) return null;
-    return (branding as any)[key] as string | null;
+    const value = (branding as Record<string, unknown>)[key];
+    return typeof value === "string" ? value : null;
   };
 
   const hasPendingChanges = hasNameChange || Object.keys(pendingColors).length > 0;
@@ -179,7 +180,7 @@ export function BrandingManager() {
     const updates: Partial<BrandingConfig> = {};
     if (hasNameChange) updates.appName = appName;
     for (const [key, val] of Object.entries(pendingColors)) {
-      (updates as any)[key] = val;
+      (updates as Record<string, string | null>)[key] = val;
     }
     updateMutation.mutate(updates);
   };
@@ -194,15 +195,15 @@ export function BrandingManager() {
       accentColor: null,
       logoUrl: null,
       faviconUrl: null,
-    } as any);
+    });
   };
 
   const handleRemoveLogo = () => {
-    updateMutation.mutate({ logoUrl: null } as any);
+    updateMutation.mutate({ logoUrl: null });
   };
 
   const handleRemoveFavicon = () => {
-    updateMutation.mutate({ faviconUrl: null } as any);
+    updateMutation.mutate({ faviconUrl: null });
   };
 
   if (isLoading) {

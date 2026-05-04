@@ -1,3 +1,13 @@
+interface EvaluatorResult {
+  status?: string;
+  completionPercentage?: number;
+  missingItems?: string[];
+  artifactFlags?: string[];
+  raidFlags?: string[];
+  evmFlags?: string[];
+  recommendations?: string[];
+}
+
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
@@ -740,51 +750,54 @@ export function GovernanceTab({ timelineId, currentStageId, onStageChange, oppor
               </div>
             )}
 
-            {stageGate?.evaluatorResult && (
+            {stageGate?.evaluatorResult && (() => {
+              const evalResult = stageGate.evaluatorResult as EvaluatorResult;
+              return (
               <div className="mb-4 p-3 rounded-md bg-muted text-xs space-y-2" data-testid="evaluator-result">
                 <p className="font-medium">AI Evaluator Assessment:</p>
-                {(stageGate.evaluatorResult as any).missingItems?.length > 0 && (
+                {evalResult.missingItems && evalResult.missingItems.length > 0 && (
                   <div>
                     <p className="font-medium text-red-600 dark:text-red-400">Missing Items:</p>
                     <ul className="list-disc pl-4">
-                      {(stageGate.evaluatorResult as any).missingItems.map((item: string, i: number) => (
+                      {evalResult.missingItems.map((item, i) => (
                         <li key={i}>{item}</li>
                       ))}
                     </ul>
                   </div>
                 )}
-                {(stageGate.evaluatorResult as any).artifactFlags?.length > 0 && (
+                {evalResult.artifactFlags && evalResult.artifactFlags.length > 0 && (
                   <div>
                     <p className="font-medium text-orange-600 dark:text-orange-400">Artifact Concerns:</p>
                     <ul className="list-disc pl-4">
-                      {(stageGate.evaluatorResult as any).artifactFlags.map((flag: string, i: number) => (
+                      {evalResult.artifactFlags.map((flag, i) => (
                         <li key={i}>{flag}</li>
                       ))}
                     </ul>
                   </div>
                 )}
-                {(stageGate.evaluatorResult as any).raidFlags?.length > 0 && (
+                {evalResult.raidFlags && evalResult.raidFlags.length > 0 && (
                   <div>
                     <p className="font-medium text-amber-600 dark:text-amber-400">RAID Concerns:</p>
                     <ul className="list-disc pl-4">
-                      {(stageGate.evaluatorResult as any).raidFlags.map((flag: string, i: number) => (
+                      {evalResult.raidFlags.map((flag, i) => (
                         <li key={i}>{flag}</li>
                       ))}
                     </ul>
                   </div>
                 )}
-                {(stageGate.evaluatorResult as any).recommendations?.length > 0 && (
+                {evalResult.recommendations && evalResult.recommendations.length > 0 && (
                   <div>
                     <p className="font-medium text-blue-600 dark:text-blue-400">Recommendations:</p>
                     <ul className="list-disc pl-4">
-                      {(stageGate.evaluatorResult as any).recommendations.map((rec: string, i: number) => (
+                      {evalResult.recommendations.map((rec, i) => (
                         <li key={i}>{rec}</li>
                       ))}
                     </ul>
                   </div>
                 )}
               </div>
-            )}
+              );
+            })()}
 
             <div className="flex items-center gap-2 flex-wrap">
               <Button
