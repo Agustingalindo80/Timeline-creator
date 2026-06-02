@@ -9,7 +9,10 @@ const VALID_STATUSES: ReadonlyArray<BusinessOutcome["status"]> = ["draft", "acti
 export function registerBusinessOutcomeRoutes(app: Express) {
   app.get("/api/business-outcomes", requireModuleAccess("business_outcomes"), async (req, res) => {
     try {
-      const outcomes = await storage.getBusinessOutcomes(req.tenantId || "default");
+      const filters: { projectId?: string; opportunityId?: string } = {};
+      if (typeof req.query.projectId === "string") filters.projectId = req.query.projectId;
+      if (typeof req.query.opportunityId === "string") filters.opportunityId = req.query.opportunityId;
+      const outcomes = await storage.getBusinessOutcomes(req.tenantId || "default", filters);
       res.json(outcomes);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Internal server error";

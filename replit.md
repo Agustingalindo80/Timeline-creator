@@ -38,7 +38,7 @@ The application uses a modern web stack with React, Vite, Tailwind CSS, and shad
 - **Progress Tracking:** Project-level tab for weekly % complete per workstream.
 - **EVM Dashboard:** Project-level tab displaying Earned Value Management metrics with historical snapshot tracking, revision versioning, S-Curve, and CPI/SPI charts.
 - **RAID Log:** Supports Risks, Assumptions, Issues, and Dependencies.
-- **Business Outcomes Module:** Strategic outcome register for tracking value realisation. Full CRUD with linking to clients, opportunities, projects, governance stages, and team members. Status tracking (draft/active/achieved/at_risk/cancelled) with baseline, target, and current value measurement.
+- **Business Outcomes Module:** Strategic outcome register for tracking value realisation. Full CRUD with linking to clients, opportunities, projects, governance stages, and team members. Status tracking (draft/active/achieved/at_risk/cancelled) with baseline, target, and current value measurement. Business Outcomes tabs are embedded in both Project detail (`timeline-detail.tsx`) and Opportunity detail (`opportunity-detail.tsx`) pages, allowing users to create, link, unlink, and view outcomes in context. Reusable `BusinessOutcomesTab` component in `client/src/features/business-outcomes/`. Backend supports filtered queries via `GET /api/business-outcomes?projectId=xxx&opportunityId=xxx`.
 - **Reports Module:** Provides operational reports (Portfolio Health, Project Status, Milestone Tracker, RAID Summary) with CSV and PDF export, and server-side aggregation.
 - **Opportunities Module:** Pre-sales entity with an Estimate tab and "Convert to Project" feature.
 - **Estimate Template Import/Export:** Functionality for Excel template download and import.

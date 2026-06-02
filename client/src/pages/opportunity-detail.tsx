@@ -24,6 +24,7 @@ import {
   Check,
   Trash2,
   Milestone as MilestoneIcon,
+  Crosshair,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -52,6 +53,7 @@ import { useTranslation } from "react-i18next";
 import { EstimateTab } from "@/features/estimates/estimate-tab";
 import { GovernanceTab } from "@/features/governance/governance-tab";
 import { RaidLog } from "@/features/projects/raid-log";
+import { BusinessOutcomesTab } from "@/features/business-outcomes/business-outcomes-tab";
 import type { TimelineWithMilestones, Client, AppSettings, FlightpathStage, ProjectGate } from "@shared/schema";
 import { getDefaultFieldOptions } from "@shared/schema";
 
@@ -554,6 +556,9 @@ export default function OpportunityDetail() {
             <TabsTrigger value="milestones" className="gap-1.5 data-[state=active]:shadow-sm" data-testid="tab-milestones">
               <MilestoneIcon className="w-3.5 h-3.5" /> {t("projects.milestones")} ({opp.milestones?.length || 0})
             </TabsTrigger>
+            <TabsTrigger value="business-outcomes" className="gap-1.5 data-[state=active]:shadow-sm" data-testid="tab-business-outcomes">
+              <Crosshair className="w-3.5 h-3.5" /> {t("businessOutcomes.title")}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="estimate">
@@ -705,6 +710,10 @@ export default function OpportunityDetail() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="business-outcomes">
+            <BusinessOutcomesTab timelineId={opp.id} linkField="opportunityId" />
           </TabsContent>
 
         </Tabs>

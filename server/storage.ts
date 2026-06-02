@@ -227,7 +227,7 @@ export interface IStorage {
   deleteOrgRole(id: string, tenantId: string): Promise<void>;
   updateOrgRole(id: string, tenantId: string, data: { name?: string; description?: string }): Promise<OrgRole | undefined>;
 
-  getBusinessOutcomes(tenantId: string): Promise<BusinessOutcome[]>;
+  getBusinessOutcomes(tenantId: string, filters?: { projectId?: string; opportunityId?: string }): Promise<BusinessOutcome[]>;
   getBusinessOutcome(id: string, tenantId: string): Promise<BusinessOutcome | undefined>;
   createBusinessOutcome(data: InsertBusinessOutcome): Promise<BusinessOutcome>;
   updateBusinessOutcome(id: string, tenantId: string, data: Partial<InsertBusinessOutcome>): Promise<BusinessOutcome | undefined>;
@@ -1251,8 +1251,11 @@ export class DatabaseStorage implements IStorage {
     await db.update(apiTokens).set({ lastUsedAt: new Date() }).where(eq(apiTokens.id, id));
   }
 
-  async getBusinessOutcomes(tenantId: string): Promise<BusinessOutcome[]> {
-    return db.select().from(businessOutcomes).where(eq(businessOutcomes.tenantId, tenantId)).orderBy(desc(businessOutcomes.createdAt));
+  async getBusinessOutcomes(tenantId: string, filters?: { projectId?: string; opportunityId?: string }): Promise<BusinessOutcome[]> {
+    const conditions = [eq(businessOutcomes.tenantId, tenantId)];
+    if (filters?.projectId) conditions.push(eq(businessOutcomes.projectId, filters.projectId));
+    if (filters?.opportunityId) conditions.push(eq(businessOutcomes.opportunityId, filters.opportunityId));
+    return db.select().from(businessOutcomes).where(and(...conditions)).orderBy(desc(businessOutcomes.createdAt));
   }
 
   async getBusinessOutcome(id: string, tenantId: string): Promise<BusinessOutcome | undefined> {

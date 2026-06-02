@@ -42,6 +42,7 @@ import { ProjectEditForm } from "@/features/projects/project-edit-form";
 import { MilestoneManager } from "@/features/projects/milestone-manager";
 import { TaskManager } from "@/features/projects/task-manager";
 import { useTimelineExport } from "@/features/projects/use-timeline-export";
+import { BusinessOutcomesTab } from "@/features/business-outcomes/business-outcomes-tab";
 
 type FilterMode = "all" | "milestones";
 
@@ -408,6 +409,9 @@ export default function TimelineDetail() {
             <TabsTrigger value="raid-log" data-testid="tab-raid-log">
               RAID Log
             </TabsTrigger>
+            <TabsTrigger value="business-outcomes" data-testid="tab-business-outcomes">
+              Business Outcomes
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="milestones">
@@ -491,6 +495,10 @@ export default function TimelineDetail() {
 
           <TabsContent value="raid-log">
             <RaidLog timelineId={timeline.id} />
+          </TabsContent>
+
+          <TabsContent value="business-outcomes">
+            <BusinessOutcomesTab timelineId={timeline.id} linkField="projectId" />
           </TabsContent>
 
         </Tabs>

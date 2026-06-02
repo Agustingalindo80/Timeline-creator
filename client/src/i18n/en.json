@@ -192,7 +192,19 @@
     "cancelledStatus": "Cancelled",
     "backToList": "Back to Business Outcomes",
     "details": "Details",
-    "links": "Links & Associations"
+    "links": "Links & Associations",
+    "noLinkedOutcomes": "No business outcomes linked",
+    "noLinkedOutcomesDescription": "Create or link a business outcome to track strategic value for this item.",
+    "linkExisting": "Link Existing",
+    "unlink": "Unlink",
+    "unlinkOutcome": "Unlink business outcome?",
+    "unlinkDescription": "This will remove the link between \"{{name}}\" and this item. The outcome will not be deleted.",
+    "outcomeLinked": "Business outcome linked",
+    "outcomeUnlinked": "Business outcome unlinked",
+    "failedToLink": "Failed to link business outcome",
+    "failedToUnlink": "Failed to unlink business outcome",
+    "selectOutcome": "Select an outcome to link",
+    "noUnlinkedOutcomes": "No unlinked outcomes available"
   },
   "clients": {
     "title": "Companies",

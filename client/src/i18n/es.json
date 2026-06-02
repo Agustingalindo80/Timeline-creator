@@ -192,7 +192,19 @@
     "cancelledStatus": "Cancelado",
     "backToList": "Volver a Resultados de Negocio",
     "details": "Detalles",
-    "links": "Enlaces y Asociaciones"
+    "links": "Enlaces y Asociaciones",
+    "noLinkedOutcomes": "Sin resultados de negocio vinculados",
+    "noLinkedOutcomesDescription": "Cree o vincule un resultado de negocio para rastrear valor estratégico de este elemento.",
+    "linkExisting": "Vincular Existente",
+    "unlink": "Desvincular",
+    "unlinkOutcome": "¿Desvincular resultado de negocio?",
+    "unlinkDescription": "Esto eliminará el vínculo entre \"{{name}}\" y este elemento. El resultado no será eliminado.",
+    "outcomeLinked": "Resultado de negocio vinculado",
+    "outcomeUnlinked": "Resultado de negocio desvinculado",
+    "failedToLink": "Error al vincular resultado de negocio",
+    "failedToUnlink": "Error al desvincular resultado de negocio",
+    "selectOutcome": "Seleccione un resultado para vincular",
+    "noUnlinkedOutcomes": "No hay resultados sin vincular disponibles"
   },
   "clients": {
     "title": "Empresas",
