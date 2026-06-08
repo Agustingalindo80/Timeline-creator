@@ -78,6 +78,22 @@ export function registerGlobalAdminRoutes(app: Express) {
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
+  app.delete("/api/global-admin/tenants/:id/permanent", requireSuperAdmin(), async (req, res) => {
+    try {
+      if (req.params.id === "default") {
+        return res.status(400).json({ message: "The default tenant cannot be deleted" });
+      }
+      const tenant = await storage.getTenant(req.params.id);
+      if (!tenant) return res.status(404).json({ message: "Tenant not found" });
+      if (tenant.slug !== req.body?.confirmSlug) {
+        return res.status(400).json({ message: "Slug confirmation does not match" });
+      }
+      const deleted = await storage.deleteTenant(req.params.id);
+      if (!deleted) return res.status(404).json({ message: "Tenant not found" });
+      res.json({ message: "Tenant permanently deleted", tenantId: req.params.id });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
   app.get("/api/global-admin/tenants/:id/usage", requireSuperAdmin(), async (req, res) => {
     try {
       const tenant = await storage.getTenant(req.params.id);

@@ -31,6 +31,8 @@ import {
   evmSnapshots,
   users,
   apiTokens,
+  conversations,
+  messages,
   type BrandingConfig,
   type InsertBranding,
   type Client,
@@ -183,6 +185,7 @@ export interface IStorage {
   getTenant(id: string): Promise<import("@shared/schema").Tenant | undefined>;
   createTenant(data: import("@shared/schema").InsertTenant): Promise<import("@shared/schema").Tenant>;
   updateTenant(id: string, data: Partial<import("@shared/schema").InsertTenant>): Promise<import("@shared/schema").Tenant | undefined>;
+  deleteTenant(id: string): Promise<boolean>;
   getTenantUsage(tenantId: string): Promise<{ userCount: number; projectCount: number; opportunityCount: number }>;
 
   getOrgRoles(tenantId: string): Promise<OrgRole[]>;
@@ -1200,6 +1203,49 @@ export class DatabaseStorage implements IStorage {
   async updateTenant(id: string, data: Partial<import("@shared/schema").InsertTenant>): Promise<import("@shared/schema").Tenant | undefined> {
     const [tenant] = await db.update(tenants).set({ ...data, updatedAt: new Date() }).where(eq(tenants.id, id)).returning();
     return tenant;
+  }
+
+  async deleteTenant(id: string): Promise<boolean> {
+    return db.transaction(async (tx) => {
+      const [existing] = await tx.select({ id: tenants.id }).from(tenants).where(eq(tenants.id, id));
+      if (!existing) return false;
+
+      // Delete all tenant-scoped data. Order matters: referencing tables are
+      // deleted before the tables they reference (rate_cards / team_members are
+      // referenced without ON DELETE cascade). Cascade FKs handle deeper children.
+      await tx.delete(messages).where(eq(messages.tenantId, id));
+      await tx.delete(conversations).where(eq(conversations.tenantId, id));
+      await tx.delete(orgRolePermissions).where(eq(orgRolePermissions.tenantId, id));
+      await tx.delete(userOrgRoles).where(eq(userOrgRoles.tenantId, id));
+      await tx.delete(objectAssignments).where(eq(objectAssignments.tenantId, id));
+      await tx.delete(auditLog).where(eq(auditLog.tenantId, id));
+      await tx.delete(workstreamResources).where(eq(workstreamResources.tenantId, id));
+      await tx.delete(projectTeamMembers).where(eq(projectTeamMembers.tenantId, id));
+      await tx.delete(allocations).where(eq(allocations.tenantId, id));
+      await tx.delete(timesheetEntries).where(eq(timesheetEntries.tenantId, id));
+      await tx.delete(progressEntries).where(eq(progressEntries.tenantId, id));
+      await tx.delete(evmSnapshots).where(eq(evmSnapshots.tenantId, id));
+      await tx.delete(projectCheckpoints).where(eq(projectCheckpoints.tenantId, id));
+      await tx.delete(projectGates).where(eq(projectGates.tenantId, id));
+      await tx.delete(tasks).where(eq(tasks.tenantId, id));
+      await tx.delete(milestones).where(eq(milestones.tenantId, id));
+      await tx.delete(risks).where(eq(risks.tenantId, id));
+      await tx.delete(flightpathDeliverables).where(eq(flightpathDeliverables.tenantId, id));
+      await tx.delete(flightpathStages).where(eq(flightpathStages.tenantId, id));
+      await tx.delete(businessOutcomes).where(eq(businessOutcomes.tenantId, id));
+      await tx.delete(contacts).where(eq(contacts.tenantId, id));
+      await tx.delete(timelines).where(eq(timelines.tenantId, id));
+      await tx.delete(clients).where(eq(clients.tenantId, id));
+      await tx.delete(rateCards).where(eq(rateCards.tenantId, id));
+      await tx.delete(teamMembers).where(eq(teamMembers.tenantId, id));
+      await tx.delete(orgRoles).where(eq(orgRoles.tenantId, id));
+      await tx.delete(apiTokens).where(eq(apiTokens.tenantId, id));
+      await tx.delete(appSettings).where(eq(appSettings.tenantId, id));
+      await tx.delete(brandingConfig).where(eq(brandingConfig.tenantId, id));
+      await tx.delete(tenants).where(eq(tenants.id, id));
+
+      return true;
+    });
   }
 
   async getTenantUsage(tenantId: string): Promise<{ userCount: number; projectCount: number; opportunityCount: number }> {

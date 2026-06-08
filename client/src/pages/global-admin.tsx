@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Building2, Users, FolderKanban, Target, Plus, Settings, BarChart3, Pencil, Ban } from "lucide-react";
+import { ArrowLeft, Building2, Users, FolderKanban, Target, Plus, Settings, BarChart3, Pencil, Ban, Trash2, AlertTriangle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -284,6 +284,8 @@ function TenantDetailView({ tenantId, onBack }: { tenantId: string; onBack: () =
   const { toast } = useToast();
   const [editing, setEditing] = useState(false);
   const [editData, setEditData] = useState<Partial<Tenant>>({});
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [confirmSlug, setConfirmSlug] = useState("");
 
   const { data: tenant, isLoading } = useQuery<Tenant>({
     queryKey: ["/api/global-admin/tenants", tenantId],
@@ -312,6 +314,22 @@ function TenantDetailView({ tenantId, onBack }: { tenantId: string; onBack: () =
       toast({ title: "Tenant suspended" });
       queryClient.invalidateQueries({ queryKey: ["/api/global-admin/tenants", tenantId] });
       queryClient.invalidateQueries({ queryKey: ["/api/global-admin/tenants"] });
+    },
+    onError: (err: any) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("DELETE", `/api/global-admin/tenants/${tenantId}/permanent`, { confirmSlug });
+    },
+    onSuccess: () => {
+      toast({ title: "Tenant permanently deleted" });
+      queryClient.invalidateQueries({ queryKey: ["/api/global-admin/tenants"] });
+      setDeleteOpen(false);
+      setConfirmSlug("");
+      onBack();
     },
     onError: (err: any) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -362,14 +380,55 @@ function TenantDetailView({ tenantId, onBack }: { tenantId: string; onBack: () =
                 <Pencil className="w-4 h-4 mr-1" /> Edit
               </Button>
               {tenant.status === "active" && tenant.id !== "default" && (
-                <Button variant="destructive" size="sm" onClick={() => suspendMutation.mutate()} data-testid="button-suspend-tenant">
+                <Button variant="outline" size="sm" onClick={() => suspendMutation.mutate()} data-testid="button-suspend-tenant">
                   <Ban className="w-4 h-4 mr-1" /> Suspend
+                </Button>
+              )}
+              {tenant.id !== "default" && (
+                <Button variant="destructive" size="sm" onClick={() => { setConfirmSlug(""); setDeleteOpen(true); }} data-testid="button-delete-tenant">
+                  <Trash2 className="w-4 h-4 mr-1" /> Delete
                 </Button>
               )}
             </>
           )}
         </div>
       </div>
+
+      <Dialog open={deleteOpen} onOpenChange={(open) => { setDeleteOpen(open); if (!open) setConfirmSlug(""); }}>
+        <DialogContent data-testid="dialog-delete-tenant">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5" /> Permanently delete tenant
+            </DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. It will permanently delete <span className="font-semibold">{tenant.name}</span> and
+              all of its data — projects, opportunities, companies, contacts, team members, timesheets, governance, RAID
+              entries, business outcomes, users' roles, and settings.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>Type the tenant slug <span className="font-mono font-semibold">{tenant.slug}</span> to confirm</Label>
+            <Input
+              data-testid="input-confirm-delete-slug"
+              value={confirmSlug}
+              onChange={(e) => setConfirmSlug(e.target.value)}
+              placeholder={tenant.slug}
+              autoComplete="off"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteOpen(false)} data-testid="button-cancel-delete">Cancel</Button>
+            <Button
+              variant="destructive"
+              disabled={confirmSlug !== tenant.slug || deleteMutation.isPending}
+              onClick={() => deleteMutation.mutate()}
+              data-testid="button-confirm-delete-tenant"
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Delete permanently"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {editing && (
         <div className="border rounded-md p-4 bg-muted/30 space-y-4">
