@@ -153,7 +153,12 @@
     "team": "Equipo",
     "dueDate": "Vence",
     "riskImpact": "Impacto",
-    "viewProject": "Ver Proyecto"
+    "viewProject": "Ver Proyecto",
+    "outcomeAchievement": "Logro de Resultados",
+    "outcomesAchieved": "Resultados Logrados",
+    "achievementRate": "Tasa de Logro",
+    "outcomesAtRisk": "Resultados en Riesgo",
+    "noOutcomesAtRisk": "Sin resultados en riesgo"
   },
   "businessOutcomes": {
     "title": "Resultados de Negocio",

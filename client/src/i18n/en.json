@@ -153,7 +153,12 @@
     "team": "Team",
     "dueDate": "Due",
     "riskImpact": "Impact",
-    "viewProject": "View Project"
+    "viewProject": "View Project",
+    "outcomeAchievement": "Outcome Achievement",
+    "outcomesAchieved": "Outcomes Achieved",
+    "achievementRate": "Achievement Rate",
+    "outcomesAtRisk": "At-Risk Outcomes",
+    "noOutcomesAtRisk": "No at-risk outcomes"
   },
   "businessOutcomes": {
     "title": "Business Outcomes",

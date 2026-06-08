@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { db } from "../db";
-import { timelines, milestones, risks, projectGates, tenants } from "@shared/schema";
+import { timelines, milestones, risks, projectGates, tenants, businessOutcomes } from "@shared/schema";
 import { users } from "@shared/models/auth";
 import { eq, and, sql } from "drizzle-orm";
 import { requireModuleAccess } from "../middleware/permissions";
@@ -120,6 +120,48 @@ export function registerDashboardRoutes(app: Express) {
         }).slice(0, 10);
       }
 
+      const allOutcomes = await db.select().from(businessOutcomes)
+        .where(eq(businessOutcomes.tenantId, tenantId));
+
+      const accessibleProjectIdSet = new Set(accessibleProjects.map(p => p.id));
+      const accessibleOppIdSet = new Set(accessibleOpportunities.map(o => o.id));
+
+      const accessibleOutcomes = ctx.isGlobal
+        ? allOutcomes
+        : allOutcomes.filter(o => {
+            const projOk = !o.projectId || accessibleProjectIdSet.has(o.projectId);
+            const oppOk = !o.opportunityId || accessibleOppIdSet.has(o.opportunityId);
+            return projOk && oppOk;
+          });
+
+      const outcomeStatusCounts = { draft: 0, active: 0, achieved: 0, at_risk: 0, cancelled: 0 };
+      accessibleOutcomes.forEach(o => {
+        const s = o.status || "draft";
+        if (s in outcomeStatusCounts) outcomeStatusCounts[s as keyof typeof outcomeStatusCounts]++;
+      });
+      const totalOutcomes = accessibleOutcomes.length;
+
+      const atRiskOutcomes = accessibleOutcomes
+        .filter(o => o.status === "at_risk")
+        .map(o => {
+          const proj = accessibleProjects.find(p => p.id === o.projectId);
+          const opp = accessibleOpportunities.find(op => op.id === o.opportunityId);
+          return {
+            id: o.id,
+            title: o.title,
+            linkedTitle: proj?.title || opp?.title || "",
+            timelineId: o.projectId || o.opportunityId || null,
+          };
+        })
+        .slice(0, 10);
+
+      const businessOutcomesSummary = {
+        total: totalOutcomes,
+        byStatus: outcomeStatusCounts,
+        achievementRate: totalOutcomes > 0 ? Math.round((outcomeStatusCounts.achieved / totalOutcomes) * 100) : 0,
+        atRiskOutcomes,
+      };
+
       const openEscalations = gateExceptions.length + criticalRaidItems.filter(r => r.impact === "very_high").length;
 
       const healthHeatmap = activeProjects.map(p => ({
@@ -178,6 +220,7 @@ export function registerDashboardRoutes(app: Express) {
         criticalRaidItems,
         gateExceptions,
         healthHeatmap,
+        businessOutcomes: businessOutcomesSummary,
         tenantPerformance,
       });
     } catch (err: unknown) {

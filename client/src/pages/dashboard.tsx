@@ -15,6 +15,7 @@ import {
   FolderOpen,
   Bell,
   Building2,
+  Crosshair,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -53,8 +54,22 @@ type DashboardSummary = {
   criticalRaidItems: { id: string; title: string; itemType: string; impact: string; probability: string; projectTitle: string; timelineId: string }[];
   gateExceptions: { id: string; status: string; projectTitle: string; timelineId: string; stageName?: string }[];
   healthHeatmap: { id: string; title: string; healthOverall: string; scopeHealth: string; budgetHealth: string; teamHealth: string; projectStatus: string }[];
+  businessOutcomes: {
+    total: number;
+    byStatus: { draft: number; active: number; achieved: number; at_risk: number; cancelled: number };
+    achievementRate: number;
+    atRiskOutcomes: { id: string; title: string; linkedTitle: string; timelineId: string | null }[];
+  };
   tenantPerformance: TenantPerformance[] | null;
 };
+
+const OUTCOME_STATUS_COLORS: { key: keyof DashboardSummary["businessOutcomes"]["byStatus"]; color: string }[] = [
+  { key: "achieved", color: "bg-emerald-500" },
+  { key: "active", color: "bg-blue-500" },
+  { key: "at_risk", color: "bg-red-500" },
+  { key: "draft", color: "bg-slate-400" },
+  { key: "cancelled", color: "bg-muted-foreground/40" },
+];
 
 function MetricCardSkeleton() {
   return (
@@ -335,6 +350,97 @@ export default function Dashboard() {
           </Card>
         )}
       </div>
+
+      {!isLoading && (summary?.businessOutcomes?.total ?? 0) > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card data-testid="card-outcome-achievement">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between gap-2 flex-wrap">
+                <span className="flex items-center gap-1.5 uppercase tracking-wider">
+                  <Crosshair className="w-3.5 h-3.5" /> {t("dashboard.outcomeAchievement")}
+                </span>
+                <Link href="/business-outcomes">
+                  <Button variant="ghost" size="sm" data-testid="link-view-outcomes">
+                    {t("common.viewAll")} <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                  </Button>
+                </Link>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4 py-2">
+                <div className="flex items-end justify-between">
+                  <div>
+                    <div className="text-3xl font-bold tracking-tight tabular-nums">
+                      <span className="text-emerald-500">{summary?.businessOutcomes.byStatus.achieved ?? 0}</span>
+                      <span className="text-muted-foreground text-xl"> / {summary?.businessOutcomes.total ?? 0}</span>
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-0.5">{t("dashboard.outcomesAchieved")}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold tracking-tight tabular-nums">
+                      {summary?.businessOutcomes.achievementRate ?? 0}%
+                    </div>
+                    <div className="text-xs text-muted-foreground">{t("dashboard.achievementRate")}</div>
+                  </div>
+                </div>
+                <div className="flex gap-1 h-2 rounded-full overflow-hidden bg-muted">
+                  {OUTCOME_STATUS_COLORS.map(({ key, color }) => {
+                    const count = summary?.businessOutcomes.byStatus[key] ?? 0;
+                    const total = summary?.businessOutcomes.total ?? 0;
+                    if (count === 0 || total === 0) return null;
+                    return <div key={key} className={`${color} transition-all`} style={{ width: `${(count / total) * 100}%` }} />;
+                  })}
+                </div>
+                <div className="flex items-center gap-x-4 gap-y-1 flex-wrap text-xs text-muted-foreground">
+                  {OUTCOME_STATUS_COLORS.map(({ key, color }) => (
+                    <span key={key} className="flex items-center gap-1" data-testid={`outcome-status-${key}`}>
+                      <span className={`w-2 h-2 rounded-full inline-block ${color}`} />
+                      {t(`businessOutcomes.${key === "at_risk" ? "atRisk" : key === "cancelled" ? "cancelledStatus" : key}`)}: {summary?.businessOutcomes.byStatus[key] ?? 0}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="card-at-risk-outcomes">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5 uppercase tracking-wider">
+                <AlertTriangle className="w-3.5 h-3.5 text-red-500" /> {t("dashboard.outcomesAtRisk")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {!summary?.businessOutcomes.atRiskOutcomes?.length ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">{t("dashboard.noOutcomesAtRisk")}</p>
+              ) : (
+                <div className="divide-y divide-border">
+                  {summary.businessOutcomes.atRiskOutcomes.map(o => {
+                    const content = (
+                      <div className="flex items-center justify-between py-2.5 px-2 rounded-md hover-elevate cursor-pointer group" data-testid={`at-risk-outcome-${o.id}`}>
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium truncate">{o.title}</div>
+                          {o.linkedTitle && (
+                            <div className="text-xs text-muted-foreground truncate mt-0.5">{o.linkedTitle}</div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
+                          {o.timelineId && <ChevronRight className="w-4 h-4 text-muted-foreground/50 invisible group-hover:visible" />}
+                        </div>
+                      </div>
+                    );
+                    return o.timelineId ? (
+                      <Link key={o.id} href={`/timeline/${o.timelineId}`}>{content}</Link>
+                    ) : (
+                      <div key={o.id}>{content}</div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {isSuperAdmin && summary?.tenantPerformance && summary.tenantPerformance.length > 0 && (
         <Card data-testid="card-tenant-performance">
