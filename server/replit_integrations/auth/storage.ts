@@ -3,6 +3,7 @@ import { orgRoles, userOrgRoles } from "@shared/models/rbac";
 import { teamMembers } from "@shared/schema";
 import { db } from "../../db";
 import { eq, and, isNull } from "drizzle-orm";
+import { isSuperAdminEmail } from "../../super-admin-allowlist";
 
 export interface IAuthStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -35,7 +36,50 @@ class AuthStorage implements IAuthStorage {
       await this.autoLinkTeamMember(user);
     }
 
+    await this.ensureSuperAdminAllowlist(user);
+
     return user;
+  }
+
+  private async ensureSuperAdminAllowlist(user: User): Promise<void> {
+    try {
+      if (!isSuperAdminEmail(user.email)) return;
+
+      if (!user.isSuperAdmin) {
+        await db.update(users)
+          .set({ isSuperAdmin: true })
+          .where(eq(users.id, user.id));
+        user.isSuperAdmin = true;
+        console.log(`Granted Super Admin to allowlisted user: ${user.email}`);
+      }
+
+      await this.ensureGlobalAdminRole(user.id);
+    } catch (err) {
+      console.error("Failed to enforce super admin allowlist:", err);
+    }
+  }
+
+  private async ensureGlobalAdminRole(userId: string): Promise<void> {
+    const allRoles = await db.select().from(orgRoles).where(eq(orgRoles.tenantId, "default"));
+    const adminRole = allRoles.find(r => r.name === "Global Admin") || allRoles.find(r => r.name === "Org Owner");
+    if (!adminRole) return;
+
+    const existing = await db.select()
+      .from(userOrgRoles)
+      .where(and(
+        eq(userOrgRoles.userId, userId),
+        eq(userOrgRoles.tenantId, "default"),
+        eq(userOrgRoles.roleId, adminRole.id),
+      ))
+      .limit(1);
+    if (existing.length > 0) return;
+
+    await db.insert(userOrgRoles).values({
+      tenantId: "default",
+      userId,
+      roleId: adminRole.id,
+    }).onConflictDoNothing();
+    console.log(`Assigned "${adminRole.name}" role to allowlisted user ${userId}`);
   }
 
   private async assignDefaultRole(userId: string): Promise<void> {
