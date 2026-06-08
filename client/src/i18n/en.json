@@ -204,7 +204,9 @@
     "failedToLink": "Failed to link business outcome",
     "failedToUnlink": "Failed to unlink business outcome",
     "selectOutcome": "Select an outcome to link",
-    "noUnlinkedOutcomes": "No unlinked outcomes available"
+    "noUnlinkedOutcomes": "No unlinked outcomes available",
+    "failedToLoad": "Unable to load business outcomes",
+    "failedToLoadDescription": "You may not have access to this module, or something went wrong. Please try again."
   },
   "clients": {
     "title": "Companies",

@@ -54,12 +54,13 @@ export function BusinessOutcomesTab({ timelineId, linkField }: BusinessOutcomesT
   const filterParam = linkField === "projectId" ? "projectId" : "opportunityId";
   const linkedQueryKey = ["/api/business-outcomes", { [filterParam]: timelineId }];
 
-  const { data: linkedOutcomes = [], isLoading } = useQuery<BusinessOutcome[]>({
+  const { data: linkedOutcomes = [], isLoading, isError } = useQuery<BusinessOutcome[]>({
     queryKey: linkedQueryKey,
     queryFn: async () => {
       const res = await apiRequest("GET", `/api/business-outcomes?${filterParam}=${timelineId}`);
       return res.json();
     },
+    retry: false,
   });
 
   const { data: allOutcomes = [] } = useQuery<BusinessOutcome[]>({
@@ -161,6 +162,16 @@ export function BusinessOutcomesTab({ timelineId, linkField }: BusinessOutcomesT
             {[1, 2].map((i) => (
               <Skeleton key={i} className="h-16 w-full rounded-lg" />
             ))}
+          </div>
+        ) : isError ? (
+          <div className="flex flex-col items-center justify-center py-12">
+            <Crosshair className="w-10 h-10 text-destructive/40 mb-3" />
+            <p className="text-sm font-medium text-destructive" data-testid="text-outcomes-load-error">
+              {t("businessOutcomes.failedToLoad")}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1 text-center max-w-sm">
+              {t("businessOutcomes.failedToLoadDescription")}
+            </p>
           </div>
         ) : linkedOutcomes.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12">

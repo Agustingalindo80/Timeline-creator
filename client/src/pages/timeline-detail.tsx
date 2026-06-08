@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, useLocation, Link } from "wouter";
+import { useTranslation } from "react-i18next";
 import { Helmet } from "react-helmet-async";
 import {
   ArrowLeft,
@@ -59,6 +60,13 @@ export default function TimelineDetail() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showAddTaskForm, setShowAddTaskForm] = useState(false);
   const timelineRef = useRef<HTMLDivElement>(null);
+
+  const { t } = useTranslation();
+
+  const { data: myModules } = useQuery<{ modules: string[] }>({
+    queryKey: ["/api/rbac/my-modules"],
+  });
+  const canViewOutcomes = myModules?.modules?.includes("module.business_outcomes") ?? false;
 
   const { data: timeline, isLoading } = useQuery<TimelineWithMilestones>({
     queryKey: ["/api/timelines", id],
@@ -409,9 +417,11 @@ export default function TimelineDetail() {
             <TabsTrigger value="raid-log" data-testid="tab-raid-log">
               RAID Log
             </TabsTrigger>
-            <TabsTrigger value="business-outcomes" data-testid="tab-business-outcomes">
-              Business Outcomes
-            </TabsTrigger>
+            {canViewOutcomes && (
+              <TabsTrigger value="business-outcomes" data-testid="tab-business-outcomes">
+                {t("businessOutcomes.title")}
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="milestones">
@@ -497,9 +507,11 @@ export default function TimelineDetail() {
             <RaidLog timelineId={timeline.id} />
           </TabsContent>
 
-          <TabsContent value="business-outcomes">
-            <BusinessOutcomesTab timelineId={timeline.id} linkField="projectId" />
-          </TabsContent>
+          {canViewOutcomes && (
+            <TabsContent value="business-outcomes">
+              <BusinessOutcomesTab timelineId={timeline.id} linkField="projectId" />
+            </TabsContent>
+          )}
 
         </Tabs>
         </div>

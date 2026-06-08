@@ -134,6 +134,11 @@ export default function OpportunityDetail() {
   const [editStartDate, setEditStartDate] = useState("");
   const [editEndDate, setEditEndDate] = useState("");
 
+  const { data: myModules } = useQuery<{ modules: string[] }>({
+    queryKey: ["/api/rbac/my-modules"],
+  });
+  const canViewOutcomes = myModules?.modules?.includes("module.business_outcomes") ?? false;
+
   const { data: opp, isLoading } = useQuery<TimelineWithMilestones>({
     queryKey: ["/api/opportunities", id],
   });
@@ -556,9 +561,11 @@ export default function OpportunityDetail() {
             <TabsTrigger value="milestones" className="gap-1.5 data-[state=active]:shadow-sm" data-testid="tab-milestones">
               <MilestoneIcon className="w-3.5 h-3.5" /> {t("projects.milestones")} ({opp.milestones?.length || 0})
             </TabsTrigger>
-            <TabsTrigger value="business-outcomes" className="gap-1.5 data-[state=active]:shadow-sm" data-testid="tab-business-outcomes">
-              <Crosshair className="w-3.5 h-3.5" /> {t("businessOutcomes.title")}
-            </TabsTrigger>
+            {canViewOutcomes && (
+              <TabsTrigger value="business-outcomes" className="gap-1.5 data-[state=active]:shadow-sm" data-testid="tab-business-outcomes">
+                <Crosshair className="w-3.5 h-3.5" /> {t("businessOutcomes.title")}
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="estimate">
@@ -712,9 +719,11 @@ export default function OpportunityDetail() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="business-outcomes">
-            <BusinessOutcomesTab timelineId={opp.id} linkField="opportunityId" />
-          </TabsContent>
+          {canViewOutcomes && (
+            <TabsContent value="business-outcomes">
+              <BusinessOutcomesTab timelineId={opp.id} linkField="opportunityId" />
+            </TabsContent>
+          )}
 
         </Tabs>
 

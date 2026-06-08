@@ -204,7 +204,9 @@
     "failedToLink": "Error al vincular resultado de negocio",
     "failedToUnlink": "Error al desvincular resultado de negocio",
     "selectOutcome": "Seleccione un resultado para vincular",
-    "noUnlinkedOutcomes": "No hay resultados sin vincular disponibles"
+    "noUnlinkedOutcomes": "No hay resultados sin vincular disponibles",
+    "failedToLoad": "No se pudieron cargar los resultados de negocio",
+    "failedToLoadDescription": "Es posible que no tengas acceso a este módulo, o algo salió mal. Inténtalo de nuevo."
   },
   "clients": {
     "title": "Empresas",
