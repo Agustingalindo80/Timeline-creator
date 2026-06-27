@@ -27,8 +27,13 @@ import {
   FlightPathFlowSkeleton,
 } from "@/features/portfolio-health/FlightPathFlow";
 import { ProjectDrawer } from "@/features/portfolio-health/ProjectDrawer";
+import { actionUrgency, recommendedAction } from "@/features/portfolio-health/recommended-action";
 import { RAG_COLOR, RAG_LABEL, formatCurrency, type Rag } from "@/features/portfolio-health/theme";
-import type { PortfolioOverview, PortfolioProjectOverview } from "@/features/portfolio-health/types";
+import type {
+  DimensionKey,
+  PortfolioOverview,
+  PortfolioProjectOverview,
+} from "@/features/portfolio-health/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -85,6 +90,73 @@ const GATE_STATUS_LABELS: Record<string, string> = {
 
 const HEALTH_COLORS: Record<string, string> = RAG_COLOR;
 const RAG_RANK: Record<string, number> = { green: 0, amber: 1, red: 2, gray: 3 };
+
+const DIMENSION_COLS: { key: DimensionKey; label: string; short: string }[] = [
+  { key: "schedule", label: "Schedule", short: "Sch" },
+  { key: "financial", label: "Financial", short: "Fin" },
+  { key: "scope", label: "Scope", short: "Scp" },
+  { key: "quality", label: "Quality", short: "Qly" },
+  { key: "risk", label: "Risk", short: "Rsk" },
+  { key: "governance", label: "Governance", short: "Gov" },
+  { key: "outcome", label: "Outcome", short: "Out" },
+];
+
+function fmtDate(v: string | null): string {
+  if (!v) return "";
+  return v.length > 10 ? v.slice(0, 10) : v;
+}
+
+function forecastMarginPct(p: PortfolioProjectOverview): number | null {
+  const revenue = num(p.estimatedRevenue);
+  const eac = p.evm?.eac ?? null;
+  if (revenue <= 0 || eac === null) return null;
+  return Math.round(((revenue - eac) / revenue) * 1000) / 10;
+}
+
+// Deterministic project pick for a KPI card drill-down. Ties broken by id so the
+// selection is stable and testable.
+function pickProjectForKpi(key: string, projects: PortfolioProjectOverview[]): string | null {
+  if (projects.length === 0) return null;
+  const idTie = (a: PortfolioProjectOverview, b: PortfolioProjectOverview) => a.id.localeCompare(b.id);
+  const worstOf = (rag: Rag) =>
+    projects
+      .filter((p) => p.overallRag === rag)
+      .sort((a, b) => (a.overallScore ?? 999) - (b.overallScore ?? 999) || idTie(a, b))[0];
+  switch (key) {
+    case "green":
+      return (
+        projects
+          .filter((p) => p.overallRag === "green")
+          .sort((a, b) => (b.overallScore ?? -1) - (a.overallScore ?? -1) || idTie(a, b))[0]?.id ?? null
+      );
+    case "amber":
+      return worstOf("amber")?.id ?? null;
+    case "red":
+      return worstOf("red")?.id ?? null;
+    case "gray":
+      return projects.filter((p) => p.overallRag === "gray").sort(idTie)[0]?.id ?? null;
+    case "total-budget":
+    case "actual-cost":
+    case "forecast-cost":
+      return [...projects].sort((a, b) => num(b.approvedBudget) - num(a.approvedBudget) || idTie(a, b))[0]?.id ?? null;
+    case "critical-risks":
+      return [...projects].sort((a, b) => b.openCriticalRiskCount - a.openCriticalRiskCount || idTie(a, b))[0]?.id ?? null;
+    case "blocked-gates":
+      return [...projects].sort((a, b) => b.gateSummary.blocked - a.gateSummary.blocked || idTie(a, b))[0]?.id ?? null;
+    case "upcoming-go-lives": {
+      const today = new Date().toISOString().slice(0, 10);
+      return (
+        projects
+          .filter((p) => p.endDate && fmtDate(p.endDate) >= today)
+          .sort((a, b) => fmtDate(a.endDate).localeCompare(fmtDate(b.endDate)) || idTie(a, b))[0]?.id ?? null
+      );
+    }
+    case "outcomes-on-track":
+      return [...projects].sort((a, b) => b.outcomeCount - a.outcomeCount || idTie(a, b))[0]?.id ?? null;
+    default:
+      return null;
+  }
+}
 
 type SortKey =
   | "title"
@@ -354,6 +426,11 @@ export default function PortfolioHealth() {
     setDrawerOpen(true);
   };
 
+  const handleKpiSelect = (key: string) => {
+    const id = pickProjectForKpi(key, overviewProjects);
+    if (id) openDrawer(id);
+  };
+
   // If active filters remove the selected project, close the drawer to avoid an
   // open/empty sheet state.
   useEffect(() => {
@@ -537,7 +614,7 @@ export default function PortfolioHealth() {
       )}
 
       {overview ? (
-        <KpiCards kpis={overview.kpis} />
+        <KpiCards kpis={overview.kpis} onSelect={handleKpiSelect} />
       ) : overviewLoading ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
           {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -707,27 +784,47 @@ export default function PortfolioHealth() {
                 <TableRow>
                   <SortHeader label="Project" sk="title" />
                   <SortHeader label={t("common.client")} sk="clientName" />
+                  <TableHead className="table-header-cell">Subsidiary</TableHead>
+                  <TableHead className="table-header-cell">PM</TableHead>
                   <SortHeader label="Stage" sk="flightpathStageName" />
                   <SortHeader label="Health" sk="overallRag" className="text-center" />
+                  {DIMENSION_COLS.map((d) => (
+                    <TableHead key={d.key} className="table-header-cell text-center px-1.5" title={d.label}>
+                      {d.short}
+                    </TableHead>
+                  ))}
                   <TableHead className="table-header-cell text-center">CPI / SPI</TableHead>
                   <SortHeader label="Budget" sk="approvedBudget" className="text-right" />
-                  <TableHead className="table-header-cell text-right">Margin</TableHead>
+                  <TableHead className="table-header-cell text-right">Actuals</TableHead>
+                  <TableHead className="table-header-cell text-right">Forecast</TableHead>
+                  <TableHead className="table-header-cell text-right">Fcst Margin</TableHead>
                   <SortHeader label="Crit. Risks" sk="openCriticalRiskCount" className="text-center" />
+                  <TableHead className="table-header-cell text-center">Open Dec.</TableHead>
                   <SortHeader label="Gate" sk="currentGateStatus" />
+                  <TableHead className="table-header-cell">Next Gate</TableHead>
+                  <TableHead className="table-header-cell">Start</TableHead>
+                  <TableHead className="table-header-cell">Target Go-Live</TableHead>
                   <TableHead className="table-header-cell">Next Milestone</TableHead>
                   <SortHeader label="Status" sk="projectStatus" />
+                  <TableHead className="table-header-cell">Updated</TableHead>
+                  <TableHead className="table-header-cell">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {sorted.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={11} className="text-center text-muted-foreground py-8" data-testid="text-no-projects">
+                    <TableCell colSpan={22} className="text-center text-muted-foreground py-8" data-testid="text-no-projects">
                       No projects found matching the current filters.
                     </TableCell>
                   </TableRow>
                 ) : (
                   sorted.map((p) => {
                     const margin = p.grossMargin ? num(p.grossMargin) : null;
+                    const actuals = p.evm?.actualCost ?? null;
+                    const forecast = p.evm?.eac ?? null;
+                    const fcstMargin = forecastMarginPct(p);
+                    const urgency = actionUrgency(p);
+                    const blank = <span className="text-muted-foreground/40">{"\u2014"}</span>;
                     return (
                       <TableRow
                         key={p.id}
@@ -739,10 +836,14 @@ export default function PortfolioHealth() {
                           {p.title}
                         </TableCell>
                         <TableCell className="text-muted-foreground max-w-[150px] truncate" data-testid={`text-client-${p.id}`}>
-                          {p.clientName || "\u2014"}
+                          {p.clientName || blank}
                         </TableCell>
+                        {/* Subsidiary — data model pending (Task #43) */}
+                        <TableCell className="text-xs" data-testid={`text-subsidiary-${p.id}`}>{blank}</TableCell>
+                        {/* Project Manager — data model pending (Task #43) */}
+                        <TableCell className="text-xs" data-testid={`text-pm-${p.id}`}>{blank}</TableCell>
                         <TableCell className="text-muted-foreground text-xs max-w-[140px] truncate">
-                          {p.flightpathStageName || "\u2014"}
+                          {p.flightpathStageName || blank}
                         </TableCell>
                         <TableCell className="text-center" data-testid={`health-overall-${p.id}`}>
                           <div className="flex items-center justify-center gap-1.5">
@@ -752,20 +853,45 @@ export default function PortfolioHealth() {
                             </span>
                           </div>
                         </TableCell>
+                        {DIMENSION_COLS.map((d) => {
+                          const dim = p.dimensions[d.key];
+                          return (
+                            <TableCell key={d.key} className="text-center px-1.5" data-testid={`dim-${d.key}-${p.id}`}>
+                              {dim ? (
+                                <span className="inline-flex" title={`${d.label}: ${RAG_LABEL[dim.rag]}${dim.score !== null ? ` (${dim.score})` : ""}`}>
+                                  {ragDot(dim.rag, 8)}
+                                </span>
+                              ) : (
+                                blank
+                              )}
+                            </TableCell>
+                          );
+                        })}
                         <TableCell className="text-center text-xs tabular-nums whitespace-nowrap">
                           {p.evm
                             ? `${p.evm.cpi?.toFixed(2) ?? "\u2014"} / ${p.evm.spi?.toFixed(2) ?? "\u2014"}`
-                            : <span className="text-muted-foreground/50">{"\u2014"}</span>}
+                            : blank}
                         </TableCell>
                         <TableCell className="text-right text-muted-foreground text-xs tabular-nums whitespace-nowrap" data-testid={`text-budget-${p.id}`}>
-                          {p.approvedBudget ? formatCurrency(num(p.approvedBudget)) : <span className="text-muted-foreground/50">{"\u2014"}</span>}
+                          {p.approvedBudget ? formatCurrency(num(p.approvedBudget)) : blank}
                         </TableCell>
                         <TableCell className="text-right text-xs tabular-nums whitespace-nowrap">
-                          {margin !== null ? formatCurrency(margin) : <span className="text-muted-foreground/50">{"\u2014"}</span>}
+                          {actuals !== null ? formatCurrency(actuals) : blank}
+                        </TableCell>
+                        <TableCell className="text-right text-xs tabular-nums whitespace-nowrap">
+                          {forecast !== null ? formatCurrency(forecast) : blank}
+                        </TableCell>
+                        <TableCell className="text-right text-xs tabular-nums whitespace-nowrap">
+                          {fcstMargin !== null ? `${fcstMargin}%` : margin !== null ? formatCurrency(margin) : blank}
                         </TableCell>
                         <TableCell className="text-center text-xs tabular-nums">
                           <span style={p.openCriticalRiskCount > 0 ? { color: RAG_COLOR.red } : undefined}>
                             {p.openCriticalRiskCount}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-center text-xs tabular-nums">
+                          <span style={p.openDecisionCount > 0 ? { color: RAG_COLOR.amber } : undefined}>
+                            {p.openDecisionCount}
                           </span>
                         </TableCell>
                         <TableCell className="text-xs">
@@ -774,22 +900,46 @@ export default function PortfolioHealth() {
                               {GATE_STATUS_LABELS[p.currentGateStatus] || p.currentGateStatus}
                             </Badge>
                           ) : (
-                            <span className="text-muted-foreground/50">{"\u2014"}</span>
+                            blank
                           )}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap max-w-[140px] truncate">
+                          {p.nextGateName || blank}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                          {p.startDate ? fmtDate(p.startDate) : blank}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                          {p.endDate ? fmtDate(p.endDate) : blank}
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground whitespace-nowrap max-w-[150px] truncate">
                           {p.nextMilestone ? (
-                            <span title={p.nextMilestone.title}>
-                              {p.nextMilestone.date}
-                            </span>
+                            <span title={p.nextMilestone.title}>{p.nextMilestone.date}</span>
                           ) : (
-                            <span className="text-muted-foreground/50">{"\u2014"}</span>
+                            blank
                           )}
                         </TableCell>
                         <TableCell data-testid={`text-status-${p.id}`}>
                           <Badge variant="outline" className="text-[10px] whitespace-nowrap">
                             {STATUS_LABELS[p.projectStatus] || p.projectStatus}
                           </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                          {p.updatedAt ? fmtDate(p.updatedAt) : blank}
+                        </TableCell>
+                        <TableCell data-testid={`action-required-${p.id}`}>
+                          {urgency === "none" ? (
+                            blank
+                          ) : (
+                            <span
+                              className="inline-flex items-center gap-1 text-[10px] font-medium whitespace-nowrap"
+                              style={{ color: urgency === "critical" ? RAG_COLOR.red : RAG_COLOR.amber }}
+                              title={recommendedAction(p)}
+                            >
+                              {ragDot(urgency === "critical" ? "red" : "amber", 7)}
+                              {urgency === "critical" ? "Act now" : "Review"}
+                            </span>
+                          )}
                         </TableCell>
                       </TableRow>
                     );

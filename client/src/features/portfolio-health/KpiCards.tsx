@@ -23,9 +23,14 @@ interface KpiItem {
   accent?: string;
 }
 
-function KpiCard({ item }: { item: KpiItem }) {
+function KpiCard({ item, onSelect }: { item: KpiItem; onSelect?: (key: string) => void }) {
+  const clickable = !!onSelect;
   return (
-    <Card data-testid={item.testId}>
+    <Card
+      data-testid={item.testId}
+      className={clickable ? "cursor-pointer transition-colors hover:border-primary/40" : undefined}
+      onClick={clickable ? () => onSelect!(item.testId.replace("kpi-", "")) : undefined}
+    >
       <CardContent className="pt-4 pb-4">
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
@@ -49,7 +54,13 @@ function KpiCard({ item }: { item: KpiItem }) {
   );
 }
 
-export function KpiCards({ kpis }: { kpis: PortfolioOverviewKpis }) {
+export function KpiCards({
+  kpis,
+  onSelect,
+}: {
+  kpis: PortfolioOverviewKpis;
+  onSelect?: (key: string) => void;
+}) {
   const items: KpiItem[] = [
     {
       label: "Green",
@@ -128,7 +139,7 @@ export function KpiCards({ kpis }: { kpis: PortfolioOverviewKpis }) {
       data-testid="kpi-cards"
     >
       {items.map((item) => (
-        <KpiCard key={item.testId} item={item} />
+        <KpiCard key={item.testId} item={item} onSelect={onSelect} />
       ))}
     </div>
   );
