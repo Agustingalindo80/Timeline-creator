@@ -103,6 +103,11 @@ export const HEATMAP_COLUMNS: HeatmapColumn[] = [
 
 const UNASSIGNED_ID = "unassigned";
 
+// Dimensions with no data model yet — heatmap cells are forced Gray/no-score
+// placeholders until a later data-model task adds their sources.
+const PLACEHOLDER_DIMENSIONS = new Set<DimensionKey>(["scope", "quality"]);
+const PLACEHOLDER_RATIONALE = "No data source yet \u2014 coming in a later release.";
+
 function daysBetween(fromIso: string, toIso: string): number {
   const from = new Date(fromIso).getTime();
   const to = new Date(toIso).getTime();
@@ -201,6 +206,10 @@ export function buildHeatmap(projects: FlowProjectInput[]): Heatmap {
     let worst: Rag = "gray";
     const rank: Record<Rag, number> = { gray: 0, green: 1, amber: 2, red: 3 };
     for (const col of HEATMAP_COLUMNS) {
+      if (PLACEHOLDER_DIMENSIONS.has(col.key)) {
+        cells[col.key] = { rag: "gray", score: null, rationale: PLACEHOLDER_RATIONALE };
+        continue;
+      }
       const dim = p.dimensions[col.key];
       const cell: HeatmapCell = {
         rag: dim.rag,

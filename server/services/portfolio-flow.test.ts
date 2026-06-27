@@ -153,17 +153,45 @@ test("computeStageBuckets appends Unassigned bucket only when needed", () => {
   );
 });
 
+const PLACEHOLDER_KEYS: DimensionKey[] = ["scope", "quality"];
+
 test("buildHeatmap exposes every dimension column with rag/score/rationale", () => {
   const hm = buildHeatmap([makeProject({ id: "a", dimensions: dims("amber", 55) })]);
   assert.deepEqual(hm.columns, HEATMAP_COLUMNS);
   assert.equal(hm.rows.length, 1);
   const row = hm.rows[0];
   for (const col of HEATMAP_COLUMNS) {
+    if (PLACEHOLDER_KEYS.includes(col.key)) continue;
     const cell = row.cells[col.key];
     assert.equal(cell.rag, "amber");
     assert.equal(cell.score, 55);
     assert.equal(cell.rationale, `reason-${col.key}`);
   }
+});
+
+test("buildHeatmap forces scope + quality cells to gray placeholders regardless of input", () => {
+  // Project dimensions claim green/80 for every dimension, including scope+quality.
+  const hm = buildHeatmap([makeProject({ id: "a", dimensions: dims("green", 80) })]);
+  const row = hm.rows[0];
+  for (const key of PLACEHOLDER_KEYS) {
+    const cell = row.cells[key];
+    assert.equal(cell.rag, "gray", `${key} must be gray`);
+    assert.equal(cell.score, null, `${key} must have no score`);
+    assert.notEqual(cell.rationale, "", `${key} must carry a placeholder rationale`);
+  }
+  // Non-placeholder dimensions still reflect their real scores.
+  assert.equal(row.cells.schedule.rag, "green");
+  assert.equal(row.cells.schedule.score, 80);
+});
+
+test("buildHeatmap overallRag ignores gray placeholders for scope + quality", () => {
+  // Scope/quality input is red, but since they are forced gray they must not
+  // drive overallRag; everything else is green.
+  const d = dims("green", 80);
+  d.scope = { rag: "red", score: 10 };
+  d.quality = { rag: "red", score: 10 };
+  const hm = buildHeatmap([makeProject({ id: "a", dimensions: d })]);
+  assert.equal(hm.rows[0].overallRag, "green");
 });
 
 test("buildHeatmap overallRag is the worst dimension rag", () => {
