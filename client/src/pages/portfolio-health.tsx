@@ -46,6 +46,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { buildHealthTrend } from "@shared/health-trend";
 
 interface PortfolioProject {
   id: string;
@@ -286,45 +287,7 @@ export default function PortfolioHealth() {
     });
   }, [filtered]);
 
-  const trendData = useMemo(() => {
-    if (history.length === 0 || !from) return [];
-    const byTimeline = new Map<string, HealthHistoryRecord[]>();
-    history.forEach((h) => {
-      const list = byTimeline.get(h.timelineId);
-      if (list) list.push(h);
-      else byTimeline.set(h.timelineId, [h]);
-    });
-
-    const start = new Date(from).getTime();
-    const now = Date.now();
-    const weekMs = 7 * 24 * 60 * 60 * 1000;
-    const points: number[] = [];
-    for (let t = start; t <= now; t += weekMs) points.push(t);
-    if (points[points.length - 1] !== now) points.push(now);
-
-    return points.map((pt) => {
-      let green = 0;
-      let amber = 0;
-      let red = 0;
-      byTimeline.forEach((records) => {
-        let latest: HealthHistoryRecord | undefined;
-        for (const r of records) {
-          if (new Date(r.recordedAt).getTime() <= pt) latest = r;
-          else break;
-        }
-        if (!latest) return;
-        if (latest.healthOverall === "green") green++;
-        else if (latest.healthOverall === "amber") amber++;
-        else if (latest.healthOverall === "red") red++;
-      });
-      return {
-        date: new Date(pt).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
-        Green: green,
-        Amber: amber,
-        Red: red,
-      };
-    });
-  }, [history, from]);
+  const trendData = useMemo(() => buildHealthTrend(history, from), [history, from]);
 
   const SortHeader = ({ label, sk, className }: { label: string; sk: SortKey; className?: string }) => (
     <TableHead className={`table-header-cell ${className || ""}`}>

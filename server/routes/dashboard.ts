@@ -7,6 +7,7 @@ import { requireModuleAccess } from "../middleware/permissions";
 import { storage } from "../storage";
 import { getRecordAccessContext, extractUserId, parseHealthHistoryRange } from "./helpers";
 import { getPortfolioHealth, getPortfolioOverview } from "../reports";
+import { mergeHealthHistory } from "@shared/health-trend";
 
 type PortfolioRollup = {
   key: string;
@@ -312,9 +313,7 @@ export function registerDashboardRoutes(app: Express) {
         storage.getHealthHistoryBaseline(timelineIds, tenantId, fromDate),
       ]);
 
-      const history = [...baseline, ...windowHistory].sort(
-        (a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime(),
-      );
+      const history = mergeHealthHistory(baseline, windowHistory);
 
       res.json({ projects, rollups: { byClient, byRegion }, history, historyFrom: fromDate.toISOString() });
     } catch (err: unknown) {

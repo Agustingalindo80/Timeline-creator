@@ -53,7 +53,7 @@ isValidation = true
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npx tsx --test server/tenant-provisioning.test.ts"
+args = "npx tsx --test server/*.test.ts"
 
 [agent]
 integrations = ["javascript_log_in_with_replit:2.0.0", "javascript_openai_ai_integrations:2.0.0", "google-drive:1.0.0"]
