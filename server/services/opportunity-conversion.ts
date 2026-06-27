@@ -70,6 +70,15 @@ export async function convertOpportunityToProject(
     flightpathStageId: stage1?.id || null,
   });
 
+  await storage.createHealthHistory({
+    tenantId,
+    timelineId: project.id,
+    healthOverall: project.healthOverall,
+    scopeHealth: project.scopeHealth,
+    budgetHealth: project.budgetHealth,
+    teamHealth: project.teamHealth,
+  });
+
   const oppTasks = opp.tasks || [];
   const taskIdMap = new Map<string, string>();
 
