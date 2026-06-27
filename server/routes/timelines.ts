@@ -4,7 +4,7 @@ import { storage } from "../storage";
 import { db } from "../db";
 import { requirePermission, requireModuleAccess } from "../middleware/permissions";
 import { extractFolderIdFromUrl } from "../google-drive";
-import { getRecordAccessContext, checkTimelineAccess } from "./helpers";
+import { getRecordAccessContext, checkTimelineAccess, parseHealthHistoryRange } from "./helpers";
 import { recalcApprovedBudget } from "../services/financials";
 import { recalcTotalRunningCost } from "../services/financials";
 import { parseDateToNum, recalcPhaseProgress } from "../services/project-progress";
@@ -40,6 +40,17 @@ export function registerTimelineRoutes(app: Express) {
     }
   });
 
+  app.get("/api/timelines/:id/health-history", async (req, res) => {
+    try {
+      if (!(await checkTimelineAccess(req, res, req.params.id))) return;
+      const range = parseHealthHistoryRange(req.query.from, req.query.to);
+      const history = await storage.getHealthHistory(req.params.id, req.tenantId || "default", range);
+      res.json(history);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   const createTimelineBody = z.object({
     title: z.string().min(1, "Title is required").trim(),
     description: z.string().nullable().optional(),
@@ -69,6 +80,17 @@ export function registerTimelineRoutes(app: Express) {
         description: description || null,
         color,
       });
+
+      if (timeline.recordType === "project") {
+        await storage.createHealthHistory({
+          tenantId: req.tenantId || "default",
+          timelineId: timeline.id,
+          healthOverall: timeline.healthOverall,
+          scopeHealth: timeline.scopeHealth,
+          budgetHealth: timeline.budgetHealth,
+          teamHealth: timeline.teamHealth,
+        });
+      }
 
       if (milestonesData && Array.isArray(milestonesData)) {
         for (const m of milestonesData) {
@@ -131,8 +153,29 @@ export function registerTimelineRoutes(app: Express) {
         }
       }
 
+      const healthFields = ["healthOverall", "scopeHealth", "budgetHealth", "teamHealth"] as const;
+      const healthInUpdate = healthFields.some((f) => updates[f] !== undefined);
+      let existingForHealth: any;
+      if (healthInUpdate) {
+        existingForHealth = await storage.getTimeline(req.params.id, req.tenantId || "default");
+      }
+
       const timeline = await storage.updateTimeline(req.params.id, req.tenantId || "default", updates);
       if (!timeline) return res.status(404).json({ message: "Timeline not found" });
+
+      if (healthInUpdate && existingForHealth && timeline.recordType === "project") {
+        const changed = healthFields.some((f) => existingForHealth[f] !== (timeline as any)[f]);
+        if (changed) {
+          await storage.createHealthHistory({
+            tenantId: req.tenantId || "default",
+            timelineId: timeline.id,
+            healthOverall: timeline.healthOverall,
+            scopeHealth: timeline.scopeHealth,
+            budgetHealth: timeline.budgetHealth,
+            teamHealth: timeline.teamHealth,
+          });
+        }
+      }
 
       if (updates.engagementModel !== undefined || updates.startDate !== undefined || updates.endDate !== undefined) {
         await recalcTotalRunningCost(req.params.id, req.tenantId || "default");

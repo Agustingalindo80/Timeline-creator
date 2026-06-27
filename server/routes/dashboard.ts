@@ -4,7 +4,8 @@ import { timelines, milestones, risks, projectGates, tenants, businessOutcomes }
 import { users } from "@shared/models/auth";
 import { eq, and, sql } from "drizzle-orm";
 import { requireModuleAccess } from "../middleware/permissions";
-import { getRecordAccessContext, extractUserId } from "./helpers";
+import { storage } from "../storage";
+import { getRecordAccessContext, extractUserId, parseHealthHistoryRange } from "./helpers";
 
 type TenantPerformance = {
   tenantId: string;
@@ -225,6 +226,29 @@ export function registerDashboardRoutes(app: Express) {
       });
     } catch (err: unknown) {
       console.error("Dashboard summary error:", err);
+      const message = err instanceof Error ? err.message : "Internal server error";
+      res.status(500).json({ message });
+    }
+  });
+
+  app.get("/api/dashboard/health-history", requireModuleAccess("dashboard"), async (req, res) => {
+    try {
+      const ctx = await getRecordAccessContext(req);
+      if (!ctx) return res.status(401).json({ message: "Authentication required" });
+      const tenantId = req.tenantId || "default";
+
+      const allProjects = await db.select({ id: timelines.id }).from(timelines)
+        .where(and(eq(timelines.tenantId, tenantId), eq(timelines.recordType, "project")));
+
+      const accessibleIds = ctx.isGlobal
+        ? allProjects.map(p => p.id)
+        : allProjects.filter(p => ctx.assignedTimelineIds.includes(p.id)).map(p => p.id);
+
+      const range = parseHealthHistoryRange(req.query.from, req.query.to);
+      const history = await storage.getHealthHistoryByTimelineIds(accessibleIds, tenantId, range);
+      res.json(history);
+    } catch (err: unknown) {
+      console.error("Dashboard health-history error:", err);
       const message = err instanceof Error ? err.message : "Internal server error";
       res.status(500).json({ message });
     }

@@ -14,6 +14,19 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
+export function parseHealthHistoryRange(from: unknown, to: unknown): { from?: Date; to?: Date } | undefined {
+  const range: { from?: Date; to?: Date } = {};
+  if (typeof from === "string" && from) {
+    const d = new Date(from);
+    if (!isNaN(d.getTime())) range.from = d;
+  }
+  if (typeof to === "string" && to) {
+    const d = new Date(to);
+    if (!isNaN(d.getTime())) range.to = d;
+  }
+  return range.from || range.to ? range : undefined;
+}
+
 export function extractUserId(req: any): string | null {
   const user = req.user;
   if (!user) return null;

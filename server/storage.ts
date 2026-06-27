@@ -1,4 +1,4 @@
-import { eq, and, inArray, desc, sql, count } from "drizzle-orm";
+import { eq, and, inArray, desc, asc, gte, lte, sql, count } from "drizzle-orm";
 import { db } from "./db";
 import {
   tenants,
@@ -86,7 +86,12 @@ import {
   businessOutcomes,
   type BusinessOutcome,
   type InsertBusinessOutcome,
+  timelineHealthHistory,
+  type TimelineHealthHistory,
+  type InsertTimelineHealthHistory,
 } from "@shared/schema";
+
+export type HealthHistoryRange = { from?: Date; to?: Date };
 
 export interface IStorage {
   getClients(tenantId?: string): Promise<Client[]>;
@@ -235,6 +240,10 @@ export interface IStorage {
   createBusinessOutcome(data: InsertBusinessOutcome): Promise<BusinessOutcome>;
   updateBusinessOutcome(id: string, tenantId: string, data: Partial<InsertBusinessOutcome>): Promise<BusinessOutcome | undefined>;
   deleteBusinessOutcome(id: string, tenantId: string): Promise<void>;
+
+  createHealthHistory(data: InsertTimelineHealthHistory): Promise<TimelineHealthHistory>;
+  getHealthHistory(timelineId: string, tenantId: string, range?: HealthHistoryRange): Promise<TimelineHealthHistory[]>;
+  getHealthHistoryByTimelineIds(timelineIds: string[], tenantId: string, range?: HealthHistoryRange): Promise<TimelineHealthHistory[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1321,6 +1330,26 @@ export class DatabaseStorage implements IStorage {
 
   async deleteBusinessOutcome(id: string, tenantId: string): Promise<void> {
     await db.delete(businessOutcomes).where(and(eq(businessOutcomes.id, id), eq(businessOutcomes.tenantId, tenantId)));
+  }
+
+  async createHealthHistory(data: InsertTimelineHealthHistory): Promise<TimelineHealthHistory> {
+    const [row] = await db.insert(timelineHealthHistory).values(data).returning();
+    return row;
+  }
+
+  async getHealthHistory(timelineId: string, tenantId: string, range?: HealthHistoryRange): Promise<TimelineHealthHistory[]> {
+    const conditions = [eq(timelineHealthHistory.timelineId, timelineId), eq(timelineHealthHistory.tenantId, tenantId)];
+    if (range?.from) conditions.push(gte(timelineHealthHistory.recordedAt, range.from));
+    if (range?.to) conditions.push(lte(timelineHealthHistory.recordedAt, range.to));
+    return db.select().from(timelineHealthHistory).where(and(...conditions)).orderBy(asc(timelineHealthHistory.recordedAt));
+  }
+
+  async getHealthHistoryByTimelineIds(timelineIds: string[], tenantId: string, range?: HealthHistoryRange): Promise<TimelineHealthHistory[]> {
+    if (timelineIds.length === 0) return [];
+    const conditions = [inArray(timelineHealthHistory.timelineId, timelineIds), eq(timelineHealthHistory.tenantId, tenantId)];
+    if (range?.from) conditions.push(gte(timelineHealthHistory.recordedAt, range.from));
+    if (range?.to) conditions.push(lte(timelineHealthHistory.recordedAt, range.to));
+    return db.select().from(timelineHealthHistory).where(and(...conditions)).orderBy(asc(timelineHealthHistory.recordedAt));
   }
 }
 

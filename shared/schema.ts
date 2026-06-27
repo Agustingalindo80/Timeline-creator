@@ -441,6 +441,24 @@ export const timelines = pgTable("timelines", {
   index("idx_timelines_tenant_record").on(table.tenantId, table.recordType),
 ]);
 
+export const timelineHealthHistory = pgTable("timeline_health_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: text("tenant_id").notNull().default("default"),
+  timelineId: varchar("timeline_id").notNull().references(() => timelines.id, { onDelete: "cascade" }),
+  healthOverall: healthStatusEnum("health_overall").notNull().default("green"),
+  scopeHealth: healthStatusEnum("scope_health").notNull().default("green"),
+  budgetHealth: healthStatusEnum("budget_health").notNull().default("green"),
+  teamHealth: healthStatusEnum("team_health").notNull().default("green"),
+  recordedAt: timestamp("recorded_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  index("idx_health_history_timeline").on(table.timelineId, table.recordedAt),
+  index("idx_health_history_tenant").on(table.tenantId),
+]);
+
+export const insertTimelineHealthHistorySchema = createInsertSchema(timelineHealthHistory).omit({ id: true, recordedAt: true });
+export type InsertTimelineHealthHistory = z.infer<typeof insertTimelineHealthHistorySchema>;
+export type TimelineHealthHistory = typeof timelineHealthHistory.$inferSelect;
+
 export const milestones = pgTable("milestones", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   tenantId: text("tenant_id").notNull().default("default"),
