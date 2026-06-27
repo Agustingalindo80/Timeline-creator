@@ -709,6 +709,8 @@
     "milestoneTrackerDesc": "Track upcoming, overdue, and completed milestones with financial obligations across projects.",
     "raidSummary": "RAID Summary",
     "raidSummaryDesc": "Consolidated view of Risks, Assumptions, Issues, and Dependencies across all projects.",
+    "businessOutcomes": "Business Outcomes",
+    "businessOutcomesDesc": "Value-realisation progress with status breakdown, achievement rate, and at-risk outcomes.",
     "costTracking": "Cost Tracking",
     "costTrackingDesc": "Budget vs. actuals analysis with burn rate trends per project.",
     "marginAnalysis": "Margin Analysis",

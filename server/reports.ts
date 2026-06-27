@@ -8,7 +8,14 @@ import {
   clients,
   evmSnapshots,
   projectTeamMembers,
+  businessOutcomes,
+  teamMembers,
 } from "@shared/schema";
+
+type RecordAccessContext = {
+  isGlobal: boolean;
+  assignedTimelineIds: string[];
+};
 
 export async function getPortfolioHealth(tenantId: string, filters: {
   clientId?: string;
@@ -298,4 +305,140 @@ export async function getRaidSummaryReport(tenantId: string, filters: {
     ...r,
     projectName: projectMap[r.timelineId] || "Unknown",
   }));
+}
+
+export async function getBusinessOutcomesReport(
+  tenantId: string,
+  ctx: RecordAccessContext,
+  filters: {
+    status?: string;
+    projectId?: string;
+    opportunityId?: string;
+    clientId?: string;
+  },
+) {
+  const allTimelines = await db
+    .select({
+      id: timelines.id,
+      title: timelines.title,
+      recordType: timelines.recordType,
+    })
+    .from(timelines)
+    .where(eq(timelines.tenantId, tenantId));
+
+  const titleMap: Record<string, { title: string; recordType: string | null }> = {};
+  const projectIdSet = new Set<string>();
+  const opportunityIdSet = new Set<string>();
+  allTimelines.forEach(t => {
+    titleMap[t.id] = { title: t.title, recordType: t.recordType };
+    if (t.recordType === "project") projectIdSet.add(t.id);
+    else if (t.recordType === "opportunity") opportunityIdSet.add(t.id);
+  });
+
+  const assignedSet = new Set(ctx.assignedTimelineIds);
+  const accessibleProjectIdSet = ctx.isGlobal
+    ? projectIdSet
+    : new Set(Array.from(projectIdSet).filter(id => assignedSet.has(id)));
+  const accessibleOppIdSet = ctx.isGlobal
+    ? opportunityIdSet
+    : new Set(Array.from(opportunityIdSet).filter(id => assignedSet.has(id)));
+
+  const conditions: any[] = [eq(businessOutcomes.tenantId, tenantId)];
+  if (filters.status) {
+    conditions.push(eq(businessOutcomes.status, filters.status as any));
+  }
+  if (filters.projectId) {
+    conditions.push(eq(businessOutcomes.projectId, filters.projectId));
+  }
+  if (filters.opportunityId) {
+    conditions.push(eq(businessOutcomes.opportunityId, filters.opportunityId));
+  }
+  if (filters.clientId) {
+    conditions.push(eq(businessOutcomes.clientId, filters.clientId));
+  }
+
+  const allOutcomes = await db
+    .select()
+    .from(businessOutcomes)
+    .where(and(...conditions));
+
+  const accessibleOutcomes = ctx.isGlobal
+    ? allOutcomes
+    : allOutcomes.filter(o => {
+        const projOk = !o.projectId || accessibleProjectIdSet.has(o.projectId);
+        const oppOk = !o.opportunityId || accessibleOppIdSet.has(o.opportunityId);
+        return projOk && oppOk;
+      });
+
+  const clientIds = Array.from(
+    new Set(accessibleOutcomes.map(o => o.clientId).filter(Boolean)),
+  ) as string[];
+  let clientMap: Record<string, string> = {};
+  if (clientIds.length > 0) {
+    const clientRows = await db
+      .select({ id: clients.id, name: clients.name })
+      .from(clients)
+      .where(and(inArray(clients.id, clientIds), eq(clients.tenantId, tenantId)));
+    clientMap = Object.fromEntries(clientRows.map(c => [c.id, c.name]));
+  }
+
+  const ownerIds = Array.from(
+    new Set(accessibleOutcomes.map(o => o.ownerId).filter(Boolean)),
+  ) as string[];
+  let ownerMap: Record<string, string> = {};
+  if (ownerIds.length > 0) {
+    const ownerRows = await db
+      .select({ id: teamMembers.id, name: teamMembers.name })
+      .from(teamMembers)
+      .where(and(inArray(teamMembers.id, ownerIds), eq(teamMembers.tenantId, tenantId)));
+    ownerMap = Object.fromEntries(ownerRows.map(m => [m.id, m.name]));
+  }
+
+  const items = accessibleOutcomes.map(o => {
+    let linkedType: string | null = null;
+    let linkedName: string | null = null;
+    if (o.projectId && titleMap[o.projectId]) {
+      linkedType = "project";
+      linkedName = titleMap[o.projectId].title;
+    } else if (o.opportunityId && titleMap[o.opportunityId]) {
+      linkedType = "opportunity";
+      linkedName = titleMap[o.opportunityId].title;
+    } else if (o.clientId && clientMap[o.clientId]) {
+      linkedType = "client";
+      linkedName = clientMap[o.clientId];
+    }
+
+    return {
+      id: o.id,
+      title: o.title,
+      status: o.status,
+      strategicObjective: o.strategicObjective,
+      successMetric: o.successMetric,
+      baseline: o.baseline,
+      target: o.target,
+      currentValue: o.currentValue,
+      targetDate: o.targetDate,
+      clientName: o.clientId ? clientMap[o.clientId] || null : null,
+      ownerName: o.ownerId ? ownerMap[o.ownerId] || null : null,
+      linkedType,
+      linkedName,
+    };
+  });
+
+  const statusCounts = { draft: 0, active: 0, achieved: 0, at_risk: 0, cancelled: 0 };
+  items.forEach(o => {
+    const s = o.status || "draft";
+    if (s in statusCounts) statusCounts[s as keyof typeof statusCounts]++;
+  });
+  const total = items.length;
+
+  return {
+    items,
+    summary: {
+      total,
+      byStatus: statusCounts,
+      achievementRate: total > 0 ? Math.round((statusCounts.achieved / total) * 100) : 0,
+      atRiskCount: statusCounts.at_risk,
+    },
+  };
 }

@@ -4,9 +4,9 @@ import { db } from "../db";
 import { requireSuperAdmin } from "../middleware/superadmin";
 import { eq } from "drizzle-orm";
 import { users, timelines } from "@shared/schema";
-import { extractUserId } from "./helpers";
+import { extractUserId, getRecordAccessContext } from "./helpers";
 import { provisionTenant } from "../tenant-provisioning";
-import { getPortfolioHealth, getProjectStatusReport, getMilestonesReport, getRaidSummaryReport } from "../reports";
+import { getPortfolioHealth, getProjectStatusReport, getMilestonesReport, getRaidSummaryReport, getBusinessOutcomesReport } from "../reports";
 import { requirePermission, requireModuleAccess } from "../middleware/permissions";
 
 export function registerGlobalAdminRoutes(app: Express) {
@@ -183,6 +183,23 @@ export function registerGlobalAdminRoutes(app: Express) {
         itemType: req.query.itemType as string | undefined,
         status: req.query.status as string | undefined,
         projectId: req.query.projectId as string | undefined,
+      });
+      res.json(data);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/reports/business-outcomes", requireModuleAccess("reports"), requirePermission("reports.view"), async (req, res) => {
+    try {
+      const ctx = await getRecordAccessContext(req);
+      if (!ctx) return res.status(401).json({ message: "Authentication required" });
+      const tenantId = req.tenantId || "default";
+      const data = await getBusinessOutcomesReport(tenantId, ctx, {
+        status: req.query.status as string | undefined,
+        projectId: req.query.projectId as string | undefined,
+        opportunityId: req.query.opportunityId as string | undefined,
+        clientId: req.query.clientId as string | undefined,
       });
       res.json(data);
     } catch (err: any) {

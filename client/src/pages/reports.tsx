@@ -68,6 +68,14 @@ const reportCategories: ReportCategory[] = [
         available: true,
         testId: "raid-summary",
       },
+      {
+        titleKey: "reports.businessOutcomes",
+        descKey: "reports.businessOutcomesDesc",
+        icon: Target,
+        href: "/reports/business-outcomes",
+        available: true,
+        testId: "business-outcomes",
+      },
     ],
   },
   {

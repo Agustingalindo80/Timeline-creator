@@ -709,6 +709,8 @@
     "milestoneTrackerDesc": "Acompanhe marcos próximos, vencidos e concluídos com obrigações financeiras entre projetos.",
     "raidSummary": "Resumo RAID",
     "raidSummaryDesc": "Visão consolidada de Riscos, Premissas, Problemas e Dependências em todos os projetos.",
+    "businessOutcomes": "Resultados de Negócio",
+    "businessOutcomesDesc": "Progresso da realização de valor com detalhamento por status, taxa de conquista e resultados em risco.",
     "costTracking": "Acompanhamento de Custos",
     "costTrackingDesc": "Análise de orçamento vs. real com tendências de queima por projeto.",
     "marginAnalysis": "Análise de Margem",

@@ -39,6 +39,7 @@ import PortfolioHealthReport from "@/pages/reports/portfolio-health";
 import ProjectStatusReport from "@/pages/reports/project-status";
 import MilestoneTrackerReport from "@/pages/reports/milestone-tracker";
 import RaidSummaryReport from "@/pages/reports/raid-summary";
+import BusinessOutcomesReport from "@/pages/reports/business-outcomes";
 import BusinessOutcomesPage from "@/pages/business-outcomes";
 import BusinessOutcomeDetail from "@/pages/business-outcome-detail";
 import Landing from "@/pages/landing";
@@ -141,6 +142,7 @@ function AppRouter() {
       <Route path="/reports/project-status">{() => <ProtectedRoute requiredModule="module.reports"><ProjectStatusReport /></ProtectedRoute>}</Route>
       <Route path="/reports/milestone-tracker">{() => <ProtectedRoute requiredModule="module.reports"><MilestoneTrackerReport /></ProtectedRoute>}</Route>
       <Route path="/reports/raid-summary">{() => <ProtectedRoute requiredModule="module.reports"><RaidSummaryReport /></ProtectedRoute>}</Route>
+      <Route path="/reports/business-outcomes">{() => <ProtectedRoute requiredModule="module.reports"><BusinessOutcomesReport /></ProtectedRoute>}</Route>
       <Route path="/reports">{() => <ProtectedRoute requiredModule="module.reports"><ReportsPage /></ProtectedRoute>}</Route>
       <Route path="/portfolio-health">{() => <ProtectedRoute requiredModule="module.reports"><PortfolioHealth /></ProtectedRoute>}</Route>
       <Route path="/business-outcomes/:id">{() => <ProtectedRoute requiredModule="module.business_outcomes"><BusinessOutcomeDetail /></ProtectedRoute>}</Route>
