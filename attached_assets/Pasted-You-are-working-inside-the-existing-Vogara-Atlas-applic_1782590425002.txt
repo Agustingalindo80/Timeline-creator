@@ -1,0 +1,785 @@
+You are working inside the existing Vogara Atlas application.
+
+Objective:
+Add a full Portfolio Level Health Dashboard to Vogara Atlas. This dashboard must provide executive-level visibility across all active projects, programs, clients, subsidiaries, FlightPath stages, financials, delivery health, risks, gates, business outcomes, and adoption/value realization indicators.
+
+This is not a task-management dashboard. Atlas must remain the executive governance, financial control, delivery health, gate readiness, and business outcome visibility cockpit. ClickUp/Jira may remain the execution system of record. Atlas should summarize, govern, and escalate.
+
+Use the existing application architecture, routing, database patterns, UI components, authentication, RBAC, and styling conventions already present in the codebase. Do not rewrite the app. Extend it cleanly.
+
+Current known Atlas direction:
+- Frontend: React / Vite
+- Backend: Express / Node
+- Database: PostgreSQL with Drizzle ORM
+- Atlas owns governance, baselines, financial visibility, gates, executive reporting, and outcome tracking
+- FlightPath stages and gates are part of the operating model
+- EVM snapshots, RBAC, Google Drive artifact verification, and AI governance coach/gate evaluator may already exist conceptually or partially
+
+Brand / Visual Direction:
+Use Vogara Nova branding:
+- Primary navy: #003968
+- Dark gray: #63666F
+- Light gray: #D0D1DB
+- White background
+- Executive, clean, premium, minimal dashboard look
+- Avoid excessive colors
+- Use RAG colors only for status indicators:
+  - Green: healthy/on track
+  - Amber: at risk
+  - Red: critical/off track
+  - Gray: not started / no data
+- If the Vogara Nova logo asset exists in the project, use it in the dashboard header. Do not distort or recolor the logo.
+- Use the existing typography if already configured. If Brother 1816 / Superior Title are unavailable, use a clean fallback such as Inter, Arial, or system sans-serif.
+
+Main User Story:
+As Vogara leadership, I need a portfolio-level dashboard that allows me to understand, in one view, whether the company’s delivery portfolio is healthy, profitable, governed, and aligned to strategic business outcomes, so I can make timely executive decisions.
+
+Primary Route:
+Add a new route:
+- /portfolio-health
+
+Navigation:
+Add a menu item named:
+- Portfolio Health
+
+Dashboard Title:
+Portfolio Health Dashboard
+
+Dashboard Subtitle:
+Executive view of delivery health, financial control, governance readiness, risk exposure, and business outcome realization across the active Vogara portfolio.
+
+Required Page Structure:
+
+1. Executive Summary Header
+Create a top section with:
+- Portfolio Health Score: 0–100
+- Portfolio RAG Status: Green / Amber / Red
+- Active Projects
+- Clients
+- Total Contract Value
+- Forecast Revenue
+- Forecast Margin
+- Portfolio Risk Exposure
+- Projects Requiring Executive Attention
+- Last Updated timestamp
+
+2. Portfolio Health Score
+Create a calculated portfolio health score using weighted dimensions.
+
+Recommended default weights:
+- Delivery Schedule Health: 20%
+- Financial Health: 20%
+- Scope / Change Health: 15%
+- Quality / Defect Health: 15%
+- RAID / Risk Health: 15%
+- Governance / Gate Health: 10%
+- Business Outcome / Adoption Health: 5%
+
+Formula:
+Portfolio Health Score =
+weighted average of all active project health scores.
+
+Each project health score should also use the same weighted dimensions.
+
+RAG thresholds:
+- Green: score >= 85
+- Amber: score >= 70 and < 85
+- Red: score < 70
+- Gray: insufficient data
+
+3. Executive KPI Cards
+Add cards for:
+- Active Projects
+- Projects Green
+- Projects Amber
+- Projects Red
+- Total Budget
+- Actual Cost
+- Forecast Cost
+- Forecast Margin %
+- Schedule Variance
+- Cost Variance
+- Open Critical Risks
+- Open Executive Decisions
+- Blocked Gates
+- Upcoming Go-Lives
+- Projects in Hypercare
+- Business Outcomes On Track
+
+4. Health Distribution Section
+Add visual components:
+- Project Health Distribution by RAG
+- Health by FlightPath Stage
+- Health by Client
+- Health by Subsidiary / Business Unit
+- Health Trend over Time
+
+Use charts if charting library already exists. If not, implement simple visual bars/cards without adding heavy dependencies unless necessary.
+
+5. Portfolio Project Table
+Create a table listing all active projects.
+
+Columns:
+- Project Name
+- Client
+- Subsidiary / Business Unit
+- Engagement Manager / PM
+- Current FlightPath Stage
+- Overall Health
+- Schedule Health
+- Financial Health
+- Scope Health
+- Quality Health
+- Risk Health
+- Gate Health
+- Outcome Health
+- Budget
+- Actuals
+- Forecast
+- Forecast Margin %
+- Start Date
+- Target Go-Live
+- Next Gate
+- Open Critical Risks
+- Open Decisions
+- Last Updated
+- Action Required
+
+Table requirements:
+- Sortable columns
+- Filterable by Client, Subsidiary, Stage, PM, RAG Status
+- Search by Project or Client
+- Row click opens project detail view if route already exists
+- If no project detail route exists, open a right-side detail drawer
+
+6. Portfolio Heatmap
+Create a matrix view.
+
+Rows:
+- Projects
+
+Columns:
+- Schedule
+- Financials
+- Scope
+- Quality
+- Risks
+- Governance
+- Outcomes
+
+Each cell:
+- Displays RAG status
+- Tooltip explains why the status was assigned
+- Clicking a cell opens a detail drawer showing underlying drivers
+
+7. FlightPath Stage View
+Create a section showing portfolio movement through FlightPath.
+
+Stages:
+- Pre-Sales / Originate
+- Align
+- Shape
+- Build
+- Validate
+- Launch
+- Adopt / Evolve
+
+For each stage show:
+- Number of projects
+- Average health score
+- Blocked gates
+- Required executive decisions
+- Average days in stage
+- Projects aging beyond expected time
+- Stage readiness %
+
+8. Governance / Gate Readiness Panel
+Show:
+- Gate readiness by project
+- Required evidence missing
+- Gate status:
+  - Not Started
+  - In Progress
+  - Ready for Review
+  - Blocked
+  - Approved
+  - Waived
+- Next gate date
+- Gate owner
+- Approval status
+- Missing artifacts
+- Open decisions
+- Escalation required
+
+Gate health logic:
+- Green: all mandatory gate evidence complete and no blocker
+- Amber: minor evidence gaps or pending review
+- Red: missing mandatory evidence, unresolved blocker, or overdue gate
+- Gray: gate not applicable or no data
+
+9. Financial Health Panel
+Show portfolio-level financials:
+- Contracted Revenue
+- Approved Budget
+- Actual Cost
+- Forecast Cost
+- Estimate at Completion
+- Forecast Gross Margin
+- Margin Leakage
+- Burn Rate
+- Cost Performance Index
+- Schedule Performance Index
+- Budget at Completion
+- Earned Value
+- Planned Value
+- Actual Cost
+- Variance at Completion
+
+EVM formulas:
+- CV = EV - AC
+- SV = EV - PV
+- CPI = EV / AC
+- SPI = EV / PV
+- EAC = BAC / CPI, where valid
+- VAC = BAC - EAC
+- Gross Margin % = (Revenue - Cost) / Revenue
+
+Financial RAG:
+- Green:
+  - Forecast margin >= target margin
+  - CPI >= 0.95
+  - Cost variance within tolerance
+- Amber:
+  - Forecast margin below target by <= 5 percentage points
+  - CPI between 0.85 and 0.95
+- Red:
+  - Forecast margin below target by more than 5 percentage points
+  - CPI < 0.85
+  - EAC materially exceeds BAC
+
+Use configurable thresholds.
+
+10. Risk / RAID Panel
+Create a portfolio RAID summary:
+- Open Risks
+- Open Assumptions
+- Open Issues
+- Open Dependencies
+- Critical Risks
+- Overdue Mitigations
+- Risks Without Owner
+- Risks Requiring Executive Escalation
+- Top 5 Portfolio Risks
+
+Risk scoring:
+Risk Score = Probability x Impact
+
+Risk RAG:
+- Green: no critical risks, mitigation on track
+- Amber: medium/high risk with mitigation assigned
+- Red: critical risk, overdue mitigation, no owner, or executive decision required
+
+11. Quality Health Panel
+Show:
+- Open defects
+- Critical defects
+- UAT blockers
+- Failed test cases
+- Regression readiness
+- Defect aging
+- Reopened defects
+- QA exit status
+
+Quality RAG:
+- Green: no critical blocker, QA/UAT readiness met
+- Amber: non-critical defects open but controlled
+- Red: critical defects, UAT blockers, failed exit criteria, or unstable release
+
+12. Scope / Change Health Panel
+Show:
+- Open change requests
+- Approved changes
+- Rejected changes
+- Pending commercial impact
+- Scope items added
+- Scope items removed
+- Unapproved work detected
+- Change impact on timeline
+- Change impact on cost/margin
+
+Scope RAG:
+- Green: no uncontrolled scope change
+- Amber: change exists but documented and under review
+- Red: work occurring without approval, major scope expansion, or unresolved commercial impact
+
+13. Business Outcome / Value Realization Panel
+Atlas must connect delivery execution to business outcomes.
+
+Show:
+- Total business outcomes tracked
+- Outcomes on track
+- Outcomes at risk
+- Outcomes not measurable
+- Outcomes delivered
+- Outcomes pending adoption evidence
+- Metrics available
+- Metrics missing
+- Value evidence captured
+
+Outcome RAG:
+- Green: outcome linked to project scope and measurable evidence exists or is on track
+- Amber: outcome defined but metric/evidence incomplete
+- Red: no measurable outcome, no owner, or delivery scope not traceable to stated outcome
+
+14. Executive Attention Queue
+Create a dedicated section called:
+Executive Attention Required
+
+List items requiring leadership attention:
+- Red projects
+- Critical risks
+- Overdue gates
+- Margin leakage
+- Go-live readiness issues
+- Missing executive decisions
+- UAT blockers
+- Scope changes with commercial impact
+- Projects with no recent update
+
+Each item should show:
+- Severity
+- Project
+- Client
+- Issue Type
+- Owner
+- Due Date
+- Recommended Action
+- Escalation Status
+
+15. Portfolio Trend View
+Add historical trend visualization:
+- Portfolio Health Score by week
+- Projects Green / Amber / Red by week
+- Margin trend by week
+- Risk exposure trend by week
+- Gate readiness trend by week
+- Outcome realization trend by week
+
+If historical data does not exist, create the data model and seed sample trend data.
+
+16. Filters
+Global dashboard filters:
+- Date range
+- Subsidiary / Business Unit
+- Client
+- Project Manager / Engagement Manager
+- FlightPath Stage
+- RAG Status
+- Project Type
+- Active / Closed / On Hold
+- Strategic Account flag
+
+17. Drill-Down Detail Drawer
+When clicking a project, health score, RAG cell, or executive attention item, open a detail drawer.
+
+Drawer should show:
+- Project overview
+- Client
+- Stage
+- Overall score
+- RAG rationale
+- Key risks
+- Financial summary
+- Gate status
+- Next milestone
+- Business outcomes
+- Recommended executive action
+- Link to project detail route if available
+
+18. Data Model
+Inspect existing database schema first. Reuse existing tables if available. If not available, add or extend tables cleanly.
+
+Required conceptual entities:
+- portfolio_projects
+- portfolio_health_snapshots
+- project_health_dimensions
+- project_financial_snapshots
+- project_gate_status
+- project_raid_items
+- project_quality_metrics
+- project_scope_changes
+- business_outcomes
+- executive_attention_items
+
+Recommended fields:
+
+portfolio_projects:
+- id
+- name
+- client_name
+- subsidiary
+- project_type
+- status
+- flightpath_stage
+- engagement_manager
+- start_date
+- target_go_live_date
+- contracted_revenue
+- approved_budget
+- target_margin_percent
+- strategic_account
+- created_at
+- updated_at
+
+project_health_dimensions:
+- id
+- project_id
+- snapshot_date
+- overall_score
+- overall_rag
+- schedule_score
+- schedule_rag
+- financial_score
+- financial_rag
+- scope_score
+- scope_rag
+- quality_score
+- quality_rag
+- risk_score
+- risk_rag
+- governance_score
+- governance_rag
+- outcome_score
+- outcome_rag
+- rationale_json
+- created_at
+
+project_financial_snapshots:
+- id
+- project_id
+- snapshot_date
+- revenue
+- bac
+- pv
+- ev
+- ac
+- eac
+- vac
+- cpi
+- spi
+- actual_cost
+- forecast_cost
+- forecast_margin_percent
+- margin_leakage
+- created_at
+
+project_gate_status:
+- id
+- project_id
+- gate_name
+- flightpath_stage
+- status
+- owner
+- due_date
+- approved_by
+- approved_at
+- mandatory_evidence_complete
+- missing_evidence_count
+- blocker_count
+- created_at
+- updated_at
+
+project_raid_items:
+- id
+- project_id
+- type
+- title
+- description
+- probability
+- impact
+- score
+- severity
+- status
+- owner
+- due_date
+- mitigation
+- requires_executive_attention
+- created_at
+- updated_at
+
+project_quality_metrics:
+- id
+- project_id
+- snapshot_date
+- open_defects
+- critical_defects
+- uat_blockers
+- failed_test_cases
+- reopened_defects
+- regression_ready
+- qa_exit_status
+- created_at
+
+project_scope_changes:
+- id
+- project_id
+- title
+- status
+- commercial_impact
+- timeline_impact_days
+- margin_impact_percent
+- approved_by
+- approved_at
+- created_at
+- updated_at
+
+business_outcomes:
+- id
+- project_id
+- outcome_name
+- description
+- owner
+- metric_name
+- baseline_value
+- target_value
+- current_value
+- status
+- evidence_status
+- evidence_url
+- created_at
+- updated_at
+
+executive_attention_items:
+- id
+- project_id
+- severity
+- issue_type
+- title
+- description
+- owner
+- due_date
+- recommended_action
+- escalation_status
+- status
+- created_at
+- updated_at
+
+19. Backend API
+Create or extend backend endpoints.
+
+Required endpoints:
+- GET /api/portfolio-health/summary
+- GET /api/portfolio-health/projects
+- GET /api/portfolio-health/heatmap
+- GET /api/portfolio-health/stages
+- GET /api/portfolio-health/financials
+- GET /api/portfolio-health/raid
+- GET /api/portfolio-health/quality
+- GET /api/portfolio-health/scope
+- GET /api/portfolio-health/outcomes
+- GET /api/portfolio-health/executive-attention
+- GET /api/portfolio-health/trends
+- GET /api/portfolio-health/project/:projectId
+
+Each endpoint should support filters:
+- dateFrom
+- dateTo
+- subsidiary
+- client
+- stage
+- rag
+- manager
+- projectStatus
+
+20. Seed Data
+If the current environment lacks data, add realistic seed data for at least 8 sample projects.
+
+Sample projects:
+- Grupo Flecha Amarilla — Service Cloud Evolution
+- Alpura — SPIFF Automation
+- Inter — Commerce / SCV Stabilization
+- Coppel — Seller Support Center
+- Konfío — Outbound Campaigns
+- Terra Regia — CRM Assessment
+- Xcaret — Data Cloud Refresh
+- Public Sector — Citizen Services CRM
+
+Use realistic but clearly sample values.
+
+21. RBAC / Access Control
+Respect existing RBAC. If roles exist, use them.
+
+Recommended permissions:
+- Admin: full access
+- Executive: portfolio dashboard read access
+- PMO Lead: portfolio dashboard read/write operational comments
+- Engagement Manager / PM: project-level update access
+- Practice Lead: project and capability health visibility
+- Viewer: read-only access
+
+Do not expose financial details to roles that do not already have permission to view financials. If permission rules are not available, create a simple guard or placeholder permission check.
+
+22. UI Components
+Create reusable components:
+- PortfolioHealthPage
+- ExecutiveSummaryCards
+- PortfolioHealthScore
+- PortfolioRagBadge
+- PortfolioProjectTable
+- PortfolioHeatmap
+- FlightPathStageDistribution
+- FinancialHealthPanel
+- GovernanceGatePanel
+- RaidPanel
+- QualityHealthPanel
+- ScopeHealthPanel
+- OutcomeRealizationPanel
+- ExecutiveAttentionQueue
+- PortfolioTrendChart
+- ProjectHealthDrawer
+- PortfolioFilters
+
+23. UX Requirements
+The dashboard must feel executive-ready:
+- No clutter
+- Clear hierarchy
+- Cards at top, insights in middle, drill-downs below
+- Each red/amber item must explain why
+- Every metric should have a label and tooltip
+- Use concise executive language
+- Avoid overly technical labels unless they are standard metrics like CPI, SPI, EAC, BAC
+- Include empty states
+- Include loading states
+- Include error states
+- Mobile responsiveness is nice-to-have, but desktop executive view is priority
+
+24. Recommended Executive Language
+Use terms such as:
+- Executive Attention Required
+- Portfolio Exposure
+- Margin Leakage
+- Gate Readiness
+- Delivery Confidence
+- Business Outcome Alignment
+- Forecast Health
+- Governance Readiness
+- Value Evidence
+- Go-Live Readiness
+- Escalation Required
+- Controlled
+- At Risk
+- Critical
+
+Avoid generic terms like:
+- Stuff
+- Things
+- Random status
+- Good/bad
+- To-do list
+
+25. Calculations
+Implement utility functions:
+- calculateProjectHealthScore(project)
+- calculatePortfolioHealthScore(projects)
+- getRagFromScore(score)
+- calculateFinancialMetrics(snapshot)
+- calculateRiskExposure(raidItems)
+- calculateGateReadiness(gates)
+- calculateOutcomeHealth(outcomes)
+- calculateExecutiveAttentionItems(projects)
+
+26. Acceptance Criteria
+The implementation is complete when:
+
+Functional:
+- /portfolio-health route exists and loads successfully
+- Dashboard displays portfolio summary, health score, RAG status, project table, heatmap, financials, RAID, gates, quality, scope, outcomes, executive attention, and trends
+- Filters update dashboard data
+- Project drill-down drawer works
+- Seed data is available if no real data exists
+- Backend endpoints return structured JSON
+- Health score calculations work consistently
+- RAG status is calculated and displayed consistently
+
+Governance:
+- Dashboard distinguishes Atlas governance visibility from execution task management
+- FlightPath stages are represented
+- Gates and missing evidence are visible
+- Business outcomes are traceable to projects
+- Executive attention items are clearly surfaced
+
+Financial:
+- Budget, actuals, forecast, margin, CPI, SPI, EAC, VAC are represented
+- Financial health RAG is calculated
+- Margin leakage is visible
+
+Design:
+- Uses Vogara Nova colors
+- Looks executive-ready
+- Uses clean cards, tables, badges, and visual hierarchy
+- No broken layout
+- No hard-coded unreadable colors
+- No distorted logo
+
+Technical:
+- Uses existing project patterns
+- Does not break existing routes
+- Does not remove existing features
+- Includes TypeScript types if the project uses TypeScript
+- Includes migration/schema updates if needed
+- Includes seed data where appropriate
+- Handles loading, empty, and error states
+
+27. Implementation Instructions
+Before coding:
+- Inspect the current codebase structure
+- Identify routing system
+- Identify UI component library or styling approach
+- Identify existing database schema
+- Identify existing auth/RBAC patterns
+- Identify existing charting library, if any
+
+Then:
+- Add database schema extensions
+- Add seed data
+- Add backend APIs
+- Add frontend route
+- Add dashboard components
+- Add filters and drill-down drawer
+- Add health calculation utilities
+- Add navigation entry
+- Validate locally
+- Fix lint/build/runtime errors
+
+28. Do Not
+- Do not replace the current Atlas application
+- Do not create a disconnected standalone dashboard
+- Do not remove existing features
+- Do not create fake authentication if existing auth exists
+- Do not overcomplicate with unnecessary dependencies
+- Do not use excessive animations
+- Do not make this look like a generic SaaS template
+- Do not expose financial data without role awareness
+- Do not treat this as a task tracker
+
+29. Final Deliverable
+Deliver a working Portfolio Health Dashboard inside Vogara Atlas with:
+- Working route
+- Clean executive UI
+- Backend data support
+- Seed data
+- Health calculations
+- RAG logic
+- Filters
+- Drill-down details
+- Portfolio-level governance view
+- Financial / delivery / risk / gate / outcome visibility
+
+After implementation, provide:
+- Summary of files changed
+- New routes added
+- New APIs added
+- New database tables/fields added
+- How to test
+- Any assumptions made
+- Any remaining recommended enhancements
