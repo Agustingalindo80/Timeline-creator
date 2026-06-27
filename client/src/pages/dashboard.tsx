@@ -415,24 +415,22 @@ export default function Dashboard() {
               ) : (
                 <div className="divide-y divide-border">
                   {summary.businessOutcomes.atRiskOutcomes.map(o => {
-                    const content = (
-                      <div className="flex items-center justify-between py-2.5 px-2 rounded-md hover-elevate cursor-pointer group" data-testid={`at-risk-outcome-${o.id}`}>
-                        <div className="min-w-0">
-                          <div className="text-sm font-medium truncate">{o.title}</div>
-                          {o.linkedTitle && (
-                            <div className="text-xs text-muted-foreground truncate mt-0.5">{o.linkedTitle}</div>
-                          )}
+                    const href = o.timelineId ? `/timeline/${o.timelineId}` : `/business-outcomes/${o.id}`;
+                    return (
+                      <Link key={o.id} href={href}>
+                        <div className="flex items-center justify-between py-2.5 px-2 rounded-md hover-elevate cursor-pointer group" data-testid={`at-risk-outcome-${o.id}`}>
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium truncate">{o.title}</div>
+                            {o.linkedTitle && (
+                              <div className="text-xs text-muted-foreground truncate mt-0.5">{o.linkedTitle}</div>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
+                            <ChevronRight className="w-4 h-4 text-muted-foreground/50 invisible group-hover:visible" />
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
-                          {o.timelineId && <ChevronRight className="w-4 h-4 text-muted-foreground/50 invisible group-hover:visible" />}
-                        </div>
-                      </div>
-                    );
-                    return o.timelineId ? (
-                      <Link key={o.id} href={`/timeline/${o.timelineId}`}>{content}</Link>
-                    ) : (
-                      <div key={o.id}>{content}</div>
+                      </Link>
                     );
                   })}
                 </div>
