@@ -246,8 +246,15 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card data-testid="card-health-heatmap">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5 uppercase tracking-wider">
-              <Activity className="w-3.5 h-3.5" /> {t("dashboard.healthHeatmap")}
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between gap-2 flex-wrap">
+              <span className="flex items-center gap-1.5 uppercase tracking-wider">
+                <Activity className="w-3.5 h-3.5" /> {t("dashboard.healthHeatmap")}
+              </span>
+              <Link href="/portfolio-health">
+                <Button variant="ghost" size="sm" data-testid="link-portfolio-health">
+                  {t("common.viewAll")} <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                </Button>
+              </Link>
             </CardTitle>
           </CardHeader>
           <CardContent>

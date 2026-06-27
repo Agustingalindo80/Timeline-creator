@@ -6,6 +6,17 @@ import { eq, and, sql } from "drizzle-orm";
 import { requireModuleAccess } from "../middleware/permissions";
 import { storage } from "../storage";
 import { getRecordAccessContext, extractUserId, parseHealthHistoryRange } from "./helpers";
+import { getPortfolioHealth } from "../reports";
+
+type PortfolioRollup = {
+  key: string;
+  label: string;
+  total: number;
+  green: number;
+  amber: number;
+  red: number;
+  totalBudget: number;
+};
 
 type TenantPerformance = {
   tenantId: string;
@@ -249,6 +260,61 @@ export function registerDashboardRoutes(app: Express) {
       res.json(history);
     } catch (err: unknown) {
       console.error("Dashboard health-history error:", err);
+      const message = err instanceof Error ? err.message : "Internal server error";
+      res.status(500).json({ message });
+    }
+  });
+
+  app.get("/api/dashboard/portfolio-health", requireModuleAccess("reports"), async (req, res) => {
+    try {
+      const ctx = await getRecordAccessContext(req);
+      if (!ctx) return res.status(401).json({ message: "Authentication required" });
+      const tenantId = req.tenantId || "default";
+
+      const allProjects = await getPortfolioHealth(tenantId, {});
+
+      const projects = ctx.isGlobal
+        ? allProjects
+        : allProjects.filter(p => ctx.assignedTimelineIds.includes(p.id));
+
+      const buildRollups = (keyFor: (p: typeof projects[number]) => { key: string; label: string }): PortfolioRollup[] => {
+        const map = new Map<string, PortfolioRollup>();
+        for (const p of projects) {
+          const { key, label } = keyFor(p);
+          let r = map.get(key);
+          if (!r) {
+            r = { key, label, total: 0, green: 0, amber: 0, red: 0, totalBudget: 0 };
+            map.set(key, r);
+          }
+          r.total++;
+          const h = (p.healthOverall || "green") as "green" | "amber" | "red";
+          if (h === "green" || h === "amber" || h === "red") r[h]++;
+          r.totalBudget += parseFloat(p.approvedBudget || "0") || 0;
+        }
+        return Array.from(map.values()).sort((a, b) => b.total - a.total);
+      };
+
+      const byClient = buildRollups(p => ({
+        key: p.clientId || "__unassigned__",
+        label: p.clientName || "Unassigned",
+      }));
+
+      const byRegion = buildRollups(p => ({
+        key: p.region || "__unassigned__",
+        label: p.region || "Unassigned",
+      }));
+
+      const fromDate = new Date();
+      fromDate.setDate(fromDate.getDate() - 90);
+      const history = await storage.getHealthHistoryByTimelineIds(
+        projects.map(p => p.id),
+        tenantId,
+        { from: fromDate },
+      );
+
+      res.json({ projects, rollups: { byClient, byRegion }, history, historyFrom: fromDate.toISOString() });
+    } catch (err: unknown) {
+      console.error("Dashboard portfolio-health error:", err);
       const message = err instanceof Error ? err.message : "Internal server error";
       res.status(500).json({ message });
     }

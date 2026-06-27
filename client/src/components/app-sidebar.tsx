@@ -1,4 +1,4 @@
-import { LayoutDashboard, FolderKanban, Settings, Building2, Users, UserCheck, CalendarRange, Clock, LogOut, Info, Bot, Target, Shield, ChevronRight, Globe, ChevronsUpDown, FlaskConical, BarChart3, BookOpen, Crosshair } from "lucide-react";
+import { LayoutDashboard, FolderKanban, Settings, Building2, Users, UserCheck, CalendarRange, Clock, LogOut, Info, Bot, Target, Shield, ChevronRight, Globe, ChevronsUpDown, FlaskConical, BarChart3, BookOpen, Crosshair, HeartPulse } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -119,6 +119,7 @@ export function AppSidebar() {
     { title: t("nav.opportunities"), url: "/opportunities", icon: Target, visible: hasModule("opportunities") && opportunitiesEnabled },
     { title: t("nav.projects"), url: "/projects", icon: FolderKanban, visible: hasModule("projects") },
     { title: t("nav.businessOutcomes"), url: "/business-outcomes", icon: Crosshair, visible: hasModule("business_outcomes") },
+    { title: t("nav.portfolioHealth"), url: "/portfolio-health", icon: HeartPulse, visible: hasModule("reports") },
     { title: t("nav.reports"), url: "/reports", icon: BarChart3, visible: hasModule("reports") },
   ].filter(i => i.visible);
 
