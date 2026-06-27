@@ -218,16 +218,18 @@ export function DimensionHeatmap({ heatmap }: { heatmap: Heatmap }) {
                           <td key={c.key} className="p-0">
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <div
-                                  className="h-8 w-full min-w-[44px] rounded flex items-center justify-center text-[11px] font-semibold tabular-nums cursor-default"
+                                <Link
+                                  href={`/timeline/${row.id}`}
+                                  className="h-8 w-full min-w-[44px] rounded flex items-center justify-center text-[11px] font-semibold tabular-nums cursor-pointer transition-shadow hover:ring-2 hover:ring-offset-1 hover:ring-offset-card focus-visible:outline-none focus-visible:ring-2"
                                   style={{
                                     backgroundColor: `${RAG_COLOR[cell.rag]}26`,
                                     color: RAG_COLOR[cell.rag],
                                   }}
+                                  aria-label={`${row.title} ${c.label}: ${RAG_LABEL[cell.rag]}`}
                                   data-testid={`heatmap-cell-${row.id}-${c.key}`}
                                 >
                                   {cell.score === null ? "\u2014" : cell.score}
-                                </div>
+                                </Link>
                               </TooltipTrigger>
                               <TooltipContent side="top" className="max-w-[240px]">
                                 <p className="font-semibold">
