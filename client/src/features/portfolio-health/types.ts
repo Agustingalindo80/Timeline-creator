@@ -109,6 +109,10 @@ export interface GovernanceProjectRow {
   title: string;
   stageName: string | null;
   gateStatus: "blocked" | "in_review" | "on_track" | "not_started";
+  nextGateName: string | null;
+  owner: string | null;
+  targetDate: string | null;
+  blockers: string[];
   missingEvidence: number;
   blocked: number;
 }

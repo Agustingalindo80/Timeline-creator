@@ -28,6 +28,7 @@ import {
   computePanels,
   emptyPanels,
   type PortfolioPanels,
+  type PanelProjectInput,
   type PanelRiskRow,
   type PanelOutcomeRow,
 } from "./services/portfolio-panels";
@@ -283,12 +284,20 @@ export async function getPortfolioOverview(
       db
         .select({
           timelineId: projectGates.timelineId,
+          stageId: projectGates.stageId,
           status: projectGates.status,
+          approvedBy: projectGates.approvedBy,
+          evaluatorResult: projectGates.evaluatorResult,
         })
         .from(projectGates)
         .where(and(eq(projectGates.tenantId, tenantId), inArray(projectGates.timelineId, ids))),
       db
-        .select({ id: flightpathStages.id, name: flightpathStages.name })
+        .select({
+          id: flightpathStages.id,
+          name: flightpathStages.name,
+          gateName: flightpathStages.gateName,
+          sortOrder: flightpathStages.sortOrder,
+        })
         .from(flightpathStages)
         .where(eq(flightpathStages.tenantId, tenantId)),
       db
@@ -313,6 +322,7 @@ export async function getPortfolioOverview(
 
   const clientMap = new Map(clientRows.map((c) => [c.id, c.name]));
   const stageMap = new Map(stageRows.map((s) => [s.id, s.name]));
+  const stageDetailMap = new Map(stageRows.map((s) => [s.id, s]));
 
   // Latest current EVM snapshot per timeline (max weekEnding).
   const evmByTimeline = new Map<string, (typeof evmRows)[number]>();
@@ -331,10 +341,14 @@ export async function getPortfolioOverview(
   }
 
   const gatesByTimeline = new Map<string, GateInput[]>();
+  const gateRowsByTimeline = new Map<string, (typeof gateRows)[number][]>();
   for (const g of gateRows) {
     const arr = gatesByTimeline.get(g.timelineId) ?? [];
     arr.push({ status: g.status });
     gatesByTimeline.set(g.timelineId, arr);
+    const full = gateRowsByTimeline.get(g.timelineId) ?? [];
+    full.push(g);
+    gateRowsByTimeline.set(g.timelineId, full);
   }
 
   const outcomesByTimeline = new Map<string, OutcomeInput[]>();
@@ -497,7 +511,47 @@ export async function getPortfolioOverview(
     evidence: o.evidence,
   }));
 
-  const panels = computePanels(projects, {
+  const panelProjects: PanelProjectInput[] = projects.map((p) => {
+    const fullGates = gateRowsByTimeline.get(p.id) ?? [];
+    const nextGate = fullGates
+      .filter((g) => !APPROVED_GATE.has(g.status))
+      .sort(
+        (a, b) =>
+          (stageDetailMap.get(a.stageId)?.sortOrder ?? 0) -
+          (stageDetailMap.get(b.stageId)?.sortOrder ?? 0),
+      )[0];
+    let gateDetail: PanelProjectInput["gateDetail"] = null;
+    if (nextGate) {
+      const ev = nextGate.evaluatorResult;
+      const blockers = [
+        ...(ev?.missingItems ?? []),
+        ...(ev?.raidFlags ?? []),
+        ...(ev?.evmFlags ?? []),
+      ];
+      const stage = stageDetailMap.get(nextGate.stageId);
+      gateDetail = {
+        nextGateName: stage?.gateName ?? stage?.name ?? null,
+        owner: nextGate.approvedBy ?? null,
+        blockers,
+      };
+    }
+    return {
+      id: p.id,
+      title: p.title,
+      projectStatus: p.projectStatus,
+      estimatedRevenue: p.estimatedRevenue,
+      approvedBudget: p.approvedBudget,
+      totalRunningCost: p.totalRunningCost,
+      grossMargin: p.grossMargin,
+      flightpathStageName: p.flightpathStageName,
+      endDate: p.endDate,
+      evm: p.evm,
+      gateSummary: p.gateSummary,
+      gateDetail,
+    };
+  });
+
+  const panels = computePanels(panelProjects, {
     missingEvidenceByTimeline,
     risks: panelRisks,
     outcomes: panelOutcomes,

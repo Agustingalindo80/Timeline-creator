@@ -34,6 +34,12 @@ const SEVERITY: Record<string, number> = {
 
 // ---- Input shapes (mirrors fields gathered in reports.ts) ----
 
+export interface PanelGateDetail {
+  nextGateName: string | null;
+  owner: string | null;
+  blockers: string[];
+}
+
 export interface PanelProjectInput {
   id: string;
   title: string;
@@ -43,6 +49,7 @@ export interface PanelProjectInput {
   totalRunningCost: string | null;
   grossMargin: string | null;
   flightpathStageName: string | null;
+  endDate: string | null;
   evm: {
     cpi: number | null;
     spi: number | null;
@@ -54,6 +61,7 @@ export interface PanelProjectInput {
     vac: number | null;
   } | null;
   gateSummary: { total: number; blocked: number; pending: number; approved: number };
+  gateDetail: PanelGateDetail | null;
 }
 
 export interface PanelRiskRow {
@@ -111,6 +119,10 @@ export interface GovernanceProjectRow {
   title: string;
   stageName: string | null;
   gateStatus: "blocked" | "in_review" | "on_track" | "not_started";
+  nextGateName: string | null;
+  owner: string | null;
+  targetDate: string | null;
+  blockers: string[];
   missingEvidence: number;
   blocked: number;
 }
@@ -323,11 +335,19 @@ function computeGovernance(
     else gateStatus = "not_started";
 
     if (gs.total > 0 || missing > 0) {
+      const blockers = [...(p.gateDetail?.blockers ?? [])];
+      if (missing > 0) {
+        blockers.unshift(`${missing} mandatory evidence item${missing === 1 ? "" : "s"} outstanding`);
+      }
       rows.push({
         id: p.id,
         title: p.title,
         stageName: p.flightpathStageName,
         gateStatus,
+        nextGateName: p.gateDetail?.nextGateName ?? null,
+        owner: p.gateDetail?.owner ?? null,
+        targetDate: p.endDate,
+        blockers: blockers.slice(0, 4),
         missingEvidence: missing,
         blocked: gs.blocked,
       });

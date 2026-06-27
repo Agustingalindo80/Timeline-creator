@@ -129,7 +129,28 @@ function FinancialHealthPanel({ panel }: { panel: FinancialPanel }) {
         <Metric label="Contracted Revenue" value={formatCurrency(panel.contractedRevenue)} testId="financial-revenue" />
         <Metric label="Approved Budget" value={formatCurrency(panel.approvedBudget)} testId="financial-budget" />
         <Metric label="Actual Cost" value={formatCurrency(panel.actualCost)} testId="financial-actual-cost" />
-        <Metric label="Forecast (EAC)" value={formatCurrency(panel.forecastCost)} testId="financial-forecast-cost" />
+        <Metric label="Forecast Cost" value={formatCurrency(panel.forecastCost)} testId="financial-forecast-cost" />
+        <Metric label="EAC" value={formatCurrency(panel.eac)} testId="financial-eac" />
+        <Metric label="Earned Value (EV)" value={formatCurrency(panel.earnedValue)} testId="financial-ev" />
+        <Metric label="Planned Value (PV)" value={formatCurrency(panel.plannedValue)} testId="financial-pv" />
+        <Metric
+          label="Cost Variance (CV)"
+          value={formatCurrency(panel.costVariance)}
+          tone={panel.costVariance < 0 ? "red" : undefined}
+          testId="financial-cv"
+        />
+        <Metric
+          label="Schedule Variance (SV)"
+          value={formatCurrency(panel.scheduleVariance)}
+          tone={panel.scheduleVariance < 0 ? "amber" : undefined}
+          testId="financial-sv"
+        />
+        <Metric
+          label="VAC"
+          value={formatCurrency(panel.vac)}
+          tone={panel.vac < 0 ? "red" : undefined}
+          testId="financial-vac"
+        />
         <Metric label="CPI" value={fmtIndex(panel.cpi)} tone={cpiTone} testId="financial-cpi" />
         <Metric label="SPI" value={fmtIndex(panel.spi)} testId="financial-spi" />
         <Metric
@@ -183,19 +204,16 @@ function GateReadinessPanel({ panel }: { panel: GovernancePanel }) {
             No gate activity recorded.
           </p>
         ) : (
-          <ul className="space-y-1.5" data-testid="governance-projects">
+          <ul className="space-y-2.5" data-testid="governance-projects">
             {panel.projects.slice(0, 5).map((p) => (
-              <li key={p.id} className="flex items-center justify-between gap-2 text-xs" data-testid={`governance-project-${p.id}`}>
-                <span className="truncate min-w-0">
-                  <span className="font-medium">{p.title}</span>
-                  {p.stageName && <span className="text-muted-foreground"> · {p.stageName}</span>}
-                </span>
-                <span className="flex items-center gap-2 shrink-0">
-                  {p.missingEvidence > 0 && (
-                    <span className="text-muted-foreground">{p.missingEvidence} ev.</span>
-                  )}
+              <li key={p.id} className="text-xs space-y-1" data-testid={`governance-project-${p.id}`}>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate min-w-0">
+                    <span className="font-medium">{p.title}</span>
+                    {p.stageName && <span className="text-muted-foreground"> · {p.stageName}</span>}
+                  </span>
                   <span
-                    className="rounded px-1.5 py-0.5 font-medium"
+                    className="shrink-0 rounded px-1.5 py-0.5 font-medium"
                     style={{
                       backgroundColor: `${RAG_COLOR[GATE_STATUS_TONE[p.gateStatus]]}1f`,
                       color: RAG_COLOR[GATE_STATUS_TONE[p.gateStatus]],
@@ -203,7 +221,29 @@ function GateReadinessPanel({ panel }: { panel: GovernancePanel }) {
                   >
                     {GATE_STATUS_LABEL[p.gateStatus]}
                   </span>
-                </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-muted-foreground">
+                  <span data-testid={`governance-next-gate-${p.id}`}>
+                    Next: {p.nextGateName || "\u2014"}
+                  </span>
+                  <span data-testid={`governance-target-${p.id}`}>
+                    Project due: {p.targetDate ? new Date(p.targetDate).toLocaleDateString() : "\u2014"}
+                  </span>
+                  <span data-testid={`governance-owner-${p.id}`}>
+                    Owner: {p.owner || "\u2014"}
+                  </span>
+                  {p.missingEvidence > 0 && (
+                    <span data-testid={`governance-evidence-${p.id}`}>
+                      {p.missingEvidence} evidence outstanding
+                    </span>
+                  )}
+                </div>
+                {p.blockers.length > 0 && (
+                  <div className="flex items-start gap-1.5" data-testid={`governance-blockers-${p.id}`}>
+                    <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5 text-red-500 dark:text-red-400" />
+                    <span className="text-muted-foreground">{p.blockers.join(" · ")}</span>
+                  </div>
+                )}
               </li>
             ))}
           </ul>
@@ -222,9 +262,10 @@ function RaidRiskPanel({ panel }: { panel: RaidPanel }) {
         <Metric label="Issues" value={String(panel.openIssues)} testId="raid-issues" />
         <Metric label="Depend." value={String(panel.openDependencies)} testId="raid-dependencies" />
       </div>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-4 gap-2">
         <Metric label="Critical" value={String(panel.criticalRisks)} tone={panel.criticalRisks > 0 ? "red" : undefined} testId="raid-critical" />
         <Metric label="Overdue" value={String(panel.overdueMitigations)} tone={panel.overdueMitigations > 0 ? "red" : undefined} testId="raid-overdue" />
+        <Metric label="Escalate" value={String(panel.needingEscalation)} tone={panel.needingEscalation > 0 ? "red" : undefined} testId="raid-escalation" />
         <Metric label="No Owner" value={String(panel.risksWithoutOwner)} tone={panel.risksWithoutOwner > 0 ? "amber" : undefined} testId="raid-no-owner" />
       </div>
       <div>
@@ -270,10 +311,17 @@ function BusinessOutcomePanel({ panel }: { panel: OutcomePanel }) {
         <Metric label="At Risk" value={String(panel.atRisk)} tone={panel.atRisk > 0 ? "red" : undefined} testId="outcome-at-risk" />
         <Metric label="Delivered" value={String(panel.delivered)} testId="outcome-delivered" />
         <Metric
-          label="Metrics Defined"
-          value={`${panel.metricsAvailable}/${panel.tracked}`}
+          label="Not Measurable"
+          value={String(panel.notMeasurable)}
+          tone={panel.notMeasurable > 0 ? "amber" : undefined}
+          testId="outcome-not-measurable"
+        />
+        <Metric label="Metrics Available" value={String(panel.metricsAvailable)} tone={panel.metricsAvailable > 0 ? "green" : undefined} testId="outcome-metrics-available" />
+        <Metric
+          label="Metrics Missing"
+          value={String(panel.metricsMissing)}
           tone={panel.metricsMissing > 0 ? "amber" : undefined}
-          testId="outcome-metrics"
+          testId="outcome-metrics-missing"
         />
         <Metric label="Evidence Captured" value={String(panel.evidenceCaptured)} testId="outcome-evidence" />
       </div>
