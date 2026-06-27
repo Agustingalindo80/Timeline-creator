@@ -211,6 +211,91 @@ const SCORERS: Record<DimensionKey, (m: ProjectMetricsInput) => number | null> =
   outcome: scoreOutcome,
 };
 
+// Short, human-readable rationale per dimension. Mirrors the scorer logic above
+// so a heatmap tooltip can explain *why* a cell is the colour it is. Keep these
+// consistent with the corresponding `score*` functions.
+function severityLabel(sev: number): string {
+  if (sev >= 12) return "critical";
+  if (sev >= 9) return "high";
+  if (sev >= 6) return "elevated";
+  if (sev >= 3) return "moderate";
+  return "low";
+}
+
+function rationaleSchedule(m: ProjectMetricsInput): string {
+  if (m.spi !== null && m.spi !== undefined && !Number.isNaN(m.spi)) {
+    const tone = m.spi >= 1 ? "on or ahead of schedule" : m.spi >= 0.95 ? "slightly behind schedule" : "behind schedule";
+    return `SPI ${m.spi.toFixed(2)} — ${tone}`;
+  }
+  if (ragScore(m.healthOverall) !== null) return `Schedule proxy: overall health ${m.healthOverall}`;
+  return "No schedule data";
+}
+
+function rationaleFinancial(m: ProjectMetricsInput): string {
+  const marginNote =
+    m.grossMargin !== null && m.grossMargin !== undefined && m.grossMargin < 0 ? "; negative gross margin" : "";
+  if (m.cpi !== null && m.cpi !== undefined && !Number.isNaN(m.cpi)) {
+    const tone = m.cpi >= 1 ? "on or under budget" : m.cpi >= 0.95 ? "slightly over budget" : "over budget";
+    return `CPI ${m.cpi.toFixed(2)} — ${tone}${marginNote}`;
+  }
+  if (ragScore(m.budgetHealth) !== null) return `Budget health: ${m.budgetHealth}${marginNote}`;
+  return "No financial data";
+}
+
+function rationaleScope(m: ProjectMetricsInput): string {
+  if (ragScore(m.scopeHealth) !== null) return `Scope health: ${m.scopeHealth}`;
+  return "No scope data";
+}
+
+function rationaleRisk(m: ProjectMetricsInput): string {
+  const open = (m.risks ?? []).filter((r) => (r.itemType ?? "risk") === "risk" && r.status === "open");
+  if (open.length === 0) return "No open risks";
+  let worst = 0;
+  for (const r of open) {
+    const sev = (SEVERITY[r.probability] ?? 2) * (SEVERITY[r.impact] ?? 2);
+    if (sev > worst) worst = sev;
+  }
+  return `${open.length} open risk${open.length === 1 ? "" : "s"}; worst severity ${severityLabel(worst)}`;
+}
+
+function rationaleGovernance(m: ProjectMetricsInput): string {
+  const gates = m.gates ?? [];
+  if (gates.length === 0) return "No gates configured";
+  const has = (s: string) => gates.some((g) => g.status === s);
+  if (has("rejected") || has("failed")) return "Gate rejected or failed";
+  if (has("exception") || has("exception_requested")) return "Gate exception pending";
+  if (has("pending") || has("in_review")) return "Gate in review";
+  return "All gates approved";
+}
+
+function rationaleOutcome(m: ProjectMetricsInput): string {
+  const outcomes = m.outcomes ?? [];
+  if (outcomes.length === 0) return "No outcomes linked";
+  const atRisk = outcomes.filter((o) => o.status === "at_risk").length;
+  if (atRisk > 0) return `${outcomes.length} outcome${outcomes.length === 1 ? "" : "s"}; ${atRisk} at risk`;
+  const achieved = outcomes.filter((o) => o.status === "achieved").length;
+  if (achieved === outcomes.length) return `${outcomes.length} outcome${outcomes.length === 1 ? "" : "s"} achieved`;
+  return `${outcomes.length} outcome${outcomes.length === 1 ? "" : "s"} on track`;
+}
+
+const RATIONALES: Record<DimensionKey, (m: ProjectMetricsInput) => string> = {
+  schedule: rationaleSchedule,
+  financial: rationaleFinancial,
+  scope: rationaleScope,
+  quality: () => "No quality data captured yet",
+  risk: rationaleRisk,
+  governance: rationaleGovernance,
+  outcome: rationaleOutcome,
+};
+
+export function buildDimensionRationales(m: ProjectMetricsInput): Record<DimensionKey, string> {
+  const out = {} as Record<DimensionKey, string>;
+  (Object.keys(RATIONALES) as DimensionKey[]).forEach((key) => {
+    out[key] = RATIONALES[key](m);
+  });
+  return out;
+}
+
 export function scoreProject(m: ProjectMetricsInput): ProjectScoreResult {
   const dimensions = {} as DimensionScores;
   let weightedSum = 0;

@@ -1,0 +1,1 @@
+- [Portfolio Health cockpit](portfolio-health-cockpit.md) — Vogara Atlas executive dashboard: scoring engine, panels, reports overview wiring, conventions.

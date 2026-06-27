@@ -179,10 +179,51 @@ export interface PortfolioPanels {
   outcome: OutcomePanel;
 }
 
+export interface StageBucket {
+  id: string;
+  name: string;
+  gateName: string | null;
+  sortOrder: number;
+  projectCount: number;
+  avgHealthScore: number | null;
+  avgHealthRag: Rag;
+  blockedGates: number;
+  decisionsRequired: number;
+  avgDaysInStage: number | null;
+  agingProjects: number;
+  agingThresholdDays: number;
+  readinessPct: number | null;
+}
+
+export interface HeatmapColumn {
+  key: DimensionKey;
+  label: string;
+}
+
+export interface HeatmapCell {
+  rag: Rag;
+  score: number | null;
+  rationale: string;
+}
+
+export interface HeatmapRow {
+  id: string;
+  title: string;
+  overallRag: Rag;
+  cells: Record<DimensionKey, HeatmapCell>;
+}
+
+export interface Heatmap {
+  columns: HeatmapColumn[];
+  rows: HeatmapRow[];
+}
+
 export interface PortfolioOverview {
   generatedAt: string;
   header: PortfolioOverviewHeader;
   kpis: PortfolioOverviewKpis;
   panels: PortfolioPanels;
+  stages: StageBucket[];
+  heatmap: Heatmap;
   projects: PortfolioProjectOverview[];
 }

@@ -28,6 +28,11 @@ import { DropdownFilter, HealthFilter } from "@/components/reports/report-filter
 import { ExecutiveSummaryHeader } from "@/features/portfolio-health/ExecutiveSummaryHeader";
 import { KpiCards } from "@/features/portfolio-health/KpiCards";
 import { ExecutivePanels, ExecutivePanelsSkeleton } from "@/features/portfolio-health/ExecutivePanels";
+import {
+  StageDistribution,
+  DimensionHeatmap,
+  FlightPathFlowSkeleton,
+} from "@/features/portfolio-health/FlightPathFlow";
 import type { PortfolioOverview } from "@/features/portfolio-health/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -404,6 +409,22 @@ export default function PortfolioHealth() {
         </Card>
       ) : overviewLoading ? (
         <ExecutivePanelsSkeleton />
+      ) : null}
+
+      {overview ? (
+        <>
+          <StageDistribution stages={overview.stages} />
+          <DimensionHeatmap heatmap={overview.heatmap} />
+        </>
+      ) : overviewError ? (
+        <Card data-testid="flow-error">
+          <CardContent className="py-6 flex items-center gap-3 text-sm text-muted-foreground">
+            <AlertTriangle className="w-5 h-5 text-amber-500 dark:text-amber-400 shrink-0" />
+            <span>Stage distribution and heatmap are temporarily unavailable.</span>
+          </CardContent>
+        </Card>
+      ) : overviewLoading ? (
+        <FlightPathFlowSkeleton />
       ) : null}
 
       <Card>

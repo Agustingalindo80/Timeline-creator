@@ -17,8 +17,10 @@ import {
 import {
   scoreProject,
   scoreToRag,
+  buildDimensionRationales,
   DIMENSION_WEIGHTS,
   type Rag,
+  type DimensionKey,
   type DimensionScores,
   type RiskInput,
   type GateInput,
@@ -32,6 +34,14 @@ import {
   type PanelRiskRow,
   type PanelOutcomeRow,
 } from "./services/portfolio-panels";
+import {
+  computeStageBuckets,
+  buildHeatmap,
+  HEATMAP_COLUMNS,
+  type FlowProjectInput,
+  type StageBucket,
+  type Heatmap,
+} from "./services/portfolio-flow";
 
 type RecordAccessContext = {
   isGlobal: boolean;
@@ -172,6 +182,8 @@ export interface PortfolioOverview {
     outcomesOnTrack: number;
   };
   panels: PortfolioPanels;
+  stages: StageBucket[];
+  heatmap: Heatmap;
   projects: PortfolioProjectOverview[];
 }
 
@@ -236,6 +248,8 @@ export async function getPortfolioOverview(
         outcomesOnTrack: 0,
       },
       panels: emptyPanels(),
+      stages: [],
+      heatmap: { columns: HEATMAP_COLUMNS, rows: [] },
       projects: [],
     };
   }
@@ -287,6 +301,8 @@ export async function getPortfolioOverview(
           stageId: projectGates.stageId,
           status: projectGates.status,
           approvedBy: projectGates.approvedBy,
+          approvedAt: projectGates.approvedAt,
+          createdAt: projectGates.createdAt,
           evaluatorResult: projectGates.evaluatorResult,
         })
         .from(projectGates)
@@ -313,6 +329,7 @@ export async function getPortfolioOverview(
       db
         .select({
           timelineId: projectCheckpoints.timelineId,
+          stageId: projectCheckpoints.stageId,
           optional: projectCheckpoints.optional,
           completed: projectCheckpoints.completed,
         })
@@ -373,6 +390,19 @@ export async function getPortfolioOverview(
   const goLiveCutoff = new Date();
   goLiveCutoff.setDate(goLiveCutoff.getDate() + 30);
 
+  // Mandatory (non-optional) checkpoint counts per (timeline, stage) for readiness.
+  const mandatoryByTimelineStage = new Map<string, { total: number; done: number }>();
+  for (const c of checkpointRows) {
+    if (c.optional) continue;
+    const key = `${c.timelineId}::${c.stageId}`;
+    const agg = mandatoryByTimelineStage.get(key) ?? { total: 0, done: 0 };
+    agg.total += 1;
+    if (c.completed) agg.done += 1;
+    mandatoryByTimelineStage.set(key, agg);
+  }
+
+  const rationalesById = new Map<string, Record<DimensionKey, string>>();
+
   const projects: PortfolioProjectOverview[] = accessible.map((p) => {
     const evm = evmByTimeline.get(p.id);
     const projectRisks = risksByTimeline.get(p.id) ?? [];
@@ -382,7 +412,7 @@ export async function getPortfolioOverview(
     const cpi = evm?.cpiValue != null ? num(evm.cpiValue) : null;
     const spi = evm?.spiValue != null ? num(evm.spiValue) : null;
 
-    const result = scoreProject({
+    const scoringInput = {
       healthOverall: p.healthOverall,
       scopeHealth: p.scopeHealth,
       budgetHealth: p.budgetHealth,
@@ -393,7 +423,9 @@ export async function getPortfolioOverview(
       risks: projectRisks,
       gates: projectGatesList,
       outcomes: projectOutcomes,
-    });
+    };
+    const result = scoreProject(scoringInput);
+    rationalesById.set(p.id, buildDimensionRationales(scoringInput));
 
     const openRisks = projectRisks.filter(
       (r) => (r.itemType ?? "risk") === "risk" && r.status === "open",
@@ -558,6 +590,67 @@ export async function getPortfolioOverview(
     titleByTimeline,
   });
 
+  // ---- FlightPath stage distribution + dimension heatmap ----
+  const nowIso = now.toISOString();
+  const flowProjects: FlowProjectInput[] = projects.map((p) => {
+    const fullGates = gateRowsByTimeline.get(p.id) ?? [];
+    // `project_gates` has a unique (timelineId, stageId) constraint, so there is
+    // at most one gate per stage and `find` is deterministic.
+    const currentGate = p.flightpathStageId
+      ? fullGates.find((g) => g.stageId === p.flightpathStageId) ?? null
+      : null;
+
+    // Infer stage-entry: the most recent gate the project cleared for a stage
+    // BEFORE its current one (i.e. when it was promoted into the current stage).
+    // Fall back to the current stage gate's createdAt, else unknown.
+    let stageEnteredAt: string | null = null;
+    if (p.flightpathStageId) {
+      const currentSort = stageDetailMap.get(p.flightpathStageId)?.sortOrder ?? 0;
+      let latestPrior = 0;
+      for (const g of fullGates) {
+        const sort = stageDetailMap.get(g.stageId)?.sortOrder ?? 0;
+        if (sort < currentSort && g.approvedAt) {
+          const t = new Date(g.approvedAt).getTime();
+          if (!Number.isNaN(t) && t > latestPrior) latestPrior = t;
+        }
+      }
+      if (latestPrior > 0) {
+        stageEnteredAt = new Date(latestPrior).toISOString();
+      } else if (currentGate?.createdAt) {
+        stageEnteredAt = new Date(currentGate.createdAt).toISOString();
+      }
+    }
+
+    const mandatory = p.flightpathStageId
+      ? mandatoryByTimelineStage.get(`${p.id}::${p.flightpathStageId}`)
+      : undefined;
+
+    return {
+      id: p.id,
+      title: p.title,
+      flightpathStageId: p.flightpathStageId,
+      overallScore: p.overallScore,
+      currentGateStatus: currentGate?.status ?? null,
+      stageEnteredAt,
+      mandatoryTotal: mandatory?.total ?? 0,
+      mandatoryDone: mandatory?.done ?? 0,
+      dimensions: p.dimensions,
+      rationales: rationalesById.get(p.id) ?? ({} as Record<DimensionKey, string>),
+    };
+  });
+
+  const stages = computeStageBuckets(
+    flowProjects,
+    stageRows.map((s) => ({
+      id: s.id,
+      name: s.name,
+      gateName: s.gateName,
+      sortOrder: s.sortOrder,
+    })),
+    nowIso,
+  );
+  const heatmap = buildHeatmap(flowProjects);
+
   return {
     generatedAt: new Date().toISOString(),
     header: {
@@ -586,6 +679,8 @@ export async function getPortfolioOverview(
       outcomesOnTrack,
     },
     panels,
+    stages,
+    heatmap,
     projects,
   };
 }
