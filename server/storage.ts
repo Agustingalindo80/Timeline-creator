@@ -244,6 +244,7 @@ export interface IStorage {
   createHealthHistory(data: InsertTimelineHealthHistory): Promise<TimelineHealthHistory>;
   getHealthHistory(timelineId: string, tenantId: string, range?: HealthHistoryRange): Promise<TimelineHealthHistory[]>;
   getHealthHistoryByTimelineIds(timelineIds: string[], tenantId: string, range?: HealthHistoryRange): Promise<TimelineHealthHistory[]>;
+  getHealthHistoryBaseline(timelineIds: string[], tenantId: string, before: Date): Promise<TimelineHealthHistory[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1350,6 +1351,21 @@ export class DatabaseStorage implements IStorage {
     if (range?.from) conditions.push(gte(timelineHealthHistory.recordedAt, range.from));
     if (range?.to) conditions.push(lte(timelineHealthHistory.recordedAt, range.to));
     return db.select().from(timelineHealthHistory).where(and(...conditions)).orderBy(asc(timelineHealthHistory.recordedAt));
+  }
+
+  async getHealthHistoryBaseline(timelineIds: string[], tenantId: string, before: Date): Promise<TimelineHealthHistory[]> {
+    if (timelineIds.length === 0) return [];
+    return db
+      .selectDistinctOn([timelineHealthHistory.timelineId])
+      .from(timelineHealthHistory)
+      .where(
+        and(
+          inArray(timelineHealthHistory.timelineId, timelineIds),
+          eq(timelineHealthHistory.tenantId, tenantId),
+          lte(timelineHealthHistory.recordedAt, before),
+        ),
+      )
+      .orderBy(asc(timelineHealthHistory.timelineId), desc(timelineHealthHistory.recordedAt));
   }
 }
 

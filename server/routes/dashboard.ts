@@ -306,10 +306,14 @@ export function registerDashboardRoutes(app: Express) {
 
       const fromDate = new Date();
       fromDate.setDate(fromDate.getDate() - 90);
-      const history = await storage.getHealthHistoryByTimelineIds(
-        projects.map(p => p.id),
-        tenantId,
-        { from: fromDate },
+      const timelineIds = projects.map(p => p.id);
+      const [windowHistory, baseline] = await Promise.all([
+        storage.getHealthHistoryByTimelineIds(timelineIds, tenantId, { from: fromDate }),
+        storage.getHealthHistoryBaseline(timelineIds, tenantId, fromDate),
+      ]);
+
+      const history = [...baseline, ...windowHistory].sort(
+        (a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime(),
       );
 
       res.json({ projects, rollups: { byClient, byRegion }, history, historyFrom: fromDate.toISOString() });
