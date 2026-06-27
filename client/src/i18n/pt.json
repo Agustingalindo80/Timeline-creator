@@ -693,6 +693,30 @@
     "requestGateEvaluation": "Solicitar Avaliação do Gate",
     "reEvaluateGate": "Reavaliar Gate"
   },
+  "portfolioHealth": {
+    "trends": {
+      "title": "Tendências do Portfólio",
+      "subtitle": "Trajetória semanal do portfólio nas métricas que importam para a diretoria",
+      "metric": "Métrica",
+      "from": "De",
+      "to": "Até",
+      "healthScore": "Pontuação de Saúde do Portfólio",
+      "ragComposition": "Projetos por Saúde (RAG)",
+      "forecastMargin": "Margem Prevista",
+      "riskExposure": "Exposição ao Risco",
+      "gateReadiness": "Prontidão de Gates",
+      "outcomeRealization": "Realização de Resultados",
+      "green": "No Caminho",
+      "amber": "Em Risco",
+      "red": "Crítico",
+      "outcomesOnTrack": "Resultados no Caminho",
+      "loading": "Carregando dados de tendência…",
+      "empty": "Nenhum snapshot do portfólio registrado para o período selecionado.",
+      "error": "As tendências do portfólio estão temporariamente indisponíveis.",
+      "retry": "Tentar novamente",
+      "updating": "Atualizando…"
+    }
+  },
   "reports": {
     "title": "Relatórios",
     "subtitle": "Relatórios operacionais e executivos do seu portfólio",

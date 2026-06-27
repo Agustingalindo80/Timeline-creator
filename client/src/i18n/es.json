@@ -693,6 +693,30 @@
     "requestGateEvaluation": "Solicitar Evaluación de Compuerta",
     "reEvaluateGate": "Re-evaluar Compuerta"
   },
+  "portfolioHealth": {
+    "trends": {
+      "title": "Tendencias del Portafolio",
+      "subtitle": "Trayectoria semanal del portafolio en las métricas que importan al directorio",
+      "metric": "Métrica",
+      "from": "Desde",
+      "to": "Hasta",
+      "healthScore": "Puntuación de Salud del Portafolio",
+      "ragComposition": "Proyectos por Salud (RAG)",
+      "forecastMargin": "Margen Previsto",
+      "riskExposure": "Exposición al Riesgo",
+      "gateReadiness": "Preparación de Compuertas",
+      "outcomeRealization": "Realización de Resultados",
+      "green": "En Camino",
+      "amber": "En Riesgo",
+      "red": "Crítico",
+      "outcomesOnTrack": "Resultados en Camino",
+      "loading": "Cargando datos de tendencia…",
+      "empty": "No hay instantáneas del portafolio registradas para el período seleccionado.",
+      "error": "Las tendencias del portafolio no están disponibles temporalmente.",
+      "retry": "Reintentar",
+      "updating": "Actualizando…"
+    }
+  },
   "reports": {
     "title": "Informes",
     "subtitle": "Informes operativos y ejecutivos de su portafolio",

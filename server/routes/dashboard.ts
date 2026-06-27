@@ -8,6 +8,7 @@ import { storage } from "../storage";
 import { getRecordAccessContext, extractUserId, parseHealthHistoryRange } from "./helpers";
 import { getPortfolioHealth, getPortfolioOverview } from "../reports";
 import { mergeHealthHistory } from "@shared/health-trend";
+import { buildPortfolioTrend } from "@shared/portfolio-trends";
 
 type PortfolioRollup = {
   key: string;
@@ -426,6 +427,36 @@ export function registerDashboardRoutes(app: Express) {
       res.json(data);
     } catch (err: unknown) {
       console.error("Dashboard portfolio-snapshots error:", err);
+      res.status(500).json({ message: err instanceof Error ? err.message : "Internal server error" });
+    }
+  });
+
+  // Aggregated weekly portfolio trend series for the executive Trends view.
+  app.get("/api/dashboard/portfolio-trends", requireModuleAccess("reports"), async (req, res) => {
+    try {
+      const tenantId = req.tenantId || "default";
+      const ids = await accessibleProjectIds(req, tenantId);
+      if (ids === null) return res.status(401).json({ message: "Authentication required" });
+
+      // Honor an explicit date range; otherwise default to the last 90 days so
+      // the view opens on a sensible recent window.
+      let range = parseHealthHistoryRange(req.query.from, req.query.to);
+      if (!range) {
+        const from = new Date();
+        from.setDate(from.getDate() - 90);
+        range = { from };
+      }
+
+      const snapshots = await storage.getPortfolioSnapshotsByTimelineIds(ids, tenantId, range);
+      const points = buildPortfolioTrend(snapshots);
+      res.json({
+        points,
+        projectCount: ids.length,
+        from: range.from ? range.from.toISOString() : null,
+        to: range.to ? range.to.toISOString() : null,
+      });
+    } catch (err: unknown) {
+      console.error("Dashboard portfolio-trends error:", err);
       res.status(500).json({ message: err instanceof Error ? err.message : "Internal server error" });
     }
   });

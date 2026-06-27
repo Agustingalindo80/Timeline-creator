@@ -693,6 +693,30 @@
     "requestGateEvaluation": "Request Gate Evaluation",
     "reEvaluateGate": "Re-evaluate Gate"
   },
+  "portfolioHealth": {
+    "trends": {
+      "title": "Portfolio Trends",
+      "subtitle": "Weekly portfolio trajectory across the metrics that matter to the board",
+      "metric": "Metric",
+      "from": "From",
+      "to": "To",
+      "healthScore": "Portfolio Health Score",
+      "ragComposition": "Projects by Health (RAG)",
+      "forecastMargin": "Forecast Margin",
+      "riskExposure": "Risk Exposure",
+      "gateReadiness": "Gate Readiness",
+      "outcomeRealization": "Outcome Realization",
+      "green": "On Track",
+      "amber": "At Risk",
+      "red": "Critical",
+      "outcomesOnTrack": "Outcomes On Track",
+      "loading": "Loading trend data…",
+      "empty": "No portfolio snapshots recorded for the selected period.",
+      "error": "Portfolio trends are temporarily unavailable.",
+      "retry": "Retry",
+      "updating": "Updating…"
+    }
+  },
   "reports": {
     "title": "Reports",
     "subtitle": "Operational and executive reporting across your portfolio",

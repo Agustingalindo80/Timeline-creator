@@ -13,14 +13,12 @@ import {
   CartesianGrid,
   Tooltip,
   Cell,
-  LineChart,
-  Line,
-  Legend,
 } from "recharts";
 import { DropdownFilter, DateRangeFilter } from "@/components/reports/report-filters";
 import { ExecutiveSummaryHeader } from "@/features/portfolio-health/ExecutiveSummaryHeader";
 import { KpiCards } from "@/features/portfolio-health/KpiCards";
 import { ExecutivePanels, ExecutivePanelsSkeleton } from "@/features/portfolio-health/ExecutivePanels";
+import { PortfolioTrends } from "@/features/portfolio-health/PortfolioTrends";
 import {
   StageDistribution,
   DimensionHeatmap,
@@ -48,7 +46,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { buildHealthTrend } from "@shared/health-trend";
 
 interface PortfolioProjectLite {
   id: string;
@@ -326,8 +323,6 @@ export default function PortfolioHealth() {
   });
 
   const overviewProjects = useMemo(() => overview?.projects ?? [], [overview]);
-  const history = baseData?.history ?? [];
-  const from = baseData?.historyFrom;
 
   const clientOptions = useMemo(() => {
     const map = new Map<string, string>();
@@ -392,13 +387,6 @@ export default function PortfolioHealth() {
       };
     });
   }, [overviewProjects]);
-
-  // Trend is filtered to the active project set so it stays consistent with filters.
-  const trendData = useMemo(() => {
-    const ids = new Set(overviewProjects.map((p) => p.id));
-    const filteredHistory = ids.size > 0 ? history.filter((h) => ids.has(h.timelineId)) : [];
-    return buildHealthTrend(filteredHistory, from);
-  }, [overviewProjects, history, from]);
 
   const byClient = useMemo(
     () =>
@@ -652,7 +640,9 @@ export default function PortfolioHealth() {
         <FlightPathFlowSkeleton />
       ) : null}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <PortfolioTrends />
+
+      <div className="grid grid-cols-1 gap-6">
         <Card data-testid="card-quadrant">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
@@ -711,55 +701,6 @@ export default function PortfolioHealth() {
                       ))}
                     </Scatter>
                   </ScatterChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card data-testid="card-trend">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-              <Activity className="w-4 h-4 text-primary" /> Health Trend (90 days)
-            </CardTitle>
-            <p className="text-xs text-muted-foreground">Portfolio RAG composition over time</p>
-          </CardHeader>
-          <CardContent>
-            {trendData.length === 0 ? (
-              <div className="flex items-center justify-center h-[260px] text-sm text-muted-foreground" data-testid="trend-empty">
-                No health history recorded yet.
-              </div>
-            ) : (
-              <div style={{ height: 260 }} data-testid="chart-trend">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={trendData} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis
-                      dataKey="date"
-                      tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                      axisLine={{ stroke: "hsl(var(--border))" }}
-                      tickLine={false}
-                    />
-                    <YAxis
-                      allowDecimals={false}
-                      tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                      axisLine={{ stroke: "hsl(var(--border))" }}
-                      tickLine={false}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        borderRadius: "8px",
-                        border: "1px solid hsl(var(--border))",
-                        backgroundColor: "hsl(var(--popover))",
-                        color: "hsl(var(--popover-foreground))",
-                        fontSize: "12px",
-                      }}
-                    />
-                    <Legend wrapperStyle={{ fontSize: "11px" }} />
-                    <Line type="monotone" dataKey="Green" stroke={HEALTH_COLORS.green} strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="Amber" stroke={HEALTH_COLORS.amber} strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="Red" stroke={HEALTH_COLORS.red} strokeWidth={2} dot={false} />
-                  </LineChart>
                 </ResponsiveContainer>
               </div>
             )}
