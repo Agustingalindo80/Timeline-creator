@@ -41,6 +41,9 @@ export interface PortfolioProjectOverview {
     eac: number | null;
     actualCost: number | null;
     earnedValue: number | null;
+    plannedValue: number | null;
+    bac: number | null;
+    vac: number | null;
     weekEnding: string | null;
   } | null;
   openRiskCount: number;
@@ -79,9 +82,101 @@ export interface PortfolioOverviewKpis {
   outcomesOnTrack: number;
 }
 
+export interface FinancialPanel {
+  rag: Rag;
+  reasons: string[];
+  contractedRevenue: number;
+  approvedBudget: number;
+  actualCost: number;
+  forecastCost: number;
+  eac: number;
+  earnedValue: number;
+  plannedValue: number;
+  cpi: number | null;
+  spi: number | null;
+  costVariance: number;
+  scheduleVariance: number;
+  vac: number;
+  forecastMarginPct: number | null;
+  targetMarginPct: number;
+  marginLeakage: number;
+  projectsWithEvm: number;
+  totalProjects: number;
+}
+
+export interface GovernanceProjectRow {
+  id: string;
+  title: string;
+  stageName: string | null;
+  gateStatus: "blocked" | "in_review" | "on_track" | "not_started";
+  missingEvidence: number;
+  blocked: number;
+}
+
+export interface GovernancePanel {
+  rag: Rag;
+  reasons: string[];
+  totalGates: number;
+  blockedGates: number;
+  pendingGates: number;
+  approvedGates: number;
+  projectsBlocked: number;
+  missingEvidence: number;
+  projectsWithMissingEvidence: number;
+  projects: GovernanceProjectRow[];
+}
+
+export interface TopRiskRow {
+  id: string;
+  title: string;
+  projectTitle: string;
+  timelineId: string;
+  score: number;
+  probability: string;
+  impact: string;
+  owner: string | null;
+  dueDate: string | null;
+}
+
+export interface RaidPanel {
+  rag: Rag;
+  reasons: string[];
+  openRisks: number;
+  openAssumptions: number;
+  openIssues: number;
+  openDependencies: number;
+  criticalRisks: number;
+  overdueMitigations: number;
+  risksWithoutOwner: number;
+  needingEscalation: number;
+  totalItems: number;
+  topRisks: TopRiskRow[];
+}
+
+export interface OutcomePanel {
+  rag: Rag;
+  reasons: string[];
+  tracked: number;
+  onTrack: number;
+  atRisk: number;
+  delivered: number;
+  notMeasurable: number;
+  metricsAvailable: number;
+  metricsMissing: number;
+  evidenceCaptured: number;
+}
+
+export interface PortfolioPanels {
+  financial: FinancialPanel;
+  governance: GovernancePanel;
+  raid: RaidPanel;
+  outcome: OutcomePanel;
+}
+
 export interface PortfolioOverview {
   generatedAt: string;
   header: PortfolioOverviewHeader;
   kpis: PortfolioOverviewKpis;
+  panels: PortfolioPanels;
   projects: PortfolioProjectOverview[];
 }

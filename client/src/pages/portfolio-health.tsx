@@ -27,6 +27,7 @@ import { HealthDot } from "@/components/reports/report-charts";
 import { DropdownFilter, HealthFilter } from "@/components/reports/report-filters";
 import { ExecutiveSummaryHeader } from "@/features/portfolio-health/ExecutiveSummaryHeader";
 import { KpiCards } from "@/features/portfolio-health/KpiCards";
+import { ExecutivePanels, ExecutivePanelsSkeleton } from "@/features/portfolio-health/ExecutivePanels";
 import type { PortfolioOverview } from "@/features/portfolio-health/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -390,6 +391,19 @@ export default function PortfolioHealth() {
             <Skeleton key={i} className="h-20" />
           ))}
         </div>
+      ) : null}
+
+      {overview ? (
+        <ExecutivePanels panels={overview.panels} />
+      ) : overviewError ? (
+        <Card data-testid="panels-error">
+          <CardContent className="py-6 flex items-center gap-3 text-sm text-muted-foreground">
+            <AlertTriangle className="w-5 h-5 text-amber-500 dark:text-amber-400 shrink-0" />
+            <span>Executive panels are temporarily unavailable.</span>
+          </CardContent>
+        </Card>
+      ) : overviewLoading ? (
+        <ExecutivePanelsSkeleton />
       ) : null}
 
       <Card>

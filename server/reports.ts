@@ -12,6 +12,7 @@ import {
   teamMembers,
   projectGates,
   flightpathStages,
+  projectCheckpoints,
 } from "@shared/schema";
 import {
   scoreProject,
@@ -23,6 +24,13 @@ import {
   type GateInput,
   type OutcomeInput,
 } from "./services/portfolio-scoring";
+import {
+  computePanels,
+  emptyPanels,
+  type PortfolioPanels,
+  type PanelRiskRow,
+  type PanelOutcomeRow,
+} from "./services/portfolio-panels";
 
 type RecordAccessContext = {
   isGlobal: boolean;
@@ -121,6 +129,9 @@ export interface PortfolioProjectOverview {
     eac: number | null;
     actualCost: number | null;
     earnedValue: number | null;
+    plannedValue: number | null;
+    bac: number | null;
+    vac: number | null;
     weekEnding: string | null;
   } | null;
   openRiskCount: number;
@@ -159,6 +170,7 @@ export interface PortfolioOverview {
     upcomingGoLives: number;
     outcomesOnTrack: number;
   };
+  panels: PortfolioPanels;
   projects: PortfolioProjectOverview[];
 }
 
@@ -222,11 +234,12 @@ export async function getPortfolioOverview(
         upcomingGoLives: 0,
         outcomesOnTrack: 0,
       },
+      panels: emptyPanels(),
       projects: [],
     };
   }
 
-  const [clientRows, evmRows, riskRows, gateRows, stageRows, outcomeRows] =
+  const [clientRows, evmRows, riskRows, gateRows, stageRows, outcomeRows, checkpointRows] =
     await Promise.all([
       db
         .select({ id: clients.id, name: clients.name })
@@ -241,6 +254,9 @@ export async function getPortfolioOverview(
           eacValue: evmSnapshots.eacValue,
           actualCost: evmSnapshots.actualCost,
           earnedValue: evmSnapshots.earnedValue,
+          plannedValue: evmSnapshots.plannedValue,
+          bac: evmSnapshots.bac,
+          vacValue: evmSnapshots.vacValue,
         })
         .from(evmSnapshots)
         .where(
@@ -252,11 +268,15 @@ export async function getPortfolioOverview(
         ),
       db
         .select({
+          id: risks.id,
           timelineId: risks.timelineId,
+          title: risks.title,
           probability: risks.probability,
           impact: risks.impact,
           status: risks.status,
           itemType: risks.itemType,
+          owner: risks.owner,
+          dueDate: risks.dueDate,
         })
         .from(risks)
         .where(and(eq(risks.tenantId, tenantId), inArray(risks.timelineId, ids))),
@@ -275,9 +295,20 @@ export async function getPortfolioOverview(
         .select({
           projectId: businessOutcomes.projectId,
           status: businessOutcomes.status,
+          successMetric: businessOutcomes.successMetric,
+          currentValue: businessOutcomes.currentValue,
+          evidence: businessOutcomes.evidence,
         })
         .from(businessOutcomes)
         .where(and(eq(businessOutcomes.tenantId, tenantId), inArray(businessOutcomes.projectId, ids))),
+      db
+        .select({
+          timelineId: projectCheckpoints.timelineId,
+          optional: projectCheckpoints.optional,
+          completed: projectCheckpoints.completed,
+        })
+        .from(projectCheckpoints)
+        .where(and(eq(projectCheckpoints.tenantId, tenantId), inArray(projectCheckpoints.timelineId, ids))),
     ]);
 
   const clientMap = new Map(clientRows.map((c) => [c.id, c.name]));
@@ -380,6 +411,9 @@ export async function getPortfolioOverview(
             eac: evm.eacValue != null ? num(evm.eacValue) : null,
             actualCost: evm.actualCost != null ? num(evm.actualCost) : null,
             earnedValue: evm.earnedValue != null ? num(evm.earnedValue) : null,
+            plannedValue: evm.plannedValue != null ? num(evm.plannedValue) : null,
+            bac: evm.bac != null ? num(evm.bac) : null,
+            vac: evm.vacValue != null ? num(evm.vacValue) : null,
             weekEnding: evm.weekEnding ?? null,
           }
         : null,
@@ -437,6 +471,39 @@ export async function getPortfolioOverview(
 
   const countRag = (rag: Rag) => projects.filter((p) => p.overallRag === rag).length;
 
+  // ---- Executive panel data ----
+  const missingEvidenceByTimeline = new Map<string, number>();
+  for (const c of checkpointRows) {
+    if (c.optional || c.completed) continue;
+    missingEvidenceByTimeline.set(c.timelineId, (missingEvidenceByTimeline.get(c.timelineId) ?? 0) + 1);
+  }
+
+  const titleByTimeline = new Map(projects.map((p) => [p.id, p.title]));
+  const panelRisks: PanelRiskRow[] = riskRows.map((r) => ({
+    id: r.id,
+    timelineId: r.timelineId,
+    title: r.title,
+    probability: r.probability,
+    impact: r.impact,
+    status: r.status,
+    itemType: r.itemType,
+    owner: r.owner,
+    dueDate: r.dueDate,
+  }));
+  const panelOutcomes: PanelOutcomeRow[] = outcomeRows.map((o) => ({
+    status: o.status,
+    successMetric: o.successMetric,
+    currentValue: o.currentValue,
+    evidence: o.evidence,
+  }));
+
+  const panels = computePanels(projects, {
+    missingEvidenceByTimeline,
+    risks: panelRisks,
+    outcomes: panelOutcomes,
+    titleByTimeline,
+  });
+
   return {
     generatedAt: new Date().toISOString(),
     header: {
@@ -464,6 +531,7 @@ export async function getPortfolioOverview(
       upcomingGoLives,
       outcomesOnTrack,
     },
+    panels,
     projects,
   };
 }
