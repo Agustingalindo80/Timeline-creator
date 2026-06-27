@@ -122,6 +122,7 @@ export interface GovernanceProjectRow {
   nextGateName: string | null;
   owner: string | null;
   targetDate: string | null;
+  overdue: boolean;
   blockers: string[];
   missingEvidence: number;
   blocked: number;
@@ -135,6 +136,7 @@ export interface GovernancePanel {
   pendingGates: number;
   approvedGates: number;
   projectsBlocked: number;
+  projectsOverdue: number;
   missingEvidence: number;
   projectsWithMissingEvidence: number;
   projects: GovernanceProjectRow[];
@@ -311,8 +313,12 @@ function computeGovernance(
   let pendingGates = 0;
   let approvedGates = 0;
   let projectsBlocked = 0;
+  let projectsOverdue = 0;
   let missingEvidence = 0;
   let projectsWithMissingEvidence = 0;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
   const rows: GovernanceProjectRow[] = [];
 
@@ -328,6 +334,13 @@ function computeGovernance(
     if (gs.blocked > 0) projectsBlocked += 1;
     if (missing > 0) projectsWithMissingEvidence += 1;
 
+    // A project's governance is overdue when its due date has passed while gate
+    // work is still outstanding (blocked, awaiting review, or missing evidence).
+    const hasOutstandingGateWork = gs.blocked > 0 || gs.pending > 0 || missing > 0;
+    const overdue =
+      hasOutstandingGateWork && p.endDate != null && new Date(p.endDate) < today;
+    if (overdue) projectsOverdue += 1;
+
     let gateStatus: GovernanceProjectRow["gateStatus"];
     if (gs.blocked > 0) gateStatus = "blocked";
     else if (gs.pending > 0) gateStatus = "in_review";
@@ -339,6 +352,9 @@ function computeGovernance(
       if (missing > 0) {
         blockers.unshift(`${missing} mandatory evidence item${missing === 1 ? "" : "s"} outstanding`);
       }
+      if (overdue) {
+        blockers.unshift("Past due date with gate work outstanding");
+      }
       rows.push({
         id: p.id,
         title: p.title,
@@ -347,6 +363,7 @@ function computeGovernance(
         nextGateName: p.gateDetail?.nextGateName ?? null,
         owner: p.gateDetail?.owner ?? null,
         targetDate: p.endDate,
+        overdue,
         blockers: blockers.slice(0, 4),
         missingEvidence: missing,
         blocked: gs.blocked,
@@ -363,18 +380,25 @@ function computeGovernance(
   } else {
     if (blockedGates > 0)
       reasons.push(`${blockedGates} blocked gate${blockedGates === 1 ? "" : "s"} across ${projectsBlocked} project${projectsBlocked === 1 ? "" : "s"}.`);
+    if (projectsOverdue > 0)
+      reasons.push(`${projectsOverdue} project${projectsOverdue === 1 ? "" : "s"} overdue with gate work outstanding.`);
     if (missingEvidence > 0)
       reasons.push(`${missingEvidence} mandatory evidence item${missingEvidence === 1 ? "" : "s"} outstanding.`);
     if (pendingGates > 0)
       reasons.push(`${pendingGates} gate${pendingGates === 1 ? "" : "s"} awaiting review.`);
 
-    if (blockedGates > 0 || missingEvidence > 0) rag = "red";
+    if (blockedGates > 0 || missingEvidence > 0 || projectsOverdue > 0) rag = "red";
     else if (pendingGates > 0) rag = "amber";
     else rag = "green";
   }
 
-  // Surface most-at-risk projects first.
-  rows.sort((a, b) => b.blocked - a.blocked || b.missingEvidence - a.missingEvidence);
+  // Surface most-at-risk projects first: overdue, then blocked, then missing evidence.
+  rows.sort(
+    (a, b) =>
+      Number(b.overdue) - Number(a.overdue) ||
+      b.blocked - a.blocked ||
+      b.missingEvidence - a.missingEvidence,
+  );
 
   return {
     rag,
@@ -384,6 +408,7 @@ function computeGovernance(
     pendingGates,
     approvedGates,
     projectsBlocked,
+    projectsOverdue,
     missingEvidence,
     projectsWithMissingEvidence,
     projects: rows,

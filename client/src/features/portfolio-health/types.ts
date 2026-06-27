@@ -112,6 +112,7 @@ export interface GovernanceProjectRow {
   nextGateName: string | null;
   owner: string | null;
   targetDate: string | null;
+  overdue: boolean;
   blockers: string[];
   missingEvidence: number;
   blocked: number;
@@ -125,6 +126,7 @@ export interface GovernancePanel {
   pendingGates: number;
   approvedGates: number;
   projectsBlocked: number;
+  projectsOverdue: number;
   missingEvidence: number;
   projectsWithMissingEvidence: number;
   projects: GovernanceProjectRow[];

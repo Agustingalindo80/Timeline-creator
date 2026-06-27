@@ -194,6 +194,7 @@ function GateReadinessPanel({ panel }: { panel: GovernancePanel }) {
         <Metric label="Awaiting Review" value={String(panel.pendingGates)} tone={panel.pendingGates > 0 ? "amber" : undefined} testId="governance-pending" />
         <Metric label="Blocked Gates" value={String(panel.blockedGates)} tone={panel.blockedGates > 0 ? "red" : undefined} testId="governance-blocked" />
         <Metric label="Missing Evidence" value={String(panel.missingEvidence)} tone={panel.missingEvidence > 0 ? "red" : undefined} testId="governance-missing-evidence" />
+        <Metric label="Overdue Projects" value={String(panel.projectsOverdue)} tone={panel.projectsOverdue > 0 ? "red" : undefined} testId="governance-overdue" />
       </div>
       <div>
         <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-1.5">
@@ -226,8 +227,12 @@ function GateReadinessPanel({ panel }: { panel: GovernancePanel }) {
                   <span data-testid={`governance-next-gate-${p.id}`}>
                     Next: {p.nextGateName || "\u2014"}
                   </span>
-                  <span data-testid={`governance-target-${p.id}`}>
+                  <span
+                    data-testid={`governance-target-${p.id}`}
+                    className={p.overdue ? "text-red-500 dark:text-red-400 font-medium" : undefined}
+                  >
                     Project due: {p.targetDate ? new Date(p.targetDate).toLocaleDateString() : "\u2014"}
+                    {p.overdue && " (overdue)"}
                   </span>
                   <span data-testid={`governance-owner-${p.id}`}>
                     Owner: {p.owner || "\u2014"}
