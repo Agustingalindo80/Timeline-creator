@@ -28,8 +28,17 @@ function emptyData(over: Partial<PanelData> = {}): PanelData {
   };
 }
 
-const future = new Date(Date.now() + 30 * 86400_000).toISOString().slice(0, 10);
-const past = new Date(Date.now() - 30 * 86400_000).toISOString().slice(0, 10);
+function localISO(offsetDays: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+const future = localISO(30);
+const past = localISO(-30);
+const todayStr = localISO(0);
 
 test("governance RAG: green when gates approved, no blockers, not overdue", () => {
   const { governance } = computePanels(
@@ -83,4 +92,32 @@ test("governance: not overdue when due date passed but all gate work complete", 
   );
   assert.equal(governance.projectsOverdue, 0);
   assert.equal(governance.rag, "green");
+});
+
+test("governance: due date == today is NOT overdue (boundary)", () => {
+  const { governance } = computePanels(
+    [makeProject({ gateSummary: { total: 2, blocked: 0, pending: 1, approved: 1 }, endDate: todayStr })],
+    emptyData(),
+  );
+  assert.equal(governance.projectsOverdue, 0);
+});
+
+test("financial CPI ignores non-EVM fallback costs (mixed population)", () => {
+  // One EVM project: EV 100, AC 100 -> CPI 1.0. One non-EVM project with large
+  // running cost must NOT depress CPI.
+  const { financial } = computePanels(
+    [
+      makeProject({
+        id: "evm",
+        evm: { cpi: null, spi: null, eac: 100, actualCost: 100, earnedValue: 100, plannedValue: 100, bac: 100, vac: 0 },
+      }),
+      makeProject({ id: "noevm", totalRunningCost: "900000", evm: null }),
+    ],
+    emptyData(),
+  );
+  assert.equal(financial.cpi, 1);
+  assert.equal(financial.spi, 1);
+  assert.equal(financial.costVariance, 0);
+  // Portfolio actual cost still includes the non-EVM fallback.
+  assert.equal(financial.actualCost, 900100);
 });

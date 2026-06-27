@@ -199,6 +199,24 @@ function round1(n: number): number {
   return Math.round(n * 10) / 10;
 }
 
+// Local "today" as a YYYY-MM-DD string. Date-only DB columns are stored as
+// YYYY-MM-DD; comparing them as strings against local today avoids the UTC
+// parsing drift of `new Date("YYYY-MM-DD")`, which would flip same-day dates to
+// the previous local day in negative UTC offsets.
+function todayLocalISO(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+// True when a date-only value is strictly before local today.
+function isPastDate(value: string | null | undefined): boolean {
+  if (!value) return false;
+  return value.slice(0, 10) < todayLocalISO();
+}
+
 function riskScore(r: { probability: string; impact: string }): number {
   return (SEVERITY[r.probability] ?? 2) * (SEVERITY[r.impact] ?? 2);
 }
@@ -209,6 +227,7 @@ function computeFinancial(projects: PanelProjectInput[]): FinancialPanel {
   let contractedRevenue = 0;
   let approvedBudget = 0;
   let actualCost = 0;
+  let evmActualCost = 0;
   let forecastCost = 0;
   let eac = 0;
   let ev = 0;
@@ -222,6 +241,7 @@ function computeFinancial(projects: PanelProjectInput[]): FinancialPanel {
     actualCost += p.evm?.actualCost != null ? p.evm.actualCost : num(p.totalRunningCost);
     forecastCost += p.evm?.eac != null ? p.evm.eac : num(p.totalRunningCost);
     if (p.evm) {
+      if (p.evm.actualCost != null) evmActualCost += p.evm.actualCost;
       if (p.evm.eac != null) eac += p.evm.eac;
       if (p.evm.earnedValue != null) ev += p.evm.earnedValue;
       if (p.evm.plannedValue != null) pv += p.evm.plannedValue;
@@ -236,9 +256,12 @@ function computeFinancial(projects: PanelProjectInput[]): FinancialPanel {
     }
   }
 
-  const cpi = actualCost > 0 && ev > 0 ? round1((ev / actualCost) * 100) / 100 : null;
+  // CPI/SPI and their variances must be derived only from EVM-covered projects.
+  // Mixing in fallback totalRunningCost for non-EVM projects would depress CPI
+  // (EV/PV come from EVM snapshots only) and misstate the RAG.
+  const cpi = evmActualCost > 0 && ev > 0 ? round1((ev / evmActualCost) * 100) / 100 : null;
   const spi = pv > 0 && ev > 0 ? round1((ev / pv) * 100) / 100 : null;
-  const costVariance = ev - actualCost;
+  const costVariance = ev - evmActualCost;
   const scheduleVariance = ev - pv;
   const forecastMarginPct =
     contractedRevenue > 0
@@ -317,9 +340,6 @@ function computeGovernance(
   let missingEvidence = 0;
   let projectsWithMissingEvidence = 0;
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
   const rows: GovernanceProjectRow[] = [];
 
   for (const p of projects) {
@@ -337,8 +357,7 @@ function computeGovernance(
     // A project's governance is overdue when its due date has passed while gate
     // work is still outstanding (blocked, awaiting review, or missing evidence).
     const hasOutstandingGateWork = gs.blocked > 0 || gs.pending > 0 || missing > 0;
-    const overdue =
-      hasOutstandingGateWork && p.endDate != null && new Date(p.endDate) < today;
+    const overdue = hasOutstandingGateWork && isPastDate(p.endDate);
     if (overdue) projectsOverdue += 1;
 
     let gateStatus: GovernanceProjectRow["gateStatus"];
@@ -422,15 +441,11 @@ function computeRaid(risks: PanelRiskRow[], titleByTimeline: Map<string, string>
   const openOf = (type: string) => open.filter((r) => (r.itemType ?? "risk") === type).length;
 
   const openRiskItems = open.filter((r) => (r.itemType ?? "risk") === "risk");
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
 
   const criticalRisks = openRiskItems.filter(
     (r) => riskScore(r) >= PANEL_THRESHOLDS.raid.criticalScore,
   ).length;
-  const overdueMitigations = openRiskItems.filter(
-    (r) => r.dueDate != null && new Date(r.dueDate) < today,
-  ).length;
+  const overdueMitigations = openRiskItems.filter((r) => isPastDate(r.dueDate)).length;
   const risksWithoutOwner = openRiskItems.filter((r) => !r.owner || !r.owner.trim()).length;
   const needingEscalation = openRiskItems.filter(
     (r) => riskScore(r) >= PANEL_THRESHOLDS.raid.escalationScore,
