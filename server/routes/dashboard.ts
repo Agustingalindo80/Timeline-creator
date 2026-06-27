@@ -6,7 +6,7 @@ import { eq, and, sql } from "drizzle-orm";
 import { requireModuleAccess } from "../middleware/permissions";
 import { storage } from "../storage";
 import { getRecordAccessContext, extractUserId, parseHealthHistoryRange } from "./helpers";
-import { getPortfolioHealth } from "../reports";
+import { getPortfolioHealth, getPortfolioOverview } from "../reports";
 
 type PortfolioRollup = {
   key: string;
@@ -319,6 +319,21 @@ export function registerDashboardRoutes(app: Express) {
       res.json({ projects, rollups: { byClient, byRegion }, history, historyFrom: fromDate.toISOString() });
     } catch (err: unknown) {
       console.error("Dashboard portfolio-health error:", err);
+      const message = err instanceof Error ? err.message : "Internal server error";
+      res.status(500).json({ message });
+    }
+  });
+
+  app.get("/api/dashboard/portfolio-overview", requireModuleAccess("reports"), async (req, res) => {
+    try {
+      const ctx = await getRecordAccessContext(req);
+      if (!ctx) return res.status(401).json({ message: "Authentication required" });
+      const tenantId = req.tenantId || "default";
+
+      const overview = await getPortfolioOverview(tenantId, ctx);
+      res.json(overview);
+    } catch (err: unknown) {
+      console.error("Dashboard portfolio-overview error:", err);
       const message = err instanceof Error ? err.message : "Internal server error";
       res.status(500).json({ message });
     }

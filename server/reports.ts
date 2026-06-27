@@ -10,7 +10,19 @@ import {
   projectTeamMembers,
   businessOutcomes,
   teamMembers,
+  projectGates,
+  flightpathStages,
 } from "@shared/schema";
+import {
+  scoreProject,
+  scoreToRag,
+  DIMENSION_WEIGHTS,
+  type Rag,
+  type DimensionScores,
+  type RiskInput,
+  type GateInput,
+  type OutcomeInput,
+} from "./services/portfolio-scoring";
 
 type RecordAccessContext = {
   isGlobal: boolean;
@@ -76,6 +88,384 @@ export async function getPortfolioHealth(tenantId: string, filters: {
     ...p,
     clientName: p.clientId ? clientMap[p.clientId] || null : null,
   }));
+}
+
+function num(v: string | null | undefined): number {
+  if (v === null || v === undefined) return 0;
+  const n = parseFloat(v);
+  return Number.isNaN(n) ? 0 : n;
+}
+
+export interface PortfolioProjectOverview {
+  id: string;
+  title: string;
+  clientId: string | null;
+  clientName: string | null;
+  region: string | null;
+  projectStatus: string;
+  startDate: string | null;
+  endDate: string | null;
+  flightpathStageId: string | null;
+  flightpathStageName: string | null;
+  healthOverall: string;
+  scopeHealth: string;
+  budgetHealth: string;
+  teamHealth: string;
+  approvedBudget: string | null;
+  totalRunningCost: string | null;
+  grossMargin: string | null;
+  estimatedRevenue: string | null;
+  evm: {
+    cpi: number | null;
+    spi: number | null;
+    eac: number | null;
+    actualCost: number | null;
+    earnedValue: number | null;
+    weekEnding: string | null;
+  } | null;
+  openRiskCount: number;
+  openCriticalRiskCount: number;
+  gateSummary: { total: number; blocked: number; pending: number; approved: number };
+  outcomeCount: number;
+  dimensions: DimensionScores;
+  overallScore: number | null;
+  overallRag: Rag;
+}
+
+export interface PortfolioOverview {
+  generatedAt: string;
+  header: {
+    healthScore: number | null;
+    healthRag: Rag;
+    activeProjects: number;
+    totalProjects: number;
+    clientCount: number;
+    totalContractValue: number;
+    forecastRevenue: number;
+    forecastMarginPct: number | null;
+    riskExposure: number;
+    projectsRequiringAttention: number;
+  };
+  kpis: {
+    greenProjects: number;
+    amberProjects: number;
+    redProjects: number;
+    grayProjects: number;
+    totalBudget: number;
+    actualCost: number;
+    forecastCost: number;
+    openCriticalRisks: number;
+    blockedGates: number;
+    upcomingGoLives: number;
+    outcomesOnTrack: number;
+  };
+  projects: PortfolioProjectOverview[];
+}
+
+export async function getPortfolioOverview(
+  tenantId: string,
+  ctx: RecordAccessContext,
+): Promise<PortfolioOverview> {
+  const projectRows = await db
+    .select({
+      id: timelines.id,
+      title: timelines.title,
+      clientId: timelines.clientId,
+      region: timelines.region,
+      healthOverall: timelines.healthOverall,
+      scopeHealth: timelines.scopeHealth,
+      budgetHealth: timelines.budgetHealth,
+      teamHealth: timelines.teamHealth,
+      projectStatus: timelines.projectStatus,
+      startDate: timelines.startDate,
+      endDate: timelines.endDate,
+      flightpathStageId: timelines.flightpathStageId,
+      approvedBudget: timelines.approvedBudget,
+      totalRunningCost: timelines.totalRunningCost,
+      grossMargin: timelines.grossMargin,
+      estimatedRevenue: timelines.estimatedRevenue,
+    })
+    .from(timelines)
+    .where(and(eq(timelines.tenantId, tenantId), eq(timelines.recordType, "project")));
+
+  const accessible = ctx.isGlobal
+    ? projectRows
+    : projectRows.filter((p) => ctx.assignedTimelineIds.includes(p.id));
+
+  const ids = accessible.map((p) => p.id);
+
+  if (ids.length === 0) {
+    return {
+      generatedAt: new Date().toISOString(),
+      header: {
+        healthScore: null,
+        healthRag: "gray",
+        activeProjects: 0,
+        totalProjects: 0,
+        clientCount: 0,
+        totalContractValue: 0,
+        forecastRevenue: 0,
+        forecastMarginPct: null,
+        riskExposure: 0,
+        projectsRequiringAttention: 0,
+      },
+      kpis: {
+        greenProjects: 0,
+        amberProjects: 0,
+        redProjects: 0,
+        grayProjects: 0,
+        totalBudget: 0,
+        actualCost: 0,
+        forecastCost: 0,
+        openCriticalRisks: 0,
+        blockedGates: 0,
+        upcomingGoLives: 0,
+        outcomesOnTrack: 0,
+      },
+      projects: [],
+    };
+  }
+
+  const [clientRows, evmRows, riskRows, gateRows, stageRows, outcomeRows] =
+    await Promise.all([
+      db
+        .select({ id: clients.id, name: clients.name })
+        .from(clients)
+        .where(eq(clients.tenantId, tenantId)),
+      db
+        .select({
+          timelineId: evmSnapshots.timelineId,
+          weekEnding: evmSnapshots.weekEnding,
+          cpiValue: evmSnapshots.cpiValue,
+          spiValue: evmSnapshots.spiValue,
+          eacValue: evmSnapshots.eacValue,
+          actualCost: evmSnapshots.actualCost,
+          earnedValue: evmSnapshots.earnedValue,
+        })
+        .from(evmSnapshots)
+        .where(
+          and(
+            eq(evmSnapshots.tenantId, tenantId),
+            eq(evmSnapshots.isCurrent, true),
+            inArray(evmSnapshots.timelineId, ids),
+          ),
+        ),
+      db
+        .select({
+          timelineId: risks.timelineId,
+          probability: risks.probability,
+          impact: risks.impact,
+          status: risks.status,
+          itemType: risks.itemType,
+        })
+        .from(risks)
+        .where(and(eq(risks.tenantId, tenantId), inArray(risks.timelineId, ids))),
+      db
+        .select({
+          timelineId: projectGates.timelineId,
+          status: projectGates.status,
+        })
+        .from(projectGates)
+        .where(and(eq(projectGates.tenantId, tenantId), inArray(projectGates.timelineId, ids))),
+      db
+        .select({ id: flightpathStages.id, name: flightpathStages.name })
+        .from(flightpathStages)
+        .where(eq(flightpathStages.tenantId, tenantId)),
+      db
+        .select({
+          projectId: businessOutcomes.projectId,
+          status: businessOutcomes.status,
+        })
+        .from(businessOutcomes)
+        .where(and(eq(businessOutcomes.tenantId, tenantId), inArray(businessOutcomes.projectId, ids))),
+    ]);
+
+  const clientMap = new Map(clientRows.map((c) => [c.id, c.name]));
+  const stageMap = new Map(stageRows.map((s) => [s.id, s.name]));
+
+  // Latest current EVM snapshot per timeline (max weekEnding).
+  const evmByTimeline = new Map<string, (typeof evmRows)[number]>();
+  for (const e of evmRows) {
+    const existing = evmByTimeline.get(e.timelineId);
+    if (!existing || (e.weekEnding ?? "") > (existing.weekEnding ?? "")) {
+      evmByTimeline.set(e.timelineId, e);
+    }
+  }
+
+  const risksByTimeline = new Map<string, RiskInput[]>();
+  for (const r of riskRows) {
+    const arr = risksByTimeline.get(r.timelineId) ?? [];
+    arr.push({ probability: r.probability, impact: r.impact, status: r.status, itemType: r.itemType });
+    risksByTimeline.set(r.timelineId, arr);
+  }
+
+  const gatesByTimeline = new Map<string, GateInput[]>();
+  for (const g of gateRows) {
+    const arr = gatesByTimeline.get(g.timelineId) ?? [];
+    arr.push({ status: g.status });
+    gatesByTimeline.set(g.timelineId, arr);
+  }
+
+  const outcomesByTimeline = new Map<string, OutcomeInput[]>();
+  for (const o of outcomeRows) {
+    if (!o.projectId) continue;
+    const arr = outcomesByTimeline.get(o.projectId) ?? [];
+    arr.push({ status: o.status });
+    outcomesByTimeline.set(o.projectId, arr);
+  }
+
+  const isCritical = (r: RiskInput) =>
+    (r.itemType ?? "risk") === "risk" &&
+    r.status === "open" &&
+    ["high", "very_high"].includes(r.probability) &&
+    ["high", "very_high"].includes(r.impact);
+
+  const BLOCKED_GATE = new Set(["rejected", "failed", "exception", "exception_requested"]);
+  const PENDING_GATE = new Set(["pending", "in_review"]);
+  const APPROVED_GATE = new Set(["approved", "passed"]);
+
+  const now = new Date();
+  const goLiveCutoff = new Date();
+  goLiveCutoff.setDate(goLiveCutoff.getDate() + 30);
+
+  const projects: PortfolioProjectOverview[] = accessible.map((p) => {
+    const evm = evmByTimeline.get(p.id);
+    const projectRisks = risksByTimeline.get(p.id) ?? [];
+    const projectGatesList = gatesByTimeline.get(p.id) ?? [];
+    const projectOutcomes = outcomesByTimeline.get(p.id) ?? [];
+
+    const cpi = evm?.cpiValue != null ? num(evm.cpiValue) : null;
+    const spi = evm?.spiValue != null ? num(evm.spiValue) : null;
+
+    const result = scoreProject({
+      healthOverall: p.healthOverall,
+      scopeHealth: p.scopeHealth,
+      budgetHealth: p.budgetHealth,
+      teamHealth: p.teamHealth,
+      cpi,
+      spi,
+      grossMargin: p.grossMargin != null ? num(p.grossMargin) : null,
+      risks: projectRisks,
+      gates: projectGatesList,
+      outcomes: projectOutcomes,
+    });
+
+    const openRisks = projectRisks.filter(
+      (r) => (r.itemType ?? "risk") === "risk" && r.status === "open",
+    );
+
+    return {
+      id: p.id,
+      title: p.title,
+      clientId: p.clientId,
+      clientName: p.clientId ? clientMap.get(p.clientId) ?? null : null,
+      region: p.region,
+      projectStatus: p.projectStatus,
+      startDate: p.startDate,
+      endDate: p.endDate,
+      flightpathStageId: p.flightpathStageId,
+      flightpathStageName: p.flightpathStageId ? stageMap.get(p.flightpathStageId) ?? null : null,
+      healthOverall: p.healthOverall,
+      scopeHealth: p.scopeHealth,
+      budgetHealth: p.budgetHealth,
+      teamHealth: p.teamHealth,
+      approvedBudget: p.approvedBudget,
+      totalRunningCost: p.totalRunningCost,
+      grossMargin: p.grossMargin,
+      estimatedRevenue: p.estimatedRevenue,
+      evm: evm
+        ? {
+            cpi,
+            spi,
+            eac: evm.eacValue != null ? num(evm.eacValue) : null,
+            actualCost: evm.actualCost != null ? num(evm.actualCost) : null,
+            earnedValue: evm.earnedValue != null ? num(evm.earnedValue) : null,
+            weekEnding: evm.weekEnding ?? null,
+          }
+        : null,
+      openRiskCount: openRisks.length,
+      openCriticalRiskCount: projectRisks.filter(isCritical).length,
+      gateSummary: {
+        total: projectGatesList.length,
+        blocked: projectGatesList.filter((g) => BLOCKED_GATE.has(g.status)).length,
+        pending: projectGatesList.filter((g) => PENDING_GATE.has(g.status)).length,
+        approved: projectGatesList.filter((g) => APPROVED_GATE.has(g.status)).length,
+      },
+      outcomeCount: projectOutcomes.length,
+      dimensions: result.dimensions,
+      overallScore: result.overallScore,
+      overallRag: result.overallRag,
+    };
+  });
+
+  // ---- Aggregate header + KPI rollups ----
+  const scored = projects.filter((p) => p.overallScore !== null);
+  const healthScore =
+    scored.length > 0
+      ? Math.round(scored.reduce((s, p) => s + (p.overallScore ?? 0), 0) / scored.length)
+      : null;
+
+  const clientIdSet = new Set(projects.map((p) => p.clientId).filter(Boolean));
+  const totalBudget = projects.reduce((s, p) => s + num(p.approvedBudget), 0);
+  const actualCost = projects.reduce(
+    (s, p) => s + (p.evm?.actualCost != null ? p.evm.actualCost : num(p.totalRunningCost)),
+    0,
+  );
+  const forecastCost = projects.reduce(
+    (s, p) => s + (p.evm?.eac != null ? p.evm.eac : num(p.totalRunningCost)),
+    0,
+  );
+  const forecastRevenue = projects.reduce(
+    (s, p) => s + (num(p.estimatedRevenue) || num(p.approvedBudget)),
+    0,
+  );
+  const totalContractValue = forecastRevenue;
+  const forecastMarginPct =
+    forecastRevenue > 0
+      ? Math.round(((forecastRevenue - forecastCost) / forecastRevenue) * 1000) / 10
+      : null;
+  const openCriticalRisks = projects.reduce((s, p) => s + p.openCriticalRiskCount, 0);
+  const blockedGates = projects.reduce((s, p) => s + p.gateSummary.blocked, 0);
+  const upcomingGoLives = projects.filter((p) => {
+    if (!p.endDate || p.projectStatus === "completed") return false;
+    const d = new Date(p.endDate);
+    return d >= now && d <= goLiveCutoff;
+  }).length;
+  const outcomesOnTrack = outcomeRows.filter(
+    (o) => o.status === "active" || o.status === "achieved",
+  ).length;
+
+  const countRag = (rag: Rag) => projects.filter((p) => p.overallRag === rag).length;
+
+  return {
+    generatedAt: new Date().toISOString(),
+    header: {
+      healthScore,
+      healthRag: scoreToRag(healthScore),
+      activeProjects: projects.filter((p) => p.projectStatus !== "completed").length,
+      totalProjects: projects.length,
+      clientCount: clientIdSet.size,
+      totalContractValue,
+      forecastRevenue,
+      forecastMarginPct,
+      riskExposure: openCriticalRisks,
+      projectsRequiringAttention: countRag("red"),
+    },
+    kpis: {
+      greenProjects: countRag("green"),
+      amberProjects: countRag("amber"),
+      redProjects: countRag("red"),
+      grayProjects: countRag("gray"),
+      totalBudget,
+      actualCost,
+      forecastCost,
+      openCriticalRisks,
+      blockedGates,
+      upcomingGoLives,
+      outcomesOnTrack,
+    },
+    projects,
+  };
 }
 
 export async function getProjectStatusReport(tenantId: string, projectId: string) {

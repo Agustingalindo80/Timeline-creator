@@ -5,10 +5,7 @@ import { Helmet } from "react-helmet-async";
 import { useTranslation } from "react-i18next";
 import {
   Activity,
-  FolderKanban,
-  ShieldCheck,
   AlertTriangle,
-  XCircle,
   ArrowUpDown,
   ChevronRight,
 } from "lucide-react";
@@ -26,8 +23,11 @@ import {
   Line,
   Legend,
 } from "recharts";
-import { ReportStatCard, HealthDot } from "@/components/reports/report-charts";
+import { HealthDot } from "@/components/reports/report-charts";
 import { DropdownFilter, HealthFilter } from "@/components/reports/report-filters";
+import { ExecutiveSummaryHeader } from "@/features/portfolio-health/ExecutiveSummaryHeader";
+import { KpiCards } from "@/features/portfolio-health/KpiCards";
+import type { PortfolioOverview } from "@/features/portfolio-health/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -191,6 +191,14 @@ export default function PortfolioHealth() {
     queryKey: ["/api/dashboard/portfolio-health"],
   });
 
+  const {
+    data: overview,
+    isLoading: overviewLoading,
+    isError: overviewError,
+  } = useQuery<PortfolioOverview>({
+    queryKey: ["/api/dashboard/portfolio-overview"],
+  });
+
   const projects = data?.projects ?? [];
   const history = data?.history ?? [];
   const from = data?.historyFrom;
@@ -256,10 +264,6 @@ export default function PortfolioHealth() {
       setSortDir("desc");
     }
   };
-
-  const greenCount = filtered.filter((p) => p.healthOverall === "green").length;
-  const amberCount = filtered.filter((p) => p.healthOverall === "amber").length;
-  const redCount = filtered.filter((p) => p.healthOverall === "red").length;
 
   const bubbleData = useMemo(() => {
     return filtered.map((p) => {
@@ -365,44 +369,28 @@ export default function PortfolioHealth() {
         <meta name="description" content="Portfolio-wide project health across all accessible projects: RAG status, quadrant analysis, client and region rollups, and trends over time." />
       </Helmet>
 
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div>
-          <h1 className="page-title" data-testid="text-portfolio-health-title">Portfolio Health</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Health across all {projects.length} accessible {projects.length === 1 ? "project" : "projects"}.
-          </p>
-        </div>
-      </div>
+      {overview ? (
+        <ExecutiveSummaryHeader header={overview.header} generatedAt={overview.generatedAt} />
+      ) : overviewError ? (
+        <Card data-testid="overview-error">
+          <CardContent className="py-6 flex items-center gap-3 text-sm text-muted-foreground">
+            <AlertTriangle className="w-5 h-5 text-amber-500 dark:text-amber-400 shrink-0" />
+            <span>Executive summary is temporarily unavailable. The data below is still up to date.</span>
+          </CardContent>
+        </Card>
+      ) : (
+        <Skeleton className="h-40 rounded-xl" />
+      )}
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <ReportStatCard
-          title="Projects"
-          value={filtered.length}
-          icon={<FolderKanban className="w-5 h-5 text-primary" />}
-          testId="stat-total-projects"
-        />
-        <ReportStatCard
-          title="Green"
-          value={greenCount}
-          icon={<ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />}
-          valueClassName="text-emerald-600 dark:text-emerald-400"
-          testId="stat-green-count"
-        />
-        <ReportStatCard
-          title="Amber"
-          value={amberCount}
-          icon={<AlertTriangle className="w-5 h-5 text-amber-500 dark:text-amber-400" />}
-          valueClassName="text-amber-500 dark:text-amber-400"
-          testId="stat-amber-count"
-        />
-        <ReportStatCard
-          title="Red"
-          value={redCount}
-          icon={<XCircle className="w-5 h-5 text-red-500 dark:text-red-400" />}
-          valueClassName="text-red-500 dark:text-red-400"
-          testId="stat-red-count"
-        />
-      </div>
+      {overview ? (
+        <KpiCards kpis={overview.kpis} />
+      ) : overviewLoading ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Skeleton key={i} className="h-20" />
+          ))}
+        </div>
+      ) : null}
 
       <Card>
         <CardContent className="pt-4 pb-4">
