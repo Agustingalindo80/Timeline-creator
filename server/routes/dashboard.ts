@@ -352,4 +352,81 @@ export function registerDashboardRoutes(app: Express) {
       res.status(500).json({ message });
     }
   });
+
+  // ---- Portfolio governance data endpoints (read-only, access-filtered) ----
+
+  const accessibleProjectIds = async (req: Parameters<typeof getRecordAccessContext>[0], tenantId: string) => {
+    const ctx = await getRecordAccessContext(req);
+    if (!ctx) return null;
+    const rows = await db.select({ id: timelines.id }).from(timelines)
+      .where(and(eq(timelines.tenantId, tenantId), eq(timelines.recordType, "project")));
+    const ids = ctx.isGlobal ? rows.map(r => r.id) : rows.filter(r => ctx.assignedTimelineIds.includes(r.id)).map(r => r.id);
+    return ids;
+  };
+
+  app.get("/api/dashboard/portfolio-quality", requireModuleAccess("reports"), async (req, res) => {
+    try {
+      const tenantId = req.tenantId || "default";
+      const ids = await accessibleProjectIds(req, tenantId);
+      if (ids === null) return res.status(401).json({ message: "Authentication required" });
+      const data = await storage.getQualityMetricsByTimelineIds(ids, tenantId);
+      res.json(data);
+    } catch (err: unknown) {
+      console.error("Dashboard portfolio-quality error:", err);
+      res.status(500).json({ message: err instanceof Error ? err.message : "Internal server error" });
+    }
+  });
+
+  app.get("/api/dashboard/portfolio-scope-changes", requireModuleAccess("reports"), async (req, res) => {
+    try {
+      const tenantId = req.tenantId || "default";
+      const ids = await accessibleProjectIds(req, tenantId);
+      if (ids === null) return res.status(401).json({ message: "Authentication required" });
+      const data = await storage.getScopeChangeRequestsByTimelineIds(ids, tenantId);
+      res.json(data);
+    } catch (err: unknown) {
+      console.error("Dashboard portfolio-scope-changes error:", err);
+      res.status(500).json({ message: err instanceof Error ? err.message : "Internal server error" });
+    }
+  });
+
+  app.get("/api/dashboard/portfolio-attention", requireModuleAccess("reports"), async (req, res) => {
+    try {
+      const tenantId = req.tenantId || "default";
+      const ids = await accessibleProjectIds(req, tenantId);
+      if (ids === null) return res.status(401).json({ message: "Authentication required" });
+      const data = await storage.getExecutiveAttentionItemsByTimelineIds(ids, tenantId);
+      res.json(data);
+    } catch (err: unknown) {
+      console.error("Dashboard portfolio-attention error:", err);
+      res.status(500).json({ message: err instanceof Error ? err.message : "Internal server error" });
+    }
+  });
+
+  app.get("/api/dashboard/portfolio-stage-entries", requireModuleAccess("reports"), async (req, res) => {
+    try {
+      const tenantId = req.tenantId || "default";
+      const ids = await accessibleProjectIds(req, tenantId);
+      if (ids === null) return res.status(401).json({ message: "Authentication required" });
+      const data = await storage.getStageEntriesByTimelineIds(ids, tenantId);
+      res.json(data);
+    } catch (err: unknown) {
+      console.error("Dashboard portfolio-stage-entries error:", err);
+      res.status(500).json({ message: err instanceof Error ? err.message : "Internal server error" });
+    }
+  });
+
+  app.get("/api/dashboard/portfolio-snapshots", requireModuleAccess("reports"), async (req, res) => {
+    try {
+      const tenantId = req.tenantId || "default";
+      const ids = await accessibleProjectIds(req, tenantId);
+      if (ids === null) return res.status(401).json({ message: "Authentication required" });
+      const range = parseHealthHistoryRange(req.query.from, req.query.to);
+      const data = await storage.getPortfolioSnapshotsByTimelineIds(ids, tenantId, range);
+      res.json(data);
+    } catch (err: unknown) {
+      console.error("Dashboard portfolio-snapshots error:", err);
+      res.status(500).json({ message: err instanceof Error ? err.message : "Internal server error" });
+    }
+  });
 }

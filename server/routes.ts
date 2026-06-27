@@ -4,6 +4,7 @@ import express from "express";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import { tenantContext } from "./middleware/tenant";
 import { seedFlightpathData } from "./seed-flightpath";
+import { seedPortfolioSampleData } from "./seed-portfolio-sample";
 import { uploadsDir } from "./routes/helpers";
 
 import { registerBrandingRoutes } from "./routes/branding";
@@ -79,7 +80,9 @@ export async function registerRoutes(
   registerBusinessOutcomeRoutes(app);
   registerDashboardRoutes(app);
 
-  seedFlightpathData().catch(err => console.error("FlightPath seed error:", err));
+  seedFlightpathData()
+    .then(() => seedPortfolioSampleData())
+    .catch(err => console.error("FlightPath/portfolio seed error:", err));
 
   return httpServer;
 }

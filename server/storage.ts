@@ -89,6 +89,21 @@ import {
   timelineHealthHistory,
   type TimelineHealthHistory,
   type InsertTimelineHealthHistory,
+  projectQualityMetrics,
+  type ProjectQualityMetric,
+  type InsertProjectQualityMetric,
+  scopeChangeRequests,
+  type ScopeChangeRequest,
+  type InsertScopeChangeRequest,
+  executiveAttentionItems,
+  type ExecutiveAttentionItem,
+  type InsertExecutiveAttentionItem,
+  projectStageEntries,
+  type ProjectStageEntry,
+  type InsertProjectStageEntry,
+  portfolioSnapshots,
+  type PortfolioSnapshot,
+  type InsertPortfolioSnapshot,
 } from "@shared/schema";
 
 export type HealthHistoryRange = { from?: Date; to?: Date };
@@ -245,6 +260,25 @@ export interface IStorage {
   getHealthHistory(timelineId: string, tenantId: string, range?: HealthHistoryRange): Promise<TimelineHealthHistory[]>;
   getHealthHistoryByTimelineIds(timelineIds: string[], tenantId: string, range?: HealthHistoryRange): Promise<TimelineHealthHistory[]>;
   getHealthHistoryBaseline(timelineIds: string[], tenantId: string, before: Date): Promise<TimelineHealthHistory[]>;
+
+  getProjectQualityMetrics(timelineId: string, tenantId: string): Promise<ProjectQualityMetric[]>;
+  getQualityMetricsByTimelineIds(timelineIds: string[], tenantId: string): Promise<ProjectQualityMetric[]>;
+  createProjectQualityMetric(data: InsertProjectQualityMetric): Promise<ProjectQualityMetric>;
+
+  getScopeChangeRequests(timelineId: string, tenantId: string): Promise<ScopeChangeRequest[]>;
+  getScopeChangeRequestsByTimelineIds(timelineIds: string[], tenantId: string): Promise<ScopeChangeRequest[]>;
+  createScopeChangeRequest(data: InsertScopeChangeRequest): Promise<ScopeChangeRequest>;
+
+  getExecutiveAttentionItems(timelineId: string, tenantId: string): Promise<ExecutiveAttentionItem[]>;
+  getExecutiveAttentionItemsByTimelineIds(timelineIds: string[], tenantId: string): Promise<ExecutiveAttentionItem[]>;
+  createExecutiveAttentionItem(data: InsertExecutiveAttentionItem): Promise<ExecutiveAttentionItem>;
+
+  getProjectStageEntries(timelineId: string, tenantId: string): Promise<ProjectStageEntry[]>;
+  getStageEntriesByTimelineIds(timelineIds: string[], tenantId: string): Promise<ProjectStageEntry[]>;
+  createProjectStageEntry(data: InsertProjectStageEntry): Promise<ProjectStageEntry>;
+
+  getPortfolioSnapshotsByTimelineIds(timelineIds: string[], tenantId: string, range?: HealthHistoryRange): Promise<PortfolioSnapshot[]>;
+  createPortfolioSnapshot(data: InsertPortfolioSnapshot): Promise<PortfolioSnapshot>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1366,6 +1400,93 @@ export class DatabaseStorage implements IStorage {
         ),
       )
       .orderBy(asc(timelineHealthHistory.timelineId), desc(timelineHealthHistory.recordedAt));
+  }
+
+  async getProjectQualityMetrics(timelineId: string, tenantId: string): Promise<ProjectQualityMetric[]> {
+    return db.select().from(projectQualityMetrics)
+      .where(and(eq(projectQualityMetrics.timelineId, timelineId), eq(projectQualityMetrics.tenantId, tenantId)))
+      .orderBy(desc(projectQualityMetrics.snapshotDate));
+  }
+
+  async getQualityMetricsByTimelineIds(timelineIds: string[], tenantId: string): Promise<ProjectQualityMetric[]> {
+    if (timelineIds.length === 0) return [];
+    return db.select().from(projectQualityMetrics)
+      .where(and(inArray(projectQualityMetrics.timelineId, timelineIds), eq(projectQualityMetrics.tenantId, tenantId)))
+      .orderBy(desc(projectQualityMetrics.snapshotDate));
+  }
+
+  async createProjectQualityMetric(data: InsertProjectQualityMetric): Promise<ProjectQualityMetric> {
+    const [row] = await db.insert(projectQualityMetrics).values(data).returning();
+    return row;
+  }
+
+  async getScopeChangeRequests(timelineId: string, tenantId: string): Promise<ScopeChangeRequest[]> {
+    return db.select().from(scopeChangeRequests)
+      .where(and(eq(scopeChangeRequests.timelineId, timelineId), eq(scopeChangeRequests.tenantId, tenantId)))
+      .orderBy(desc(scopeChangeRequests.createdAt));
+  }
+
+  async getScopeChangeRequestsByTimelineIds(timelineIds: string[], tenantId: string): Promise<ScopeChangeRequest[]> {
+    if (timelineIds.length === 0) return [];
+    return db.select().from(scopeChangeRequests)
+      .where(and(inArray(scopeChangeRequests.timelineId, timelineIds), eq(scopeChangeRequests.tenantId, tenantId)))
+      .orderBy(desc(scopeChangeRequests.createdAt));
+  }
+
+  async createScopeChangeRequest(data: InsertScopeChangeRequest): Promise<ScopeChangeRequest> {
+    const [row] = await db.insert(scopeChangeRequests).values(data).returning();
+    return row;
+  }
+
+  async getExecutiveAttentionItems(timelineId: string, tenantId: string): Promise<ExecutiveAttentionItem[]> {
+    return db.select().from(executiveAttentionItems)
+      .where(and(eq(executiveAttentionItems.timelineId, timelineId), eq(executiveAttentionItems.tenantId, tenantId)))
+      .orderBy(desc(executiveAttentionItems.createdAt));
+  }
+
+  async getExecutiveAttentionItemsByTimelineIds(timelineIds: string[], tenantId: string): Promise<ExecutiveAttentionItem[]> {
+    if (timelineIds.length === 0) return [];
+    return db.select().from(executiveAttentionItems)
+      .where(and(inArray(executiveAttentionItems.timelineId, timelineIds), eq(executiveAttentionItems.tenantId, tenantId)))
+      .orderBy(desc(executiveAttentionItems.createdAt));
+  }
+
+  async createExecutiveAttentionItem(data: InsertExecutiveAttentionItem): Promise<ExecutiveAttentionItem> {
+    const [row] = await db.insert(executiveAttentionItems).values(data).returning();
+    return row;
+  }
+
+  async getProjectStageEntries(timelineId: string, tenantId: string): Promise<ProjectStageEntry[]> {
+    return db.select().from(projectStageEntries)
+      .where(and(eq(projectStageEntries.timelineId, timelineId), eq(projectStageEntries.tenantId, tenantId)))
+      .orderBy(asc(projectStageEntries.enteredAt));
+  }
+
+  async getStageEntriesByTimelineIds(timelineIds: string[], tenantId: string): Promise<ProjectStageEntry[]> {
+    if (timelineIds.length === 0) return [];
+    return db.select().from(projectStageEntries)
+      .where(and(inArray(projectStageEntries.timelineId, timelineIds), eq(projectStageEntries.tenantId, tenantId)))
+      .orderBy(asc(projectStageEntries.enteredAt));
+  }
+
+  async createProjectStageEntry(data: InsertProjectStageEntry): Promise<ProjectStageEntry> {
+    const [row] = await db.insert(projectStageEntries).values(data).returning();
+    return row;
+  }
+
+  async getPortfolioSnapshotsByTimelineIds(timelineIds: string[], tenantId: string, range?: HealthHistoryRange): Promise<PortfolioSnapshot[]> {
+    if (timelineIds.length === 0) return [];
+    const conditions = [inArray(portfolioSnapshots.timelineId, timelineIds), eq(portfolioSnapshots.tenantId, tenantId)];
+    if (range?.from) conditions.push(gte(portfolioSnapshots.snapshotDate, range.from.toISOString().split("T")[0]));
+    if (range?.to) conditions.push(lte(portfolioSnapshots.snapshotDate, range.to.toISOString().split("T")[0]));
+    return db.select().from(portfolioSnapshots)
+      .where(and(...conditions))
+      .orderBy(asc(portfolioSnapshots.snapshotDate));
+  }
+
+  async createPortfolioSnapshot(data: InsertPortfolioSnapshot): Promise<PortfolioSnapshot> {
+    const [row] = await db.insert(portfolioSnapshots).values(data).returning();
+    return row;
   }
 }
 

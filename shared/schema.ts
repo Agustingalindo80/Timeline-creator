@@ -433,6 +433,12 @@ export const timelines = pgTable("timelines", {
   convertedAt: timestamp("converted_at", { withTimezone: true }),
   salesforceClouds: text("salesforce_clouds"),
   currency: text("currency").notNull().default("USD"),
+  subsidiary: text("subsidiary"),
+  engagementManagerId: varchar("engagement_manager_id").references(() => teamMembers.id, { onDelete: "set null" }),
+  targetGoLiveDate: date("target_go_live_date"),
+  contractedRevenue: numeric("contracted_revenue", { precision: 14, scale: 2 }),
+  targetMarginPct: numeric("target_margin_pct", { precision: 5, scale: 2 }),
+  strategicAccount: boolean("strategic_account").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
   createdBy: varchar("created_by"),
@@ -895,6 +901,119 @@ export const businessOutcomes = pgTable("business_outcomes", {
 export const insertBusinessOutcomeSchema = createInsertSchema(businessOutcomes).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertBusinessOutcome = z.infer<typeof insertBusinessOutcomeSchema>;
 export type BusinessOutcome = typeof businessOutcomes.$inferSelect;
+
+// ---- Portfolio governance data models (Atlas executive cockpit) ----
+
+export const projectQualityMetrics = pgTable("project_quality_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: text("tenant_id").notNull().default("default"),
+  timelineId: varchar("timeline_id").notNull().references(() => timelines.id, { onDelete: "cascade" }),
+  snapshotDate: date("snapshot_date").notNull(),
+  openDefects: integer("open_defects").notNull().default(0),
+  criticalDefects: integer("critical_defects").notNull().default(0),
+  uatBlockers: integer("uat_blockers").notNull().default(0),
+  failedTests: integer("failed_tests").notNull().default(0),
+  reopenedTests: integer("reopened_tests").notNull().default(0),
+  regressionReady: boolean("regression_ready").notNull().default(false),
+  qaExitStatus: text("qa_exit_status").notNull().default("not_ready"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_quality_tenant_timeline").on(table.tenantId, table.timelineId),
+  index("idx_quality_timeline_date").on(table.timelineId, table.snapshotDate),
+]);
+
+export const scopeChangeRequests = pgTable("scope_change_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: text("tenant_id").notNull().default("default"),
+  timelineId: varchar("timeline_id").notNull().references(() => timelines.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  status: text("status").notNull().default("submitted"),
+  commercialImpact: numeric("commercial_impact", { precision: 14, scale: 2 }),
+  timelineImpactDays: integer("timeline_impact_days"),
+  marginImpactPct: numeric("margin_impact_pct", { precision: 6, scale: 2 }),
+  approvedBy: text("approved_by"),
+  approvedAt: timestamp("approved_at", { withTimezone: true }),
+  raisedDate: date("raised_date"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_scope_tenant_timeline").on(table.tenantId, table.timelineId),
+]);
+
+export const executiveAttentionItems = pgTable("executive_attention_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: text("tenant_id").notNull().default("default"),
+  timelineId: varchar("timeline_id").notNull().references(() => timelines.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  severity: text("severity").notNull().default("medium"),
+  issueType: text("issue_type"),
+  owner: text("owner"),
+  dueDate: date("due_date"),
+  recommendedAction: text("recommended_action"),
+  escalationStatus: text("escalation_status").notNull().default("none"),
+  status: text("status").notNull().default("open"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_attention_tenant_timeline").on(table.tenantId, table.timelineId),
+  index("idx_attention_tenant_status").on(table.tenantId, table.status),
+]);
+
+export const projectStageEntries = pgTable("project_stage_entries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: text("tenant_id").notNull().default("default"),
+  timelineId: varchar("timeline_id").notNull().references(() => timelines.id, { onDelete: "cascade" }),
+  stageId: varchar("stage_id").notNull().references(() => flightpathStages.id, { onDelete: "cascade" }),
+  enteredAt: timestamp("entered_at", { withTimezone: true }).notNull().defaultNow(),
+  notes: text("notes"),
+}, (table) => [
+  index("idx_stage_entry_timeline").on(table.timelineId, table.enteredAt),
+  index("idx_stage_entry_tenant").on(table.tenantId),
+]);
+
+export const portfolioSnapshots = pgTable("portfolio_snapshots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: text("tenant_id").notNull().default("default"),
+  timelineId: varchar("timeline_id").notNull().references(() => timelines.id, { onDelete: "cascade" }),
+  snapshotDate: date("snapshot_date").notNull(),
+  overallScore: numeric("overall_score", { precision: 5, scale: 2 }),
+  overallRag: text("overall_rag").notNull().default("gray"),
+  dimensionRags: jsonb("dimension_rags").$type<Record<string, string>>(),
+  marginPct: numeric("margin_pct", { precision: 6, scale: 2 }),
+  forecastRevenue: numeric("forecast_revenue", { precision: 14, scale: 2 }),
+  riskExposure: numeric("risk_exposure", { precision: 14, scale: 2 }),
+  openCriticalRisks: integer("open_critical_risks").notNull().default(0),
+  blockedGates: integer("blocked_gates").notNull().default(0),
+  outcomesOnTrack: integer("outcomes_on_track").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  unique("portfolio_snapshot_timeline_date_uniq").on(table.tenantId, table.timelineId, table.snapshotDate),
+  index("idx_portfolio_snapshot_tenant_date").on(table.tenantId, table.snapshotDate),
+]);
+
+export const insertProjectQualityMetricSchema = createInsertSchema(projectQualityMetrics).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertProjectQualityMetric = z.infer<typeof insertProjectQualityMetricSchema>;
+export type ProjectQualityMetric = typeof projectQualityMetrics.$inferSelect;
+
+export const insertScopeChangeRequestSchema = createInsertSchema(scopeChangeRequests).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertScopeChangeRequest = z.infer<typeof insertScopeChangeRequestSchema>;
+export type ScopeChangeRequest = typeof scopeChangeRequests.$inferSelect;
+
+export const insertExecutiveAttentionItemSchema = createInsertSchema(executiveAttentionItems).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertExecutiveAttentionItem = z.infer<typeof insertExecutiveAttentionItemSchema>;
+export type ExecutiveAttentionItem = typeof executiveAttentionItems.$inferSelect;
+
+export const insertProjectStageEntrySchema = createInsertSchema(projectStageEntries).omit({ id: true });
+export type InsertProjectStageEntry = z.infer<typeof insertProjectStageEntrySchema>;
+export type ProjectStageEntry = typeof projectStageEntries.$inferSelect;
+
+export const insertPortfolioSnapshotSchema = createInsertSchema(portfolioSnapshots).omit({ id: true, createdAt: true });
+export type InsertPortfolioSnapshot = z.infer<typeof insertPortfolioSnapshotSchema>;
+export type PortfolioSnapshot = typeof portfolioSnapshots.$inferSelect;
 
 export const apiTokens = pgTable("api_tokens", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
