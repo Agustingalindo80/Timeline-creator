@@ -147,11 +147,26 @@ export interface PortfolioProjectOverview {
   } | null;
   openRiskCount: number;
   openCriticalRiskCount: number;
+  openDecisionCount: number;
   gateSummary: { total: number; blocked: number; pending: number; approved: number };
+  currentGateStatus: string | null;
+  nextGateName: string | null;
+  nextMilestone: { title: string; date: string } | null;
   outcomeCount: number;
+  updatedAt: string | null;
   dimensions: DimensionScores;
   overallScore: number | null;
   overallRag: Rag;
+}
+
+export interface PortfolioFilters {
+  clientId?: string;
+  stageId?: string;
+  rag?: string;
+  status?: string;
+  search?: string;
+  dateFrom?: string;
+  dateTo?: string;
 }
 
 export interface PortfolioOverview {
@@ -190,6 +205,7 @@ export interface PortfolioOverview {
 export async function getPortfolioOverview(
   tenantId: string,
   ctx: RecordAccessContext,
+  filters: PortfolioFilters = {},
 ): Promise<PortfolioOverview> {
   const projectRows = await db
     .select({
@@ -209,6 +225,7 @@ export async function getPortfolioOverview(
       totalRunningCost: timelines.totalRunningCost,
       grossMargin: timelines.grossMargin,
       estimatedRevenue: timelines.estimatedRevenue,
+      updatedAt: timelines.updatedAt,
     })
     .from(timelines)
     .where(and(eq(timelines.tenantId, tenantId), eq(timelines.recordType, "project")));
@@ -254,7 +271,7 @@ export async function getPortfolioOverview(
     };
   }
 
-  const [clientRows, evmRows, riskRows, gateRows, stageRows, outcomeRows, checkpointRows] =
+  const [clientRows, evmRows, riskRows, gateRows, stageRows, outcomeRows, checkpointRows, milestoneRows] =
     await Promise.all([
       db
         .select({ id: clients.id, name: clients.name })
@@ -335,6 +352,15 @@ export async function getPortfolioOverview(
         })
         .from(projectCheckpoints)
         .where(and(eq(projectCheckpoints.tenantId, tenantId), inArray(projectCheckpoints.timelineId, ids))),
+      db
+        .select({
+          timelineId: milestones.timelineId,
+          title: milestones.title,
+          date: milestones.date,
+          actualDate: milestones.actualDate,
+        })
+        .from(milestones)
+        .where(and(eq(milestones.tenantId, tenantId), inArray(milestones.timelineId, ids))),
     ]);
 
   const clientMap = new Map(clientRows.map((c) => [c.id, c.name]));
@@ -401,6 +427,18 @@ export async function getPortfolioOverview(
     mandatoryByTimelineStage.set(key, agg);
   }
 
+  // Next upcoming (incomplete) milestone per timeline.
+  const todayStr = now.toISOString().split("T")[0];
+  const nextMilestoneByTimeline = new Map<string, { title: string; date: string }>();
+  for (const m of milestoneRows) {
+    if (m.actualDate) continue;
+    if (!m.date || m.date < todayStr) continue;
+    const existing = nextMilestoneByTimeline.get(m.timelineId);
+    if (!existing || m.date < existing.date) {
+      nextMilestoneByTimeline.set(m.timelineId, { title: m.title, date: m.date });
+    }
+  }
+
   const rationalesById = new Map<string, Record<DimensionKey, string>>();
 
   const projects: PortfolioProjectOverview[] = accessible.map((p) => {
@@ -408,6 +446,10 @@ export async function getPortfolioOverview(
     const projectRisks = risksByTimeline.get(p.id) ?? [];
     const projectGatesList = gatesByTimeline.get(p.id) ?? [];
     const projectOutcomes = outcomesByTimeline.get(p.id) ?? [];
+    const fullGatesForProject = gateRowsByTimeline.get(p.id) ?? [];
+    const currentGateStatus = p.flightpathStageId
+      ? fullGatesForProject.find((g) => g.stageId === p.flightpathStageId)?.status ?? null
+      : null;
 
     const cpi = evm?.cpiValue != null ? num(evm.cpiValue) : null;
     const spi = evm?.spiValue != null ? num(evm.spiValue) : null;
@@ -465,37 +507,63 @@ export async function getPortfolioOverview(
         : null,
       openRiskCount: openRisks.length,
       openCriticalRiskCount: projectRisks.filter(isCritical).length,
+      openDecisionCount: projectGatesList.filter((g) => g.status === "exception_requested").length,
       gateSummary: {
         total: projectGatesList.length,
         blocked: projectGatesList.filter((g) => BLOCKED_GATE.has(g.status)).length,
         pending: projectGatesList.filter((g) => PENDING_GATE.has(g.status)).length,
         approved: projectGatesList.filter((g) => APPROVED_GATE.has(g.status)).length,
       },
+      currentGateStatus,
+      nextGateName: p.flightpathStageId
+        ? stageDetailMap.get(p.flightpathStageId)?.gateName ?? null
+        : null,
+      nextMilestone: nextMilestoneByTimeline.get(p.id) ?? null,
       outcomeCount: projectOutcomes.length,
+      updatedAt: p.updatedAt ? new Date(p.updatedAt).toISOString() : null,
       dimensions: result.dimensions,
       overallScore: result.overallScore,
       overallRag: result.overallRag,
     };
   });
 
+  // ---- Apply global filters: every downstream aggregate is computed from the
+  // filtered set so the whole dashboard stays consistent with the active filters.
+  const searchTerm = filters.search?.trim().toLowerCase() ?? "";
+  const filtered = projects.filter((p) => {
+    if (filters.clientId && p.clientId !== filters.clientId) return false;
+    if (filters.stageId && p.flightpathStageId !== filters.stageId) return false;
+    if (filters.rag && p.overallRag !== filters.rag) return false;
+    if (filters.status && p.projectStatus !== filters.status) return false;
+    if (searchTerm) {
+      const hay = `${p.title} ${p.clientName ?? ""}`.toLowerCase();
+      if (!hay.includes(searchTerm)) return false;
+    }
+    // Permissive date-window overlap (missing bounds treated as open-ended).
+    if (filters.dateFrom && p.endDate && p.endDate < filters.dateFrom) return false;
+    if (filters.dateTo && p.startDate && p.startDate > filters.dateTo) return false;
+    return true;
+  });
+  const filteredIds = new Set(filtered.map((p) => p.id));
+
   // ---- Aggregate header + KPI rollups ----
-  const scored = projects.filter((p) => p.overallScore !== null);
+  const scored = filtered.filter((p) => p.overallScore !== null);
   const healthScore =
     scored.length > 0
       ? Math.round(scored.reduce((s, p) => s + (p.overallScore ?? 0), 0) / scored.length)
       : null;
 
-  const clientIdSet = new Set(projects.map((p) => p.clientId).filter(Boolean));
-  const totalBudget = projects.reduce((s, p) => s + num(p.approvedBudget), 0);
-  const actualCost = projects.reduce(
+  const clientIdSet = new Set(filtered.map((p) => p.clientId).filter(Boolean));
+  const totalBudget = filtered.reduce((s, p) => s + num(p.approvedBudget), 0);
+  const actualCost = filtered.reduce(
     (s, p) => s + (p.evm?.actualCost != null ? p.evm.actualCost : num(p.totalRunningCost)),
     0,
   );
-  const forecastCost = projects.reduce(
+  const forecastCost = filtered.reduce(
     (s, p) => s + (p.evm?.eac != null ? p.evm.eac : num(p.totalRunningCost)),
     0,
   );
-  const forecastRevenue = projects.reduce(
+  const forecastRevenue = filtered.reduce(
     (s, p) => s + (num(p.estimatedRevenue) || num(p.approvedBudget)),
     0,
   );
@@ -504,28 +572,33 @@ export async function getPortfolioOverview(
     forecastRevenue > 0
       ? Math.round(((forecastRevenue - forecastCost) / forecastRevenue) * 1000) / 10
       : null;
-  const openCriticalRisks = projects.reduce((s, p) => s + p.openCriticalRiskCount, 0);
-  const blockedGates = projects.reduce((s, p) => s + p.gateSummary.blocked, 0);
-  const upcomingGoLives = projects.filter((p) => {
+  const openCriticalRisks = filtered.reduce((s, p) => s + p.openCriticalRiskCount, 0);
+  const blockedGates = filtered.reduce((s, p) => s + p.gateSummary.blocked, 0);
+  const upcomingGoLives = filtered.filter((p) => {
     if (!p.endDate || p.projectStatus === "completed") return false;
     const d = new Date(p.endDate);
     return d >= now && d <= goLiveCutoff;
   }).length;
   const outcomesOnTrack = outcomeRows.filter(
-    (o) => o.status === "active" || o.status === "achieved",
+    (o) =>
+      o.projectId != null &&
+      filteredIds.has(o.projectId) &&
+      (o.status === "active" || o.status === "achieved"),
   ).length;
 
-  const countRag = (rag: Rag) => projects.filter((p) => p.overallRag === rag).length;
+  const countRag = (rag: Rag) => filtered.filter((p) => p.overallRag === rag).length;
 
   // ---- Executive panel data ----
   const missingEvidenceByTimeline = new Map<string, number>();
   for (const c of checkpointRows) {
-    if (c.optional || c.completed) continue;
+    if (c.optional || c.completed || !filteredIds.has(c.timelineId)) continue;
     missingEvidenceByTimeline.set(c.timelineId, (missingEvidenceByTimeline.get(c.timelineId) ?? 0) + 1);
   }
 
-  const titleByTimeline = new Map(projects.map((p) => [p.id, p.title]));
-  const panelRisks: PanelRiskRow[] = riskRows.map((r) => ({
+  const titleByTimeline = new Map(filtered.map((p) => [p.id, p.title]));
+  const panelRisks: PanelRiskRow[] = riskRows
+    .filter((r) => filteredIds.has(r.timelineId))
+    .map((r) => ({
     id: r.id,
     timelineId: r.timelineId,
     title: r.title,
@@ -536,14 +609,16 @@ export async function getPortfolioOverview(
     owner: r.owner,
     dueDate: r.dueDate,
   }));
-  const panelOutcomes: PanelOutcomeRow[] = outcomeRows.map((o) => ({
-    status: o.status,
-    successMetric: o.successMetric,
-    currentValue: o.currentValue,
-    evidence: o.evidence,
-  }));
+  const panelOutcomes: PanelOutcomeRow[] = outcomeRows
+    .filter((o) => o.projectId != null && filteredIds.has(o.projectId))
+    .map((o) => ({
+      status: o.status,
+      successMetric: o.successMetric,
+      currentValue: o.currentValue,
+      evidence: o.evidence,
+    }));
 
-  const panelProjects: PanelProjectInput[] = projects.map((p) => {
+  const panelProjects: PanelProjectInput[] = filtered.map((p) => {
     const fullGates = gateRowsByTimeline.get(p.id) ?? [];
     const nextGate = fullGates
       .filter((g) => !APPROVED_GATE.has(g.status))
@@ -592,7 +667,7 @@ export async function getPortfolioOverview(
 
   // ---- FlightPath stage distribution + dimension heatmap ----
   const nowIso = now.toISOString();
-  const flowProjects: FlowProjectInput[] = projects.map((p) => {
+  const flowProjects: FlowProjectInput[] = filtered.map((p) => {
     const fullGates = gateRowsByTimeline.get(p.id) ?? [];
     // `project_gates` has a unique (timelineId, stageId) constraint, so there is
     // at most one gate per stage and `find` is deterministic.
@@ -656,8 +731,8 @@ export async function getPortfolioOverview(
     header: {
       healthScore,
       healthRag: scoreToRag(healthScore),
-      activeProjects: projects.filter((p) => p.projectStatus !== "completed").length,
-      totalProjects: projects.length,
+      activeProjects: filtered.filter((p) => p.projectStatus !== "completed").length,
+      totalProjects: filtered.length,
       clientCount: clientIdSet.size,
       totalContractValue,
       forecastRevenue,
@@ -681,7 +756,7 @@ export async function getPortfolioOverview(
     panels,
     stages,
     heatmap,
-    projects,
+    projects: filtered,
   };
 }
 

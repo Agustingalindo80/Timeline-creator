@@ -167,7 +167,13 @@ export function StageDistribution({ stages }: { stages: StageBucket[] }) {
   );
 }
 
-export function DimensionHeatmap({ heatmap }: { heatmap: Heatmap }) {
+export function DimensionHeatmap({
+  heatmap,
+  onSelectProject,
+}: {
+  heatmap: Heatmap;
+  onSelectProject?: (id: string) => void;
+}) {
   return (
     <Card data-testid="section-dimension-heatmap">
       <CardHeader className="pb-3">
@@ -203,33 +209,62 @@ export function DimensionHeatmap({ heatmap }: { heatmap: Heatmap }) {
                   {heatmap.rows.map((row) => (
                     <tr key={row.id} data-testid={`heatmap-row-${row.id}`}>
                       <td className="text-xs font-medium px-2 py-1 max-w-[200px] truncate sticky left-0 bg-card">
-                        <Link
-                          href={`/timeline/${row.id}`}
-                          className="hover:text-primary hover:underline"
-                          data-testid={`link-heatmap-project-${row.id}`}
-                          title={row.title}
-                        >
-                          {row.title}
-                        </Link>
+                        {onSelectProject ? (
+                          <button
+                            type="button"
+                            onClick={() => onSelectProject(row.id)}
+                            className="hover:text-primary hover:underline text-left truncate w-full"
+                            data-testid={`link-heatmap-project-${row.id}`}
+                            title={row.title}
+                          >
+                            {row.title}
+                          </button>
+                        ) : (
+                          <Link
+                            href={`/timeline/${row.id}`}
+                            className="hover:text-primary hover:underline"
+                            data-testid={`link-heatmap-project-${row.id}`}
+                            title={row.title}
+                          >
+                            {row.title}
+                          </Link>
+                        )}
                       </td>
                       {heatmap.columns.map((c) => {
                         const cell = row.cells[c.key];
+                        const cellClass =
+                          "h-8 w-full min-w-[44px] rounded flex items-center justify-center text-[11px] font-semibold tabular-nums cursor-pointer transition-shadow hover:ring-2 hover:ring-offset-1 hover:ring-offset-card focus-visible:outline-none focus-visible:ring-2";
+                        const cellStyle = {
+                          backgroundColor: `${RAG_COLOR[cell.rag]}26`,
+                          color: RAG_COLOR[cell.rag],
+                        };
+                        const cellLabel = `${row.title} ${c.label}: ${RAG_LABEL[cell.rag]}`;
                         return (
                           <td key={c.key} className="p-0">
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Link
-                                  href={`/timeline/${row.id}`}
-                                  className="h-8 w-full min-w-[44px] rounded flex items-center justify-center text-[11px] font-semibold tabular-nums cursor-pointer transition-shadow hover:ring-2 hover:ring-offset-1 hover:ring-offset-card focus-visible:outline-none focus-visible:ring-2"
-                                  style={{
-                                    backgroundColor: `${RAG_COLOR[cell.rag]}26`,
-                                    color: RAG_COLOR[cell.rag],
-                                  }}
-                                  aria-label={`${row.title} ${c.label}: ${RAG_LABEL[cell.rag]}`}
-                                  data-testid={`heatmap-cell-${row.id}-${c.key}`}
-                                >
-                                  {cell.score === null ? "\u2014" : cell.score}
-                                </Link>
+                                {onSelectProject ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => onSelectProject(row.id)}
+                                    className={cellClass}
+                                    style={cellStyle}
+                                    aria-label={cellLabel}
+                                    data-testid={`heatmap-cell-${row.id}-${c.key}`}
+                                  >
+                                    {cell.score === null ? "\u2014" : cell.score}
+                                  </button>
+                                ) : (
+                                  <Link
+                                    href={`/timeline/${row.id}`}
+                                    className={cellClass}
+                                    style={cellStyle}
+                                    aria-label={cellLabel}
+                                    data-testid={`heatmap-cell-${row.id}-${c.key}`}
+                                  >
+                                    {cell.score === null ? "\u2014" : cell.score}
+                                  </Link>
+                                )}
                               </TooltipTrigger>
                               <TooltipContent side="top" className="max-w-[240px]">
                                 <p className="font-semibold">

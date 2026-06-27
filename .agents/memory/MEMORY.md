@@ -1,1 +1,1 @@
-- [Portfolio Health cockpit](portfolio-health-cockpit.md) — Vogara Atlas executive dashboard: scoring engine, panels, reports overview wiring, conventions.
+- [Portfolio Health cockpit](portfolio-health-cockpit.md) — server-driven filters: one filtered project set in getPortfolioOverview must drive every aggregate; client query-key gotchas.

@@ -48,11 +48,26 @@ export interface PortfolioProjectOverview {
   } | null;
   openRiskCount: number;
   openCriticalRiskCount: number;
+  openDecisionCount: number;
   gateSummary: { total: number; blocked: number; pending: number; approved: number };
+  currentGateStatus: string | null;
+  nextGateName: string | null;
+  nextMilestone: { title: string; date: string } | null;
   outcomeCount: number;
+  updatedAt: string | null;
   dimensions: DimensionScores;
   overallScore: number | null;
   overallRag: Rag;
+}
+
+export interface PortfolioFilters {
+  clientId?: string;
+  stageId?: string;
+  rag?: string;
+  status?: string;
+  search?: string;
+  dateFrom?: string;
+  dateTo?: string;
 }
 
 export interface PortfolioOverviewHeader {

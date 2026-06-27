@@ -329,7 +329,22 @@ export function registerDashboardRoutes(app: Express) {
       if (!ctx) return res.status(401).json({ message: "Authentication required" });
       const tenantId = req.tenantId || "default";
 
-      const overview = await getPortfolioOverview(tenantId, ctx);
+      const str = (v: unknown): string | undefined => {
+        if (typeof v !== "string") return undefined;
+        const t = v.trim();
+        return t.length > 0 ? t : undefined;
+      };
+      const filters = {
+        clientId: str(req.query.clientId),
+        stageId: str(req.query.stageId),
+        rag: str(req.query.rag),
+        status: str(req.query.status),
+        search: str(req.query.search),
+        dateFrom: str(req.query.dateFrom),
+        dateTo: str(req.query.dateTo),
+      };
+
+      const overview = await getPortfolioOverview(tenantId, ctx, filters);
       res.json(overview);
     } catch (err: unknown) {
       console.error("Dashboard portfolio-overview error:", err);
