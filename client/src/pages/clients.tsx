@@ -32,20 +32,25 @@ import { Label } from "@/components/ui/label";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Client, AppSettings } from "@shared/schema";
 import { getDefaultFieldOptions } from "@shared/schema";
+import { COUNTRIES, getCountryLabel } from "@shared/countries";
 import { useToast } from "@/hooks/use-toast";
 import { useAppTitle } from "@/hooks/use-app-title";
 
 interface RowEdits {
   industry?: string | null;
+  segment?: string | null;
+  country?: string | null;
   contactPhone?: string | null;
   status?: string;
 }
 
-type SortField = "name" | "industry" | "contactPhone" | "status";
+type SortField = "name" | "industry" | "segment" | "country" | "contactPhone" | "status";
 type SortDir = "asc" | "desc";
 
 interface ColumnFilters {
   industry?: string;
+  segment?: string;
+  country?: string;
   status?: string;
 }
 
@@ -73,6 +78,7 @@ export default function Clients() {
   });
 
   const industryOptions = settings?.industries || getDefaultFieldOptions("industries", settings?.locale || "en");
+  const segmentOptions = getDefaultFieldOptions("segments", settings?.locale || "en");
 
   const createMutation = useMutation({
     mutationFn: async (data: { name: string; industry?: string }) => {
@@ -210,6 +216,12 @@ export default function Clients() {
     return opt ? opt.label : value;
   }, [industryOptions]);
 
+  const getSegmentLabel = useCallback((value: string | null | undefined): string => {
+    if (!value) return "";
+    const opt = segmentOptions.find((o) => o.value === value);
+    return opt ? opt.label : value;
+  }, [segmentOptions]);
+
   const processedClients = useMemo(() => {
     if (!clients) return [];
 
@@ -223,6 +235,8 @@ export default function Clients() {
       }
 
       if (columnFilters.industry && (c.industry || "") !== columnFilters.industry) return false;
+      if (columnFilters.segment && (c.segment || "") !== columnFilters.segment) return false;
+      if (columnFilters.country && (c.country || "") !== columnFilters.country) return false;
       if (columnFilters.status && (c.status || "active") !== columnFilters.status) return false;
 
       return true;
@@ -242,6 +256,14 @@ export default function Clients() {
             aVal = getIndustryLabel(a.industry).toLowerCase();
             bVal = getIndustryLabel(b.industry).toLowerCase();
             break;
+          case "segment":
+            aVal = getSegmentLabel(a.segment).toLowerCase();
+            bVal = getSegmentLabel(b.segment).toLowerCase();
+            break;
+          case "country":
+            aVal = getCountryLabel(a.country).toLowerCase();
+            bVal = getCountryLabel(b.country).toLowerCase();
+            break;
           case "contactPhone":
             aVal = (a.contactPhone || "").toLowerCase();
             bVal = (b.contactPhone || "").toLowerCase();
@@ -259,7 +281,7 @@ export default function Clients() {
     }
 
     return result;
-  }, [clients, searchQuery, columnFilters, sortField, sortDir, getIndustryLabel]);
+  }, [clients, searchQuery, columnFilters, sortField, sortDir, getIndustryLabel, getSegmentLabel]);
 
   const inputClass = "h-7 text-xs border rounded px-1.5 py-0 bg-background w-full";
   const selectClass = "h-7 text-xs border rounded px-1.5 py-0 bg-background w-full appearance-none cursor-pointer";
@@ -444,6 +466,8 @@ export default function Clients() {
                 <tr className="bg-muted/50 border-b">
                   <SortHeader field="name" label={t("common.name")} />
                   <SortHeader field="industry" label={t("clients.industry")} />
+                  <SortHeader field="segment" label={t("clients.segment")} />
+                  <SortHeader field="country" label={t("clients.country")} />
                   <SortHeader field="contactPhone" label={t("common.phone")} />
                   <SortHeader field="status" label={t("common.status")} align="center" />
                   <th className="text-center font-medium text-muted-foreground px-3 py-2 whitespace-nowrap w-[80px]">{t("common.actions")}</th>
@@ -461,6 +485,32 @@ export default function Clients() {
                         <option value="">{t("common.all")}</option>
                         {industryOptions.map((opt) => (
                           <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </th>
+                    <th className="px-3 py-1.5">
+                      <select
+                        className={filterSelectClass}
+                        value={columnFilters.segment || ""}
+                        onChange={(e) => setFilter("segment", e.target.value)}
+                        data-testid="filter-segment"
+                      >
+                        <option value="">{t("common.all")}</option>
+                        {segmentOptions.map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </th>
+                    <th className="px-3 py-1.5">
+                      <select
+                        className={filterSelectClass}
+                        value={columnFilters.country || ""}
+                        onChange={(e) => setFilter("country", e.target.value)}
+                        data-testid="filter-country"
+                      >
+                        <option value="">{t("common.all")}</option>
+                        {COUNTRIES.map((c) => (
+                          <option key={c.value} value={c.value}>{c.label}</option>
                         ))}
                       </select>
                     </th>
@@ -510,6 +560,32 @@ export default function Clients() {
                           <option value="">—</option>
                           {industryOptions.map((opt) => (
                             <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="px-3 py-2 min-w-[130px]">
+                        <select
+                          className={selectClass}
+                          value={getVal(client, "segment")}
+                          onChange={(e) => updateField(client.id, "segment", e.target.value, client)}
+                          data-testid={`select-segment-${client.id}`}
+                        >
+                          <option value="">—</option>
+                          {segmentOptions.map((opt) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="px-3 py-2 min-w-[150px]">
+                        <select
+                          className={selectClass}
+                          value={getVal(client, "country")}
+                          onChange={(e) => updateField(client.id, "country", e.target.value, client)}
+                          data-testid={`select-country-${client.id}`}
+                        >
+                          <option value="">—</option>
+                          {COUNTRIES.map((c) => (
+                            <option key={c.value} value={c.value}>{c.label}</option>
                           ))}
                         </select>
                       </td>

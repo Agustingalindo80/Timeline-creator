@@ -24,6 +24,7 @@ import AdminSecurity from "@/pages/admin-security";
 import Clients from "@/pages/clients";
 import ClientDetail from "@/pages/client-detail";
 import ContactsList from "@/pages/contacts";
+import ContactDetail from "@/pages/contact-detail";
 import TeamMembersList from "@/pages/team-members";
 import TeamMemberDetail from "@/pages/team-member-detail";
 import AllocationsPage from "@/pages/allocations";
@@ -132,6 +133,7 @@ function AppRouter() {
       <Route path="/clients">{() => <ProtectedRoute requiredModule="module.clients"><Clients /></ProtectedRoute>}</Route>
       <Route path="/clients/:id">{() => <ProtectedRoute requiredModule="module.clients"><ClientDetail /></ProtectedRoute>}</Route>
       <Route path="/contacts">{() => <ProtectedRoute requiredModule="module.contacts"><ContactsList /></ProtectedRoute>}</Route>
+      <Route path="/contacts/:id">{() => <ProtectedRoute requiredModule="module.contacts"><ContactDetail /></ProtectedRoute>}</Route>
       <Route path="/team-members/:id">{() => <ProtectedRoute requiredModule="module.team_members"><TeamMemberDetail /></ProtectedRoute>}</Route>
       <Route path="/team-members">{() => <ProtectedRoute requiredModule="module.team_members"><TeamMembersList /></ProtectedRoute>}</Route>
       <Route path="/allocations">{() => <ProtectedRoute requiredModule="module.allocations"><AllocationsPage /></ProtectedRoute>}</Route>

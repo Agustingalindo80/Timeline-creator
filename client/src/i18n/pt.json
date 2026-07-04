@@ -235,7 +235,12 @@
     "clientUpdated": "Empresa atualizada",
     "failedToCreate": "Falha ao criar empresa",
     "failedToSave": "Falha ao salvar",
-    "saveChanges": "Salvar alterações"
+    "saveChanges": "Salvar alterações",
+    "country": "País",
+    "selectCountry": "Selecionar país...",
+    "segment": "Segmento",
+    "selectSegment": "Selecionar segmento...",
+    "notes": "Notas"
   },
   "contacts": {
     "title": "Contatos",
@@ -251,7 +256,16 @@
     "contactDeleted": "Contato excluído",
     "failedToSave": "Falha ao salvar",
     "failedToDelete": "Falha ao excluir",
-    "legalRep": "Rep. Jurídico"
+    "legalRep": "Rep. Jurídico",
+    "stakeholderType": "Tipo de Parte Interessada",
+    "selectStakeholderType": "Selecionar tipo de parte interessada...",
+    "noStakeholderType": "Sem tipo de parte interessada",
+    "backToContacts": "Voltar aos Contatos",
+    "contactDetails": "Detalhes do Contato",
+    "company": "Empresa",
+    "notFound": "Contato não encontrado",
+    "role": "Função",
+    "selectRole": "Selecionar função..."
   },
   "opportunities": {
     "title": "Oportunidades",

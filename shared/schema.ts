@@ -360,6 +360,52 @@ const LOCALIZED_DEFAULTS: Record<string, Record<string, FieldOption[]>> = {
       { value: "client_b", label: "Cliente B" },
     ],
   },
+  segments: {
+    en: [
+      { value: "smb", label: "SMB" },
+      { value: "cbu", label: "CBU" },
+      { value: "enterprise", label: "Enterprise" },
+      { value: "public_sector", label: "Public Sector" },
+    ],
+    es: [
+      { value: "smb", label: "SMB" },
+      { value: "cbu", label: "CBU" },
+      { value: "enterprise", label: "Empresa" },
+      { value: "public_sector", label: "Sector Público" },
+    ],
+    pt: [
+      { value: "smb", label: "SMB" },
+      { value: "cbu", label: "CBU" },
+      { value: "enterprise", label: "Empresa" },
+      { value: "public_sector", label: "Setor Público" },
+    ],
+  },
+  stakeholderTypes: {
+    en: [
+      { value: "sponsor", label: "Sponsor" },
+      { value: "decision_maker", label: "Decision Maker" },
+      { value: "it", label: "IT" },
+      { value: "finance", label: "Finance" },
+      { value: "c_level", label: "C-Level" },
+      { value: "influencer", label: "Influencer" },
+    ],
+    es: [
+      { value: "sponsor", label: "Patrocinador" },
+      { value: "decision_maker", label: "Tomador de Decisiones" },
+      { value: "it", label: "TI" },
+      { value: "finance", label: "Finanzas" },
+      { value: "c_level", label: "Nivel C" },
+      { value: "influencer", label: "Influenciador" },
+    ],
+    pt: [
+      { value: "sponsor", label: "Patrocinador" },
+      { value: "decision_maker", label: "Tomador de Decisão" },
+      { value: "it", label: "TI" },
+      { value: "finance", label: "Finanças" },
+      { value: "c_level", label: "Nível C" },
+      { value: "influencer", label: "Influenciador" },
+    ],
+  },
 };
 
 export function getDefaultFieldOptions(category: string, locale: string = "en"): FieldOption[] {
@@ -373,6 +419,8 @@ export const clients = pgTable("clients", {
   tenantId: text("tenant_id").notNull().default("default"),
   name: text("name").notNull(),
   industry: text("industry"),
+  country: text("country"),
+  segment: text("segment"),
   contactPhone: text("contact_phone"),
   website: text("website"),
   address: text("address"),
@@ -391,6 +439,7 @@ export const contacts = pgTable("contacts", {
   email: text("email"),
   phone: text("phone"),
   role: text("role"),
+  stakeholderType: text("stakeholder_type").array(),
   isLegalRepresentative: boolean("is_legal_representative").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

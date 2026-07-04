@@ -39,7 +39,7 @@ export function registerClientRoutes(app: Express) {
 
   app.post("/api/clients", requireModuleAccess("clients"), async (req, res) => {
     try {
-      const { name, industry, contactPhone, website, address, notes, status } = req.body;
+      const { name, industry, country, segment, contactPhone, website, address, notes, status } = req.body;
       if (!name || !name.trim()) {
         return res.status(400).json({ message: "Client name is required" });
       }
@@ -47,6 +47,8 @@ export function registerClientRoutes(app: Express) {
         tenantId: req.tenantId || "default",
         name: name.trim(),
         industry: industry || null,
+        country: country || null,
+        segment: segment || null,
         contactPhone: contactPhone || null,
         website: website || null,
         address: address || null,
@@ -61,10 +63,12 @@ export function registerClientRoutes(app: Express) {
 
   app.patch("/api/clients/:id", requireModuleAccess("clients"), async (req, res) => {
     try {
-      const { name, industry, contactPhone, website, address, notes, status } = req.body;
+      const { name, industry, country, segment, contactPhone, website, address, notes, status } = req.body;
       const updates: any = {};
       if (name !== undefined) updates.name = name;
       if (industry !== undefined) updates.industry = industry;
+      if (country !== undefined) updates.country = country;
+      if (segment !== undefined) updates.segment = segment;
       if (contactPhone !== undefined) updates.contactPhone = contactPhone;
       if (website !== undefined) updates.website = website;
       if (address !== undefined) updates.address = address;

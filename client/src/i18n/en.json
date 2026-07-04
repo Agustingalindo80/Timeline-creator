@@ -235,7 +235,12 @@
     "clientUpdated": "Company updated",
     "failedToCreate": "Failed to create company",
     "failedToSave": "Failed to save",
-    "saveChanges": "Save changes"
+    "saveChanges": "Save changes",
+    "country": "Country",
+    "selectCountry": "Select country...",
+    "segment": "Segment",
+    "selectSegment": "Select segment...",
+    "notes": "Notes"
   },
   "contacts": {
     "title": "Contacts",
@@ -251,7 +256,16 @@
     "contactDeleted": "Contact deleted",
     "failedToSave": "Failed to save",
     "failedToDelete": "Failed to delete",
-    "legalRep": "Legal Rep"
+    "legalRep": "Legal Rep",
+    "stakeholderType": "Stakeholder Type",
+    "selectStakeholderType": "Select stakeholder type...",
+    "noStakeholderType": "No stakeholder type",
+    "backToContacts": "Back to Contacts",
+    "contactDetails": "Contact Details",
+    "company": "Company",
+    "notFound": "Contact not found",
+    "role": "Role",
+    "selectRole": "Select role..."
   },
   "opportunities": {
     "title": "Opportunities",

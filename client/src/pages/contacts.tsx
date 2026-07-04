@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,6 +39,7 @@ type SortDir = "asc" | "desc";
 interface ColumnFilters {
   clientId?: string;
   role?: string;
+  stakeholderType?: string;
   legalRep?: string;
 }
 
@@ -66,6 +68,8 @@ export default function ContactsList() {
   });
 
   const contactRoleOptions = settings?.contactRoles || getDefaultFieldOptions("contactRoles", settings?.locale || "en");
+  const stakeholderTypeOptions = getDefaultFieldOptions("stakeholderTypes", settings?.locale || "en");
+  const stakeholderLabel = (value: string) => stakeholderTypeOptions.find((o) => o.value === value)?.label || value;
 
   const getClientName = useCallback((clientId: string | null | undefined): string => {
     if (!clientId || !clientsList) return "";
@@ -89,6 +93,7 @@ export default function ContactsList() {
 
       if (columnFilters.clientId && ct.clientId !== columnFilters.clientId) return false;
       if (columnFilters.role && (ct.role || "") !== columnFilters.role) return false;
+      if (columnFilters.stakeholderType && !(ct.stakeholderType || []).includes(columnFilters.stakeholderType)) return false;
       if (columnFilters.legalRep) {
         const isLegal = ct.isLegalRepresentative ? "yes" : "no";
         if (isLegal !== columnFilters.legalRep) return false;
@@ -389,6 +394,7 @@ export default function ContactsList() {
                   <SortHeader field="role" label={t("common.role")} />
                   <SortHeader field="email" label={t("common.email")} />
                   <SortHeader field="phone" label={t("common.phone")} />
+                  <th className="text-left font-medium text-muted-foreground px-3 py-2 whitespace-nowrap">{t("contacts.stakeholderType")}</th>
                   <SortHeader field="legalRep" label={t("contacts.legalRep")} align="center" />
                   <th className="text-center font-medium text-muted-foreground px-3 py-2 whitespace-nowrap w-[80px]">{t("common.actions")}</th>
                 </tr>
@@ -426,6 +432,19 @@ export default function ContactsList() {
                     <th className="px-3 py-1.5">
                       <select
                         className={filterSelectClass}
+                        value={columnFilters.stakeholderType || ""}
+                        onChange={(e) => setFilter("stakeholderType", e.target.value)}
+                        data-testid="filter-stakeholderType"
+                      >
+                        <option value="">{t("common.all")}</option>
+                        {stakeholderTypeOptions.map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </th>
+                    <th className="px-3 py-1.5">
+                      <select
+                        className={filterSelectClass}
                         value={columnFilters.legalRep || ""}
                         onChange={(e) => setFilter("legalRep", e.target.value)}
                         data-testid="filter-legalRep"
@@ -451,9 +470,9 @@ export default function ContactsList() {
                     >
                       <td className="px-3 py-1.5">
                         <Link
-                          href={`/clients/${contact.clientId}`}
+                          href={`/contacts/${contact.id}`}
                           className="text-primary hover:underline inline-flex items-center gap-1"
-                          data-testid={`link-contact-client-${contact.id}`}
+                          data-testid={`link-contact-${contact.id}`}
                         >
                           {contact.firstName} {contact.lastName}
                           <ExternalLink className="w-3 h-3" />
@@ -494,6 +513,19 @@ export default function ContactsList() {
                           placeholder={t("common.phone")}
                           data-testid={`input-phone-${contact.id}`}
                         />
+                      </td>
+                      <td className="px-3 py-1.5">
+                        {contact.stakeholderType && contact.stakeholderType.length > 0 ? (
+                          <div className="flex flex-wrap gap-1" data-testid={`text-stakeholder-${contact.id}`}>
+                            {contact.stakeholderType.map((s) => (
+                              <Badge key={s} variant="secondary" className="text-[10px]">
+                                {stakeholderLabel(s)}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
                       </td>
                       <td className="px-3 py-1.5 text-center">
                         <div className="flex justify-center">

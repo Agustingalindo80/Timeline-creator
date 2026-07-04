@@ -235,7 +235,12 @@
     "clientUpdated": "Empresa actualizada",
     "failedToCreate": "Error al crear empresa",
     "failedToSave": "Error al guardar",
-    "saveChanges": "Guardar cambios"
+    "saveChanges": "Guardar cambios",
+    "country": "País",
+    "selectCountry": "Seleccionar país...",
+    "segment": "Segmento",
+    "selectSegment": "Seleccionar segmento...",
+    "notes": "Notas"
   },
   "contacts": {
     "title": "Contactos",
@@ -251,7 +256,16 @@
     "contactDeleted": "Contacto eliminado",
     "failedToSave": "Error al guardar",
     "failedToDelete": "Error al eliminar",
-    "legalRep": "Rep. Legal"
+    "legalRep": "Rep. Legal",
+    "stakeholderType": "Tipo de Interesado",
+    "selectStakeholderType": "Seleccionar tipo de interesado...",
+    "noStakeholderType": "Sin tipo de interesado",
+    "backToContacts": "Volver a Contactos",
+    "contactDetails": "Detalles del Contacto",
+    "company": "Empresa",
+    "notFound": "Contacto no encontrado",
+    "role": "Rol",
+    "selectRole": "Seleccionar rol..."
   },
   "opportunities": {
     "title": "Oportunidades",

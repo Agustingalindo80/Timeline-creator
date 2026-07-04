@@ -38,9 +38,27 @@ export function registerContactRoutes(app: Express) {
     }
   });
 
+  app.get("/api/contacts/:id", async (req, res) => {
+    try {
+      const ctx = await getRecordAccessContext(req);
+      if (!ctx) return res.status(401).json({ message: "Authentication required" });
+      const contact = await storage.getContact(req.params.id, req.tenantId || "default");
+      if (!contact) return res.status(404).json({ message: "Contact not found" });
+      if (!ctx.isGlobal) {
+        const accessibleClients = await storage.getClientsByTimelineIds(ctx.assignedTimelineIds);
+        if (!accessibleClients.some(c => c.id === contact.clientId)) {
+          return res.status(403).json({ message: "You don't have access to this contact" });
+        }
+      }
+      res.json(contact);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   app.post("/api/clients/:clientId/contacts", requireModuleAccess("contacts"), async (req, res) => {
     try {
-      const { firstName, lastName, email, phone, role, isLegalRepresentative } = req.body;
+      const { firstName, lastName, email, phone, role, stakeholderType, isLegalRepresentative } = req.body;
       if (!firstName?.trim() || !lastName?.trim()) {
         return res.status(400).json({ message: "First name and last name are required" });
       }
@@ -52,6 +70,7 @@ export function registerContactRoutes(app: Express) {
         email: email || null,
         phone: phone || null,
         role: role || null,
+        stakeholderType: Array.isArray(stakeholderType) ? stakeholderType : null,
         isLegalRepresentative: isLegalRepresentative ?? false,
       });
       res.status(201).json(contact);
@@ -62,13 +81,14 @@ export function registerContactRoutes(app: Express) {
 
   app.patch("/api/contacts/:id", requireModuleAccess("contacts"), async (req, res) => {
     try {
-      const { firstName, lastName, email, phone, role, isLegalRepresentative } = req.body;
+      const { firstName, lastName, email, phone, role, stakeholderType, isLegalRepresentative } = req.body;
       const updates: any = {};
       if (firstName !== undefined) updates.firstName = firstName;
       if (lastName !== undefined) updates.lastName = lastName;
       if (email !== undefined) updates.email = email;
       if (phone !== undefined) updates.phone = phone;
       if (role !== undefined) updates.role = role;
+      if (stakeholderType !== undefined) updates.stakeholderType = Array.isArray(stakeholderType) ? stakeholderType : null;
       if (isLegalRepresentative !== undefined) updates.isLegalRepresentative = isLegalRepresentative;
 
       const contact = await storage.updateContact(req.params.id, req.tenantId || "default", updates);

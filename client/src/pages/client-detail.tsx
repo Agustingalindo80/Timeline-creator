@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation, useParams } from "wouter";
 import { Helmet } from "react-helmet-async";
-import { ArrowLeft, Building2, Phone, Globe, MapPin, Save, FolderKanban, ExternalLink, Plus, Pencil, Trash2, Users, Shield } from "lucide-react";
+import { ArrowLeft, Building2, Phone, Globe, MapPin, Save, FolderKanban, ExternalLink, Plus, Pencil, Trash2, Users, Shield, Layers } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,6 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { ClientWithProjects, Task, Contact, AppSettings } from "@shared/schema";
 import { getDefaultFieldOptions } from "@shared/schema";
+import { COUNTRIES, getCountryLabel } from "@shared/countries";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 
@@ -83,11 +84,14 @@ export default function ClientDetail() {
 
   const roleOptions = settings?.contactRoles || getDefaultFieldOptions("contactRoles", settings?.locale || "en");
   const industryOptions = settings?.industries || getDefaultFieldOptions("industries", settings?.locale || "en");
+  const segmentOptions = getDefaultFieldOptions("segments", settings?.locale || "en");
 
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
     name: "",
     industry: "",
+    country: "",
+    segment: "",
     contactPhone: "",
     website: "",
     address: "",
@@ -100,6 +104,8 @@ export default function ClientDetail() {
     setForm({
       name: client.name,
       industry: client.industry || "",
+      country: client.country || "",
+      segment: client.segment || "",
       contactPhone: client.contactPhone || "",
       website: client.website || "",
       address: client.address || "",
@@ -129,6 +135,8 @@ export default function ClientDetail() {
     updateMutation.mutate({
       name: form.name.trim(),
       industry: form.industry || null,
+      country: form.country || null,
+      segment: form.segment || null,
       contactPhone: form.contactPhone || null,
       website: form.website || null,
       address: form.address || null,
@@ -235,6 +243,34 @@ export default function ClientDetail() {
                 </select>
               </div>
               <div>
+                <Label>{t("clients.segment")}</Label>
+                <select
+                  className="h-9 text-sm border rounded px-2 bg-background w-full"
+                  value={form.segment}
+                  onChange={(e) => setForm({ ...form, segment: e.target.value })}
+                  data-testid="edit-client-segment"
+                >
+                  <option value="">{t("clients.selectSegment")}</option>
+                  {segmentOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label>{t("clients.country")}</Label>
+                <select
+                  className="h-9 text-sm border rounded px-2 bg-background w-full"
+                  value={form.country}
+                  onChange={(e) => setForm({ ...form, country: e.target.value })}
+                  data-testid="edit-client-country"
+                >
+                  <option value="">{t("clients.selectCountry")}</option>
+                  {COUNTRIES.map((c) => (
+                    <option key={c.value} value={c.value}>{c.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
                 <Label>Phone</Label>
                 <Input
                   value={form.contactPhone}
@@ -285,6 +321,8 @@ export default function ClientDetail() {
             <div className="space-y-4 max-w-2xl">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <InfoRow icon={Building2} label="Industry" value={client.industry ? (industryOptions.find((o) => o.value === client.industry)?.label || client.industry) : null} />
+                <InfoRow icon={Layers} label={t("clients.segment")} value={client.segment ? (segmentOptions.find((o) => o.value === client.segment)?.label || client.segment) : null} />
+                <InfoRow icon={Globe} label={t("clients.country")} value={client.country ? getCountryLabel(client.country) : null} />
                 <InfoRow icon={Phone} label="Phone" value={client.contactPhone} />
                 <InfoRow icon={Globe} label="Website" value={client.website} />
                 <InfoRow icon={MapPin} label="Address" value={client.address} />
@@ -300,7 +338,7 @@ export default function ClientDetail() {
         </TabsContent>
 
         <TabsContent value="contacts">
-          <ContactsSection clientId={params.id!} contacts={client.contacts} roleOptions={roleOptions} />
+          <ContactsSection clientId={params.id!} contacts={client.contacts} roleOptions={roleOptions} stakeholderTypeOptions={getDefaultFieldOptions("stakeholderTypes", settings?.locale || "en")} />
         </TabsContent>
 
         <TabsContent value="projects">
@@ -407,8 +445,9 @@ export default function ClientDetail() {
   );
 }
 
-function ContactsSection({ clientId, contacts, roleOptions }: { clientId: string; contacts: Contact[]; roleOptions: { value: string; label: string }[] }) {
+function ContactsSection({ clientId, contacts, roleOptions, stakeholderTypeOptions }: { clientId: string; contacts: Contact[]; roleOptions: { value: string; label: string }[]; stakeholderTypeOptions: { value: string; label: string }[] }) {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [showDialog, setShowDialog] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const [contactForm, setContactForm] = useState({
@@ -417,11 +456,22 @@ function ContactsSection({ clientId, contacts, roleOptions }: { clientId: string
     email: "",
     phone: "",
     role: "",
+    stakeholderType: [] as string[],
     isLegalRepresentative: false,
   });
 
+  const stakeholderLabel = (value: string) => stakeholderTypeOptions.find((o) => o.value === value)?.label || value;
+  const toggleStakeholder = (value: string) => {
+    setContactForm((prev) => ({
+      ...prev,
+      stakeholderType: prev.stakeholderType.includes(value)
+        ? prev.stakeholderType.filter((v) => v !== value)
+        : [...prev.stakeholderType, value],
+    }));
+  };
+
   const resetForm = () => {
-    setContactForm({ firstName: "", lastName: "", email: "", phone: "", role: "", isLegalRepresentative: false });
+    setContactForm({ firstName: "", lastName: "", email: "", phone: "", role: "", stakeholderType: [], isLegalRepresentative: false });
     setEditingContact(null);
   };
 
@@ -438,6 +488,7 @@ function ContactsSection({ clientId, contacts, roleOptions }: { clientId: string
       email: contact.email || "",
       phone: contact.phone || "",
       role: contact.role || "",
+      stakeholderType: contact.stakeholderType || [],
       isLegalRepresentative: contact.isLegalRepresentative,
     });
     setShowDialog(true);
@@ -489,6 +540,7 @@ function ContactsSection({ clientId, contacts, roleOptions }: { clientId: string
       email: contactForm.email || null,
       phone: contactForm.phone || null,
       role: contactForm.role || null,
+      stakeholderType: contactForm.stakeholderType,
       isLegalRepresentative: contactForm.isLegalRepresentative,
     };
     if (editingContact) {
@@ -526,6 +578,7 @@ function ContactsSection({ clientId, contacts, roleOptions }: { clientId: string
                 <th className="text-left font-medium text-muted-foreground px-3 py-2">Role</th>
                 <th className="text-left font-medium text-muted-foreground px-3 py-2">Email</th>
                 <th className="text-left font-medium text-muted-foreground px-3 py-2">Phone</th>
+                <th className="text-left font-medium text-muted-foreground px-3 py-2">{t("contacts.stakeholderType")}</th>
                 <th className="text-center font-medium text-muted-foreground px-3 py-2">Legal Rep</th>
                 <th className="text-center font-medium text-muted-foreground px-3 py-2 w-[80px]">Actions</th>
               </tr>
@@ -543,6 +596,17 @@ function ContactsSection({ clientId, contacts, roleOptions }: { clientId: string
                   <td className="px-3 py-2 text-muted-foreground">{contact.role ? (roleOptions.find((o) => o.value === contact.role)?.label || contact.role) : "—"}</td>
                   <td className="px-3 py-2 text-muted-foreground">{contact.email || "—"}</td>
                   <td className="px-3 py-2 text-muted-foreground">{contact.phone || "—"}</td>
+                  <td className="px-3 py-2">
+                    {contact.stakeholderType && contact.stakeholderType.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {contact.stakeholderType.map((s) => (
+                          <Badge key={s} variant="secondary" className="text-[10px]">{stakeholderLabel(s)}</Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </td>
                   <td className="px-3 py-2 text-center">
                     {contact.isLegalRepresentative && (
                       <Badge variant="outline" className="text-[10px] gap-1">
@@ -631,6 +695,24 @@ function ContactsSection({ clientId, contacts, roleOptions }: { clientId: string
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
+            </div>
+            <div className="col-span-2">
+              <Label>{t("contacts.stakeholderType")}</Label>
+              <div className="flex flex-wrap gap-3 mt-2" data-testid="contact-stakeholder-types">
+                {stakeholderTypeOptions.map((opt) => (
+                  <label
+                    key={opt.value}
+                    className="flex items-center gap-2 cursor-pointer text-sm"
+                    data-testid={`stakeholder-option-${opt.value}`}
+                  >
+                    <Checkbox
+                      checked={contactForm.stakeholderType.includes(opt.value)}
+                      onCheckedChange={() => toggleStakeholder(opt.value)}
+                    />
+                    {opt.label}
+                  </label>
+                ))}
+              </div>
             </div>
             <div className="col-span-2 flex items-center gap-2">
               <Checkbox
