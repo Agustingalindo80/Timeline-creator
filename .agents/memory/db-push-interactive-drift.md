@@ -19,3 +19,12 @@ apply them directly and idempotently:
 This avoids the truncation prompt entirely and never risks data loss. Reserve
 `db:push` for when the drift itself needs resolving (and answer the prompt in a
 real interactive terminal).
+
+For whole new tables, apply them via direct `CREATE TABLE IF NOT EXISTS` SQL
+that mirrors the Drizzle definition **exactly** (same column types and the same
+constraint/index names drizzle would generate) so a later `db:push` sees them as
+in-sync and does not try to recreate them.
+
+**Views are not managed by `drizzle-kit push` at all.** Create/replace them with
+`CREATE OR REPLACE VIEW` yourself, and persist that SQL in a repeatable setup
+step (post-merge/provisioning) or it will be missing on a freshly provisioned DB.

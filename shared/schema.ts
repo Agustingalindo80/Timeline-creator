@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, pgEnum, text, varchar, integer, boolean, jsonb, numeric, timestamp, date, index, unique, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, pgEnum, text, varchar, integer, bigint, boolean, jsonb, numeric, timestamp, date, index, unique, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { users } from "./models/auth";
@@ -1130,3 +1130,130 @@ export type ProjectTeamMemberWithDetails = ProjectTeamMember & { teamMember: Tea
 export type TimelineWithMilestones = Timeline & { milestones: Milestone[]; tasks: Task[] };
 export type TimelineWithAll = TimelineWithMilestones & { risks: Risk[] };
 export type ClientWithProjects = Client & { projects: TimelineWithMilestones[]; contacts: Contact[] };
+
+// ============================================================================
+// ClickUp -> Atlas timesheet import DB layer
+// ----------------------------------------------------------------------------
+// Supports importing ClickUp time entries into `timesheet_entries` while
+// preserving project traceability (ClickUp entry -> Atlas timesheet entry ->
+// Atlas timeline/project) and preventing duplicate imports. All tables are
+// tenant-scoped. `import_status` and `issue_type` are text columns (not DB
+// enums) validated at the application layer via the constants below, matching
+// Atlas's existing mix of text-based status fields.
+// ============================================================================
+
+// Allowed `import_status` values for clickup_time_entry_staging.
+export const CLICKUP_IMPORT_STATUSES = ["pending", "imported", "updated", "exception", "skipped"] as const;
+export type ClickupImportStatus = (typeof CLICKUP_IMPORT_STATUSES)[number];
+
+// Allowed `issue_type` values for timesheet_import_exceptions.
+export const TIMESHEET_IMPORT_ISSUE_TYPES = [
+  "missing_timeline_mapping",
+  "invalid_timeline_id",
+  "missing_team_member_mapping",
+  "invalid_team_member_id",
+  "invalid_duration",
+  "running_timer",
+  "processing_error",
+  "locked_timesheet",
+] as const;
+export type TimesheetImportIssueType = (typeof TIMESHEET_IMPORT_ISSUE_TYPES)[number];
+
+// Raw ClickUp time-entry payloads staged before final processing.
+export const clickupTimeEntryStaging = pgTable("clickup_time_entry_staging", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: text("tenant_id").notNull().default("default"),
+  clickupEntryId: text("clickup_entry_id").notNull(),
+  clickupTaskId: text("clickup_task_id"),
+  clickupUserId: text("clickup_user_id"),
+  clickupWorkspaceId: text("clickup_workspace_id"),
+  startMs: bigint("start_ms", { mode: "number" }),
+  endMs: bigint("end_ms", { mode: "number" }),
+  durationMs: bigint("duration_ms", { mode: "number" }),
+  billable: boolean("billable"),
+  rawPayload: jsonb("raw_payload").notNull(),
+  syncRunId: varchar("sync_run_id").notNull(),
+  importStatus: text("import_status").notNull().default("pending"),
+  importError: text("import_error"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  unique("uq_clickup_staging_tenant_entry").on(table.tenantId, table.clickupEntryId),
+  index("idx_clickup_staging_run_status").on(table.tenantId, table.syncRunId, table.importStatus),
+]);
+
+// Idempotency + traceability: ClickUp time entry -> Atlas timesheet entry -> timeline/project.
+export const clickupTimesheetImportLedger = pgTable("clickup_timesheet_import_ledger", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: text("tenant_id").notNull().default("default"),
+  clickupEntryId: text("clickup_entry_id").notNull(),
+  clickupTaskId: text("clickup_task_id"),
+  clickupUserId: text("clickup_user_id"),
+  timelineId: varchar("timeline_id").notNull().references(() => timelines.id, { onDelete: "cascade" }),
+  timesheetEntryId: varchar("timesheet_entry_id").notNull().references(() => timesheetEntries.id, { onDelete: "cascade" }),
+  syncRunId: varchar("sync_run_id").notNull(),
+  importedAt: timestamp("imported_at").defaultNow(),
+  lastSeenAt: timestamp("last_seen_at").defaultNow(),
+  rawPayload: jsonb("raw_payload"),
+}, (table) => [
+  unique("uq_clickup_ledger_tenant_entry").on(table.tenantId, table.clickupEntryId),
+  index("idx_clickup_ledger_tenant_timeline").on(table.tenantId, table.timelineId),
+]);
+
+// Maps external (ClickUp) objects to Atlas objects (user->team_member, task->task, list/folder/space/task->timeline).
+export const externalSystemMappings = pgTable("external_system_mappings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: text("tenant_id").notNull().default("default"),
+  sourceSystem: text("source_system").notNull(),
+  sourceObjectType: text("source_object_type").notNull(),
+  sourceObjectId: text("source_object_id").notNull(),
+  atlasObjectType: text("atlas_object_type").notNull(),
+  atlasObjectId: varchar("atlas_object_id").notNull(),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  unique("uq_external_mapping_tenant_source_atlas").on(
+    table.tenantId,
+    table.sourceSystem,
+    table.sourceObjectType,
+    table.sourceObjectId,
+    table.atlasObjectType,
+  ),
+  index("idx_external_mapping_lookup").on(table.tenantId, table.sourceSystem, table.sourceObjectType),
+]);
+
+// Entries that could not be imported due to missing/invalid mappings or other issues.
+export const timesheetImportExceptions = pgTable("timesheet_import_exceptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: text("tenant_id").notNull().default("default"),
+  sourceSystem: text("source_system").notNull().default("clickup"),
+  sourceEntryId: text("source_entry_id").notNull(),
+  issueType: text("issue_type").notNull(),
+  issueDetail: text("issue_detail").notNull(),
+  rawPayload: jsonb("raw_payload"),
+  resolved: boolean("resolved").notNull().default(false),
+  resolvedAt: timestamp("resolved_at"),
+  resolvedBy: varchar("resolved_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_import_exceptions_tenant_resolved").on(table.tenantId, table.resolved),
+  index("idx_import_exceptions_source_entry").on(table.tenantId, table.sourceSystem, table.sourceEntryId),
+]);
+
+export const insertClickupTimeEntryStagingSchema = createInsertSchema(clickupTimeEntryStaging).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertClickupTimeEntryStaging = z.infer<typeof insertClickupTimeEntryStagingSchema>;
+export type ClickupTimeEntryStaging = typeof clickupTimeEntryStaging.$inferSelect;
+
+export const insertClickupTimesheetImportLedgerSchema = createInsertSchema(clickupTimesheetImportLedger).omit({ id: true, importedAt: true, lastSeenAt: true });
+export type InsertClickupTimesheetImportLedger = z.infer<typeof insertClickupTimesheetImportLedgerSchema>;
+export type ClickupTimesheetImportLedger = typeof clickupTimesheetImportLedger.$inferSelect;
+
+export const insertExternalSystemMappingSchema = createInsertSchema(externalSystemMappings).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertExternalSystemMapping = z.infer<typeof insertExternalSystemMappingSchema>;
+export type ExternalSystemMapping = typeof externalSystemMappings.$inferSelect;
+
+export const insertTimesheetImportExceptionSchema = createInsertSchema(timesheetImportExceptions).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertTimesheetImportException = z.infer<typeof insertTimesheetImportExceptionSchema>;
+export type TimesheetImportException = typeof timesheetImportExceptions.$inferSelect;
