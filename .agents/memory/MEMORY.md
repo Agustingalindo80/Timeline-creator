@@ -1,2 +1,3 @@
 - [Portfolio Health cockpit](portfolio-health-cockpit.md) — server-driven filters: one filtered project set in getPortfolioOverview must drive every aggregate; client query-key gotchas.
 - [db:push interactive drift](db-push-interactive-drift.md) — db:push can hang on an unrelated TTY truncate prompt; for nullable columns apply ALTER ... ADD COLUMN IF NOT EXISTS via psql instead.
+- [ClickUp import week-ending](clickup-import-week-ending.md) — import week_ending defaults to FRIDAY (env ATLAS_WEEK_ENDING_DAY, UTC); deliberately differs from the app's Sunday-based timesheet UI.

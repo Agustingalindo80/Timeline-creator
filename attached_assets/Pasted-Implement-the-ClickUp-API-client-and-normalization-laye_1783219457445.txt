@@ -1,0 +1,98 @@
+Implement the ClickUp API client and normalization layer for Atlas.
+
+Objective:
+Create backend integration files that can pull ClickUp time entries and normalize them into the shape required by Atlas timesheet_entries.
+
+Use the existing Atlas backend structure and naming conventions.
+
+Create or adapt the following files:
+
+1. server/integrations/clickup/client.ts
+Purpose:
+Call the ClickUp API.
+
+Requirements:
+- Base URL: https://api.clickup.com/api/v2
+- Endpoint: GET /team/{team_id}/time_entries
+- Read credentials from process.env:
+  - CLICKUP_API_TOKEN
+  - CLICKUP_TEAM_ID
+  - CLICKUP_ASSIGNEE_IDS
+  - CLICKUP_SPACE_ID optional
+  - CLICKUP_FOLDER_ID optional
+  - CLICKUP_LIST_ID optional
+- Use Authorization header with the ClickUp token.
+- Use start_date and end_date as Unix timestamps in milliseconds.
+- Include:
+  - include_task_tags=true
+  - include_location_names=true
+  - include_approval_details=true
+- If CLICKUP_ASSIGNEE_IDS is set, pass assignee as comma-separated IDs.
+- Only one location filter may be used at once:
+  - space_id
+  - folder_id
+  - list_id
+- Throw a clear error if more than one location filter is configured.
+- Throw a clear error if required environment variables are missing.
+- Do not expose token to the frontend.
+
+2. server/integrations/clickup/normalizeTimeEntry.ts
+Purpose:
+Normalize a ClickUp time entry into Atlas import format.
+
+Normalized fields:
+- tenantId
+- clickupEntryId
+- clickupTaskId
+- clickupUserId
+- dayDate
+- weekEnding
+- hours
+- billableType
+- notes
+- rawPayload
+- durationMs
+- startMs
+- endMs
+
+Rules:
+- If ClickUp duration is negative, return a skipped/running-timer result.
+- If duration is zero, throw invalid_duration.
+- If duration exceeds 24 hours, throw invalid_duration.
+- Convert duration milliseconds to hours using:
+  hours = duration_ms / 3600000
+- Format hours as two decimals.
+- dayDate is derived from ClickUp start timestamp.
+- weekEnding is calculated from dayDate using ATLAS_WEEK_ENDING_DAY.
+- Default ATLAS_WEEK_ENDING_DAY to FRIDAY.
+- billableType:
+  - if ClickUp billable is false, use non_billable
+  - otherwise use billable
+- notes format:
+  First line: ClickUp task name + optional description
+  Second line: Source: ClickUp | Entry: {clickup_entry_id} | Task: {clickup_task_id}
+
+3. server/integrations/clickup/dateUtils.ts
+Purpose:
+Utility function to calculate week_ending.
+
+Support:
+- FRIDAY
+- SATURDAY
+- SUNDAY
+
+Default:
+- FRIDAY
+
+Implementation detail:
+Use UTC-safe date logic.
+
+Important:
+Atlas timesheet_entries.hours is numeric(6,2), but the existing insert validation expects hours as a string. Preserve the existing behavior and pass hours as a two-decimal string when using application validation.
+
+Return:
+After implementation, show:
+1. Files created or modified.
+2. Key functions exported.
+3. Any assumptions made about ClickUp payload shape.
+4. Any TypeScript issues that need follow-up.
