@@ -1,0 +1,160 @@
+Implement the database layer for the ClickUp → Atlas timesheet import.
+
+Use the existing Atlas migration pattern and Drizzle conventions identified in the prior inspection.
+
+Objective:
+Add the supporting tables required to import ClickUp time entries into the existing timesheet_entries table while preserving project traceability and avoiding duplicate imports.
+
+Do not change the core timesheet_entries structure unless absolutely necessary.
+
+Required tables:
+
+1. clickup_time_entry_staging
+Purpose:
+Store raw ClickUp time-entry payloads before final processing.
+
+Fields:
+- id uuid primary key default gen_random_uuid()
+- tenant_id text not null default 'default'
+- clickup_entry_id text not null
+- clickup_task_id text nullable
+- clickup_user_id text nullable
+- clickup_workspace_id text nullable
+- start_ms bigint nullable
+- end_ms bigint nullable
+- duration_ms bigint nullable
+- billable boolean nullable
+- raw_payload jsonb not null
+- sync_run_id uuid not null
+- import_status text not null default 'pending'
+- import_error text nullable
+- created_at timestamp default now()
+- updated_at timestamp default now()
+
+Constraints:
+- unique tenant_id + clickup_entry_id
+
+Allowed import_status values by convention:
+- pending
+- imported
+- updated
+- exception
+- skipped
+
+2. clickup_timesheet_import_ledger
+Purpose:
+Maintain idempotency and traceability from ClickUp time entry to Atlas timesheet entry and Atlas project/timeline.
+
+Fields:
+- id uuid primary key default gen_random_uuid()
+- tenant_id text not null default 'default'
+- clickup_entry_id text not null
+- clickup_task_id text nullable
+- clickup_user_id text nullable
+- timeline_id varchar not null, FK to timelines.id, cascade delete
+- timesheet_entry_id varchar not null, FK to timesheet_entries.id, cascade delete
+- sync_run_id uuid not null
+- imported_at timestamp default now()
+- last_seen_at timestamp default now()
+- raw_payload jsonb nullable
+
+Constraints:
+- unique tenant_id + clickup_entry_id
+
+Hard requirement:
+timeline_id must be stored in this ledger so we can trace:
+ClickUp time entry → Atlas timesheet entry → Atlas timeline/project
+
+3. external_system_mappings
+Purpose:
+Map ClickUp objects to Atlas objects.
+
+Fields:
+- id uuid primary key default gen_random_uuid()
+- tenant_id text not null default 'default'
+- source_system text not null
+- source_object_type text not null
+- source_object_id text not null
+- atlas_object_type text not null
+- atlas_object_id varchar not null
+- active boolean not null default true
+- created_at timestamp default now()
+- updated_at timestamp default now()
+
+Constraints:
+- unique tenant_id + source_system + source_object_type + source_object_id + atlas_object_type
+
+Expected mapping examples:
+- source_system = clickup
+- source_object_type = user
+- atlas_object_type = team_member
+- source_object_type = task
+- atlas_object_type = task
+- source_object_type = task/list/folder/space
+- atlas_object_type = timeline
+
+4. timesheet_import_exceptions
+Purpose:
+Store entries that could not be imported due to missing or invalid mappings.
+
+Fields:
+- id uuid primary key default gen_random_uuid()
+- tenant_id text not null default 'default'
+- source_system text not null default 'clickup'
+- source_entry_id text not null
+- issue_type text not null
+- issue_detail text not null
+- raw_payload jsonb nullable
+- resolved boolean not null default false
+- resolved_at timestamp nullable
+- resolved_by varchar nullable
+- created_at timestamp default now()
+- updated_at timestamp default now()
+
+Expected issue_type values:
+- missing_timeline_mapping
+- invalid_timeline_id
+- missing_team_member_mapping
+- invalid_team_member_id
+- invalid_duration
+- running_timer
+- processing_error
+- locked_timesheet
+
+5. Optional but recommended view:
+Create a reporting view named timesheet_entries_with_project_trace that joins:
+- timesheet_entries
+- timelines
+- team_members
+- tasks
+
+The view should expose:
+- timesheet_entry_id
+- tenant_id
+- timeline_id
+- project/timeline name if available
+- team_member_id
+- team member name if available
+- task_id
+- task name/title if available
+- week_ending
+- day_date
+- hours
+- billable_type
+- notes
+- created_at
+- updated_at
+
+Adjust column names based on the actual schema discovered in Atlas.
+
+Validation:
+- Do not allow orphaned ledger records without a valid timeline_id.
+- Do not create any default, unknown, or placeholder project.
+- Do not make timeline_id nullable anywhere in this integration.
+- Preserve tenant isolation.
+
+After implementation:
+1. Show the migration file.
+2. Show any schema additions.
+3. Show the exact command needed to run migrations in this Replit project.
+4. Do not implement API logic yet.
