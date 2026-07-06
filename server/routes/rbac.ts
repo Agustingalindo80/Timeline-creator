@@ -3,8 +3,8 @@ import { storage } from "../storage";
 import { db } from "../db";
 import { requirePermission, requireModuleAccess } from "../middleware/permissions";
 import { getEffectivePermissions, invalidatePermissionCache, hasGlobalRecordAccess, getLinkedTeamMemberId, getUserModulePermissions } from "../rbac";
-import { eq } from "drizzle-orm";
-import { ALL_PERMISSIONS, users } from "@shared/schema";
+import { eq, and } from "drizzle-orm";
+import { ALL_PERMISSIONS, users, orgRoles } from "@shared/schema";
 
 export function registerRbacRoutes(app: Express) {
   app.get("/api/rbac/roles", async (req, res) => {
@@ -18,6 +18,37 @@ export function registerRbacRoutes(app: Express) {
     try {
       const usersList = await storage.getUsersByTenant(req.tenantId || "default");
       res.json(usersList);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.post("/api/rbac/users", requireModuleAccess("admin"), requirePermission("users.manage"), async (req, res) => {
+    try {
+      const { email, firstName, lastName, roleId } = req.body;
+      if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+        return res.status(400).json({ message: "A valid email is required" });
+      }
+      if (!roleId) return res.status(400).json({ message: "roleId is required" });
+
+      const tenantId = req.tenantId || "default";
+      const [role] = await db.select().from(orgRoles).where(and(eq(orgRoles.id, roleId), eq(orgRoles.tenantId, tenantId)));
+      if (!role) return res.status(400).json({ message: "Role not found in this tenant" });
+
+      const normalizedEmail = email.trim();
+      const [existingUser] = await db.select().from(users).where(eq(users.email, normalizedEmail));
+
+      let user = existingUser;
+      if (!user) {
+        const [created] = await db.insert(users).values({
+          email: normalizedEmail,
+          firstName: firstName?.trim() || null,
+          lastName: lastName?.trim() || null,
+        }).returning();
+        user = created;
+      }
+
+      await storage.assignUserOrgRole(user.id, roleId, tenantId);
+      invalidatePermissionCache(user.id);
+      res.status(201).json({ user, created: !existingUser });
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
