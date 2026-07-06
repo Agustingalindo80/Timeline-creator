@@ -115,6 +115,13 @@ export function registerRbacRoutes(app: Express) {
       const user = (req as any).user;
       const userId = user?.claims?.sub || user?.id;
       if (!userId) return res.status(401).json({ message: "Authentication required" });
+
+      // TODO: Remove before commercial launch — Super Admins get all permissions in every tenant for testing
+      const [userRecord] = await db.select({ isSuperAdmin: users.isSuperAdmin }).from(users).where(eq(users.id, userId));
+      if (userRecord?.isSuperAdmin) {
+        return res.json({ permissions: ALL_PERMISSIONS.map((p) => p.key) });
+      }
+
       const perms = await getEffectivePermissions(userId, req.tenantId || "default");
       res.json({ permissions: Array.from(perms) });
     } catch (err: any) { res.status(500).json({ message: err.message }); }
