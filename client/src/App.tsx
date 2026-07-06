@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Switch, Route, Redirect, Link, Router } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
@@ -194,8 +195,95 @@ function AuthenticatedApp() {
   );
 }
 
+function ChangePasswordGate() {
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    if (newPassword.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ newPassword }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        setError(body?.message || "Failed to change password");
+        return;
+      }
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+    } catch {
+      setError("Failed to change password. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-background px-4">
+      <div className="w-full max-w-sm border rounded-lg p-6 bg-card space-y-4" data-testid="form-change-password">
+        <div>
+          <h1 className="text-lg font-semibold">Set a new password</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            You're using a temporary password. Please choose a new one to continue.
+          </p>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium" htmlFor="new-password">New password</label>
+            <input
+              id="new-password"
+              type="password"
+              autoComplete="new-password"
+              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              data-testid="input-new-password"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium" htmlFor="confirm-password">Confirm new password</label>
+            <input
+              id="confirm-password"
+              type="password"
+              autoComplete="new-password"
+              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              data-testid="input-confirm-password"
+            />
+          </div>
+          {error && <p className="text-sm text-destructive" data-testid="text-change-password-error">{error}</p>}
+          <button
+            type="submit"
+            disabled={submitting || !newPassword || !confirmPassword}
+            className="inline-flex w-full items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+            data-testid="button-change-password"
+          >
+            {submitting ? "Saving..." : "Change Password"}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function AppContent() {
-  const { isLoading, isAuthenticated } = useAuth();
+  const { isLoading, isAuthenticated, user } = useAuth();
 
   if (isLoading) {
     return (
@@ -207,6 +295,10 @@ function AppContent() {
 
   if (!isAuthenticated) {
     return <Landing />;
+  }
+
+  if ((user as any)?.mustChangePassword) {
+    return <ChangePasswordGate />;
   }
 
   return <AuthenticatedApp />;

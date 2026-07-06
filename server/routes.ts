@@ -35,11 +35,6 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
 
-  await setupAuth(app);
-  registerAuthRoutes(app);
-
-  app.use("/uploads", express.static(uploadsDir));
-
   app.use((req, _res, next) => {
     const match = req.path.match(/^\/t\/([a-z0-9-]+)(\/api\/.*)$/);
     if (match) {
@@ -48,9 +43,14 @@ export async function registerRoutes(
     next();
   });
 
+  await setupAuth(app);
+  registerAuthRoutes(app);
+
+  app.use("/uploads", express.static(uploadsDir));
+
   app.use((req, res, next) => {
     if (!req.path.startsWith("/api/")) return next();
-    const publicPaths = ["/api/login", "/api/logout", "/api/callback", "/api/auth/user", "/api/branding"];
+    const publicPaths = ["/api/auth/login", "/api/auth/logout", "/api/logout", "/api/auth/user", "/api/branding"];
     if (publicPaths.includes(req.path)) return next();
     return isAuthenticated(req, res, next);
   });

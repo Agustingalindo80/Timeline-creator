@@ -22,6 +22,7 @@ export function UsersRolesManager() {
   const [newFirstName, setNewFirstName] = useState("");
   const [newLastName, setNewLastName] = useState("");
   const [newRoleId, setNewRoleId] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const { toast } = useToast();
 
   const { data: users = [], isLoading: usersLoading } = useQuery<RbacUser[]>({
@@ -52,6 +53,7 @@ export function UsersRolesManager() {
         firstName: newFirstName || undefined,
         lastName: newLastName || undefined,
         roleId: newRoleId,
+        password: newPassword || undefined,
       });
       return res.json();
     },
@@ -60,7 +62,7 @@ export function UsersRolesManager() {
       toast({
         title: data.created ? "User added" : "Existing user added to tenant",
         description: data.created
-          ? "The user will get access when they sign in with this email."
+          ? "Share the temporary password with them — they'll be asked to change it on first login."
           : "The existing account was given a role in this tenant.",
       });
       setAddOpen(false);
@@ -68,6 +70,7 @@ export function UsersRolesManager() {
       setNewFirstName("");
       setNewLastName("");
       setNewRoleId("");
+      setNewPassword("");
     },
     onError: (err: any) => {
       toast({ title: "Failed to add user", description: err.message, variant: "destructive" });
@@ -170,6 +173,20 @@ export function UsersRolesManager() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="add-user-password">Temporary password *</Label>
+                  <Input
+                    id="add-user-password"
+                    type="password"
+                    placeholder="At least 8 characters"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    data-testid="input-add-user-password"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    The user will be required to change this on their first login.
+                  </p>
+                </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setAddOpen(false)} data-testid="button-cancel-add-user">
@@ -177,7 +194,7 @@ export function UsersRolesManager() {
                 </Button>
                 <Button
                   onClick={() => addUserMutation.mutate()}
-                  disabled={!newEmail.trim() || !newRoleId || addUserMutation.isPending}
+                  disabled={!newEmail.trim() || !newRoleId || newPassword.length < 8 || addUserMutation.isPending}
                   data-testid="button-confirm-add-user"
                 >
                   {addUserMutation.isPending ? "Adding..." : "Add User"}

@@ -1,3 +1,4 @@
 - [Portfolio Health cockpit](portfolio-health-cockpit.md) — server-driven filters: one filtered project set in getPortfolioOverview must drive every aggregate; client query-key gotchas.
 - [db:push interactive drift](db-push-interactive-drift.md) — db:push can hang on an unrelated TTY truncate prompt; for nullable columns apply ALTER ... ADD COLUMN IF NOT EXISTS via psql instead.
+- [Local password auth](local-password-auth.md) — always strip passwordHash from user responses; secure-cookie curl testing needs X-Forwarded-Proto; tenant URL rewrite must precede auth routes.
 - [ClickUp import week-ending](clickup-import-week-ending.md) — import week_ending defaults to FRIDAY (env ATLAS_WEEK_ENDING_DAY, UTC); deliberately differs from the app's Sunday-based timesheet UI.

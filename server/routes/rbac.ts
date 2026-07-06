@@ -2,9 +2,15 @@ import type { Express } from "express";
 import { storage } from "../storage";
 import { db } from "../db";
 import { requirePermission, requireModuleAccess } from "../middleware/permissions";
+import { hashPassword } from "../replit_integrations/auth";
 import { getEffectivePermissions, invalidatePermissionCache, hasGlobalRecordAccess, getLinkedTeamMemberId, getUserModulePermissions } from "../rbac";
 import { eq, and } from "drizzle-orm";
 import { ALL_PERMISSIONS, users, orgRoles } from "@shared/schema";
+
+function sanitizeUser<T extends Record<string, any>>(user: T): Omit<T, "passwordHash"> {
+  const { passwordHash, ...safe } = user;
+  return safe;
+}
 
 export function registerRbacRoutes(app: Express) {
   app.get("/api/rbac/roles", async (req, res) => {
@@ -17,13 +23,13 @@ export function registerRbacRoutes(app: Express) {
   app.get("/api/rbac/users", requireModuleAccess("admin"), requirePermission("users.manage"), async (req, res) => {
     try {
       const usersList = await storage.getUsersByTenant(req.tenantId || "default");
-      res.json(usersList);
+      res.json(usersList.map(sanitizeUser));
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
   app.post("/api/rbac/users", requireModuleAccess("admin"), requirePermission("users.manage"), async (req, res) => {
     try {
-      const { email, firstName, lastName, roleId } = req.body;
+      const { email, firstName, lastName, roleId, password } = req.body;
       if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
         return res.status(400).json({ message: "A valid email is required" });
       }
@@ -38,17 +44,22 @@ export function registerRbacRoutes(app: Express) {
 
       let user = existingUser;
       if (!user) {
+        if (!password || typeof password !== "string" || password.length < 8) {
+          return res.status(400).json({ message: "A temporary password of at least 8 characters is required" });
+        }
         const [created] = await db.insert(users).values({
           email: normalizedEmail,
           firstName: firstName?.trim() || null,
           lastName: lastName?.trim() || null,
+          passwordHash: await hashPassword(password),
+          mustChangePassword: true,
         }).returning();
         user = created;
       }
 
       await storage.assignUserOrgRole(user.id, roleId, tenantId);
       invalidatePermissionCache(user.id);
-      res.status(201).json({ user, created: !existingUser });
+      res.status(201).json({ user: sanitizeUser(user as any), created: !existingUser });
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
@@ -70,6 +81,33 @@ export function registerRbacRoutes(app: Express) {
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
+  app.post("/api/rbac/users/:userId/reset-password", requireModuleAccess("admin"), requirePermission("users.manage"), async (req, res) => {
+    try {
+      const { password } = req.body || {};
+      if (!password || typeof password !== "string" || password.length < 8) {
+        return res.status(400).json({ message: "A temporary password of at least 8 characters is required" });
+      }
+      const targetUserId = req.params.userId as string;
+      const tenantId = req.tenantId || "default";
+      // The target user must belong to this tenant (unless the actor is a super admin)
+      const actorId = (req as any).user?.claims?.sub;
+      const [actor] = await db.select({ isSuperAdmin: users.isSuperAdmin }).from(users).where(eq(users.id, actorId));
+      if (!actor?.isSuperAdmin) {
+        const tenantUsers = await storage.getUsersByTenant(tenantId);
+        if (!tenantUsers.some((u: any) => u.id === targetUserId)) {
+          return res.status(404).json({ message: "User not found in this tenant" });
+        }
+      }
+      const [target] = await db.select().from(users).where(eq(users.id, targetUserId));
+      if (!target) return res.status(404).json({ message: "User not found" });
+
+      await db.update(users)
+        .set({ passwordHash: await hashPassword(password), mustChangePassword: true, updatedAt: new Date() })
+        .where(eq(users.id, targetUserId));
+      res.json({ success: true });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
   app.patch("/api/rbac/users/:userId", requireModuleAccess("admin"), requirePermission("users.manage"), async (req, res) => {
     try {
       const { firstName, lastName, email } = req.body;
@@ -87,7 +125,7 @@ export function registerRbacRoutes(app: Express) {
         }
       }
 
-      res.json(updated);
+      res.json(sanitizeUser(updated as any));
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
@@ -268,7 +306,7 @@ export function registerRbacRoutes(app: Express) {
       if (!member) return res.status(404).json({ message: "Team member not found" });
       if (!member.email) return res.status(400).json({ message: "Team member has no email address" });
       const user = await storage.createUserFromTeamMember(member.email, req.params.id);
-      res.json(user);
+      res.json(sanitizeUser(user as any));
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 

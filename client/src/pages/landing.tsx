@@ -1,12 +1,91 @@
+import { useState } from "react";
 import { Helmet } from "react-helmet-async";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useBranding } from "@/components/branding-provider";
-import { FolderKanban, BarChart3, Users, ArrowRight, Shield } from "lucide-react";
+import { FolderKanban, BarChart3, Users, ArrowRight, Shield, Loader2 } from "lucide-react";
+
+function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const queryClient = useQueryClient();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email, password }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        setError(body?.message || "Login failed");
+        return;
+      }
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+    } catch {
+      setError("Login failed. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Log In</DialogTitle>
+          <DialogDescription>Enter your email and password to continue.</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="login-email">Email</Label>
+            <Input
+              id="login-email"
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              data-testid="input-login-email"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="login-password">Password</Label>
+            <Input
+              id="login-password"
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              data-testid="input-login-password"
+            />
+          </div>
+          {error && (
+            <p className="text-sm text-destructive" data-testid="text-login-error">{error}</p>
+          )}
+          <Button type="submit" className="w-full" disabled={submitting || !email.trim() || !password} data-testid="button-login-submit">
+            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Log In"}
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export default function Landing() {
   const { branding } = useBranding();
   const appName = branding?.appName || "Project High Level Planning";
+  const [loginOpen, setLoginOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-background">
@@ -22,8 +101,8 @@ export default function Landing() {
             )}
             <span className="font-semibold text-foreground" data-testid="text-landing-app-name">{appName}</span>
           </div>
-          <Button asChild data-testid="button-login-nav">
-            <a href="/api/login">Log In</a>
+          <Button onClick={() => setLoginOpen(true)} data-testid="button-login-nav">
+            Log In
           </Button>
         </div>
       </nav>
@@ -38,11 +117,9 @@ export default function Landing() {
               A comprehensive project planning platform for managing timelines, budgets, teams, and deliverables — all in one place.
             </p>
             <div className="flex items-center gap-4">
-              <Button size="lg" asChild data-testid="button-login-hero">
-                <a href="/api/login">
-                  Get Started
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </a>
+              <Button size="lg" onClick={() => setLoginOpen(true)} data-testid="button-login-hero">
+                Get Started
+                <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </div>
             <div className="flex items-center gap-4 text-sm text-muted-foreground pt-2">
@@ -125,6 +202,8 @@ export default function Landing() {
       <footer className="py-8 px-6 border-t text-center text-sm text-muted-foreground">
         &copy; {new Date().getFullYear()} {appName}. All rights reserved.
       </footer>
+
+      <LoginDialog open={loginOpen} onOpenChange={setLoginOpen} />
     </div>
   );
 }

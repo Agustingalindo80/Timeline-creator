@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Edit3, Check, Link2, Unlink, X, Plus } from "lucide-react";
+import { ArrowLeft, Edit3, Check, Link2, Unlink, X, Plus, KeyRound } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +28,8 @@ export function UserDetailView({
   const [selectedTeamMemberId, setSelectedTeamMemberId] = useState<string>("");
   const [linkingTm, setLinkingTm] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetPassword, setResetPassword] = useState("");
   const [editFirstName, setEditFirstName] = useState(user.firstName || "");
   const [editLastName, setEditLastName] = useState(user.lastName || "");
   const [editEmail, setEditEmail] = useState(user.email || "");
@@ -100,6 +103,20 @@ export function UserDetailView({
     },
   });
 
+  const resetPasswordMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", `/api/rbac/users/${user.id}/reset-password`, { password: resetPassword });
+    },
+    onSuccess: () => {
+      toast({ title: "Password reset", description: "The user must change this temporary password on next login." });
+      setResetOpen(false);
+      setResetPassword("");
+    },
+    onError: (err: Error) => {
+      toast({ title: "Failed to reset password", description: err.message, variant: "destructive" });
+    },
+  });
+
   const startEditing = () => {
     setEditFirstName(user.firstName || "");
     setEditLastName(user.lastName || "");
@@ -153,9 +170,14 @@ export function UserDetailView({
         </div>
         <div className="flex items-center gap-2">
           {!editing ? (
-            <Button variant="outline" size="sm" onClick={startEditing} data-testid="button-edit-user">
-              <Edit3 className="w-3.5 h-3.5 mr-1" /> Edit
-            </Button>
+            <>
+              <Button variant="outline" size="sm" onClick={() => setResetOpen(true)} data-testid="button-reset-password">
+                <KeyRound className="w-3.5 h-3.5 mr-1" /> Reset Password
+              </Button>
+              <Button variant="outline" size="sm" onClick={startEditing} data-testid="button-edit-user">
+                <Edit3 className="w-3.5 h-3.5 mr-1" /> Edit
+              </Button>
+            </>
           ) : (
             <>
               <Button
@@ -413,6 +435,40 @@ export function UserDetailView({
           </div>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={resetOpen} onOpenChange={setResetOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Reset Password</DialogTitle>
+            <DialogDescription>
+              Set a temporary password for {fullName}. They will be required to change it on their next login.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="reset-password">Temporary password</Label>
+            <Input
+              id="reset-password"
+              type="password"
+              placeholder="At least 8 characters"
+              value={resetPassword}
+              onChange={(e) => setResetPassword(e.target.value)}
+              data-testid="input-reset-password"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setResetOpen(false); setResetPassword(""); }} data-testid="button-cancel-reset-password">
+              Cancel
+            </Button>
+            <Button
+              onClick={() => resetPasswordMutation.mutate()}
+              disabled={resetPassword.length < 8 || resetPasswordMutation.isPending}
+              data-testid="button-confirm-reset-password"
+            >
+              {resetPasswordMutation.isPending ? "Resetting..." : "Reset Password"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
