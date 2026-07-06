@@ -222,7 +222,7 @@ export interface IStorage {
   updateUserDemographics(userId: string, data: { firstName?: string; lastName?: string; email?: string }): Promise<User | undefined>;
   linkTeamMemberToUser(teamMemberId: string, userId: string): Promise<void>;
   unlinkTeamMemberFromUser(teamMemberId: string): Promise<void>;
-  getTeamMemberByUserId(userId: string): Promise<TeamMember | undefined>;
+  getTeamMemberByUserId(userId: string, tenantId?: string): Promise<TeamMember | undefined>;
   createUserFromTeamMember(email: string, teamMemberId: string): Promise<User>;
   getEvmSnapshots(timelineId: string, tenantId: string): Promise<EvmSnapshot[]>;
   getEvmSnapshotAllVersions(timelineId: string, weekEnding: string, tenantId: string): Promise<EvmSnapshot[]>;
@@ -1010,8 +1010,10 @@ export class DatabaseStorage implements IStorage {
     await db.update(teamMembers).set({ userId: null }).where(eq(teamMembers.id, teamMemberId));
   }
 
-  async getTeamMemberByUserId(userId: string): Promise<TeamMember | undefined> {
-    const [member] = await db.select().from(teamMembers).where(eq(teamMembers.userId, userId));
+  async getTeamMemberByUserId(userId: string, tenantId?: string): Promise<TeamMember | undefined> {
+    const conditions = [eq(teamMembers.userId, userId)];
+    if (tenantId) conditions.push(eq(teamMembers.tenantId, tenantId));
+    const [member] = await db.select().from(teamMembers).where(and(...conditions));
     return member;
   }
 
@@ -1034,15 +1036,17 @@ export class DatabaseStorage implements IStorage {
 
     await db.update(teamMembers).set({ userId: user.id }).where(eq(teamMembers.id, teamMemberId));
 
+    const [linkedMember] = await db.select().from(teamMembers).where(eq(teamMembers.id, teamMemberId));
+    const memberTenantId = linkedMember?.tenantId || "default";
     const memberRole = await db.select().from(orgRoles).where(and(
       eq(orgRoles.name, "Member"),
-      eq(orgRoles.tenantId, "default"),
+      eq(orgRoles.tenantId, memberTenantId),
     ));
     if (memberRole.length > 0) {
       await db.insert(userOrgRoles).values({
         userId: user.id,
         roleId: memberRole[0].id,
-        tenantId: "default",
+        tenantId: memberTenantId,
       }).onConflictDoNothing();
     }
 

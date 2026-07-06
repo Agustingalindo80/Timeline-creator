@@ -33,7 +33,7 @@ export function registerRbacRoutes(app: Express) {
       const [role] = await db.select().from(orgRoles).where(and(eq(orgRoles.id, roleId), eq(orgRoles.tenantId, tenantId)));
       if (!role) return res.status(400).json({ message: "Role not found in this tenant" });
 
-      const normalizedEmail = email.trim();
+      const normalizedEmail = email.trim().toLowerCase();
       const [existingUser] = await db.select().from(users).where(eq(users.email, normalizedEmail));
 
       let user = existingUser;
@@ -76,7 +76,7 @@ export function registerRbacRoutes(app: Express) {
       const updated = await storage.updateUserDemographics(req.params.userId as string, { firstName, lastName, email });
       if (!updated) return res.status(404).json({ message: "User not found" });
 
-      const tm = await storage.getTeamMemberByUserId(req.params.userId as string);
+      const tm = await storage.getTeamMemberByUserId(req.params.userId as string, req.tenantId || "default");
       if (tm) {
         const syncData: Record<string, any> = {};
         const newName = [firstName ?? updated.firstName, lastName ?? updated.lastName].filter(Boolean).join(" ");
@@ -95,6 +95,11 @@ export function registerRbacRoutes(app: Express) {
     try {
       const { teamMemberId } = req.body;
       if (!teamMemberId) return res.status(400).json({ message: "teamMemberId is required" });
+      const member = await storage.getTeamMember(teamMemberId, req.tenantId || "default");
+      if (!member) return res.status(404).json({ message: "Team member not found in this tenant" });
+      if (member.userId && member.userId !== req.params.userId) {
+        return res.status(400).json({ message: "This team member is already linked to another user" });
+      }
       await storage.linkTeamMemberToUser(teamMemberId, req.params.userId as string);
       invalidatePermissionCache(req.params.userId as string);
       res.json({ success: true });
@@ -103,7 +108,7 @@ export function registerRbacRoutes(app: Express) {
 
   app.post("/api/rbac/users/:userId/unlink-team-member", requireModuleAccess("admin"), requirePermission("users.manage"), async (req, res) => {
     try {
-      const tm = await storage.getTeamMemberByUserId(req.params.userId as string);
+      const tm = await storage.getTeamMemberByUserId(req.params.userId as string, req.tenantId || "default");
       if (!tm) return res.status(404).json({ message: "No linked team member found" });
       await storage.unlinkTeamMemberFromUser(tm.id);
       invalidatePermissionCache(req.params.userId as string);

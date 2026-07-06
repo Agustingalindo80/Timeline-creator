@@ -52,7 +52,7 @@ async function resolveTenantBySlug(slug: string): Promise<string | null> {
 }
 
 export function tenantContext() {
-  return async (req: Request, _res: Response, next: NextFunction) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
     if ((req as any).isApiToken && (req as any).apiTokenTenantId) {
       req.tenantId = (req as any).apiTokenTenantId;
       return next();
@@ -67,6 +67,10 @@ export function tenantContext() {
         if (userId) {
           const hasAccess = await userHasTenantAccess(userId, resolvedTenantId);
           if (!hasAccess) {
+            // Block API access to tenants the user doesn't belong to
+            if (req.originalUrl.match(/^\/t\/[a-z0-9-]+\/api(\/|$)/)) {
+              return res.status(403).json({ message: "You do not have access to this tenant" });
+            }
             req.tenantId = "default";
             return next();
           }

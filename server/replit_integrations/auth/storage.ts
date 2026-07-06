@@ -1,8 +1,8 @@
 import { users, type User, type UpsertUser } from "@shared/models/auth";
 import { orgRoles, userOrgRoles } from "@shared/models/rbac";
-import { teamMembers } from "@shared/schema";
+import { teamMembers, objectAssignments, auditLog } from "@shared/schema";
 import { db } from "../../db";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, ne, isNull, sql } from "drizzle-orm";
 import { isSuperAdminEmail } from "../../super-admin-allowlist";
 
 export interface IAuthStorage {
@@ -19,6 +19,13 @@ class AuthStorage implements IAuthStorage {
   async upsertUser(userData: UpsertUser): Promise<User> {
     const existingUser = await this.getUser(userData.id);
 
+    // If an admin pre-created an account with this email (before first login),
+    // merge it into the real auth identity so roles and links carry over.
+    let mergedPreCreated = false;
+    if (!existingUser && userData.email) {
+      mergedPreCreated = await this.mergePreCreatedUser(userData);
+    }
+
     const [user] = await db
       .insert(users)
       .values(userData)
@@ -31,7 +38,7 @@ class AuthStorage implements IAuthStorage {
       })
       .returning();
 
-    if (!existingUser) {
+    if (!existingUser && !mergedPreCreated) {
       await this.assignDefaultRole(user.id);
       await this.autoLinkTeamMember(user);
     }
@@ -39,6 +46,43 @@ class AuthStorage implements IAuthStorage {
     await this.ensureSuperAdminAllowlist(user);
 
     return user;
+  }
+
+  private async mergePreCreatedUser(userData: UpsertUser): Promise<boolean> {
+    try {
+      const authId = userData.id;
+      if (!authId || !userData.email) return false;
+      const [preCreated] = await db.select()
+        .from(users)
+        .where(and(sql`lower(${users.email}) = lower(${userData.email})`, ne(users.id, authId)))
+        .limit(1);
+      if (!preCreated) return false;
+
+      await db.transaction(async (tx) => {
+        // Free the unique email, then create the real auth user
+        await tx.update(users).set({ email: null }).where(eq(users.id, preCreated.id));
+        await tx.insert(users).values({
+          ...userData,
+          firstName: userData.firstName || preCreated.firstName,
+          lastName: userData.lastName || preCreated.lastName,
+          isSuperAdmin: preCreated.isSuperAdmin || undefined,
+        }).onConflictDoNothing();
+
+        // Move all references from the pre-created placeholder to the real user
+        await tx.update(userOrgRoles).set({ userId: userData.id }).where(eq(userOrgRoles.userId, preCreated.id));
+        await tx.update(teamMembers).set({ userId: userData.id }).where(eq(teamMembers.userId, preCreated.id));
+        await tx.update(objectAssignments).set({ userId: userData.id }).where(eq(objectAssignments.userId, preCreated.id));
+        await tx.update(auditLog).set({ actorUserId: userData.id }).where(eq(auditLog.actorUserId, preCreated.id));
+
+        await tx.delete(users).where(eq(users.id, preCreated.id));
+      });
+
+      console.log(`Merged pre-created account for ${userData.email} into auth user ${userData.id}`);
+      return true;
+    } catch (err) {
+      console.error("Failed to merge pre-created user account:", err);
+      return false;
+    }
   }
 
   private async ensureSuperAdminAllowlist(user: User): Promise<void> {
