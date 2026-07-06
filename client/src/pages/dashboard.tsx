@@ -14,7 +14,6 @@ import {
   Target,
   FolderOpen,
   Bell,
-  Building2,
   Crosshair,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,15 +22,6 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAppTitle } from "@/hooks/use-app-title";
 import type { AppSettings } from "@shared/schema";
-
-type TenantPerformance = {
-  tenantId: string;
-  tenantName: string;
-  activeProjects: number;
-  totalBudget: number;
-  atRiskCount: number;
-  health: { green: number; amber: number; red: number };
-};
 
 type DashboardSummary = {
   portfolioHealth: { green: number; amber: number; red: number };
@@ -60,7 +50,6 @@ type DashboardSummary = {
     achievementRate: number;
     atRiskOutcomes: { id: string; title: string; linkedTitle: string; timelineId: string | null }[];
   };
-  tenantPerformance: TenantPerformance[] | null;
 };
 
 const OUTCOME_STATUS_COLORS: { key: keyof DashboardSummary["businessOutcomes"]["byStatus"]; color: string }[] = [
@@ -113,11 +102,6 @@ export default function Dashboard() {
     queryKey: ["/api/dashboard/summary"],
   });
 
-  const { data: superAdminCheck } = useQuery<{ isSuperAdmin: boolean }>({
-    queryKey: ["/api/global-admin/check"],
-  });
-
-  const isSuperAdmin = superAdminCheck?.isSuperAdmin || false;
   const oppsEnabled = !!settings?.opportunitiesEnabled;
   const health = summary?.portfolioHealth || { green: 0, amber: 0, red: 0 };
   const totalHealthed = health.green + health.amber + health.red;
@@ -445,47 +429,6 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </div>
-      )}
-
-      {isSuperAdmin && summary?.tenantPerformance && summary.tenantPerformance.length > 0 && (
-        <Card data-testid="card-tenant-performance">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5 uppercase tracking-wider">
-              <Building2 className="w-3.5 h-3.5" /> {t("dashboard.tenantPerformance")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-1">
-              <div className="grid grid-cols-[1fr,80px,100px,80px,120px] gap-1 text-[10px] font-medium text-muted-foreground uppercase tracking-wider px-2 pb-1">
-                <span>{t("dashboard.tenant")}</span>
-                <span className="text-center">{t("dashboard.activeProjects")}</span>
-                <span className="text-right">{t("dashboard.totalBudget")}</span>
-                <span className="text-center">{t("dashboard.atRisk")}</span>
-                <span className="text-center">{t("dashboard.health")}</span>
-              </div>
-              {summary.tenantPerformance.map(tp => {
-                const tTotal = tp.health.green + tp.health.amber + tp.health.red;
-                return (
-                  <div key={tp.tenantId} className="grid grid-cols-[1fr,80px,100px,80px,120px] gap-1 items-center px-2 py-1.5 rounded-md hover:bg-muted/50" data-testid={`tenant-perf-${tp.tenantId}`}>
-                    <span className="text-sm font-medium truncate">{tp.tenantName}</span>
-                    <span className="text-sm text-center tabular-nums">{tp.activeProjects}</span>
-                    <span className="text-sm text-right tabular-nums">{formatCurrency(tp.totalBudget)}</span>
-                    <span className={`text-sm text-center tabular-nums ${tp.atRiskCount > 0 ? "text-red-500 font-medium" : ""}`}>{tp.atRiskCount}</span>
-                    <div className="flex items-center gap-2 justify-center">
-                      {tTotal > 0 && (
-                        <div className="flex gap-0.5 flex-1 h-2 rounded-full overflow-hidden bg-muted max-w-[80px]">
-                          <div className="bg-emerald-500" style={{ width: `${(tp.health.green / tTotal) * 100}%` }} />
-                          <div className="bg-amber-500" style={{ width: `${(tp.health.amber / tTotal) * 100}%` }} />
-                          <div className="bg-red-500" style={{ width: `${(tp.health.red / tTotal) * 100}%` }} />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

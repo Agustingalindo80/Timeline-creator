@@ -1,11 +1,10 @@
 import type { Express } from "express";
 import { db } from "../db";
-import { timelines, milestones, risks, projectGates, tenants, businessOutcomes } from "@shared/schema";
-import { users } from "@shared/models/auth";
+import { timelines, milestones, risks, projectGates, businessOutcomes } from "@shared/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { requireModuleAccess } from "../middleware/permissions";
 import { storage } from "../storage";
-import { getRecordAccessContext, extractUserId, parseHealthHistoryRange } from "./helpers";
+import { getRecordAccessContext, parseHealthHistoryRange } from "./helpers";
 import { getPortfolioHealth, getPortfolioOverview } from "../reports";
 import { mergeHealthHistory } from "@shared/health-trend";
 import { buildPortfolioTrend } from "@shared/portfolio-trends";
@@ -18,15 +17,6 @@ type PortfolioRollup = {
   amber: number;
   red: number;
   totalBudget: number;
-};
-
-type TenantPerformance = {
-  tenantId: string;
-  tenantName: string;
-  activeProjects: number;
-  totalBudget: number;
-  atRiskCount: number;
-  health: { green: number; amber: number; red: number };
 };
 
 export function registerDashboardRoutes(app: Express) {
@@ -188,31 +178,6 @@ export function registerDashboardRoutes(app: Express) {
         projectStatus: p.projectStatus,
       }));
 
-      let tenantPerformance: TenantPerformance[] | null = null;
-      const userId = extractUserId(req);
-      if (userId) {
-        const [userRecord] = await db.select({ isSuperAdmin: users.isSuperAdmin }).from(users).where(eq(users.id, userId));
-        if (userRecord?.isSuperAdmin) {
-          const allTenants = await db.select({ id: tenants.id, name: tenants.name }).from(tenants)
-            .where(eq(tenants.status, "active"));
-
-          const allTenantProjects = await db.select().from(timelines)
-            .where(eq(timelines.recordType, "project"));
-
-          tenantPerformance = allTenants.map(t => {
-            const tProjects = allTenantProjects.filter(p => p.tenantId === t.id && p.projectStatus !== "completed");
-            const tHealth = { green: 0, amber: 0, red: 0 };
-            tProjects.forEach(p => {
-              const h = p.healthOverall || "green";
-              if (h in tHealth) tHealth[h as keyof typeof tHealth]++;
-            });
-            const tBudget = tProjects.reduce((sum, p) => sum + (parseFloat(p.approvedBudget || "0") || 0), 0);
-            const tAtRisk = tProjects.filter(p => p.healthOverall === "red" || p.healthOverall === "amber").length;
-            return { tenantId: t.id, tenantName: t.name, activeProjects: tProjects.length, totalBudget: tBudget, atRiskCount: tAtRisk, health: tHealth };
-          }).filter(t => t.activeProjects > 0);
-        }
-      }
-
       res.json({
         portfolioHealth: healthSummary,
         totalProjects: accessibleProjects.length,
@@ -235,7 +200,6 @@ export function registerDashboardRoutes(app: Express) {
         gateExceptions,
         healthHeatmap,
         businessOutcomes: businessOutcomesSummary,
-        tenantPerformance,
       });
     } catch (err: unknown) {
       console.error("Dashboard summary error:", err);
