@@ -57,8 +57,30 @@ export async function setupAuth(app: Express) {
       const [user] = await db.select().from(users)
         .where(dsql`lower(${users.email}) = ${normalizedEmail}`)
         .limit(1);
-      if (!user || !user.passwordHash) {
+      if (!user) {
         return res.status(401).json({ message: "Invalid email or password" });
+      }
+
+      // Bootstrap: an allowlisted super admin with no password yet may log in
+      // with SUPER_ADMIN_INITIAL_PASSWORD (becomes their temp password, forced change).
+      if (!user.passwordHash) {
+        const bootstrapPassword = process.env.SUPER_ADMIN_INITIAL_PASSWORD;
+        if (
+          bootstrapPassword &&
+          bootstrapPassword.length >= 8 &&
+          user.email &&
+          isSuperAdminEmail(user.email) &&
+          password === bootstrapPassword
+        ) {
+          const hash = await bcrypt.hash(bootstrapPassword, 10);
+          await db.update(users)
+            .set({ passwordHash: hash, mustChangePassword: true, updatedAt: new Date() })
+            .where(eq(users.id, user.id));
+          user.passwordHash = hash;
+          user.mustChangePassword = true;
+        } else {
+          return res.status(401).json({ message: "Invalid email or password" });
+        }
       }
       const valid = await bcrypt.compare(password, user.passwordHash);
       if (!valid) {
