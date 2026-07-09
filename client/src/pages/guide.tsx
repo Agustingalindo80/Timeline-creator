@@ -21,6 +21,9 @@ import {
   Settings,
   Loader2,
   ChevronRight,
+  Sparkles,
+  Crosshair,
+  HeartPulse,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -51,6 +54,12 @@ const GUIDE_SECTIONS: GuideSection[] = [
     contentKey: "guide.gettingStartedContent",
   },
   {
+    id: "whats-new",
+    titleKey: "guide.whatsNewTitle",
+    icon: Sparkles,
+    contentKey: "guide.whatsNewContent",
+  },
+  {
     id: "dashboard",
     titleKey: "guide.dashboardTitle",
     icon: LayoutDashboard,
@@ -73,6 +82,14 @@ const GUIDE_SECTIONS: GuideSection[] = [
     requiredModule: "module.projects",
     contentKey: "guide.projectsContent",
     keyConceptsKey: "guide.projectsConcepts",
+  },
+  {
+    id: "business-outcomes",
+    titleKey: "guide.businessOutcomesTitle",
+    icon: Crosshair,
+    requiredModule: "module.business_outcomes",
+    contentKey: "guide.businessOutcomesContent",
+    keyConceptsKey: "guide.businessOutcomesConcepts",
   },
   {
     id: "clients",
@@ -108,6 +125,14 @@ const GUIDE_SECTIONS: GuideSection[] = [
     icon: Clock,
     requiredModule: "module.timesheets",
     contentKey: "guide.timesheetsContent",
+  },
+  {
+    id: "portfolio-health",
+    titleKey: "guide.portfolioHealthTitle",
+    icon: HeartPulse,
+    requiredModule: "module.reports",
+    contentKey: "guide.portfolioHealthContent",
+    keyConceptsKey: "guide.portfolioHealthConcepts",
   },
   {
     id: "reports",
