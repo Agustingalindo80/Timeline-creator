@@ -139,7 +139,6 @@
     "noGateExceptions": "No gate exceptions",
     "winRate": "Win Rate",
     "totalOpps": "Total",
-    "won": "Won",
     "converted": "Converted",
     "tenant": "Tenant",
     "atRisk": "At Risk",
@@ -239,6 +238,7 @@
     "country": "Country",
     "selectCountry": "Select country...",
     "segment": "Segment",
+    "legalName": "Legal Name",
     "selectSegment": "Select segment...",
     "notes": "Notes"
   },

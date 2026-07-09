@@ -418,6 +418,7 @@ export const clients = pgTable("clients", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   tenantId: text("tenant_id").notNull().default("default"),
   name: text("name").notNull(),
+  legalName: text("legal_name"),
   industry: text("industry"),
   country: text("country"),
   segment: text("segment"),

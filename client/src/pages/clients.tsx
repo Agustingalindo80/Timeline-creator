@@ -37,6 +37,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAppTitle } from "@/hooks/use-app-title";
 
 interface RowEdits {
+  legalName?: string | null;
   industry?: string | null;
   segment?: string | null;
   country?: string | null;
@@ -44,7 +45,7 @@ interface RowEdits {
   status?: string;
 }
 
-type SortField = "name" | "industry" | "segment" | "country" | "contactPhone" | "status";
+type SortField = "name" | "legalName" | "industry" | "segment" | "country" | "contactPhone" | "status";
 type SortDir = "asc" | "desc";
 
 interface ColumnFilters {
@@ -61,6 +62,7 @@ export default function Clients() {
   const [searchQuery, setSearchQuery] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState("");
+  const [newLegalName, setNewLegalName] = useState("");
   const [newIndustry, setNewIndustry] = useState("");
   const [edits, setEdits] = useState<Record<string, RowEdits>>({});
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
@@ -81,7 +83,7 @@ export default function Clients() {
   const segmentOptions = getDefaultFieldOptions("segments", settings?.locale || "en");
 
   const createMutation = useMutation({
-    mutationFn: async (data: { name: string; industry?: string }) => {
+    mutationFn: async (data: { name: string; legalName?: string; industry?: string }) => {
       const res = await apiRequest("POST", "/api/clients", data);
       return res.json();
     },
@@ -90,6 +92,7 @@ export default function Clients() {
       toast({ title: t("clients.clientCreated") });
       setCreateOpen(false);
       setNewName("");
+      setNewLegalName("");
       setNewIndustry("");
     },
     onError: () => {
@@ -230,6 +233,7 @@ export default function Clients() {
         const q = searchQuery.toLowerCase();
         if (
           !c.name.toLowerCase().includes(q) &&
+          !(c.legalName || "").toLowerCase().includes(q) &&
           !getIndustryLabel(c.industry).toLowerCase().includes(q)
         ) return false;
       }
@@ -251,6 +255,10 @@ export default function Clients() {
           case "name":
             aVal = a.name.toLowerCase();
             bVal = b.name.toLowerCase();
+            break;
+          case "legalName":
+            aVal = (a.legalName || "").toLowerCase();
+            bVal = (b.legalName || "").toLowerCase();
             break;
           case "industry":
             aVal = getIndustryLabel(a.industry).toLowerCase();
@@ -347,6 +355,15 @@ export default function Clients() {
                   />
                 </div>
                 <div>
+                  <Label htmlFor="client-legal-name">{t("clients.legalName")}</Label>
+                  <Input
+                    id="client-legal-name"
+                    value={newLegalName}
+                    onChange={(e) => setNewLegalName(e.target.value)}
+                    data-testid="input-client-legal-name"
+                  />
+                </div>
+                <div>
                   <Label htmlFor="client-industry">{t("clients.industry")}</Label>
                   <select
                     id="client-industry"
@@ -368,6 +385,7 @@ export default function Clients() {
                     if (!newName.trim()) return;
                     createMutation.mutate({
                       name: newName.trim(),
+                      legalName: newLegalName.trim() || undefined,
                       industry: newIndustry || undefined,
                     });
                   }}
@@ -465,6 +483,7 @@ export default function Clients() {
               <thead>
                 <tr className="bg-muted/50 border-b">
                   <SortHeader field="name" label={t("common.name")} />
+                  <SortHeader field="legalName" label={t("clients.legalName")} />
                   <SortHeader field="industry" label={t("clients.industry")} />
                   <SortHeader field="segment" label={t("clients.segment")} />
                   <SortHeader field="country" label={t("clients.country")} />
@@ -474,6 +493,7 @@ export default function Clients() {
                 </tr>
                 {showFilters && (
                   <tr className="bg-muted/30 border-b">
+                    <th className="px-3 py-1.5" />
                     <th className="px-3 py-1.5" />
                     <th className="px-3 py-1.5">
                       <select
@@ -549,6 +569,16 @@ export default function Clients() {
                           {client.name}
                           <ExternalLink className="w-3 h-3" />
                         </Link>
+                      </td>
+                      <td className="px-3 py-2 min-w-[160px]">
+                        <input
+                          type="text"
+                          className={inputClass}
+                          value={getVal(client, "legalName")}
+                          onChange={(e) => updateField(client.id, "legalName", e.target.value, client)}
+                          placeholder="—"
+                          data-testid={`input-legal-name-${client.id}`}
+                        />
                       </td>
                       <td className="px-3 py-2 min-w-[150px]">
                         <select

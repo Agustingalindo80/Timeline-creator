@@ -89,6 +89,7 @@ export default function ClientDetail() {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
     name: "",
+    legalName: "",
     industry: "",
     country: "",
     segment: "",
@@ -103,6 +104,7 @@ export default function ClientDetail() {
     if (!client) return;
     setForm({
       name: client.name,
+      legalName: client.legalName || "",
       industry: client.industry || "",
       country: client.country || "",
       segment: client.segment || "",
@@ -134,6 +136,7 @@ export default function ClientDetail() {
   const saveForm = () => {
     updateMutation.mutate({
       name: form.name.trim(),
+      legalName: form.legalName.trim() || null,
       industry: form.industry || null,
       country: form.country || null,
       segment: form.segment || null,
@@ -229,6 +232,14 @@ export default function ClientDetail() {
                 />
               </div>
               <div>
+                <Label>{t("clients.legalName")}</Label>
+                <Input
+                  value={form.legalName}
+                  onChange={(e) => setForm({ ...form, legalName: e.target.value })}
+                  data-testid="edit-client-legal-name"
+                />
+              </div>
+              <div>
                 <Label>Industry</Label>
                 <select
                   className="h-9 text-sm border rounded px-2 bg-background w-full"
@@ -320,6 +331,7 @@ export default function ClientDetail() {
           ) : (
             <div className="space-y-4 max-w-2xl">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <InfoRow icon={Building2} label={t("clients.legalName")} value={client.legalName} />
                 <InfoRow icon={Building2} label="Industry" value={client.industry ? (industryOptions.find((o) => o.value === client.industry)?.label || client.industry) : null} />
                 <InfoRow icon={Layers} label={t("clients.segment")} value={client.segment ? (segmentOptions.find((o) => o.value === client.segment)?.label || client.segment) : null} />
                 <InfoRow icon={Globe} label={t("clients.country")} value={client.country ? getCountryLabel(client.country) : null} />
