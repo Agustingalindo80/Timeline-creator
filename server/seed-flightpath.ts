@@ -1,6 +1,6 @@
 import { db } from "./db";
-import { flightpathStages, flightpathDeliverables, operatingModels } from "@shared/schema";
-import { eq, and } from "drizzle-orm";
+import { flightpathStages, flightpathDeliverables, operatingModels, timelines } from "@shared/schema";
+import { eq, and, isNull } from "drizzle-orm";
 
 interface DeliverableData {
   name: string;
@@ -164,6 +164,20 @@ export async function reseedStage0(tenantId: string = "default"): Promise<void> 
   console.log(`Stage 0 re-seeded with ${stage0Data.deliverables.length} pre-sales deliverables for tenant "${tenantId}"`);
 }
 
+export async function backfillTimelineOperatingModels(tenantId: string, modelId: string): Promise<number> {
+  const legacy = await db.select({ id: timelines.id }).from(timelines)
+    .where(and(eq(timelines.tenantId, tenantId), isNull(timelines.operatingModelId)));
+  for (const t of legacy) {
+    await db.update(timelines)
+      .set({ operatingModelId: modelId, operatingModelConfirmedAt: new Date() })
+      .where(eq(timelines.id, t.id));
+  }
+  if (legacy.length > 0) {
+    console.log(`Backfilled operating model for ${legacy.length} existing record(s) in tenant "${tenantId}"`);
+  }
+  return legacy.length;
+}
+
 async function ensureDefaultOperatingModel(tenantId: string): Promise<string> {
   const existing = await db.select().from(operatingModels).where(eq(operatingModels.tenantId, tenantId));
   if (existing.length > 0) return existing[0].id;
@@ -183,6 +197,7 @@ export async function seedFlightpathData(tenantId: string = "default"): Promise<
     for (const stage of unattached) {
       await db.update(flightpathStages).set({ operatingModelId: modelId }).where(eq(flightpathStages.id, stage.id));
     }
+    await backfillTimelineOperatingModels(tenantId, modelId);
     const stage0 = existing.find(s => s.stageNumber === 0);
     if (stage0 && stage0.name !== "Pre-Sales Value + Scope Lock") {
       console.log(`Updating Stage 0 to pre-sales format for tenant "${tenantId}"...`);

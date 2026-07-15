@@ -6,6 +6,7 @@ import { db, pool } from "./db";
 import { storage } from "./storage";
 import { timelines, operatingModels, flightpathStages } from "@shared/schema";
 import { convertOpportunityToProject } from "./services/opportunity-conversion";
+import { backfillTimelineOperatingModels } from "./seed-flightpath";
 
 const TEST_TENANT_ID = `test-om-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -57,6 +58,37 @@ describe("operating model enforcement", () => {
         return true;
       },
     );
+  });
+
+  it("backfill links legacy records to the default model as confirmed, and is idempotent", async () => {
+    const model = await storage.createOperatingModel({
+      tenantId: TEST_TENANT_ID,
+      name: "Backfill Model",
+      status: "active",
+    } as any);
+
+    const legacyProject = await storage.createTimeline({
+      tenantId: TEST_TENANT_ID,
+      title: "Legacy project",
+      recordType: "project",
+    } as any);
+    const legacyOpp = await storage.createTimeline({
+      tenantId: TEST_TENANT_ID,
+      title: "Legacy opportunity",
+      recordType: "opportunity",
+    } as any);
+
+    const count = await backfillTimelineOperatingModels(TEST_TENANT_ID, model.id);
+    assert.ok(count >= 2);
+
+    for (const id of [legacyProject.id, legacyOpp.id]) {
+      const t = await storage.getTimeline(id, TEST_TENANT_ID);
+      assert.equal(t?.operatingModelId, model.id);
+      assert.ok(t?.operatingModelConfirmedAt);
+    }
+
+    const secondRun = await backfillTimelineOperatingModels(TEST_TENANT_ID, model.id);
+    assert.equal(secondRun, 0);
   });
 
   it("getFlightpathStages filtered by model excludes other models' stages", async () => {
