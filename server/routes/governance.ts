@@ -413,7 +413,15 @@ export function registerGovernanceRoutes(app: Express) {
       const { stageId } = req.body;
       if (!stageId) return res.status(400).json({ message: "stageId is required" });
 
-      const result = await evaluateGate(req.params.id, stageId, req.tenantId || "default");
+      const tenantId = req.tenantId || "default";
+      const timeline = await storage.getTimeline(req.params.id, tenantId);
+      if (!timeline) return res.status(404).json({ message: "Timeline not found" });
+      const modelStages = await storage.getFlightpathStages(tenantId, timeline.operatingModelId || undefined);
+      if (!modelStages.some(s => s.id === stageId)) {
+        return res.status(400).json({ message: "Stage does not belong to this record's operating model" });
+      }
+
+      const result = await evaluateGate(req.params.id, stageId, tenantId);
       res.json(result);
     } catch (err: any) { res.status(err.statusCode || 500).json({ message: err.message }); }
   });

@@ -30,7 +30,14 @@ export async function convertOpportunityToProject(
     throw Object.assign(new Error("A project already exists for this opportunity"), { statusCode: 400 });
   }
 
-  const allStages = await storage.getFlightpathStages(tenantId, opp.operatingModelId || undefined);
+  if (!opp.operatingModelId) {
+    throw Object.assign(new Error("An operating model must be selected and confirmed before converting this opportunity to a project"), { statusCode: 400 });
+  }
+  if (!opp.operatingModelConfirmedAt) {
+    throw Object.assign(new Error("The operating model must be confirmed before converting this opportunity to a project"), { statusCode: 400 });
+  }
+
+  const allStages = await storage.getFlightpathStages(tenantId, opp.operatingModelId);
   const sortedStages = allStages.sort((a, b) => a.stageNumber - b.stageNumber);
   const stage0 = sortedStages.find(s => s.stageNumber === 0);
   const stage1 = sortedStages.find(s => s.stageNumber === 1);

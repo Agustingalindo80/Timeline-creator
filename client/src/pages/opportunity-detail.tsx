@@ -317,7 +317,7 @@ export default function OpportunityDetail() {
   const stage0Gate = stage0 ? gates.find(g => g.stageId === stage0.id) : null;
   const isWon = opp.opportunityStatus === "won";
   const convertedProject = projects.find(p => p.sourceOpportunityId === opp.id);
-  const canConvert = isWon && !convertedProject && !opp.convertedAt && !!opp.operatingModelId && stage0Gate && (stage0Gate.status === "passed" || stage0Gate.status === "exception");
+  const canConvert = isWon && !convertedProject && !opp.convertedAt && !!opp.operatingModelId && !!opp.operatingModelConfirmedAt && stage0Gate && (stage0Gate.status === "passed" || stage0Gate.status === "exception");
   const clientName = clients.find(c => c.id === opp.clientId)?.name;
 
   const regionOptions = (settings as any)?.regions || getDefaultFieldOptions("regions", settings?.locale || "en");
