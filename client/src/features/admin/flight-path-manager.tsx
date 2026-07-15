@@ -23,7 +23,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useGovernanceLabel } from "@/hooks/use-governance-label";
 import { useTranslation } from "react-i18next";
 import { Label } from "@/components/ui/label";
-import type { FlightpathStage, FlightpathDeliverable } from "@shared/schema";
+import { Textarea } from "@/components/ui/textarea";
+import { Layers, Power } from "lucide-react";
+import type { FlightpathStage, FlightpathDeliverable, OperatingModel } from "@shared/schema";
 
 type StageWithDeliverables = FlightpathStage & { deliverables: FlightpathDeliverable[] };
 
@@ -52,9 +54,72 @@ export function FlightPathManager() {
   const [editingRaci, setEditingRaci] = useState<string | null>(null);
   const [raciDraft, setRaciDraft] = useState<Record<string, string>>({});
   const [newRaciRole, setNewRaciRole] = useState("");
+  const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
+  const [addModelOpen, setAddModelOpen] = useState(false);
+  const [newModelName, setNewModelName] = useState("");
+  const [newModelDescription, setNewModelDescription] = useState("");
+  const [editingModel, setEditingModel] = useState(false);
+  const [editModelName, setEditModelName] = useState("");
+  const [editModelDescription, setEditModelDescription] = useState("");
 
-  const { data: stages = [], isLoading } = useQuery<StageWithDeliverables[]>({
+  const { data: models = [], isLoading: modelsLoading } = useQuery<OperatingModel[]>({
+    queryKey: ["/api/operating-models"],
+  });
+
+  const { data: allStages = [], isLoading } = useQuery<StageWithDeliverables[]>({
     queryKey: ["/api/governance-model/stages"],
+  });
+
+  const activeModelId = selectedModelId ?? models[0]?.id ?? null;
+  const activeModel = models.find(m => m.id === activeModelId) || null;
+  const stages = activeModelId ? allStages.filter(s => s.operatingModelId === activeModelId) : allStages;
+
+  const createModelMutation = useMutation({
+    mutationFn: async (data: { name: string; description: string | null }) => {
+      const res = await apiRequest("POST", "/api/operating-models", data);
+      return res.json();
+    },
+    onSuccess: (created: OperatingModel) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/operating-models"] });
+      toast({ title: t("governance.modelCreated") });
+      setAddModelOpen(false);
+      setNewModelName("");
+      setNewModelDescription("");
+      if (created?.id) setSelectedModelId(created.id);
+    },
+    onError: (err: Error) => {
+      toast({ title: t("common.error"), description: err.message.replace(/^\d+:\s*/, ""), variant: "destructive" });
+    },
+  });
+
+  const updateModelMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Record<string, unknown> }) => {
+      const res = await apiRequest("PATCH", `/api/operating-models/${id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/operating-models"] });
+      toast({ title: t("governance.modelUpdated") });
+      setEditingModel(false);
+    },
+    onError: (err: Error) => {
+      toast({ title: t("common.error"), description: err.message.replace(/^\d+:\s*/, ""), variant: "destructive" });
+    },
+  });
+
+  const deleteModelMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/operating-models/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/operating-models"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/governance-model/stages"] });
+      toast({ title: t("governance.modelDeleted") });
+      setSelectedModelId(null);
+    },
+    onError: (err: Error) => {
+      toast({ title: t("governance.modelDeleteBlocked"), description: err.message.replace(/^\d+:\s*/, ""), variant: "destructive" });
+    },
   });
 
   const createStageMutation = useMutation({
@@ -159,7 +224,7 @@ export function FlightPathManager() {
     queryClient.invalidateQueries({ queryKey: ["/api/governance-model/stages"] });
   };
 
-  if (isLoading) return <Skeleton className="h-40 w-full" />;
+  if (isLoading || modelsLoading) return <Skeleton className="h-40 w-full" />;
 
   return (
     <div>
@@ -172,6 +237,109 @@ export function FlightPathManager() {
           {t("governance.frameworkDescription")}
         </p>
       </div>
+
+      <Card className="p-4 mb-4" data-testid="operating-model-manager">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Layers className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm font-medium">{t("governance.operatingModel")}</span>
+          </div>
+          <Select value={activeModelId || ""} onValueChange={v => { setSelectedModelId(v); setEditingModel(false); }}>
+            <SelectTrigger className="w-64" data-testid="select-manage-operating-model">
+              <SelectValue placeholder={t("governance.selectOperatingModel")} />
+            </SelectTrigger>
+            <SelectContent>
+              {models.map(m => (
+                <SelectItem key={m.id} value={m.id}>
+                  {m.name}{m.status !== "active" ? ` (${t("common.inactive")})` : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {activeModel && (
+            <Badge variant={activeModel.status === "active" ? "default" : "secondary"} data-testid="badge-model-status">
+              {activeModel.status === "active" ? t("common.active") : t("common.inactive")}
+            </Badge>
+          )}
+          <div className="flex items-center gap-1 ml-auto">
+            <Button size="sm" variant="outline" onClick={() => { setAddModelOpen(true); setNewModelName(""); setNewModelDescription(""); }} data-testid="button-add-operating-model">
+              <Plus className="w-3.5 h-3.5 mr-1" /> {t("governance.addModel")}
+            </Button>
+            {activeModel && (
+              <>
+                <Button size="icon" variant="ghost" onClick={() => { setEditingModel(true); setEditModelName(activeModel.name); setEditModelDescription(activeModel.description || ""); }} data-testid="button-edit-operating-model">
+                  <Edit3 className="w-3.5 h-3.5" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  title={activeModel.status === "active" ? t("governance.deactivateModel") : t("governance.activateModel")}
+                  onClick={() => updateModelMutation.mutate({ id: activeModel.id, data: { status: activeModel.status === "active" ? "inactive" : "active" } })}
+                  data-testid="button-toggle-model-status"
+                >
+                  <Power className="w-3.5 h-3.5" />
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button size="icon" variant="ghost" className="text-destructive" data-testid="button-delete-operating-model">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>{t("governance.deleteModel")}</AlertDialogTitle>
+                      <AlertDialogDescription>{t("governance.deleteModelConfirm", { name: activeModel.name, count: stages.length })}</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => deleteModelMutation.mutate(activeModel.id)}>{t("common.delete")}</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </>
+            )}
+          </div>
+        </div>
+        {activeModel?.description && !editingModel && (
+          <p className="text-xs text-muted-foreground mt-2" data-testid="text-model-description">{activeModel.description}</p>
+        )}
+        {addModelOpen && (
+          <div className="mt-3 pt-3 border-t space-y-2" data-testid="form-add-model">
+            <div>
+              <Label className="text-xs">{t("governance.modelName")}</Label>
+              <Input value={newModelName} onChange={e => setNewModelName(e.target.value)} data-testid="input-new-model-name" />
+            </div>
+            <div>
+              <Label className="text-xs">{t("governance.modelDescription")}</Label>
+              <Textarea rows={2} value={newModelDescription} onChange={e => setNewModelDescription(e.target.value)} data-testid="input-new-model-description" />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button size="sm" variant="ghost" onClick={() => setAddModelOpen(false)}>{t("common.cancel")}</Button>
+              <Button size="sm" disabled={!newModelName.trim() || createModelMutation.isPending} onClick={() => createModelMutation.mutate({ name: newModelName.trim(), description: newModelDescription.trim() || null })} data-testid="button-save-new-model">
+                <Save className="w-3.5 h-3.5 mr-1" /> {t("common.save")}
+              </Button>
+            </div>
+          </div>
+        )}
+        {editingModel && activeModel && (
+          <div className="mt-3 pt-3 border-t space-y-2" data-testid="form-edit-model">
+            <div>
+              <Label className="text-xs">{t("governance.modelName")}</Label>
+              <Input value={editModelName} onChange={e => setEditModelName(e.target.value)} data-testid="input-edit-model-name" />
+            </div>
+            <div>
+              <Label className="text-xs">{t("governance.modelDescription")}</Label>
+              <Textarea rows={2} value={editModelDescription} onChange={e => setEditModelDescription(e.target.value)} data-testid="input-edit-model-description" />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button size="sm" variant="ghost" onClick={() => setEditingModel(false)}>{t("common.cancel")}</Button>
+              <Button size="sm" disabled={!editModelName.trim() || updateModelMutation.isPending} onClick={() => updateModelMutation.mutate({ id: activeModel.id, data: { name: editModelName.trim(), description: editModelDescription.trim() || null } })} data-testid="button-save-edit-model">
+                <Save className="w-3.5 h-3.5 mr-1" /> {t("common.save")}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Card>
 
       {stages.length === 0 && !addStageOpen ? (
         <Card className="p-6 text-center">
@@ -543,7 +711,7 @@ export function FlightPathManager() {
               <Button size="sm" disabled={!newStageData.name.trim() || !newStageData.goal.trim() || !newStageData.gateName.trim() || createStageMutation.isPending} onClick={() => {
                 const maxNumber = stages.reduce((max, s) => Math.max(max, s.stageNumber), -1);
                 const maxSort = stages.reduce((max, s) => Math.max(max, s.sortOrder), -1);
-                createStageMutation.mutate({ ...newStageData, stageNumber: maxNumber + 1, sortOrder: maxSort + 1 });
+                createStageMutation.mutate({ ...newStageData, operatingModelId: activeModelId, stageNumber: maxNumber + 1, sortOrder: maxSort + 1 });
               }} data-testid="button-save-new-stage">
                 <Save className="w-3.5 h-3.5 mr-1" /> {t("common.save")}
               </Button>

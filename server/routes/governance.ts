@@ -8,6 +8,61 @@ import { evaluateGate } from "../services/gate-evaluator";
 import { verifyArtifacts } from "../services/artifact-verification";
 
 export function registerGovernanceRoutes(app: Express) {
+  app.get("/api/operating-models", async (req, res) => {
+    try {
+      const models = await storage.getOperatingModels(req.tenantId || "default");
+      res.json(models.sort((a, b) => a.name.localeCompare(b.name)));
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.post("/api/operating-models", requireModuleAccess("admin"), requirePermission("org.settings.manage"), async (req, res) => {
+    try {
+      const { name, description, status } = req.body;
+      if (!name || !String(name).trim()) return res.status(400).json({ message: "Name is required" });
+      if (status && !["active", "inactive"].includes(status)) return res.status(400).json({ message: "Status must be 'active' or 'inactive'" });
+      const model = await storage.createOperatingModel({
+        tenantId: req.tenantId || "default",
+        name: String(name).trim(),
+        description: description ? String(description) : null,
+        status: status || "active",
+      });
+      res.status(201).json(model);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.patch("/api/operating-models/:id", requireModuleAccess("admin"), requirePermission("org.settings.manage"), async (req, res) => {
+    try {
+      const { name, description, status } = req.body;
+      const data: Record<string, any> = {};
+      if (name !== undefined) {
+        if (!String(name).trim()) return res.status(400).json({ message: "Name cannot be empty" });
+        data.name = String(name).trim();
+      }
+      if (description !== undefined) data.description = description ? String(description) : null;
+      if (status !== undefined) {
+        if (!["active", "inactive"].includes(status)) return res.status(400).json({ message: "Status must be 'active' or 'inactive'" });
+        data.status = status;
+      }
+      const model = await storage.updateOperatingModel(req.params.id, req.tenantId || "default", data);
+      if (!model) return res.status(404).json({ message: "Operating model not found" });
+      res.json(model);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.delete("/api/operating-models/:id", requireModuleAccess("admin"), requirePermission("org.settings.manage"), async (req, res) => {
+    try {
+      const tenantId = req.tenantId || "default";
+      const model = await storage.getOperatingModel(req.params.id, tenantId);
+      if (!model) return res.status(404).json({ message: "Operating model not found" });
+      const inUse = await storage.countTimelinesUsingOperatingModel(req.params.id, tenantId);
+      if (inUse > 0) {
+        return res.status(400).json({ message: `Cannot delete: this operating model is in use by ${inUse} opportunity/project record(s). Set it to inactive instead.` });
+      }
+      await storage.deleteOperatingModel(req.params.id, tenantId);
+      res.status(204).send();
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
   app.get("/api/flightpath-stages", async (req, res) => {
     try {
       const tenantId = req.tenantId || "default";
@@ -202,7 +257,8 @@ export function registerGovernanceRoutes(app: Express) {
       const { stageId, notes } = req.body;
       if (!stageId) return res.status(400).json({ message: "stageId is required" });
       if (!notes || !notes.trim()) return res.status(400).json({ message: "Justification notes are required" });
-      const allStages = await storage.getFlightpathStages(req.tenantId || "default");
+      const exTimeline = await storage.getTimeline(req.params.id, req.tenantId || "default");
+      const allStages = await storage.getFlightpathStages(req.tenantId || "default", exTimeline?.operatingModelId || undefined);
       if (!allStages.some(s => s.id === stageId)) return res.status(400).json({ message: "Invalid stageId for this governance model" });
       let gate = await storage.getProjectGate(req.params.id, stageId, req.tenantId || "default");
       if (!gate) {
@@ -237,6 +293,10 @@ export function registerGovernanceRoutes(app: Express) {
       const { stageId } = req.body;
       if (!stageId) return res.status(400).json({ message: "stageId is required" });
 
+      const initTimeline = await storage.getTimeline(req.params.id, req.tenantId || "default");
+      const validStages = await storage.getFlightpathStages(req.tenantId || "default", initTimeline?.operatingModelId || undefined);
+      if (!validStages.some(s => s.id === stageId)) return res.status(400).json({ message: "Invalid stageId for this governance model" });
+
       const existing = await storage.getProjectCheckpointsByStage(req.params.id, stageId, req.tenantId || "default");
       if (existing.length > 0) {
         return res.json({ message: "Stage already initialized", checkpoints: existing });
@@ -268,7 +328,7 @@ export function registerGovernanceRoutes(app: Express) {
       const timeline = await storage.getTimeline(req.params.id, req.tenantId || "default");
       if (!timeline) return res.status(404).json({ message: "Timeline not found" });
 
-      const allStages = await storage.getFlightpathStages(req.tenantId || "default");
+      const allStages = await storage.getFlightpathStages(req.tenantId || "default", timeline.operatingModelId || undefined);
       const sortedStages = allStages.sort((a, b) => a.stageNumber - b.stageNumber);
       const nextStage = sortedStages.find(s => s.id === nextStageId);
       if (!nextStage) return res.status(400).json({ message: "Invalid stage" });

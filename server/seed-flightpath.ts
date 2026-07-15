@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { flightpathStages, flightpathDeliverables } from "@shared/schema";
+import { flightpathStages, flightpathDeliverables, operatingModels } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
 
 interface DeliverableData {
@@ -164,9 +164,25 @@ export async function reseedStage0(tenantId: string = "default"): Promise<void> 
   console.log(`Stage 0 re-seeded with ${stage0Data.deliverables.length} pre-sales deliverables for tenant "${tenantId}"`);
 }
 
+async function ensureDefaultOperatingModel(tenantId: string): Promise<string> {
+  const existing = await db.select().from(operatingModels).where(eq(operatingModels.tenantId, tenantId));
+  if (existing.length > 0) return existing[0].id;
+  const [model] = await db.insert(operatingModels).values({
+    tenantId,
+    name: "Operating Model",
+    status: "active",
+  }).returning();
+  return model.id;
+}
+
 export async function seedFlightpathData(tenantId: string = "default"): Promise<void> {
   const existing = await db.select().from(flightpathStages).where(eq(flightpathStages.tenantId, tenantId));
   if (existing.length > 0) {
+    const modelId = await ensureDefaultOperatingModel(tenantId);
+    const unattached = existing.filter(s => !s.operatingModelId);
+    for (const stage of unattached) {
+      await db.update(flightpathStages).set({ operatingModelId: modelId }).where(eq(flightpathStages.id, stage.id));
+    }
     const stage0 = existing.find(s => s.stageNumber === 0);
     if (stage0 && stage0.name !== "Pre-Sales Value + Scope Lock") {
       console.log(`Updating Stage 0 to pre-sales format for tenant "${tenantId}"...`);
@@ -179,9 +195,12 @@ export async function seedFlightpathData(tenantId: string = "default"): Promise<
 
   console.log(`Seeding governance stages for tenant "${tenantId}"...`);
 
+  const modelId = await ensureDefaultOperatingModel(tenantId);
+
   for (const stageData of STAGES) {
     const [stage] = await db.insert(flightpathStages).values({
       tenantId,
+      operatingModelId: modelId,
       stageNumber: stageData.stageNumber,
       name: stageData.name,
       goal: stageData.goal,

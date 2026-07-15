@@ -54,7 +54,7 @@ import { EstimateTab } from "@/features/estimates/estimate-tab";
 import { GovernanceTab } from "@/features/governance/governance-tab";
 import { RaidLog } from "@/features/projects/raid-log";
 import { BusinessOutcomesTab } from "@/features/business-outcomes/business-outcomes-tab";
-import type { TimelineWithMilestones, Client, AppSettings, FlightpathStage, ProjectGate } from "@shared/schema";
+import type { TimelineWithMilestones, Client, AppSettings, FlightpathStage, ProjectGate, OperatingModel } from "@shared/schema";
 import { getDefaultFieldOptions } from "@shared/schema";
 
 const OPP_STATUS_OPTIONS = [
@@ -109,6 +109,7 @@ export default function OpportunityDetail() {
   const appTitle = useAppTitle("Opportunity");
   const [editing, setEditing] = useState(false);
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
+  const [pendingModelId, setPendingModelId] = useState<string>("");
   const [showAddMilestone, setShowAddMilestone] = useState(false);
   const [newMTitle, setNewMTitle] = useState("");
   const [newMDate, setNewMDate] = useState("");
@@ -151,8 +152,12 @@ export default function OpportunityDetail() {
     queryKey: ["/api/settings"],
   });
 
-  const { data: stages = [] } = useQuery<FlightpathStage[]>({
+  const { data: allStages = [] } = useQuery<FlightpathStage[]>({
     queryKey: ["/api/governance-model/stages"],
+  });
+
+  const { data: operatingModels = [] } = useQuery<OperatingModel[]>({
+    queryKey: ["/api/operating-models"],
   });
 
   const { data: gates = [] } = useQuery<ProjectGate[]>({
@@ -214,6 +219,21 @@ export default function OpportunityDetail() {
       queryClient.invalidateQueries({ queryKey: ["/api/opportunities", id] });
       toast({ title: t("projects.milestoneUpdated") });
       setEditingMilestoneId(null);
+    },
+  });
+
+  const setOperatingModelMutation = useMutation({
+    mutationFn: async ({ operatingModelId, confirm }: { operatingModelId: string; confirm: boolean }) => {
+      const res = await apiRequest("POST", `/api/opportunities/${id}/operating-model`, { operatingModelId, confirm });
+      return res.json();
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/opportunities", id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/timelines", id, "checkpoints"] });
+      toast({ title: variables.confirm ? t("governance.operatingModelConfirmed") : t("governance.operatingModelSelected") });
+    },
+    onError: (err: Error) => {
+      toast({ title: t("governance.operatingModelError"), description: err.message.replace(/^\d+:\s*/, ""), variant: "destructive" });
     },
   });
 
@@ -292,11 +312,12 @@ export default function OpportunityDetail() {
   };
 
   const statusOption = OPP_STATUS_OPTIONS.find(s => s.value === opp.opportunityStatus) || OPP_STATUS_OPTIONS[0];
+  const stages = opp.operatingModelId ? allStages.filter(s => s.operatingModelId === opp.operatingModelId) : allStages;
   const stage0 = stages.find(s => s.stageNumber === 0);
   const stage0Gate = stage0 ? gates.find(g => g.stageId === stage0.id) : null;
   const isWon = opp.opportunityStatus === "won";
   const convertedProject = projects.find(p => p.sourceOpportunityId === opp.id);
-  const canConvert = isWon && !convertedProject && !opp.convertedAt && stage0Gate && (stage0Gate.status === "passed" || stage0Gate.status === "exception");
+  const canConvert = isWon && !convertedProject && !opp.convertedAt && !!opp.operatingModelId && stage0Gate && (stage0Gate.status === "passed" || stage0Gate.status === "exception");
   const clientName = clients.find(c => c.id === opp.clientId)?.name;
 
   const regionOptions = (settings as any)?.regions || getDefaultFieldOptions("regions", settings?.locale || "en");
@@ -576,8 +597,65 @@ export default function OpportunityDetail() {
             <TeamCompositionWrapper timelineId={opp.id} region={opp.region || undefined} />
           </TabsContent>
 
-          <TabsContent value="governance">
-            <GovernanceTab timelineId={opp.id} currentStageId={opp.flightpathStageId || null} onStageChange={() => {}} opportunityMode={true} />
+          <TabsContent value="governance" className="space-y-4">
+            <Card>
+              <CardContent className="p-4">
+                {opp.operatingModelConfirmedAt ? (
+                  <div className="flex items-center gap-2 flex-wrap" data-testid="operating-model-locked">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    <span className="text-sm font-medium">{t("governance.operatingModel")}:</span>
+                    <Badge variant="outline" data-testid="badge-operating-model">
+                      {operatingModels.find(m => m.id === opp.operatingModelId)?.name || "—"}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">{t("governance.operatingModelLockedHint")}</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <span className="text-sm font-medium">{t("governance.operatingModel")}</span>
+                    <Select
+                      value={pendingModelId || opp.operatingModelId || ""}
+                      onValueChange={setPendingModelId}
+                    >
+                      <SelectTrigger className="w-64" data-testid="select-operating-model">
+                        <SelectValue placeholder={t("governance.selectOperatingModel")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {operatingModels.filter(m => m.status === "active" || m.id === opp.operatingModelId).map(m => (
+                          <SelectItem key={m.id} value={m.id}>{m.name}{m.status !== "active" ? ` (${t("common.inactive")})` : ""}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={!pendingModelId || pendingModelId === opp.operatingModelId || setOperatingModelMutation.isPending}
+                      onClick={() => setOperatingModelMutation.mutate({ operatingModelId: pendingModelId, confirm: false })}
+                      data-testid="button-select-operating-model"
+                    >
+                      {t("governance.selectModel")}
+                    </Button>
+                    <Button
+                      size="sm"
+                      disabled={!(pendingModelId || opp.operatingModelId) || setOperatingModelMutation.isPending}
+                      onClick={() => setOperatingModelMutation.mutate({ operatingModelId: pendingModelId || opp.operatingModelId!, confirm: true })}
+                      data-testid="button-confirm-operating-model"
+                    >
+                      <Check className="w-4 h-4 mr-1" /> {t("governance.confirmOperatingModel")}
+                    </Button>
+                    <span className="text-xs text-muted-foreground">{t("governance.confirmOperatingModelHint")}</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+            {opp.operatingModelId ? (
+              <GovernanceTab timelineId={opp.id} currentStageId={opp.flightpathStageId || null} onStageChange={() => {}} opportunityMode={true} />
+            ) : (
+              <Card>
+                <CardContent className="p-6 text-center">
+                  <p className="text-sm text-muted-foreground" data-testid="text-select-model-first">{t("governance.selectModelFirst")}</p>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           <TabsContent value="raid">

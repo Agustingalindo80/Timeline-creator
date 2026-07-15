@@ -30,7 +30,7 @@ export async function convertOpportunityToProject(
     throw Object.assign(new Error("A project already exists for this opportunity"), { statusCode: 400 });
   }
 
-  const allStages = await storage.getFlightpathStages(tenantId);
+  const allStages = await storage.getFlightpathStages(tenantId, opp.operatingModelId || undefined);
   const sortedStages = allStages.sort((a, b) => a.stageNumber - b.stageNumber);
   const stage0 = sortedStages.find(s => s.stageNumber === 0);
   const stage1 = sortedStages.find(s => s.stageNumber === 1);
@@ -68,6 +68,8 @@ export async function convertOpportunityToProject(
     projectStatus: "not_started",
     sourceOpportunityId: opp.id,
     flightpathStageId: stage1?.id || null,
+    operatingModelId: opp.operatingModelId,
+    operatingModelConfirmedAt: opp.operatingModelConfirmedAt || (opp.operatingModelId ? new Date() : null),
   });
 
   await storage.createHealthHistory({

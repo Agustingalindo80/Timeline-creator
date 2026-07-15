@@ -471,6 +471,8 @@ export const timelines = pgTable("timelines", {
   endDate: date("end_date"),
   dateFormat: text("date_format"),
   flightpathStageId: varchar("flightpath_stage_id").references(() => flightpathStages.id, { onDelete: "set null" }),
+  operatingModelId: varchar("operating_model_id").references(() => operatingModels.id, { onDelete: "set null" }),
+  operatingModelConfirmedAt: timestamp("operating_model_confirmed_at", { withTimezone: true }),
   docRepositoryType: text("doc_repository_type"),
   docRepositoryUrl: text("doc_repository_url"),
   docRepositoryFolderId: text("doc_repository_folder_id"),
@@ -783,6 +785,15 @@ export const evmSnapshots = pgTable("evm_snapshots", {
   index("idx_evm_timeline_week").on(table.tenantId, table.timelineId, table.weekEnding),
 ]);
 
+export const operatingModels = pgTable("operating_models", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: text("tenant_id").notNull().default("default"),
+  name: text("name").notNull(),
+  description: text("description"),
+  status: text("status").notNull().default("active"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const flightpathStages = pgTable("flightpath_stages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   tenantId: text("tenant_id").notNull().default("default"),
@@ -795,6 +806,7 @@ export const flightpathStages = pgTable("flightpath_stages", {
   playbookPurpose: text("playbook_purpose"),
   playbookExitBundle: text("playbook_exit_bundle"),
   sortOrder: integer("sort_order").notNull().default(0),
+  operatingModelId: varchar("operating_model_id").references(() => operatingModels.id, { onDelete: "cascade" }),
 });
 
 export const flightpathDeliverables = pgTable("flightpath_deliverables", {
@@ -859,6 +871,10 @@ export const projectGates = pgTable("project_gates", {
 }, (table) => [
   unique("gate_timeline_stage_uniq").on(table.timelineId, table.stageId),
 ]);
+
+export const insertOperatingModelSchema = createInsertSchema(operatingModels).omit({ id: true, createdAt: true });
+export type InsertOperatingModel = z.infer<typeof insertOperatingModelSchema>;
+export type OperatingModel = typeof operatingModels.$inferSelect;
 
 export const insertFlightpathStageSchema = createInsertSchema(flightpathStages).omit({ id: true });
 export const insertFlightpathDeliverableSchema = createInsertSchema(flightpathDeliverables).omit({ id: true, createdAt: true, updatedAt: true });

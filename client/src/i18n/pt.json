@@ -705,7 +705,27 @@
     "converting": "Convertendo...",
     "evaluating": "Avaliando...",
     "requestGateEvaluation": "Solicitar Avaliação do Gate",
-    "reEvaluateGate": "Reavaliar Gate"
+    "reEvaluateGate": "Reavaliar Gate",
+    "selectOperatingModel": "Selecionar modelo operacional",
+    "confirmOperatingModel": "Confirmar Modelo",
+    "confirmOperatingModelHint": "Uma vez confirmado, o modelo operacional não pode ser alterado.",
+    "operatingModelConfirmed": "Modelo operacional confirmado",
+    "operatingModelSelected": "Modelo operacional selecionado",
+    "operatingModelError": "Não foi possível atualizar o modelo operacional",
+    "operatingModelLockedHint": "Bloqueado — este modelo está confirmado para este registro.",
+    "addModel": "Adicionar Modelo",
+    "modelName": "Nome",
+    "modelDescription": "Descrição",
+    "modelCreated": "Modelo operacional criado",
+    "modelUpdated": "Modelo operacional atualizado",
+    "modelDeleted": "Modelo operacional excluído",
+    "modelDeleteBlocked": "Não foi possível excluir o modelo operacional",
+    "deleteModel": "Excluir Modelo Operacional",
+    "deleteModelConfirm": "Excluir \"{{name}}\" e sua(s) {{count}} etapa(s)? Isso não pode ser desfeito.",
+    "activateModel": "Ativar modelo",
+    "deactivateModel": "Desativar modelo",
+    "selectModel": "Selecionar",
+    "selectModelFirst": "Selecione um modelo operacional acima para ver as etapas de governança desta oportunidade."
   },
   "portfolioHealth": {
     "trends": {

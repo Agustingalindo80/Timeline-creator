@@ -705,7 +705,27 @@
     "converting": "Convirtiendo...",
     "evaluating": "Evaluando...",
     "requestGateEvaluation": "Solicitar Evaluación de Compuerta",
-    "reEvaluateGate": "Re-evaluar Compuerta"
+    "reEvaluateGate": "Re-evaluar Compuerta",
+    "selectOperatingModel": "Seleccionar modelo operativo",
+    "confirmOperatingModel": "Confirmar Modelo",
+    "confirmOperatingModelHint": "Una vez confirmado, el modelo operativo no se puede cambiar.",
+    "operatingModelConfirmed": "Modelo operativo confirmado",
+    "operatingModelSelected": "Modelo operativo seleccionado",
+    "operatingModelError": "No se pudo actualizar el modelo operativo",
+    "operatingModelLockedHint": "Bloqueado — este modelo está confirmado para este registro.",
+    "addModel": "Agregar Modelo",
+    "modelName": "Nombre",
+    "modelDescription": "Descripción",
+    "modelCreated": "Modelo operativo creado",
+    "modelUpdated": "Modelo operativo actualizado",
+    "modelDeleted": "Modelo operativo eliminado",
+    "modelDeleteBlocked": "No se pudo eliminar el modelo operativo",
+    "deleteModel": "Eliminar Modelo Operativo",
+    "deleteModelConfirm": "¿Eliminar \"{{name}}\" y sus {{count}} etapa(s)? Esta acción no se puede deshacer.",
+    "activateModel": "Activar modelo",
+    "deactivateModel": "Desactivar modelo",
+    "selectModel": "Seleccionar",
+    "selectModelFirst": "Seleccione un modelo operativo arriba para ver las etapas de gobernanza de esta oportunidad."
   },
   "portfolioHealth": {
     "trends": {

@@ -67,9 +67,13 @@ export function GovernanceTab({ timelineId, currentStageId, onStageChange, oppor
     queryKey: [opportunityMode ? "/api/opportunities" : "/api/timelines", timelineId],
   });
 
-  const { data: stages = [], isLoading: stagesLoading } = useQuery<StageWithDeliverables[]>({
+  const { data: allModelStages = [], isLoading: stagesLoading } = useQuery<StageWithDeliverables[]>({
     queryKey: ["/api/governance-model/stages"],
   });
+
+  const stages = timeline?.operatingModelId
+    ? allModelStages.filter(s => s.operatingModelId === timeline.operatingModelId)
+    : allModelStages;
 
   const { data: checkpoints = [] } = useQuery<ProjectCheckpoint[]>({
     queryKey: ["/api/timelines", timelineId, "checkpoints"],

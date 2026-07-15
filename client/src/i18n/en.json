@@ -705,7 +705,27 @@
     "converting": "Converting...",
     "evaluating": "Evaluating...",
     "requestGateEvaluation": "Request Gate Evaluation",
-    "reEvaluateGate": "Re-evaluate Gate"
+    "reEvaluateGate": "Re-evaluate Gate",
+    "selectOperatingModel": "Select operating model",
+    "confirmOperatingModel": "Confirm Model",
+    "confirmOperatingModelHint": "Once confirmed, the operating model cannot be changed.",
+    "operatingModelConfirmed": "Operating model confirmed",
+    "operatingModelSelected": "Operating model selected",
+    "operatingModelError": "Could not update operating model",
+    "operatingModelLockedHint": "Locked — this model is confirmed for this record.",
+    "addModel": "Add Model",
+    "modelName": "Name",
+    "modelDescription": "Description",
+    "modelCreated": "Operating model created",
+    "modelUpdated": "Operating model updated",
+    "modelDeleted": "Operating model deleted",
+    "modelDeleteBlocked": "Could not delete operating model",
+    "deleteModel": "Delete Operating Model",
+    "deleteModelConfirm": "Delete \"{{name}}\" and its {{count}} stage(s)? This cannot be undone.",
+    "activateModel": "Activate model",
+    "deactivateModel": "Deactivate model",
+    "selectModel": "Select",
+    "selectModelFirst": "Select an operating model above to see the governance stages for this opportunity."
   },
   "portfolioHealth": {
     "trends": {

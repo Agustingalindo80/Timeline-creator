@@ -32,7 +32,7 @@ import { useAppTitle } from "@/hooks/use-app-title";
 import { TimelineView } from "@/components/timeline-view";
 import { RaidLog } from "@/features/projects/raid-log";
 import { GovernanceTab } from "@/features/governance/governance-tab";
-import type { TimelineWithMilestones, AppSettings, Client, AllocationWithTeamMember, FlightpathStage } from "@shared/schema";
+import type { TimelineWithMilestones, AppSettings, Client, AllocationWithTeamMember, FlightpathStage, OperatingModel } from "@shared/schema";
 import { getDefaultFieldOptions } from "@shared/schema";
 import { ProjectTimesheetsTab } from "@/features/projects/timesheets-tab";
 import { ProgressTrackingTab } from "@/features/projects/progress-tracking-tab";
@@ -90,6 +90,10 @@ export default function TimelineDetail() {
 
   const { data: governanceStages = [] } = useQuery<FlightpathStage[]>({
     queryKey: ["/api/governance-model/stages"],
+  });
+
+  const { data: operatingModelsList = [] } = useQuery<OperatingModel[]>({
+    queryKey: ["/api/operating-models"],
   });
 
   const { data: projectAllocs = [] } = useQuery<AllocationWithTeamMember[]>({
@@ -210,11 +214,20 @@ export default function TimelineDetail() {
                   {(() => {
                     const sorted = [...governanceStages].sort((a, b) => a.stageNumber - b.stageNumber);
                     const current = sorted.find(s => s.id === timeline.flightpathStageId);
+                    const model = operatingModelsList.find(m => m.id === timeline.operatingModelId);
                     if (current) {
                       return (
                         <Badge variant="outline" className="gap-1 text-xs" data-testid="badge-governance-stage">
                           <ShieldCheck className="w-3 h-3" />
-                          Stage {current.stageNumber}: {current.name}
+                          {model ? `${model.name} · ` : ""}Stage {current.stageNumber}: {current.name}
+                        </Badge>
+                      );
+                    }
+                    if (model) {
+                      return (
+                        <Badge variant="outline" className="gap-1 text-xs" data-testid="badge-governance-stage">
+                          <ShieldCheck className="w-3 h-3" />
+                          {model.name}
                         </Badge>
                       );
                     }

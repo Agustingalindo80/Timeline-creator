@@ -40,7 +40,14 @@ export function registerOpportunityRoutes(app: Express) {
         projectStatus: "not_started",
       });
 
-      const allStages = await storage.getFlightpathStages(req.tenantId || "default");
+      const activeModels = (await storage.getOperatingModels(req.tenantId || "default")).filter(m => m.status === "active");
+      const defaultModel = activeModels.length === 1 ? activeModels[0] : null;
+      if (defaultModel) {
+        await storage.updateTimeline(opp.id, req.tenantId || "default", { operatingModelId: defaultModel.id });
+      }
+      const allStages = defaultModel
+        ? await storage.getFlightpathStages(req.tenantId || "default", defaultModel.id)
+        : [];
       const stage0 = allStages.sort((a, b) => a.stageNumber - b.stageNumber).find(s => s.stageNumber === 0);
       if (stage0) {
         await storage.updateTimeline(opp.id, req.tenantId || "default", { flightpathStageId: stage0.id });
@@ -113,6 +120,62 @@ export function registerOpportunityRoutes(app: Express) {
       }
 
       const updated = await storage.updateTimeline(req.params.id, req.tenantId || "default", updates);
+      res.json(updated);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.post("/api/opportunities/:id/operating-model", requirePermission("opp.edit"), async (req, res) => {
+    try {
+      const tenantId = req.tenantId || "default";
+      const opp = await storage.getTimeline(req.params.id, tenantId);
+      if (!opp) return res.status(404).json({ message: "Opportunity not found" });
+      if (opp.recordType !== "opportunity") return res.status(404).json({ message: "Not an opportunity" });
+      if (opp.operatingModelConfirmedAt) {
+        return res.status(400).json({ message: "The operating model has already been confirmed for this opportunity and cannot be changed" });
+      }
+
+      const { operatingModelId, confirm } = req.body;
+      if (!operatingModelId) return res.status(400).json({ message: "operatingModelId is required" });
+      const model = await storage.getOperatingModel(operatingModelId, tenantId);
+      if (!model) return res.status(404).json({ message: "Operating model not found" });
+      if (model.status !== "active") return res.status(400).json({ message: "Only active operating models can be selected" });
+
+      const modelChanged = opp.operatingModelId !== operatingModelId;
+      const updates: any = { operatingModelId };
+      if (confirm) updates.operatingModelConfirmedAt = new Date();
+
+      const modelStages = await storage.getFlightpathStages(tenantId, operatingModelId);
+      const stage0 = modelStages.sort((a, b) => a.stageNumber - b.stageNumber).find(s => s.stageNumber === 0);
+
+      if (modelChanged) {
+        // Remove checkpoints/gates tied to stages of the previous model
+        const validStageIds = new Set(modelStages.map(s => s.id));
+        const checkpoints = await storage.getProjectCheckpoints(req.params.id, tenantId);
+        for (const cp of checkpoints) {
+          if (cp.stageId && !validStageIds.has(cp.stageId)) await storage.deleteProjectCheckpoint(cp.id, tenantId);
+        }
+        updates.flightpathStageId = stage0?.id || null;
+      }
+
+      const updated = await storage.updateTimeline(req.params.id, tenantId, updates);
+
+      if (stage0) {
+        const existing = await storage.getProjectCheckpointsByStage(req.params.id, stage0.id, tenantId);
+        if (existing.length === 0) {
+          const deliverables = await storage.getStageDeliverables(stage0.id, tenantId);
+          for (const d of deliverables.sort((a, b) => a.sortOrder - b.sortOrder)) {
+            await storage.createProjectCheckpoint({
+              tenantId,
+              timelineId: req.params.id,
+              stageId: stage0.id,
+              deliverableId: d.id,
+              checkpointName: d.name,
+              completed: false,
+            });
+          }
+        }
+      }
+
       res.json(updated);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });

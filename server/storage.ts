@@ -16,6 +16,7 @@ import {
   brandingConfig,
   timesheetEntries,
   progressEntries,
+  operatingModels,
   flightpathStages,
   flightpathDeliverables,
   projectCheckpoints,
@@ -65,6 +66,8 @@ import {
   type InsertTimesheetEntry,
   type ProgressEntry,
   type InsertProgressEntry,
+  type OperatingModel,
+  type InsertOperatingModel,
   type FlightpathStage,
   type InsertFlightpathStage,
   type FlightpathDeliverable,
@@ -176,7 +179,13 @@ export interface IStorage {
   createProgressEntry(data: InsertProgressEntry): Promise<ProgressEntry>;
   updateProgressEntry(id: string, tenantId: string, data: Partial<InsertProgressEntry>): Promise<ProgressEntry | undefined>;
   deleteProgressEntry(id: string, tenantId: string): Promise<void>;
-  getFlightpathStages(tenantId?: string): Promise<FlightpathStage[]>;
+  getOperatingModels(tenantId: string): Promise<OperatingModel[]>;
+  getOperatingModel(id: string, tenantId: string): Promise<OperatingModel | undefined>;
+  createOperatingModel(data: InsertOperatingModel): Promise<OperatingModel>;
+  updateOperatingModel(id: string, tenantId: string, data: Partial<InsertOperatingModel>): Promise<OperatingModel | undefined>;
+  deleteOperatingModel(id: string, tenantId: string): Promise<void>;
+  countTimelinesUsingOperatingModel(id: string, tenantId: string): Promise<number>;
+  getFlightpathStages(tenantId?: string, operatingModelId?: string): Promise<FlightpathStage[]>;
   getFlightpathStage(id: string, tenantId: string): Promise<FlightpathStage | undefined>;
   createFlightpathStage(data: InsertFlightpathStage): Promise<FlightpathStage>;
   updateFlightpathStage(id: string, tenantId: string, data: Partial<InsertFlightpathStage>): Promise<FlightpathStage | undefined>;
@@ -752,9 +761,44 @@ export class DatabaseStorage implements IStorage {
     await db.delete(progressEntries).where(and(eq(progressEntries.id, id), eq(progressEntries.tenantId, tenantId)));
   }
 
-  async getFlightpathStages(tenantId?: string): Promise<FlightpathStage[]> {
+  async getFlightpathStages(tenantId?: string, operatingModelId?: string): Promise<FlightpathStage[]> {
     const tid = tenantId || "default";
+    if (operatingModelId) {
+      return db.select().from(flightpathStages).where(and(eq(flightpathStages.tenantId, tid), eq(flightpathStages.operatingModelId, operatingModelId)));
+    }
     return db.select().from(flightpathStages).where(eq(flightpathStages.tenantId, tid));
+  }
+
+  async getOperatingModels(tenantId: string): Promise<OperatingModel[]> {
+    return db.select().from(operatingModels).where(eq(operatingModels.tenantId, tenantId));
+  }
+
+  async getOperatingModel(id: string, tenantId: string): Promise<OperatingModel | undefined> {
+    const [model] = await db.select().from(operatingModels).where(and(eq(operatingModels.id, id), eq(operatingModels.tenantId, tenantId)));
+    return model;
+  }
+
+  async createOperatingModel(data: InsertOperatingModel): Promise<OperatingModel> {
+    const [model] = await db.insert(operatingModels).values(data).returning();
+    return model;
+  }
+
+  async updateOperatingModel(id: string, tenantId: string, data: Partial<InsertOperatingModel>): Promise<OperatingModel | undefined> {
+    const [model] = await db.update(operatingModels).set(data).where(and(eq(operatingModels.id, id), eq(operatingModels.tenantId, tenantId))).returning();
+    return model;
+  }
+
+  async deleteOperatingModel(id: string, tenantId: string): Promise<void> {
+    const stages = await this.getFlightpathStages(tenantId, id);
+    for (const stage of stages) {
+      await this.deleteFlightpathStage(stage.id, tenantId);
+    }
+    await db.delete(operatingModels).where(and(eq(operatingModels.id, id), eq(operatingModels.tenantId, tenantId)));
+  }
+
+  async countTimelinesUsingOperatingModel(id: string, tenantId: string): Promise<number> {
+    const rows = await db.select({ id: timelines.id }).from(timelines).where(and(eq(timelines.operatingModelId, id), eq(timelines.tenantId, tenantId)));
+    return rows.length;
   }
 
   async getFlightpathStage(id: string, tenantId: string): Promise<FlightpathStage | undefined> {
@@ -1280,6 +1324,7 @@ export class DatabaseStorage implements IStorage {
       await tx.delete(risks).where(eq(risks.tenantId, id));
       await tx.delete(flightpathDeliverables).where(eq(flightpathDeliverables.tenantId, id));
       await tx.delete(flightpathStages).where(eq(flightpathStages.tenantId, id));
+      await tx.delete(operatingModels).where(eq(operatingModels.tenantId, id));
       await tx.delete(businessOutcomes).where(eq(businessOutcomes.tenantId, id));
       await tx.delete(contacts).where(eq(contacts.tenantId, id));
       await tx.delete(timelines).where(eq(timelines.tenantId, id));
