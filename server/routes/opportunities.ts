@@ -1,9 +1,35 @@
-import type { Express } from "express";
+import type { Express, Request } from "express";
 import { storage } from "../storage";
 import { requirePermission } from "../middleware/permissions";
+import { hasPermission } from "../rbac";
+import { db } from "../db";
+import { users, timelines } from "@shared/schema";
+import { eq, and } from "drizzle-orm";
 import { extractFolderIdFromUrl } from "../google-drive";
 import { getRecordAccessContext } from "./helpers";
 import { convertOpportunityToProject } from "../services/opportunity-conversion";
+
+const LOCKED_ESTIMATE_STATUSES = new Set(["proposed", "won", "lost"]);
+
+function extractUserId(req: Request): string | null {
+  const user = (req as any).user;
+  if (!user) return null;
+  return user?.claims?.sub || user?.id || null;
+}
+
+async function isWonApprover(userId: string, tenantId: string): Promise<boolean> {
+  const [user] = await db.select({ isSuperAdmin: users.isSuperAdmin }).from(users).where(eq(users.id, userId));
+  if (user?.isSuperAdmin === true) return true;
+  return hasPermission(userId, tenantId, "org.settings.manage");
+}
+
+function computeEffectiveMargin(existing: any, updates: any): number {
+  const revenue = parseFloat(updates.estimatedRevenue ?? existing.estimatedRevenue ?? "0") || 0;
+  const cost = parseFloat(updates.totalRunningCost ?? existing.totalRunningCost ?? "0") || 0;
+  if (revenue > 0) return ((revenue - cost) / revenue) * 100;
+  const gm = parseFloat(updates.grossMargin ?? existing.grossMargin ?? "");
+  return isNaN(gm) ? 0 : gm;
+}
 
 export function registerOpportunityRoutes(app: Express) {
   app.get("/api/opportunities", async (req, res) => {
@@ -93,13 +119,81 @@ export function registerOpportunityRoutes(app: Express) {
       const oppFields = [
         "title", "description", "color", "clientId", "region", "salesforceClouds",
         "currency", "engagementModel", "projectType", "approvedBudget", "estimatedRevenue",
-        "totalRunningCost", "grossMargin",
+        "totalRunningCost", "grossMargin", "initialEstimate",
         "riskFactorPercent", "bufferPercent", "opportunityStatus", "startDate", "endDate",
         "docRepositoryType", "docRepositoryUrl", "dateFormat",
         "healthOverall", "scopeHealth", "budgetHealth", "teamHealth",
       ];
       for (const field of oppFields) {
         if (req.body[field] !== undefined) updates[field] = req.body[field];
+      }
+
+      // Initial estimate is only editable while the opportunity is in qualifying/estimating
+      if (updates.initialEstimate !== undefined) {
+        const effectiveStatus = updates.opportunityStatus ?? existing.opportunityStatus ?? "qualifying";
+        const currentValue = existing.initialEstimate ?? null;
+        const newValue = updates.initialEstimate ?? null;
+        const changed = String(currentValue ?? "") !== String(newValue ?? "");
+        if (changed && LOCKED_ESTIMATE_STATUSES.has(effectiveStatus)) {
+          return res.status(400).json({ message: "The initial estimate is locked once the opportunity is Proposed, Won, or Lost" });
+        }
+        if (newValue !== null && newValue !== "" && (isNaN(parseFloat(newValue)) || parseFloat(newValue) < 0)) {
+          return res.status(400).json({ message: "Initial estimate must be a non-negative number" });
+        }
+        if (newValue === "") updates.initialEstimate = null;
+      }
+
+      // Margin approval gate for the Won transition
+      if (updates.opportunityStatus === "won" && existing.opportunityStatus !== "won") {
+        const settings = await storage.getSettings(req.tenantId || "default");
+        const threshold = parseFloat((settings as any)?.minMarginForWon ?? "") || 0;
+        if (threshold > 0) {
+          const margin = computeEffectiveMargin(existing, updates);
+          if (margin < threshold) {
+            const userId = extractUserId(req);
+            const approver = userId ? await isWonApprover(userId, req.tenantId || "default") : false;
+            if (approver) {
+              // Org Admins / Super Admins get implicit approval
+              updates.wonApprovalStatus = "approved";
+              updates.wonApprovalRequestedBy = userId;
+              updates.wonApprovalRequestedAt = new Date();
+              updates.wonApprovalMarginAtRequest = margin.toFixed(2);
+              updates.wonApprovalThresholdAtRequest = threshold.toFixed(2);
+              updates.wonApprovalDecidedBy = userId;
+              updates.wonApprovalDecidedAt = new Date();
+              updates.wonApprovalReason = null;
+            } else {
+              // Below threshold: keep the current status and record a pending approval request
+              delete updates.opportunityStatus;
+              updates.wonApprovalStatus = "pending";
+              updates.wonApprovalRequestedBy = userId;
+              updates.wonApprovalRequestedAt = new Date();
+              updates.wonApprovalMarginAtRequest = margin.toFixed(2);
+              updates.wonApprovalThresholdAtRequest = threshold.toFixed(2);
+              updates.wonApprovalDecidedBy = null;
+              updates.wonApprovalDecidedAt = null;
+              updates.wonApprovalReason = null;
+              const pendingRecord = await storage.updateTimeline(req.params.id, req.tenantId || "default", updates);
+              return res.json({ ...pendingRecord, wonApprovalRequired: true, wonApprovalThreshold: threshold });
+            }
+          }
+        }
+      }
+
+      // Any other status change cancels an outstanding pending approval
+      if (
+        updates.opportunityStatus !== undefined &&
+        updates.opportunityStatus !== "won" &&
+        existing.wonApprovalStatus === "pending"
+      ) {
+        updates.wonApprovalStatus = null;
+        updates.wonApprovalRequestedBy = null;
+        updates.wonApprovalRequestedAt = null;
+        updates.wonApprovalMarginAtRequest = null;
+        updates.wonApprovalThresholdAtRequest = null;
+        updates.wonApprovalDecidedBy = null;
+        updates.wonApprovalDecidedAt = null;
+        updates.wonApprovalReason = null;
       }
 
       if (req.body.docRepositoryUrl !== undefined) {
@@ -120,6 +214,55 @@ export function registerOpportunityRoutes(app: Express) {
       }
 
       const updated = await storage.updateTimeline(req.params.id, req.tenantId || "default", updates);
+      res.json(updated);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.post("/api/opportunities/:id/won-approval/:decision", requirePermission("opp.edit"), async (req, res) => {
+    try {
+      const tenantId = req.tenantId || "default";
+      const decision = req.params.decision;
+      if (decision !== "approve" && decision !== "reject") {
+        return res.status(400).json({ message: "Decision must be approve or reject" });
+      }
+      const opp = await storage.getTimeline(req.params.id, tenantId);
+      if (!opp) return res.status(404).json({ message: "Opportunity not found" });
+      if (opp.recordType !== "opportunity") return res.status(404).json({ message: "Not an opportunity" });
+      if (opp.wonApprovalStatus !== "pending") {
+        return res.status(400).json({ message: "There is no pending Won approval request for this opportunity" });
+      }
+
+      const userId = extractUserId(req);
+      if (!userId) return res.status(401).json({ message: "Authentication required" });
+      const approver = await isWonApprover(userId, tenantId);
+      if (!approver) {
+        return res.status(403).json({ message: "Only Org Admins and Super Admins can approve or reject Won requests" });
+      }
+
+      const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() || null : null;
+      const updates: any = {
+        wonApprovalStatus: decision === "approve" ? "approved" : "rejected",
+        wonApprovalDecidedBy: userId,
+        wonApprovalDecidedAt: new Date(),
+        wonApprovalReason: reason,
+        updatedAt: new Date(),
+      };
+      if (decision === "approve") {
+        updates.opportunityStatus = "won";
+      }
+      const [updated] = await db
+        .update(timelines)
+        .set(updates)
+        .where(and(
+          eq(timelines.id, req.params.id),
+          eq(timelines.tenantId, tenantId),
+          eq(timelines.recordType, "opportunity"),
+          eq(timelines.wonApprovalStatus, "pending"),
+        ))
+        .returning();
+      if (!updated) {
+        return res.status(409).json({ message: "This Won request has already been decided" });
+      }
       res.json(updated);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });

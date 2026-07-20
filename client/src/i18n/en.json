@@ -294,7 +294,27 @@
     "estimating": "Estimating",
     "proposed": "Proposed",
     "won": "Won",
-    "lost": "Lost"
+    "lost": "Lost",
+    "initialEstimate": "Initial Estimate",
+    "initialEstimateLocked": "Locked once the opportunity is Proposed, Won, or Lost.",
+    "initialEstimateFallback": "Base price uses the initial estimate (no workstream revenue yet).",
+    "opportunityUpdated": "Opportunity updated",
+    "failedToUpdate": "Failed to update opportunity",
+    "wonApprovalPendingBadge": "Won approval pending",
+    "wonApprovalPendingShort": "Approval pending",
+    "wonApprovalPendingTitle": "Won approval pending",
+    "wonApprovalMarginInfo": "Gross margin at request: {{margin}}% — below the {{threshold}}% minimum for Won.",
+    "wonApprovalRequiredTitle": "Approval required",
+    "wonApprovalRequiredDescription": "Gross margin is below the {{threshold}}% minimum. An Org Admin must approve marking this opportunity as Won.",
+    "wonApprovalApproved": "Opportunity approved and marked as Won",
+    "wonApprovalRejected": "Won request rejected",
+    "wonApprovalRejectedTitle": "Won request was rejected",
+    "approveWon": "Approve",
+    "rejectWon": "Reject",
+    "rejectWonTitle": "Reject Won request",
+    "rejectWonDescription": "The opportunity will keep its current status. You can add an optional reason.",
+    "rejectionReason": "Reason",
+    "rejectionReasonPlaceholder": "Optional reason for rejection"
   },
   "projects": {
     "title": "Projects",
@@ -558,7 +578,9 @@
     "apiTokenExpiresAt": "Expires",
     "apiTokenRevokeTitle": "Revoke API Token?",
     "apiTokenRevokeDescription": "This will immediately invalidate this token. Any integrations using it will stop working.",
-    "apiTokenRevokeConfirm": "Revoke"
+    "apiTokenRevokeConfirm": "Revoke",
+    "minMarginForWon": "Minimum Gross Margin for Won (%)",
+    "minMarginForWonHelp": "Opportunities with a gross margin below this threshold require Org Admin approval before they can be marked as Won. Leave empty or 0 to disable."
   },
   "security": {
     "title": "Security",

@@ -294,7 +294,27 @@
     "estimating": "Estimando",
     "proposed": "Propuesto",
     "won": "Ganado",
-    "lost": "Perdido"
+    "lost": "Perdido",
+    "initialEstimate": "Estimación inicial",
+    "initialEstimateLocked": "Se bloquea cuando la oportunidad está Propuesta, Ganada o Perdida.",
+    "initialEstimateFallback": "El precio base usa la estimación inicial (aún no hay ingresos de workstreams).",
+    "opportunityUpdated": "Oportunidad actualizada",
+    "failedToUpdate": "No se pudo actualizar la oportunidad",
+    "wonApprovalPendingBadge": "Aprobación de Ganada pendiente",
+    "wonApprovalPendingShort": "Aprobación pendiente",
+    "wonApprovalPendingTitle": "Aprobación de Ganada pendiente",
+    "wonApprovalMarginInfo": "Margen bruto al solicitar: {{margin}}% — por debajo del mínimo de {{threshold}}% para Ganada.",
+    "wonApprovalRequiredTitle": "Se requiere aprobación",
+    "wonApprovalRequiredDescription": "El margen bruto está por debajo del mínimo de {{threshold}}%. Un administrador debe aprobar marcar esta oportunidad como Ganada.",
+    "wonApprovalApproved": "Oportunidad aprobada y marcada como Ganada",
+    "wonApprovalRejected": "Solicitud de Ganada rechazada",
+    "wonApprovalRejectedTitle": "La solicitud de Ganada fue rechazada",
+    "approveWon": "Aprobar",
+    "rejectWon": "Rechazar",
+    "rejectWonTitle": "Rechazar solicitud de Ganada",
+    "rejectWonDescription": "La oportunidad mantendrá su estado actual. Puede agregar un motivo opcional.",
+    "rejectionReason": "Motivo",
+    "rejectionReasonPlaceholder": "Motivo opcional del rechazo"
   },
   "projects": {
     "title": "Proyectos",
@@ -558,7 +578,9 @@
     "apiTokenExpiresAt": "Expira",
     "apiTokenRevokeTitle": "¿Revocar Token API?",
     "apiTokenRevokeDescription": "Esto invalidará inmediatamente este token. Las integraciones que lo usen dejarán de funcionar.",
-    "apiTokenRevokeConfirm": "Revocar"
+    "apiTokenRevokeConfirm": "Revocar",
+    "minMarginForWon": "Margen bruto mínimo para Ganada (%)",
+    "minMarginForWonHelp": "Las oportunidades con un margen bruto por debajo de este umbral requieren la aprobación de un administrador antes de marcarse como Ganadas. Deje vacío o 0 para desactivar."
   },
   "security": {
     "title": "Seguridad",

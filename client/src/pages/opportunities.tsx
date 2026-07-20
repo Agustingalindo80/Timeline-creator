@@ -589,6 +589,15 @@ export default function OpportunitiesPage() {
                         >
                           {statusLabel}
                         </Badge>
+                        {(opp as any).wonApprovalStatus === "pending" && (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] ml-1 bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                            data-testid={`badge-won-pending-${opp.id}`}
+                          >
+                            {t("opportunities.wonApprovalPendingShort")}
+                          </Badge>
+                        )}
                       </td>
                       <td className="px-3 py-2 table-financial text-muted-foreground" data-testid={`text-price-${opp.id}`}>
                         {formatCurrency(opp.approvedBudget)}

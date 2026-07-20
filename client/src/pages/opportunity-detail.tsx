@@ -46,8 +46,16 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { usePermissions } from "@/hooks/use-permissions";
 import { useAppTitle } from "@/hooks/use-app-title";
 import { useTranslation } from "react-i18next";
 import { EstimateTab } from "@/features/estimates/estimate-tab";
@@ -109,6 +117,8 @@ export default function OpportunityDetail() {
   const appTitle = useAppTitle("Opportunity");
   const [editing, setEditing] = useState(false);
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
   const [pendingModelId, setPendingModelId] = useState<string>("");
   const [showAddMilestone, setShowAddMilestone] = useState(false);
   const [newMTitle, setNewMTitle] = useState("");
@@ -138,6 +148,11 @@ export default function OpportunityDetail() {
   const { data: myModules } = useQuery<{ modules: string[] }>({
     queryKey: ["/api/rbac/my-modules"],
   });
+  const { hasPermission } = usePermissions();
+  const { data: superAdminCheck } = useQuery<{ isSuperAdmin: boolean }>({
+    queryKey: ["/api/global-admin/check"],
+  });
+  const isWonApprover = (superAdminCheck?.isSuperAdmin ?? false) || hasPermission("org.settings.manage");
   const canViewOutcomes = myModules?.modules?.includes("module.business_outcomes") ?? false;
 
   const { data: opp, isLoading } = useQuery<TimelineWithMilestones>({
@@ -174,10 +189,38 @@ export default function OpportunityDetail() {
       const res = await apiRequest("PATCH", `/api/opportunities/${id}`, data);
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/opportunities", id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/opportunities"] });
       setEditing(false);
-      toast({ title: t("opportunities.opportunityCreated") });
+      if (data?.wonApprovalRequired) {
+        toast({
+          title: t("opportunities.wonApprovalRequiredTitle"),
+          description: t("opportunities.wonApprovalRequiredDescription", { threshold: data.wonApprovalThreshold }),
+        });
+      } else {
+        toast({ title: t("opportunities.opportunityUpdated") });
+      }
+    },
+    onError: (err: any) => {
+      toast({ title: err?.message || t("opportunities.failedToUpdate"), variant: "destructive" });
+    },
+  });
+
+  const wonApprovalMutation = useMutation({
+    mutationFn: async ({ decision, reason }: { decision: "approve" | "reject"; reason?: string }) => {
+      const res = await apiRequest("POST", `/api/opportunities/${id}/won-approval/${decision}`, reason ? { reason } : {});
+      return res.json();
+    },
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/opportunities", id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/opportunities"] });
+      setRejectDialogOpen(false);
+      setRejectReason("");
+      toast({ title: vars.decision === "approve" ? t("opportunities.wonApprovalApproved") : t("opportunities.wonApprovalRejected") });
+    },
+    onError: (err: any) => {
+      toast({ title: err?.message || t("opportunities.failedToUpdate"), variant: "destructive" });
     },
   });
 
@@ -324,10 +367,18 @@ export default function OpportunityDetail() {
   const engagementOptions = (settings as any)?.engagementModels || getDefaultFieldOptions("engagementModels", settings?.locale || "en");
   const projectTypeOptions = (settings as any)?.projectTypes || getDefaultFieldOptions("projectTypes", settings?.locale || "en");
 
-  const price = parseFloat(opp.approvedBudget || "0");
+  const syncedPrice = parseFloat(opp.approvedBudget || "0");
+  const initialEstimateValue = parseFloat(opp.initialEstimate || "0") || 0;
+  const riskPct = parseFloat(opp.riskFactorPercent || "0") || 0;
+  const bufferPct = parseFloat(opp.bufferPercent || "0") || 0;
+  const fallbackBufferedPrice = initialEstimateValue * (1 + riskPct / 100) * (1 + bufferPct / 100);
+  const price = syncedPrice > 0 ? syncedPrice : fallbackBufferedPrice;
   const cost = parseFloat(opp.totalRunningCost || "0");
   const margin = parseFloat(opp.grossMargin || "0");
   const hasFinancials = price > 0 || cost > 0;
+  const wonApprovalPending = opp.wonApprovalStatus === "pending";
+  const wonApprovalRejected = opp.wonApprovalStatus === "rejected" && opp.opportunityStatus !== "won";
+  const minMarginThreshold = parseFloat((settings as any)?.minMarginForWon || "0") || 0;
 
   return (
     <>
@@ -460,6 +511,11 @@ export default function OpportunityDetail() {
                 <div className="flex items-center gap-3 flex-wrap">
                   <h1 className="page-title truncate" data-testid="text-opp-title">{opp.title}</h1>
                   <Badge className={`${statusOption.color} border`} data-testid="badge-opp-status">{statusOption.label}</Badge>
+                  {wonApprovalPending && (
+                    <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 border gap-1" data-testid="badge-won-approval-pending">
+                      <Shield className="w-3 h-3" /> {t("opportunities.wonApprovalPendingBadge")}
+                    </Badge>
+                  )}
                   {stage0 && opp.flightpathStageId === stage0.id && (
                     <Badge variant="outline" className="gap-1" data-testid="badge-stage-0">
                       <ShieldCheck className="w-3 h-3" /> Stage 0
@@ -505,6 +561,61 @@ export default function OpportunityDetail() {
                 )}
               </div>
             </div>
+
+            {wonApprovalPending && (
+              <Card className="border-amber-500/30 bg-amber-500/5" data-testid="card-won-approval-pending">
+                <CardContent className="p-4 flex items-center justify-between gap-4 flex-wrap">
+                  <div className="flex items-start gap-3">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-md bg-amber-500/10 shrink-0">
+                      <Shield className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">{t("opportunities.wonApprovalPendingTitle")}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5" data-testid="text-won-approval-margin">
+                        {t("opportunities.wonApprovalMarginInfo", {
+                          margin: parseFloat(opp.wonApprovalMarginAtRequest || "0").toFixed(1),
+                          threshold: (parseFloat(opp.wonApprovalThresholdAtRequest || "0") || minMarginThreshold).toFixed(1),
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                  {isWonApprover && (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => wonApprovalMutation.mutate({ decision: "approve" })}
+                        disabled={wonApprovalMutation.isPending}
+                        data-testid="button-approve-won"
+                      >
+                        <Check className="w-4 h-4 mr-1" /> {t("opportunities.approveWon")}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setRejectDialogOpen(true)}
+                        disabled={wonApprovalMutation.isPending}
+                        data-testid="button-reject-won"
+                      >
+                        <X className="w-4 h-4 mr-1" /> {t("opportunities.rejectWon")}
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {wonApprovalRejected && (
+              <Card className="border-red-500/30 bg-red-500/5" data-testid="card-won-approval-rejected">
+                <CardContent className="p-4">
+                  <p className="text-sm font-medium text-red-600 dark:text-red-400">{t("opportunities.wonApprovalRejectedTitle")}</p>
+                  {opp.wonApprovalReason && (
+                    <p className="text-xs text-muted-foreground mt-0.5" data-testid="text-won-rejection-reason">
+                      {t("opportunities.rejectionReason")}: {opp.wonApprovalReason}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             {hasFinancials && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -838,6 +949,37 @@ export default function OpportunityDetail() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+          <DialogContent data-testid="dialog-reject-won">
+            <DialogHeader>
+              <DialogTitle>{t("opportunities.rejectWonTitle")}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">{t("opportunities.rejectWonDescription")}</p>
+              <Textarea
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder={t("opportunities.rejectionReasonPlaceholder")}
+                rows={3}
+                data-testid="input-reject-reason"
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setRejectDialogOpen(false)} data-testid="button-cancel-reject">
+                {t("common.cancel")}
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => wonApprovalMutation.mutate({ decision: "reject", reason: rejectReason })}
+                disabled={wonApprovalMutation.isPending}
+                data-testid="button-confirm-reject"
+              >
+                {t("opportunities.rejectWon")}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </>
   );

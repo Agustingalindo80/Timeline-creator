@@ -25,9 +25,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Plus, Trash2, ChevronDown, ChevronRight, Edit3, Calculator, TrendingUp, Clock, DollarSign, Users, Download, Upload, Loader2 } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronRight, Edit3, Calculator, TrendingUp, Clock, DollarSign, Users, Download, Upload, Loader2, Lock } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 import type { TimelineWithMilestones, Task, RateCard, WorkstreamResource, TeamMember } from "@shared/schema";
 
 interface EstimateTabProps {
@@ -49,6 +50,7 @@ const CONFIDENCE_LEVELS = [
 
 export function EstimateTab({ timeline }: EstimateTabProps) {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [expandedPhases, setExpandedPhases] = useState<Set<string>>(new Set());
   const [expandedWorkstreams, setExpandedWorkstreams] = useState<Set<string>>(new Set());
   const [addPhaseOpen, setAddPhaseOpen] = useState(false);
@@ -70,6 +72,7 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
   const [newResNotes, setNewResNotes] = useState("");
   const [localRiskPercent, setLocalRiskPercent] = useState(0);
   const [localBufferPercent, setLocalBufferPercent] = useState(0);
+  const [localInitialEstimate, setLocalInitialEstimate] = useState("");
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -167,6 +170,10 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
       return res.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/opportunities", timeline.id] });
+    },
+    onError: (err: any) => {
+      toast({ title: err?.message || "Failed to update opportunity", variant: "destructive" });
       queryClient.invalidateQueries({ queryKey: ["/api/opportunities", timeline.id] });
     },
   });
@@ -423,7 +430,17 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
     setLocalBufferPercent(serverBufferPercent);
   }, [serverBufferPercent]);
 
-  const basePrice = baseRevenue;
+  const serverInitialEstimate = timeline.initialEstimate ?? "";
+  useEffect(() => {
+    setLocalInitialEstimate(serverInitialEstimate ? String(parseFloat(serverInitialEstimate)) : "");
+  }, [serverInitialEstimate]);
+
+  const oppStatus = timeline.opportunityStatus || "qualifying";
+  const initialEstimateLocked = ["proposed", "won", "lost"].includes(oppStatus);
+  const initialEstimateValue = parseFloat(serverInitialEstimate || "0") || 0;
+
+  const basePrice = baseRevenue > 0 ? baseRevenue : initialEstimateValue;
+  const usingInitialEstimate = baseRevenue <= 0 && initialEstimateValue > 0;
   const riskAdjustedPrice = basePrice * (1 + localRiskPercent / 100);
   const bufferedPrice = riskAdjustedPrice * (1 + localBufferPercent / 100);
   const expectedGM = basePrice > 0 ? ((basePrice - baseCost) / basePrice) * 100 : 0;
@@ -871,6 +888,37 @@ export function EstimateTab({ timeline }: EstimateTabProps) {
               <div>
                 <div className="metric-label mb-1">Price</div>
                 <div className="space-y-2">
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center gap-2">
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        {t("opportunities.initialEstimate")}
+                        {initialEstimateLocked && <Lock className="w-3 h-3" data-testid="icon-initial-estimate-locked" />}
+                      </span>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="1000"
+                        className="h-7 w-32 text-right tabular-nums"
+                        value={localInitialEstimate}
+                        disabled={initialEstimateLocked}
+                        onChange={(e) => setLocalInitialEstimate(e.target.value)}
+                        onBlur={() => {
+                          const current = serverInitialEstimate ? String(parseFloat(serverInitialEstimate)) : "";
+                          if (localInitialEstimate !== current) {
+                            updateOppMutation.mutate({ initialEstimate: localInitialEstimate === "" ? null : localInitialEstimate });
+                          }
+                        }}
+                        placeholder="0"
+                        data-testid="input-initial-estimate"
+                      />
+                    </div>
+                    {initialEstimateLocked && (
+                      <p className="text-xs text-muted-foreground" data-testid="text-initial-estimate-locked">{t("opportunities.initialEstimateLocked")}</p>
+                    )}
+                    {usingInitialEstimate && (
+                      <p className="text-xs text-muted-foreground" data-testid="text-initial-estimate-fallback">{t("opportunities.initialEstimateFallback")}</p>
+                    )}
+                  </div>
                   <div className="flex justify-between gap-2">
                     <span className="text-muted-foreground">Base Price</span>
                     <span className="font-medium tabular-nums">${basePrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>

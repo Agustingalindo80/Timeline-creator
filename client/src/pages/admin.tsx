@@ -251,6 +251,35 @@ export default function Admin() {
                   </div>
                 </Card>
 
+                <Card className="p-5">
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium" data-testid="text-min-margin-label">{t("settings.minMarginForWon")}</h3>
+                    <p className="text-xs text-muted-foreground">
+                      {t("settings.minMarginForWonHelp")}
+                    </p>
+                    <div className="flex items-center gap-2 max-w-[200px]">
+                      <Input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.5"
+                        placeholder="0"
+                        defaultValue={settings?.minMarginForWon ? String(parseFloat(settings.minMarginForWon)) : ""}
+                        onBlur={(e) => {
+                          const raw = e.target.value.trim();
+                          const val = raw === "" ? null : raw;
+                          const current = settings?.minMarginForWon ? String(parseFloat(settings.minMarginForWon)) : null;
+                          if (val !== current) {
+                            updateMutation.mutate({ minMarginForWon: val });
+                          }
+                        }}
+                        data-testid="input-min-margin-won"
+                      />
+                      <span className="text-sm text-muted-foreground">%</span>
+                    </div>
+                  </div>
+                </Card>
+
                 <div className="mt-6 mb-4">
                   <h2 className="text-base font-semibold mb-1 flex items-center gap-2">
                     <Compass className="w-4 h-4" />

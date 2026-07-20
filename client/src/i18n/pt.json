@@ -294,7 +294,27 @@
     "estimating": "Estimando",
     "proposed": "Proposto",
     "won": "Ganho",
-    "lost": "Perdido"
+    "lost": "Perdido",
+    "initialEstimate": "Estimativa inicial",
+    "initialEstimateLocked": "Bloqueada quando a oportunidade está Proposta, Ganha ou Perdida.",
+    "initialEstimateFallback": "O preço base usa a estimativa inicial (ainda sem receita de workstreams).",
+    "opportunityUpdated": "Oportunidade atualizada",
+    "failedToUpdate": "Falha ao atualizar a oportunidade",
+    "wonApprovalPendingBadge": "Aprovação de Ganha pendente",
+    "wonApprovalPendingShort": "Aprovação pendente",
+    "wonApprovalPendingTitle": "Aprovação de Ganha pendente",
+    "wonApprovalMarginInfo": "Margem bruta na solicitação: {{margin}}% — abaixo do mínimo de {{threshold}}% para Ganha.",
+    "wonApprovalRequiredTitle": "Aprovação necessária",
+    "wonApprovalRequiredDescription": "A margem bruta está abaixo do mínimo de {{threshold}}%. Um administrador deve aprovar marcar esta oportunidade como Ganha.",
+    "wonApprovalApproved": "Oportunidade aprovada e marcada como Ganha",
+    "wonApprovalRejected": "Solicitação de Ganha rejeitada",
+    "wonApprovalRejectedTitle": "A solicitação de Ganha foi rejeitada",
+    "approveWon": "Aprovar",
+    "rejectWon": "Rejeitar",
+    "rejectWonTitle": "Rejeitar solicitação de Ganha",
+    "rejectWonDescription": "A oportunidade manterá seu status atual. Você pode adicionar um motivo opcional.",
+    "rejectionReason": "Motivo",
+    "rejectionReasonPlaceholder": "Motivo opcional da rejeição"
   },
   "projects": {
     "title": "Projetos",
@@ -558,7 +578,9 @@
     "apiTokenExpiresAt": "Expira",
     "apiTokenRevokeTitle": "Revogar Token API?",
     "apiTokenRevokeDescription": "Isso invalidará imediatamente este token. As integrações que o utilizam deixarão de funcionar.",
-    "apiTokenRevokeConfirm": "Revogar"
+    "apiTokenRevokeConfirm": "Revogar",
+    "minMarginForWon": "Margem bruta mínima para Ganha (%)",
+    "minMarginForWonHelp": "Oportunidades com margem bruta abaixo deste limite exigem aprovação de um administrador antes de serem marcadas como Ganhas. Deixe vazio ou 0 para desativar."
   },
   "security": {
     "title": "Segurança",

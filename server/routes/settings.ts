@@ -18,7 +18,7 @@ export function registerSettingsRoutes(app: Express) {
     try {
       const updates: any = {};
       const fields = [
-        "riskRegisterEnabled", "opportunitiesEnabled", "taskStatuses", "taskHealthOptions", "taskItemTypes",
+        "riskRegisterEnabled", "opportunitiesEnabled", "minMarginForWon", "taskStatuses", "taskHealthOptions", "taskItemTypes",
         "riskProbabilities", "riskImpacts", "riskStatuses", "projectTypes",
         "engagementModels", "clients", "contactRoles", "industries", "projectStatuses",
         "teamMemberRoles", "regions", "dateFormats",
