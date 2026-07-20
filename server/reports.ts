@@ -1,4 +1,4 @@
-import { eq, and, inArray, gte, lte, sql } from "drizzle-orm";
+import { eq, and, or, isNull, inArray, gte, lte, sql } from "drizzle-orm";
 import { db } from "./db";
 import {
   timelines,
@@ -1123,4 +1123,168 @@ export async function getBusinessOutcomesReport(
       atRiskCount: statusCounts.at_risk,
     },
   };
+}
+
+export type OpportunityPipelineFilters = {
+  clientId?: string;
+  region?: string;
+  industry?: string;
+  cloud?: string;
+  status?: string;
+  segment?: string;
+  country?: string;
+  strategicAccount?: boolean;
+};
+
+function computeOppValues(row: {
+  opportunityStatus: string | null;
+  approvedBudget: string | null;
+  initialEstimate: string | null;
+  riskFactorPercent: string | null;
+  bufferPercent: string | null;
+  confidencePercent: string | null;
+}) {
+  const status = row.opportunityStatus || "qualifying";
+  const syncedPrice = row.approvedBudget ? parseFloat(row.approvedBudget) : 0;
+  const initialEstimate = row.initialEstimate ? parseFloat(row.initialEstimate) : 0;
+  const riskPct = row.riskFactorPercent ? parseFloat(row.riskFactorPercent) : 0;
+  const bufferPct = row.bufferPercent ? parseFloat(row.bufferPercent) : 0;
+  const base = syncedPrice > 0
+    ? syncedPrice
+    : initialEstimate * (1 + riskPct / 100) * (1 + bufferPct / 100);
+  const bufferedPrice = base > 0 ? base : null;
+  let weightedValue: number | null = null;
+  if (status !== "won" && status !== "lost" && bufferedPrice) {
+    const rawConfidence = row.confidencePercent != null && row.confidencePercent !== ""
+      ? parseFloat(row.confidencePercent)
+      : 100;
+    const confidence = isNaN(rawConfidence) ? 100 : rawConfidence;
+    weightedValue = bufferedPrice * (confidence / 100);
+  }
+  return { status, bufferedPrice, weightedValue };
+}
+
+export function parseCloudTags(raw: string | null): string[] {
+  if (!raw) return [];
+  return raw
+    .split(/[,;/|]/)
+    .map(s => s.trim())
+    .filter(Boolean);
+}
+
+export async function getOpportunityPipelineReport(
+  tenantId: string,
+  ctx: RecordAccessContext,
+  filters: OpportunityPipelineFilters,
+) {
+  const conditions: any[] = [
+    eq(timelines.tenantId, tenantId),
+    eq(timelines.recordType, "opportunity"),
+  ];
+  if (filters.clientId) conditions.push(eq(timelines.clientId, filters.clientId));
+  if (filters.region) conditions.push(eq(timelines.region, filters.region));
+  if (filters.status) {
+    if (filters.status === "qualifying") {
+      conditions.push(
+        or(
+          eq(timelines.opportunityStatus, "qualifying"),
+          isNull(timelines.opportunityStatus),
+          eq(timelines.opportunityStatus, ""),
+        ),
+      );
+    } else {
+      conditions.push(eq(timelines.opportunityStatus, filters.status));
+    }
+  }
+  if (filters.strategicAccount) conditions.push(eq(timelines.strategicAccount, true));
+
+  const rows = await db
+    .select({
+      id: timelines.id,
+      title: timelines.title,
+      clientId: timelines.clientId,
+      region: timelines.region,
+      opportunityStatus: timelines.opportunityStatus,
+      approvedBudget: timelines.approvedBudget,
+      initialEstimate: timelines.initialEstimate,
+      riskFactorPercent: timelines.riskFactorPercent,
+      bufferPercent: timelines.bufferPercent,
+      confidencePercent: timelines.confidencePercent,
+      salesforceClouds: timelines.salesforceClouds,
+      strategicAccount: timelines.strategicAccount,
+    })
+    .from(timelines)
+    .where(and(...conditions));
+
+  const assignedSet = new Set(ctx.assignedTimelineIds);
+  const accessible = ctx.isGlobal ? rows : rows.filter(r => assignedSet.has(r.id));
+
+  const clientRows = await db
+    .select({
+      id: clients.id,
+      name: clients.name,
+      industry: clients.industry,
+      segment: clients.segment,
+      country: clients.country,
+    })
+    .from(clients)
+    .where(eq(clients.tenantId, tenantId));
+  const clientMap = Object.fromEntries(clientRows.map(c => [c.id, c]));
+
+  const cloudFilter = filters.cloud ? filters.cloud.toLowerCase() : null;
+
+  const items = accessible
+    .map(r => {
+      const client = r.clientId ? clientMap[r.clientId] : undefined;
+      const { status, bufferedPrice, weightedValue } = computeOppValues(r);
+      const clouds = parseCloudTags(r.salesforceClouds);
+      const confidence = r.confidencePercent != null && r.confidencePercent !== ""
+        ? parseFloat(r.confidencePercent)
+        : null;
+      return {
+        id: r.id,
+        title: r.title,
+        clientId: r.clientId,
+        clientName: client?.name || null,
+        industry: client?.industry || null,
+        segment: client?.segment || null,
+        country: client?.country || null,
+        region: r.region,
+        status,
+        confidencePercent: confidence != null && !isNaN(confidence) ? confidence : null,
+        bufferedPrice,
+        weightedValue,
+        clouds,
+        strategicAccount: r.strategicAccount,
+      };
+    })
+    .filter(item => {
+      if (filters.industry && (item.industry || "") !== filters.industry) return false;
+      if (filters.segment && (item.segment || "") !== filters.segment) return false;
+      if (filters.country && (item.country || "") !== filters.country) return false;
+      if (cloudFilter && !item.clouds.some(c => c.toLowerCase() === cloudFilter)) return false;
+      return true;
+    });
+
+  const openItems = items.filter(i => i.status !== "won" && i.status !== "lost");
+  const wonItems = items.filter(i => i.status === "won");
+
+  const summary = {
+    total: items.length,
+    openCount: openItems.length,
+    totalPipeline: openItems.reduce((s, i) => s + (i.bufferedPrice || 0), 0),
+    weightedPipeline: openItems.reduce((s, i) => s + (i.weightedValue || 0), 0),
+    wonValue: wonItems.reduce((s, i) => s + (i.bufferedPrice || 0), 0),
+    wonCount: wonItems.length,
+  };
+
+  const cloudOptions = Array.from(
+    new Map(
+      accessible
+        .flatMap(r => parseCloudTags(r.salesforceClouds))
+        .map(c => [c.toLowerCase(), c]),
+    ).values(),
+  ).sort((a, b) => a.localeCompare(b));
+
+  return { items, summary, cloudOptions };
 }

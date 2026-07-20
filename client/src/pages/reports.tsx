@@ -131,7 +131,7 @@ const reportCategories: ReportCategory[] = [
         descKey: "reports.opportunityPipelineDesc",
         icon: Briefcase,
         href: "/reports/opportunity-pipeline",
-        available: false,
+        available: true,
         testId: "opportunity-pipeline",
       },
     ],
