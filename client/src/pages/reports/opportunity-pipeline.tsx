@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
@@ -80,20 +80,149 @@ function formatCurrency(val: number | null | undefined): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(val);
 }
 
+const STORAGE_KEY = "pipeline-report-view";
+const MEASURES: Measure[] = ["count", "bufferedPrice", "weightedValue"];
+const GROUPINGS: Grouping[] = ["status", "region", "industry", "cloud"];
+const SORT_FIELDS: SortField[] = ["title", "clientName", "region", "status", "confidencePercent", "bufferedPrice", "weightedValue"];
+
+interface SavedView {
+  client: string;
+  region: string;
+  industry: string;
+  cloud: string;
+  status: string;
+  segment: string;
+  country: string;
+  strategic: boolean;
+  measure: Measure;
+  grouping: Grouping;
+  sortField: SortField;
+  sortDir: SortDirection;
+}
+
+const DEFAULT_VIEW: SavedView = {
+  client: "all",
+  region: "all",
+  industry: "all",
+  cloud: "all",
+  status: "all",
+  segment: "all",
+  country: "all",
+  strategic: false,
+  measure: "bufferedPrice",
+  grouping: "status",
+  sortField: "title",
+  sortDir: "asc",
+};
+
+function loadInitialView(): SavedView {
+  const view = { ...DEFAULT_VIEW };
+  let source: Record<string, unknown> | null = null;
+
+  const params = new URLSearchParams(window.location.search);
+  if (Array.from(params.keys()).length > 0) {
+    source = {
+      client: params.get("client") ?? undefined,
+      region: params.get("region") ?? undefined,
+      industry: params.get("industry") ?? undefined,
+      cloud: params.get("cloud") ?? undefined,
+      status: params.get("status") ?? undefined,
+      segment: params.get("segment") ?? undefined,
+      country: params.get("country") ?? undefined,
+      strategic: params.get("strategic") === "1" ? true : undefined,
+      measure: params.get("measure") ?? undefined,
+      grouping: params.get("grouping") ?? undefined,
+      sortField: params.get("sort") ?? undefined,
+      sortDir: params.get("dir") ?? undefined,
+    };
+  } else {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) source = JSON.parse(raw);
+    } catch {
+      source = null;
+    }
+  }
+
+  if (source && typeof source === "object") {
+    const str = (key: keyof SavedView) => {
+      const v = source![key as string];
+      return typeof v === "string" && v.length > 0 ? v : undefined;
+    };
+    view.client = str("client") ?? view.client;
+    view.region = str("region") ?? view.region;
+    view.industry = str("industry") ?? view.industry;
+    view.cloud = str("cloud") ?? view.cloud;
+    view.status = str("status") ?? view.status;
+    view.segment = str("segment") ?? view.segment;
+    view.country = str("country") ?? view.country;
+    if (typeof source.strategic === "boolean") view.strategic = source.strategic;
+    const m = str("measure");
+    if (m && MEASURES.includes(m as Measure)) view.measure = m as Measure;
+    const g = str("grouping");
+    if (g && GROUPINGS.includes(g as Grouping)) view.grouping = g as Grouping;
+    const sf = str("sortField");
+    if (sf && SORT_FIELDS.includes(sf as SortField)) view.sortField = sf as SortField;
+    const sd = str("sortDir");
+    if (sd === "asc" || sd === "desc") view.sortDir = sd;
+  }
+
+  return view;
+}
+
 export default function OpportunityPipelineReport() {
   const { t } = useTranslation();
-  const [clientFilter, setClientFilter] = useState("all");
-  const [regionFilter, setRegionFilter] = useState("all");
-  const [industryFilter, setIndustryFilter] = useState("all");
-  const [cloudFilter, setCloudFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [segmentFilter, setSegmentFilter] = useState("all");
-  const [countryFilter, setCountryFilter] = useState("all");
-  const [strategicOnly, setStrategicOnly] = useState(false);
-  const [sortField, setSortField] = useState<SortField>("title");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
-  const [measure, setMeasure] = useState<Measure>("bufferedPrice");
-  const [grouping, setGrouping] = useState<Grouping>("status");
+  const [initialView] = useState<SavedView>(() => loadInitialView());
+  const [clientFilter, setClientFilter] = useState(initialView.client);
+  const [regionFilter, setRegionFilter] = useState(initialView.region);
+  const [industryFilter, setIndustryFilter] = useState(initialView.industry);
+  const [cloudFilter, setCloudFilter] = useState(initialView.cloud);
+  const [statusFilter, setStatusFilter] = useState(initialView.status);
+  const [segmentFilter, setSegmentFilter] = useState(initialView.segment);
+  const [countryFilter, setCountryFilter] = useState(initialView.country);
+  const [strategicOnly, setStrategicOnly] = useState(initialView.strategic);
+  const [sortField, setSortField] = useState<SortField>(initialView.sortField);
+  const [sortDirection, setSortDirection] = useState<SortDirection>(initialView.sortDir);
+  const [measure, setMeasure] = useState<Measure>(initialView.measure);
+  const [grouping, setGrouping] = useState<Grouping>(initialView.grouping);
+
+  useEffect(() => {
+    const view: SavedView = {
+      client: clientFilter,
+      region: regionFilter,
+      industry: industryFilter,
+      cloud: cloudFilter,
+      status: statusFilter,
+      segment: segmentFilter,
+      country: countryFilter,
+      strategic: strategicOnly,
+      measure,
+      grouping,
+      sortField,
+      sortDir: sortDirection,
+    };
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(view));
+    } catch {
+      // localStorage unavailable; skip persistence
+    }
+    const params = new URLSearchParams();
+    if (view.client !== "all") params.set("client", view.client);
+    if (view.region !== "all") params.set("region", view.region);
+    if (view.industry !== "all") params.set("industry", view.industry);
+    if (view.cloud !== "all") params.set("cloud", view.cloud);
+    if (view.status !== "all") params.set("status", view.status);
+    if (view.segment !== "all") params.set("segment", view.segment);
+    if (view.country !== "all") params.set("country", view.country);
+    if (view.strategic) params.set("strategic", "1");
+    if (view.measure !== DEFAULT_VIEW.measure) params.set("measure", view.measure);
+    if (view.grouping !== DEFAULT_VIEW.grouping) params.set("grouping", view.grouping);
+    if (view.sortField !== DEFAULT_VIEW.sortField) params.set("sort", view.sortField);
+    if (view.sortDir !== DEFAULT_VIEW.sortDir) params.set("dir", view.sortDir);
+    const qs = params.toString();
+    const newUrl = `${window.location.pathname}${qs ? `?${qs}` : ""}${window.location.hash}`;
+    window.history.replaceState(window.history.state, "", newUrl);
+  }, [clientFilter, regionFilter, industryFilter, cloudFilter, statusFilter, segmentFilter, countryFilter, strategicOnly, measure, grouping, sortField, sortDirection]);
 
   const queryParams = new URLSearchParams();
   if (clientFilter !== "all") queryParams.set("clientId", clientFilter);
