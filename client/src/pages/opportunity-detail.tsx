@@ -142,6 +142,7 @@ export default function OpportunityDetail() {
   const [editEngagement, setEditEngagement] = useState("");
   const [editProjectType, setEditProjectType] = useState("");
   const [editStatus, setEditStatus] = useState("");
+  const [editConfidence, setEditConfidence] = useState("");
   const [editStartDate, setEditStartDate] = useState("");
   const [editEndDate, setEditEndDate] = useState("");
 
@@ -333,6 +334,7 @@ export default function OpportunityDetail() {
     setEditEngagement(opp.engagementModel || "");
     setEditProjectType(opp.projectType || "");
     setEditStatus(opp.opportunityStatus || "qualifying");
+    setEditConfidence(opp.confidencePercent != null ? String(parseFloat(opp.confidencePercent)) : "");
     setEditStartDate(opp.startDate || "");
     setEditEndDate(opp.endDate || "");
     setEditing(true);
@@ -349,6 +351,7 @@ export default function OpportunityDetail() {
       engagementModel: editEngagement || null,
       projectType: editProjectType || null,
       opportunityStatus: editStatus,
+      confidencePercent: editConfidence === "" ? null : editConfidence,
       startDate: editStartDate || null,
       endDate: editEndDate || null,
     });
@@ -376,6 +379,9 @@ export default function OpportunityDetail() {
   const cost = parseFloat(opp.totalRunningCost || "0");
   const margin = parseFloat(opp.grossMargin || "0");
   const hasFinancials = price > 0 || cost > 0;
+  const isOpenOpp = opp.opportunityStatus !== "won" && opp.opportunityStatus !== "lost";
+  const confidencePct = opp.confidencePercent != null ? (parseFloat(opp.confidencePercent) || 0) : 100;
+  const weightedValue = isOpenOpp ? price * (confidencePct / 100) : null;
   const wonApprovalPending = opp.wonApprovalStatus === "pending";
   const wonApprovalRejected = opp.wonApprovalStatus === "rejected" && opp.opportunityStatus !== "won";
   const minMarginThreshold = parseFloat((settings as any)?.minMarginForWon || "0") || 0;
@@ -475,6 +481,20 @@ export default function OpportunityDetail() {
                       onChange={e => setEditSalesforceClouds(e.target.value)}
                       placeholder="Salesforce Clouds"
                       data-testid="input-edit-clouds"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground">{t("opportunities.confidence")}</label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      step="1"
+                      value={editStatus === "won" ? "100" : editStatus === "lost" ? "0" : editConfidence}
+                      onChange={e => setEditConfidence(e.target.value)}
+                      disabled={editStatus === "won" || editStatus === "lost"}
+                      placeholder="100"
+                      data-testid="input-edit-confidence"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -618,7 +638,7 @@ export default function OpportunityDetail() {
             )}
 
             {hasFinancials && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className={`grid grid-cols-2 gap-4 ${weightedValue !== null ? "md:grid-cols-5" : "md:grid-cols-4"}`}>
                 <Card>
                   <CardContent className="p-4">
                     <div className="flex items-center gap-2 mb-2">
@@ -632,6 +652,24 @@ export default function OpportunityDetail() {
                     </div>
                   </CardContent>
                 </Card>
+                {weightedValue !== null && (
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="flex items-center justify-center w-7 h-7 rounded-md bg-blue-500/10">
+                          <Target className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <span className="metric-label">{t("opportunities.weightedValue")}</span>
+                      </div>
+                      <div className="text-2xl font-semibold tracking-tight tabular-nums" data-testid="text-opp-weighted-value">
+                        ${Math.round(weightedValue).toLocaleString()}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1" data-testid="text-opp-confidence">
+                        {t("opportunities.confidence")}: {confidencePct}%
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
                 <Card>
                   <CardContent className="p-4">
                     <div className="flex items-center gap-2 mb-2">

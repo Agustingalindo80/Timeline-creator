@@ -157,7 +157,8 @@
     "outcomesAchieved": "Resultados Logrados",
     "achievementRate": "Tasa de Logro",
     "outcomesAtRisk": "Resultados en Riesgo",
-    "noOutcomesAtRisk": "Sin resultados en riesgo"
+    "noOutcomesAtRisk": "Sin resultados en riesgo",
+    "weightedPipeline": "Pipeline ponderado (abiertas)"
   },
   "businessOutcomes": {
     "title": "Resultados de Negocio",
@@ -314,7 +315,9 @@
     "rejectWonTitle": "Rechazar solicitud de Ganada",
     "rejectWonDescription": "La oportunidad mantendrá su estado actual. Puede agregar un motivo opcional.",
     "rejectionReason": "Motivo",
-    "rejectionReasonPlaceholder": "Motivo opcional del rechazo"
+    "rejectionReasonPlaceholder": "Motivo opcional del rechazo",
+    "confidence": "% de confianza",
+    "weightedValue": "Valor ponderado"
   },
   "projects": {
     "title": "Proyectos",

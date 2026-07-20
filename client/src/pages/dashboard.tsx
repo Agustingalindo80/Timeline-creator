@@ -32,6 +32,7 @@ type DashboardSummary = {
   forecastedRevenue: number;
   grossMarginPercent: number;
   pipelineValue: number;
+  weightedPipelineValue: number;
   conversionRate: number;
   convertedRevenue: number;
   totalOpportunities: number;
@@ -300,6 +301,14 @@ export default function Dashboard() {
                       {summary?.conversionRate || 0}%
                     </div>
                     <div className="text-xs text-muted-foreground">{t("dashboard.winRate")}</div>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between border-t pt-3">
+                  <div>
+                    <div className="text-lg font-semibold tracking-tight tabular-nums" data-testid="text-weighted-pipeline">
+                      {formatCurrency(summary?.weightedPipelineValue || 0)}
+                    </div>
+                    <div className="text-xs text-muted-foreground">{t("dashboard.weightedPipeline")}</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-4 text-xs text-muted-foreground border-t pt-3">

@@ -66,7 +66,24 @@ const createOpportunitySchema = z.object({
 
 type CreateOpportunityForm = z.infer<typeof createOpportunitySchema>;
 
-type SortField = "title" | "client" | "region" | "status" | "approvedBudget" | "totalRunningCost" | "grossMargin" | "salesforceClouds";
+type SortField = "title" | "client" | "region" | "status" | "approvedBudget" | "weightedValue" | "totalRunningCost" | "grossMargin" | "salesforceClouds";
+
+function getWeightedValue(opp: any): number | null {
+  const status = opp.opportunityStatus || "qualifying";
+  if (status === "won" || status === "lost") return null;
+  const syncedPrice = opp.approvedBudget ? parseFloat(opp.approvedBudget) : 0;
+  const initialEstimate = opp.initialEstimate ? parseFloat(opp.initialEstimate) : 0;
+  const riskPct = opp.riskFactorPercent ? parseFloat(opp.riskFactorPercent) : 0;
+  const bufferPct = opp.bufferPercent ? parseFloat(opp.bufferPercent) : 0;
+  const base = syncedPrice > 0
+    ? syncedPrice
+    : initialEstimate * (1 + riskPct / 100) * (1 + bufferPct / 100);
+  if (!base) return null;
+  const confidence = opp.confidencePercent != null && opp.confidencePercent !== ""
+    ? parseFloat(opp.confidencePercent)
+    : 100;
+  return base * ((isNaN(confidence) ? 100 : confidence) / 100);
+}
 type SortDir = "asc" | "desc";
 
 interface ColumnFilters {
@@ -190,6 +207,10 @@ export default function OpportunitiesPage() {
           case "approvedBudget":
             aVal = a.approvedBudget ? parseFloat(a.approvedBudget) : -1;
             bVal = b.approvedBudget ? parseFloat(b.approvedBudget) : -1;
+            break;
+          case "weightedValue":
+            aVal = getWeightedValue(a) ?? -1;
+            bVal = getWeightedValue(b) ?? -1;
             break;
           case "totalRunningCost":
             aVal = a.totalRunningCost ? parseFloat(a.totalRunningCost) : -1;
@@ -491,6 +512,7 @@ export default function OpportunitiesPage() {
                   <SortHeader field="region" label={t("common.region")} />
                   <SortHeader field="status" label={t("common.status")} align="center" />
                   <SortHeader field="approvedBudget" label={t("opportunities.bufferedPrice")} />
+                  <SortHeader field="weightedValue" label={t("opportunities.weightedValue")} />
                   <SortHeader field="totalRunningCost" label={t("opportunities.baseCost")} />
                   <SortHeader field="grossMargin" label={t("opportunities.margin")} />
                   <SortHeader field="salesforceClouds" label={t("opportunities.sfClouds")} />
@@ -539,6 +561,7 @@ export default function OpportunitiesPage() {
                         <option value="lost">{t("opportunities.lost")}</option>
                       </select>
                     </th>
+                    <th className="px-3 py-1.5" />
                     <th className="px-3 py-1.5" />
                     <th className="px-3 py-1.5" />
                     <th className="px-3 py-1.5" />
@@ -601,6 +624,12 @@ export default function OpportunitiesPage() {
                       </td>
                       <td className="px-3 py-2 table-financial text-muted-foreground" data-testid={`text-price-${opp.id}`}>
                         {formatCurrency(opp.approvedBudget)}
+                      </td>
+                      <td className="px-3 py-2 table-financial text-muted-foreground" data-testid={`text-weighted-${opp.id}`}>
+                        {(() => {
+                          const wv = getWeightedValue(opp);
+                          return wv !== null ? formatCurrency(String(wv)) : <span className="text-muted-foreground/40">—</span>;
+                        })()}
                       </td>
                       <td className="px-3 py-2 table-financial text-muted-foreground" data-testid={`text-cost-${opp.id}`}>
                         {formatCurrency(opp.totalRunningCost)}

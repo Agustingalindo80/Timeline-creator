@@ -57,6 +57,17 @@ export function registerDashboardRoutes(app: Express) {
 
       const openOpps = accessibleOpportunities.filter(o => o.opportunityStatus !== "won" && o.opportunityStatus !== "lost");
       const pipelineValue = openOpps.reduce((sum, o) => sum + (parseFloat(o.estimatedRevenue || "0") || 0), 0);
+      const weightedPipelineValue = openOpps.reduce((sum, o) => {
+        const syncedPrice = parseFloat(o.approvedBudget || "0") || 0;
+        const initialEstimate = parseFloat(o.initialEstimate || "0") || 0;
+        const riskPct = parseFloat(o.riskFactorPercent || "0") || 0;
+        const bufferPct = parseFloat(o.bufferPercent || "0") || 0;
+        const bufferedPrice = syncedPrice > 0
+          ? syncedPrice
+          : initialEstimate * (1 + riskPct / 100) * (1 + bufferPct / 100);
+        const confidence = o.confidencePercent != null ? (parseFloat(o.confidencePercent) || 0) : 100;
+        return sum + bufferedPrice * (confidence / 100);
+      }, 0);
 
       const wonOpps = accessibleOpportunities.filter(o => o.opportunityStatus === "won");
       const lostOpps = accessibleOpportunities.filter(o => o.opportunityStatus === "lost");
@@ -187,6 +198,7 @@ export function registerDashboardRoutes(app: Express) {
         forecastedRevenue,
         grossMarginPercent: Math.round(grossMarginPercent * 10) / 10,
         pipelineValue,
+        weightedPipelineValue,
         conversionRate,
         convertedRevenue,
         totalOpportunities: accessibleOpportunities.length,

@@ -157,7 +157,8 @@
     "outcomesAchieved": "Resultados Alcançados",
     "achievementRate": "Taxa de Alcance",
     "outcomesAtRisk": "Resultados em Risco",
-    "noOutcomesAtRisk": "Nenhum resultado em risco"
+    "noOutcomesAtRisk": "Nenhum resultado em risco",
+    "weightedPipeline": "Pipeline ponderado (abertas)"
   },
   "businessOutcomes": {
     "title": "Resultados de Negócio",
@@ -314,7 +315,9 @@
     "rejectWonTitle": "Rejeitar solicitação de Ganha",
     "rejectWonDescription": "A oportunidade manterá seu status atual. Você pode adicionar um motivo opcional.",
     "rejectionReason": "Motivo",
-    "rejectionReasonPlaceholder": "Motivo opcional da rejeição"
+    "rejectionReasonPlaceholder": "Motivo opcional da rejeição",
+    "confidence": "% de confiança",
+    "weightedValue": "Valor ponderado"
   },
   "projects": {
     "title": "Projetos",

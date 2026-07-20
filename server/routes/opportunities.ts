@@ -119,7 +119,7 @@ export function registerOpportunityRoutes(app: Express) {
       const oppFields = [
         "title", "description", "color", "clientId", "region", "salesforceClouds",
         "currency", "engagementModel", "projectType", "approvedBudget", "estimatedRevenue",
-        "totalRunningCost", "grossMargin", "initialEstimate",
+        "totalRunningCost", "grossMargin", "initialEstimate", "confidencePercent",
         "riskFactorPercent", "bufferPercent", "opportunityStatus", "startDate", "endDate",
         "docRepositoryType", "docRepositoryUrl", "dateFormat",
         "healthOverall", "scopeHealth", "budgetHealth", "teamHealth",
@@ -141,6 +141,29 @@ export function registerOpportunityRoutes(app: Express) {
           return res.status(400).json({ message: "Initial estimate must be a non-negative number" });
         }
         if (newValue === "") updates.initialEstimate = null;
+      }
+
+      // Confidence % (0-100). Won and Lost are forced server-side below.
+      if (updates.confidencePercent !== undefined) {
+        const raw = updates.confidencePercent;
+        if (raw === null || raw === "") {
+          updates.confidencePercent = null;
+        } else {
+          const num = parseFloat(raw);
+          if (isNaN(num) || num < 0 || num > 100) {
+            return res.status(400).json({ message: "Confidence must be a number between 0 and 100" });
+          }
+          updates.confidencePercent = num.toFixed(2);
+        }
+      }
+
+      // Won opportunities are always 100% confidence; Lost are always 0%
+      // (based on the effective final status, so it also holds for already won/lost records)
+      const finalStatus = updates.opportunityStatus ?? existing.opportunityStatus;
+      if (finalStatus === "won") {
+        updates.confidencePercent = "100.00";
+      } else if (finalStatus === "lost") {
+        updates.confidencePercent = "0.00";
       }
 
       // Margin approval gate for the Won transition
@@ -165,6 +188,7 @@ export function registerOpportunityRoutes(app: Express) {
             } else {
               // Below threshold: keep the current status and record a pending approval request
               delete updates.opportunityStatus;
+              delete updates.confidencePercent;
               updates.wonApprovalStatus = "pending";
               updates.wonApprovalRequestedBy = userId;
               updates.wonApprovalRequestedAt = new Date();
@@ -249,6 +273,7 @@ export function registerOpportunityRoutes(app: Express) {
       };
       if (decision === "approve") {
         updates.opportunityStatus = "won";
+        updates.confidencePercent = "100.00";
       }
       const [updated] = await db
         .update(timelines)

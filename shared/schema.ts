@@ -482,6 +482,7 @@ export const timelines = pgTable("timelines", {
   riskFactorPercent: numeric("risk_factor_percent", { precision: 5, scale: 2 }),
   bufferPercent: numeric("buffer_percent", { precision: 5, scale: 2 }),
   opportunityStatus: text("opportunity_status"),
+  confidencePercent: numeric("confidence_percent", { precision: 5, scale: 2 }),
   wonApprovalStatus: text("won_approval_status"),
   wonApprovalRequestedBy: varchar("won_approval_requested_by"),
   wonApprovalRequestedAt: timestamp("won_approval_requested_at", { withTimezone: true }),

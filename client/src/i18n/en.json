@@ -157,7 +157,8 @@
     "outcomesAchieved": "Outcomes Achieved",
     "achievementRate": "Achievement Rate",
     "outcomesAtRisk": "At-Risk Outcomes",
-    "noOutcomesAtRisk": "No at-risk outcomes"
+    "noOutcomesAtRisk": "No at-risk outcomes",
+    "weightedPipeline": "Weighted Pipeline (Open)"
   },
   "businessOutcomes": {
     "title": "Business Outcomes",
@@ -314,7 +315,9 @@
     "rejectWonTitle": "Reject Won request",
     "rejectWonDescription": "The opportunity will keep its current status. You can add an optional reason.",
     "rejectionReason": "Reason",
-    "rejectionReasonPlaceholder": "Optional reason for rejection"
+    "rejectionReasonPlaceholder": "Optional reason for rejection",
+    "confidence": "Confidence %",
+    "weightedValue": "Weighted Value"
   },
   "projects": {
     "title": "Projects",
