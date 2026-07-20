@@ -20,6 +20,13 @@ This avoids the truncation prompt entirely and never risks data loss. Reserve
 `db:push` for when the drift itself needs resolving (and answer the prompt in a
 real interactive terminal).
 
+**Resolved (July 2026):** the recurring `tenants_slug_unique` prompt was a
+constraint NAME mismatch — the DB had `tenants_slug_key`, drizzle expected
+`tenants_slug_unique`. Fixed with `ALTER TABLE tenants RENAME CONSTRAINT`.
+If a similar prompt recurs, check for name-mismatched constraints before
+assuming real drift. `scripts/post-merge.sh` now runs
+`npm run db:push -- --force` (non-interactive) with a 120s timeout.
+
 For whole new tables, apply them via direct `CREATE TABLE IF NOT EXISTS` SQL
 that mirrors the Drizzle definition **exactly** (same column types and the same
 constraint/index names drizzle would generate) so a later `db:push` sees them as
