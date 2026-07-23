@@ -65,13 +65,14 @@ import { BusinessOutcomesTab } from "@/features/business-outcomes/business-outco
 import type { TimelineWithMilestones, Client, AppSettings, FlightpathStage, ProjectGate, OperatingModel } from "@shared/schema";
 import { getDefaultFieldOptions } from "@shared/schema";
 
-const OPP_STATUS_OPTIONS = [
-  { value: "qualifying", label: "Qualifying", color: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20" },
-  { value: "estimating", label: "Estimating", color: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" },
-  { value: "proposed", label: "Proposed", color: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20" },
-  { value: "won", label: "Won", color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" },
-  { value: "lost", label: "Lost", color: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20" },
-];
+const OPP_STATUS_COLORS: Record<string, string> = {
+  qualifying: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+  estimating: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+  proposed: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
+  won: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+  lost: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
+};
+const OPP_STATUS_FALLBACK_COLOR = "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20";
 
 function MarginIndicator({ value }: { value: number }) {
   const color = value >= 30
@@ -357,7 +358,15 @@ export default function OpportunityDetail() {
     });
   };
 
-  const statusOption = OPP_STATUS_OPTIONS.find(s => s.value === opp.opportunityStatus) || OPP_STATUS_OPTIONS[0];
+  const statusOptions = (settings?.opportunityStatuses && settings.opportunityStatuses.length > 0)
+    ? settings.opportunityStatuses
+    : getDefaultFieldOptions("opportunityStatuses", settings?.locale || "en");
+  const currentStatusValue = opp.opportunityStatus || "qualifying";
+  const statusOption = {
+    value: currentStatusValue,
+    label: statusOptions.find(s => s.value === currentStatusValue)?.label || currentStatusValue,
+    color: OPP_STATUS_COLORS[currentStatusValue] || OPP_STATUS_FALLBACK_COLOR,
+  };
   const stages = opp.operatingModelId ? allStages.filter(s => s.operatingModelId === opp.operatingModelId) : allStages;
   const stage0 = stages.find(s => s.stageNumber === 0);
   const stage0Gate = stage0 ? gates.find(g => g.stageId === stage0.id) : null;
@@ -428,7 +437,7 @@ export default function OpportunityDetail() {
                     <Select value={editStatus} onValueChange={setEditStatus}>
                       <SelectTrigger data-testid="select-edit-status"><SelectValue placeholder="Status" /></SelectTrigger>
                       <SelectContent>
-                        {OPP_STATUS_OPTIONS.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                        {statusOptions.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>

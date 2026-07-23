@@ -583,7 +583,9 @@
     "apiTokenRevokeDescription": "This will immediately invalidate this token. Any integrations using it will stop working.",
     "apiTokenRevokeConfirm": "Revoke",
     "minMarginForWon": "Minimum Gross Margin for Won (%)",
-    "minMarginForWonHelp": "Opportunities with a gross margin below this threshold require Org Admin approval before they can be marked as Won. Leave empty or 0 to disable."
+    "minMarginForWonHelp": "Opportunities with a gross margin below this threshold require Org Admin approval before they can be marked as Won. Leave empty or 0 to disable.",
+    "opportunityStatusTitle": "Opportunity Status",
+    "opportunityStatusDescription": "Status options for opportunities. Qualifying, Won, and Lost are system statuses: their labels can be renamed but they cannot be removed."
   },
   "security": {
     "title": "Security",

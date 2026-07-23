@@ -117,6 +117,15 @@ export default function OpportunitiesPage() {
   });
 
   const regionOptions = settings?.regions || getDefaultFieldOptions("regions", settings?.locale || "en");
+  const statusOptions = settings?.opportunityStatuses || getDefaultFieldOptions("opportunityStatuses", settings?.locale || "en");
+  const statusOrder = useMemo(() => {
+    const order: Record<string, number> = {};
+    statusOptions.forEach((o, i) => { order[o.value] = i; });
+    return order;
+  }, [statusOptions]);
+  const statusLabelFor = useCallback((value: string) => {
+    return statusOptions.find((o) => o.value === value)?.label || STATUS_BADGES[value]?.label || value;
+  }, [statusOptions]);
 
   const form = useForm<CreateOpportunityForm>({
     resolver: zodResolver(createOpportunitySchema),
@@ -199,9 +208,8 @@ export default function OpportunitiesPage() {
             break;
           }
           case "status": {
-            const order: Record<string, number> = { qualifying: 0, estimating: 1, proposed: 2, won: 3, lost: 4 };
-            aVal = order[a.opportunityStatus || "qualifying"] ?? 99;
-            bVal = order[b.opportunityStatus || "qualifying"] ?? 99;
+            aVal = statusOrder[a.opportunityStatus || "qualifying"] ?? 99;
+            bVal = statusOrder[b.opportunityStatus || "qualifying"] ?? 99;
             break;
           }
           case "approvedBudget":
@@ -234,7 +242,7 @@ export default function OpportunitiesPage() {
     }
 
     return result;
-  }, [opportunities, searchQuery, columnFilters, sortField, sortDir, getClientName, regionOptions]);
+  }, [opportunities, searchQuery, columnFilters, sortField, sortDir, getClientName, regionOptions, statusOrder]);
 
   const toggleSort = useCallback((field: SortField) => {
     if (sortField === field) {
@@ -554,11 +562,9 @@ export default function OpportunitiesPage() {
                         data-testid="filter-status"
                       >
                         <option value="">{t("common.all")}</option>
-                        <option value="qualifying">{t("opportunities.qualifying")}</option>
-                        <option value="estimating">{t("opportunities.estimating")}</option>
-                        <option value="proposed">{t("opportunities.proposed")}</option>
-                        <option value="won">{t("opportunities.won")}</option>
-                        <option value="lost">{t("opportunities.lost")}</option>
+                        {statusOptions.map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
                       </select>
                     </th>
                     <th className="px-3 py-1.5" />
@@ -572,8 +578,8 @@ export default function OpportunitiesPage() {
               <tbody>
                 {processedOpportunities.map((opp) => {
                   const status = opp.opportunityStatus || "qualifying";
-                  const statusColor = STATUS_COLORS[status] || STATUS_COLORS.qualifying;
-                  const statusLabel = STATUS_BADGES[status]?.label || status;
+                  const statusColor = STATUS_COLORS[status] || "bg-slate-500/10 text-slate-700 dark:text-slate-400 border-slate-500/20";
+                  const statusLabel = statusLabelFor(status);
 
                   return (
                     <tr

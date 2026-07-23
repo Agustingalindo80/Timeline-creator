@@ -583,7 +583,9 @@
     "apiTokenRevokeDescription": "Esto invalidará inmediatamente este token. Las integraciones que lo usen dejarán de funcionar.",
     "apiTokenRevokeConfirm": "Revocar",
     "minMarginForWon": "Margen bruto mínimo para Ganada (%)",
-    "minMarginForWonHelp": "Las oportunidades con un margen bruto por debajo de este umbral requieren la aprobación de un administrador antes de marcarse como Ganadas. Deje vacío o 0 para desactivar."
+    "minMarginForWonHelp": "Las oportunidades con un margen bruto por debajo de este umbral requieren la aprobación de un administrador antes de marcarse como Ganadas. Deje vacío o 0 para desactivar.",
+    "opportunityStatusTitle": "Estado de Oportunidad",
+    "opportunityStatusDescription": "Opciones de estado para oportunidades. Calificando, Ganada y Perdida son estados del sistema: sus etiquetas se pueden renombrar pero no se pueden eliminar."
   },
   "security": {
     "title": "Seguridad",

@@ -60,8 +60,6 @@ interface PipelineReport {
   cloudOptions: string[];
 }
 
-const STATUS_ORDER = ["qualifying", "estimating", "proposed", "won", "lost"];
-
 const STATUS_COLORS: Record<string, string> = {
   qualifying: "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20",
   estimating: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20",
@@ -256,7 +254,10 @@ export default function OpportunityPipelineReport() {
     [],
   );
 
-  const statusLabel = (s: string) => t(`opportunities.${s}`, s);
+  const statusOptions = settings?.opportunityStatuses || getDefaultFieldOptions("opportunityStatuses", locale);
+  const statusOrder = useMemo(() => statusOptions.map((o) => o.value), [statusOptions]);
+  const statusLabel = (s: string) =>
+    statusOptions.find((o) => o.value === s)?.label || t(`opportunities.${s}`, s);
 
   const items = report?.items ?? [];
   const summary = report?.summary;
@@ -300,7 +301,7 @@ export default function OpportunityPipelineReport() {
           cmp = (a.region || "").localeCompare(b.region || "");
           break;
         case "status":
-          cmp = STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status);
+          cmp = statusOrder.indexOf(a.status) - statusOrder.indexOf(b.status);
           break;
         case "confidencePercent":
           cmp = (a.confidencePercent ?? -1) - (b.confidencePercent ?? -1);
@@ -315,7 +316,7 @@ export default function OpportunityPipelineReport() {
       return sortDirection === "asc" ? cmp : -cmp;
     });
     return sorted;
-  }, [items, sortField, sortDirection]);
+  }, [items, sortField, sortDirection, statusOrder]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -352,12 +353,12 @@ export default function OpportunityPipelineReport() {
     }
     let entries = Array.from(buckets.entries());
     if (grouping === "status") {
-      entries = entries.sort((a, b) => STATUS_ORDER.indexOf(a[0]) - STATUS_ORDER.indexOf(b[0]));
+      entries = entries.sort((a, b) => statusOrder.indexOf(a[0]) - statusOrder.indexOf(b[0]));
     } else {
       entries = entries.sort((a, b) => b[1].value - a[1].value);
     }
     return entries.map(([, v]) => ({ ...v, value: measure === "count" ? v.value : Math.round(v.value) }));
-  }, [items, measure, grouping, regionOptions, industryOptions, t]);
+  }, [items, measure, grouping, regionOptions, industryOptions, statusOptions, t]);
 
   const csvColumns = [
     { key: "title", label: t("reportPipeline.colOpportunity") },
@@ -448,7 +449,7 @@ export default function OpportunityPipelineReport() {
             label={t("common.status")}
             value={statusFilter}
             onValueChange={setStatusFilter}
-            options={STATUS_ORDER.map((s) => ({ value: s, label: statusLabel(s) }))}
+            options={statusOptions.map((o) => ({ value: o.value, label: o.label }))}
             placeholder={t("reportPipeline.allStatuses")}
             testId="select-filter-status"
           />

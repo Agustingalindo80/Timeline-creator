@@ -583,7 +583,9 @@
     "apiTokenRevokeDescription": "Isso invalidará imediatamente este token. As integrações que o utilizam deixarão de funcionar.",
     "apiTokenRevokeConfirm": "Revogar",
     "minMarginForWon": "Margem bruta mínima para Ganha (%)",
-    "minMarginForWonHelp": "Oportunidades com margem bruta abaixo deste limite exigem aprovação de um administrador antes de serem marcadas como Ganhas. Deixe vazio ou 0 para desativar."
+    "minMarginForWonHelp": "Oportunidades com margem bruta abaixo deste limite exigem aprovação de um administrador antes de serem marcadas como Ganhas. Deixe vazio ou 0 para desativar.",
+    "opportunityStatusTitle": "Status da Oportunidade",
+    "opportunityStatusDescription": "Opções de status para oportunidades. Qualificando, Ganha e Perdida são status do sistema: seus rótulos podem ser renomeados, mas não podem ser removidos."
   },
   "security": {
     "title": "Segurança",

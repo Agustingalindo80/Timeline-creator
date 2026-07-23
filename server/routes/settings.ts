@@ -21,10 +21,29 @@ export function registerSettingsRoutes(app: Express) {
         "riskRegisterEnabled", "opportunitiesEnabled", "minMarginForWon", "taskStatuses", "taskHealthOptions", "taskItemTypes",
         "riskProbabilities", "riskImpacts", "riskStatuses", "projectTypes",
         "engagementModels", "clients", "contactRoles", "industries", "projectStatuses",
-        "teamMemberRoles", "regions", "dateFormats",
+        "teamMemberRoles", "regions", "dateFormats", "opportunityStatuses",
       ];
       for (const field of fields) {
         if (req.body[field] !== undefined) updates[field] = req.body[field];
+      }
+
+      if (updates.opportunityStatuses !== undefined && updates.opportunityStatuses !== null) {
+        const opts = updates.opportunityStatuses;
+        const valid = Array.isArray(opts) && opts.every(
+          (o: any) => o && typeof o.value === "string" && o.value.trim() !== "" && typeof o.label === "string" && o.label.trim() !== ""
+        );
+        if (!valid) {
+          return res.status(400).json({ message: "Opportunity statuses must be a list of options with a value and a label" });
+        }
+        const values = new Set(opts.map((o: any) => o.value));
+        if (values.size !== opts.length) {
+          return res.status(400).json({ message: "Opportunity status values must be unique" });
+        }
+        const required = ["qualifying", "won", "lost"];
+        const missing = required.filter(v => !values.has(v));
+        if (missing.length > 0) {
+          return res.status(400).json({ message: `Opportunity statuses must include the system statuses: ${missing.join(", ")}` });
+        }
       }
 
       const settings = await storage.updateSettings(updates, req.tenantId || "default");

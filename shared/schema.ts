@@ -380,6 +380,29 @@ const LOCALIZED_DEFAULTS: Record<string, Record<string, FieldOption[]>> = {
       { value: "public_sector", label: "Setor Público" },
     ],
   },
+  opportunityStatuses: {
+    en: [
+      { value: "qualifying", label: "Qualifying" },
+      { value: "estimating", label: "Estimating" },
+      { value: "proposed", label: "Proposed" },
+      { value: "won", label: "Won" },
+      { value: "lost", label: "Lost" },
+    ],
+    es: [
+      { value: "qualifying", label: "Calificando" },
+      { value: "estimating", label: "Estimando" },
+      { value: "proposed", label: "Propuesta" },
+      { value: "won", label: "Ganada" },
+      { value: "lost", label: "Perdida" },
+    ],
+    pt: [
+      { value: "qualifying", label: "Qualificando" },
+      { value: "estimating", label: "Estimando" },
+      { value: "proposed", label: "Proposta" },
+      { value: "won", label: "Ganha" },
+      { value: "lost", label: "Perdida" },
+    ],
+  },
   stakeholderTypes: {
     en: [
       { value: "sponsor", label: "Sponsor" },
@@ -701,6 +724,7 @@ export const appSettings = pgTable("app_settings", {
   teamMemberRoles: jsonb("team_member_roles").$type<FieldOption[]>(),
   regions: jsonb("regions").$type<FieldOption[]>(),
   dateFormats: jsonb("date_formats").$type<FieldOption[]>(),
+  opportunityStatuses: jsonb("opportunity_statuses").$type<FieldOption[]>(),
   rbacMigrated: boolean("rbac_migrated").notNull().default(false),
   governanceModelLabel: text("governance_model_label"),
   locale: text("locale").notNull().default("en"),

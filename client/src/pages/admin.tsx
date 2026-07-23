@@ -141,6 +141,21 @@ export default function Admin() {
       ],
     },
     {
+      value: "opportunities_settings",
+      label: t("nav.opportunities"),
+      fields: [
+        {
+          title: t("settings.opportunityStatusTitle"),
+          description: t("settings.opportunityStatusDescription"),
+          key: "opportunityStatuses",
+          defaults: getDefaultFieldOptions("opportunityStatuses", settings?.locale || "en"),
+          current: settings?.opportunityStatuses || getDefaultFieldOptions("opportunityStatuses", settings?.locale || "en"),
+          testId: "opportunity-statuses",
+          protectedValues: ["qualifying", "won", "lost"],
+        },
+      ],
+    },
+    {
       value: "tasks",
       label: "Tasks",
       fields: [
@@ -388,6 +403,7 @@ export default function Admin() {
                           onSave={handleFieldSave}
                           isPending={updateMutation.isPending}
                           testIdPrefix={config.testId}
+                          protectedValues={config.protectedValues}
                         />
                       ))}
                     </div>

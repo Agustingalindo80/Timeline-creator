@@ -15,6 +15,7 @@ export interface FieldOptionEditorProps {
   onSave: (key: string, options: FieldOption[]) => void;
   isPending: boolean;
   testIdPrefix: string;
+  protectedValues?: string[];
 }
 
 export function FieldOptionEditor({
@@ -26,7 +27,9 @@ export function FieldOptionEditor({
   onSave,
   isPending,
   testIdPrefix,
+  protectedValues,
 }: FieldOptionEditorProps) {
+  const protectedSet = new Set(protectedValues || []);
   const { t } = useTranslation();
   const [items, setItems] = useState<FieldOption[]>(options);
   const [newValue, setNewValue] = useState("");
@@ -52,6 +55,7 @@ export function FieldOptionEditor({
   };
 
   const removeOption = (index: number) => {
+    if (protectedSet.has(items[index]?.value)) return;
     setItems(items.filter((_, i) => i !== index));
   };
 
@@ -161,7 +165,8 @@ export function FieldOptionEditor({
                   variant="ghost"
                   className="h-7 w-7 text-muted-foreground hover:text-destructive"
                   onClick={() => removeOption(idx)}
-                  disabled={items.length <= 1}
+                  disabled={items.length <= 1 || protectedSet.has(opt.value)}
+                  title={protectedSet.has(opt.value) ? "This option is required by the system and cannot be removed" : undefined}
                   data-testid={`button-remove-${testIdPrefix}-${opt.value}`}
                 >
                   <X className="w-3.5 h-3.5" />
@@ -241,6 +246,7 @@ export interface FieldConfig {
   defaults: FieldOption[];
   current: FieldOption[];
   testId: string;
+  protectedValues?: string[];
 }
 
 export interface TabConfig {
