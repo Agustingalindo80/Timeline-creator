@@ -43,6 +43,12 @@ const ITEM_TYPES = [
 ] as const;
 
 const itemTypeLabel = (t: string) => ITEM_TYPES.find(i => i.value === t)?.label || t;
+const itemTypeSingularLabel = (t: string) => ({
+  risk: "Risk",
+  assumption: "Assumption",
+  issue: "Issue",
+  dependency: "Dependency",
+}[t] || t);
 
 interface RaidLogProps {
   timelineId: string;
@@ -337,7 +343,7 @@ export function RaidLog({ timelineId }: RaidLogProps) {
           <div className="flex items-center gap-2 justify-end">
             <Button size="sm" variant="ghost" onClick={() => setShowAddForm(false)}><X className="w-3.5 h-3.5 mr-1" /> Cancel</Button>
             <Button size="sm" onClick={handleAdd} disabled={!newTitle.trim() || addMutation.isPending} data-testid="button-submit-raid-item">
-              {addMutation.isPending ? "Adding..." : `Add ${itemTypeLabel(newItemType).replace(/s$/, "")}`}
+              {addMutation.isPending ? "Adding..." : `Add ${itemTypeSingularLabel(newItemType)}`}
             </Button>
           </div>
         </Card>
@@ -396,7 +402,7 @@ export function RaidLog({ timelineId }: RaidLogProps) {
                     <span className="shrink-0">{itemIcon(r.itemType || "risk")}</span>
                     <p className="text-sm font-medium truncate" data-testid={`text-raid-title-${r.id}`}>{r.title}</p>
                     <Badge variant="secondary" className={`text-xs shrink-0 ${typeBadgeColor(r.itemType || "risk")}`}>
-                      {itemTypeLabel(r.itemType || "risk").replace(/s$/, "")}
+                      {itemTypeSingularLabel(r.itemType || "risk")}
                     </Badge>
                     {r.itemType === "risk" && (
                       <Badge variant="secondary" className={`text-xs shrink-0 ${riskScoreColor(score)}`}>Score: {score}</Badge>
