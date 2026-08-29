@@ -89,6 +89,9 @@ import {
   businessOutcomes,
   type BusinessOutcome,
   type InsertBusinessOutcome,
+  businessOutcomeMetrics,
+  type BusinessOutcomeMetric,
+  type InsertBusinessOutcomeMetric,
   timelineHealthHistory,
   type TimelineHealthHistory,
   type InsertTimelineHealthHistory,
@@ -264,6 +267,11 @@ export interface IStorage {
   createBusinessOutcome(data: InsertBusinessOutcome): Promise<BusinessOutcome>;
   updateBusinessOutcome(id: string, tenantId: string, data: Partial<InsertBusinessOutcome>): Promise<BusinessOutcome | undefined>;
   deleteBusinessOutcome(id: string, tenantId: string): Promise<void>;
+  getBusinessOutcomeMetrics(businessOutcomeId: string, tenantId: string): Promise<BusinessOutcomeMetric[]>;
+  createBusinessOutcomeMetric(data: InsertBusinessOutcomeMetric): Promise<BusinessOutcomeMetric | undefined>;
+  updateBusinessOutcomeMetric(id: string, businessOutcomeId: string, tenantId: string, data: Partial<InsertBusinessOutcomeMetric>): Promise<BusinessOutcomeMetric | undefined>;
+  deleteBusinessOutcomeMetric(id: string, businessOutcomeId: string, tenantId: string): Promise<boolean>;
+  reorderBusinessOutcomeMetrics(businessOutcomeId: string, tenantId: string, metricIds: string[]): Promise<boolean>;
 
   createHealthHistory(data: InsertTimelineHealthHistory): Promise<TimelineHealthHistory>;
   getHealthHistory(timelineId: string, tenantId: string, range?: HealthHistoryRange): Promise<TimelineHealthHistory[]>;
@@ -1407,6 +1415,21 @@ export class DatabaseStorage implements IStorage {
     return outcome;
   }
 
+  async createBusinessOutcomeWithMetrics(data: InsertBusinessOutcome, metrics: InsertBusinessOutcomeMetric[]): Promise<{ outcome: BusinessOutcome; metrics: BusinessOutcomeMetric[] }> {
+    return db.transaction(async (tx) => {
+      const [outcome] = await tx.insert(businessOutcomes).values(data).returning();
+      const createdMetrics = metrics.length
+        ? await tx.insert(businessOutcomeMetrics).values(metrics.map((metric, sortOrder) => ({
+          ...metric,
+          tenantId: data.tenantId,
+          businessOutcomeId: outcome.id,
+          sortOrder,
+        }))).returning()
+        : [];
+      return { outcome, metrics: createdMetrics };
+    });
+  }
+
   async updateBusinessOutcome(id: string, tenantId: string, data: Partial<InsertBusinessOutcome>): Promise<BusinessOutcome | undefined> {
     const [outcome] = await db.update(businessOutcomes).set({ ...data, updatedAt: new Date() }).where(and(eq(businessOutcomes.id, id), eq(businessOutcomes.tenantId, tenantId))).returning();
     return outcome;
@@ -1414,6 +1437,82 @@ export class DatabaseStorage implements IStorage {
 
   async deleteBusinessOutcome(id: string, tenantId: string): Promise<void> {
     await db.delete(businessOutcomes).where(and(eq(businessOutcomes.id, id), eq(businessOutcomes.tenantId, tenantId)));
+  }
+
+  async getBusinessOutcomeMetrics(businessOutcomeId: string, tenantId: string): Promise<BusinessOutcomeMetric[]> {
+    return db.select().from(businessOutcomeMetrics)
+      .where(and(eq(businessOutcomeMetrics.businessOutcomeId, businessOutcomeId), eq(businessOutcomeMetrics.tenantId, tenantId)))
+      .orderBy(asc(businessOutcomeMetrics.sortOrder), asc(businessOutcomeMetrics.createdAt));
+  }
+
+  async getBusinessOutcomeMetricsForOutcomes(businessOutcomeIds: string[], tenantId: string): Promise<BusinessOutcomeMetric[]> {
+    if (businessOutcomeIds.length === 0) return [];
+    return db.select().from(businessOutcomeMetrics)
+      .where(and(
+        inArray(businessOutcomeMetrics.businessOutcomeId, businessOutcomeIds),
+        eq(businessOutcomeMetrics.tenantId, tenantId),
+      ))
+      .orderBy(asc(businessOutcomeMetrics.businessOutcomeId), asc(businessOutcomeMetrics.sortOrder), asc(businessOutcomeMetrics.createdAt));
+  }
+
+  async createBusinessOutcomeMetric(data: InsertBusinessOutcomeMetric): Promise<BusinessOutcomeMetric | undefined> {
+    const parent = await this.getBusinessOutcome(data.businessOutcomeId, data.tenantId);
+    if (!parent) return undefined;
+    const [metric] = await db.insert(businessOutcomeMetrics).values(data).returning();
+    return metric;
+  }
+
+  async createBusinessOutcomeMetricAtEnd(data: InsertBusinessOutcomeMetric): Promise<BusinessOutcomeMetric | undefined> {
+    return db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`${data.tenantId}:${data.businessOutcomeId}`}))`);
+      const [parent] = await tx.select({ id: businessOutcomes.id }).from(businessOutcomes)
+        .where(and(eq(businessOutcomes.id, data.businessOutcomeId), eq(businessOutcomes.tenantId, data.tenantId)));
+      if (!parent) return undefined;
+      const [orderRow] = await tx.select({
+        maxOrder: sql<number>`coalesce(max(${businessOutcomeMetrics.sortOrder}), -1)`,
+      }).from(businessOutcomeMetrics).where(and(
+        eq(businessOutcomeMetrics.businessOutcomeId, data.businessOutcomeId),
+        eq(businessOutcomeMetrics.tenantId, data.tenantId),
+      ));
+      const [metric] = await tx.insert(businessOutcomeMetrics).values({
+        ...data,
+        sortOrder: Number(orderRow?.maxOrder ?? -1) + 1,
+      }).returning();
+      return metric;
+    });
+  }
+
+  async updateBusinessOutcomeMetric(id: string, businessOutcomeId: string, tenantId: string, data: Partial<InsertBusinessOutcomeMetric>): Promise<BusinessOutcomeMetric | undefined> {
+    const parent = await this.getBusinessOutcome(businessOutcomeId, tenantId);
+    if (!parent) return undefined;
+    const [metric] = await db.update(businessOutcomeMetrics).set({ ...data, updatedAt: new Date() })
+      .where(and(eq(businessOutcomeMetrics.id, id), eq(businessOutcomeMetrics.businessOutcomeId, businessOutcomeId), eq(businessOutcomeMetrics.tenantId, tenantId)))
+      .returning();
+    return metric;
+  }
+
+  async deleteBusinessOutcomeMetric(id: string, businessOutcomeId: string, tenantId: string): Promise<boolean> {
+    const parent = await this.getBusinessOutcome(businessOutcomeId, tenantId);
+    if (!parent) return false;
+    const deleted = await db.delete(businessOutcomeMetrics)
+      .where(and(eq(businessOutcomeMetrics.id, id), eq(businessOutcomeMetrics.businessOutcomeId, businessOutcomeId), eq(businessOutcomeMetrics.tenantId, tenantId)))
+      .returning({ id: businessOutcomeMetrics.id });
+    return deleted.length > 0;
+  }
+
+  async reorderBusinessOutcomeMetrics(businessOutcomeId: string, tenantId: string, metricIds: string[]): Promise<boolean> {
+    return db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`${tenantId}:${businessOutcomeId}`}))`);
+      const [parent] = await tx.select({ id: businessOutcomes.id }).from(businessOutcomes)
+        .where(and(eq(businessOutcomes.id, businessOutcomeId), eq(businessOutcomes.tenantId, tenantId)));
+      if (!parent) return false;
+      const metrics = await tx.select({ id: businessOutcomeMetrics.id }).from(businessOutcomeMetrics)
+        .where(and(eq(businessOutcomeMetrics.businessOutcomeId, businessOutcomeId), eq(businessOutcomeMetrics.tenantId, tenantId)));
+      if (metrics.length !== metricIds.length || new Set(metricIds).size !== metricIds.length || !metrics.every((metric) => metricIds.includes(metric.id))) return false;
+      await Promise.all(metricIds.map((id, sortOrder) => tx.update(businessOutcomeMetrics).set({ sortOrder, updatedAt: new Date() })
+        .where(and(eq(businessOutcomeMetrics.id, id), eq(businessOutcomeMetrics.businessOutcomeId, businessOutcomeId), eq(businessOutcomeMetrics.tenantId, tenantId)))));
+      return true;
+    });
   }
 
   async createHealthHistory(data: InsertTimelineHealthHistory): Promise<TimelineHealthHistory> {

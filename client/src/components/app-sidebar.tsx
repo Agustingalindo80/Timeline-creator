@@ -95,7 +95,7 @@ export function AppSidebar() {
     !naturalTenantIds.has(currentTenant.tenantId);
 
   const modules = new Set(myModules?.modules ?? []);
-  const hasModule = (mod: string) => modules.has(`module.${mod}`);
+  const hasModule = (mod: string) => isSuperAdmin || modules.has(`module.${mod}`);
 
   const opportunitiesEnabled = settings?.opportunitiesEnabled !== false;
 

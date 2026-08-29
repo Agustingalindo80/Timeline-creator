@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useAppTitle } from "@/hooks/use-app-title";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { MetricEditor, type Metric } from "@/features/business-outcomes/metric-editor";
 import type { BusinessOutcome, Client, TeamMember, TimelineWithMilestones, FlightpathStage } from "@shared/schema";
 
 const STATUS_STYLES: Record<string, string> = {
@@ -64,10 +65,6 @@ export default function BusinessOutcomeDetail() {
       setForm({
         title: outcome.title,
         strategicObjective: outcome.strategicObjective,
-        successMetric: outcome.successMetric,
-        baseline: outcome.baseline,
-        target: outcome.target,
-        currentValue: outcome.currentValue,
         status: outcome.status,
         evidence: outcome.evidence,
         valueNotes: outcome.valueNotes,
@@ -94,7 +91,7 @@ export default function BusinessOutcomeDetail() {
   };
 
   if (isLoading) {
-    return (
+   return (
       <div className="p-6 max-w-4xl mx-auto space-y-6">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-64 w-full" />
@@ -221,38 +218,6 @@ export default function BusinessOutcomeDetail() {
               )}
             </Field>
 
-            <Field label={t("businessOutcomes.successMetric")} editing={editing}>
-              {editing ? (
-                <Input value={form.successMetric || ""} onChange={(e) => setForm({ ...form, successMetric: e.target.value })} data-testid="input-edit-metric" />
-              ) : (
-                <span className="text-sm">{outcome.successMetric || "-"}</span>
-              )}
-            </Field>
-
-            <div className="grid grid-cols-3 gap-3">
-              <Field label={t("businessOutcomes.baseline")} editing={editing}>
-                {editing ? (
-                  <Input value={form.baseline || ""} onChange={(e) => setForm({ ...form, baseline: e.target.value })} data-testid="input-edit-baseline" />
-                ) : (
-                  <span className="text-sm font-medium tabular-nums">{outcome.baseline || "-"}</span>
-                )}
-              </Field>
-              <Field label={t("businessOutcomes.targetValue")} editing={editing}>
-                {editing ? (
-                  <Input value={form.target || ""} onChange={(e) => setForm({ ...form, target: e.target.value })} data-testid="input-edit-target" />
-                ) : (
-                  <span className="text-sm font-medium tabular-nums">{outcome.target || "-"}</span>
-                )}
-              </Field>
-              <Field label={t("businessOutcomes.currentValue")} editing={editing}>
-                {editing ? (
-                  <Input value={form.currentValue || ""} onChange={(e) => setForm({ ...form, currentValue: e.target.value })} data-testid="input-edit-current" />
-                ) : (
-                  <span className="text-sm font-medium tabular-nums">{outcome.currentValue || "-"}</span>
-                )}
-              </Field>
-            </div>
-
             <Field label={t("businessOutcomes.targetDate")} editing={editing}>
               {editing ? (
                 <Input type="date" value={form.targetDate || ""} onChange={(e) => setForm({ ...form, targetDate: e.target.value })} data-testid="input-edit-date" />
@@ -354,6 +319,16 @@ export default function BusinessOutcomeDetail() {
           </CardContent>
         </Card>
       </div>
+      <MetricEditor
+        outcomeId={outcome.id}
+        metrics={(outcome as BusinessOutcome & { metrics?: Metric[] }).metrics || []}
+        legacyMetric={{
+          description: outcome.successMetric,
+          baseline: outcome.baseline,
+          currentValue: outcome.currentValue,
+          target: outcome.target,
+        }}
+      />
     </div>
   );
 }

@@ -33,6 +33,15 @@ interface OutcomeItem {
   ownerName: string | null;
   linkedType: string | null;
   linkedName: string | null;
+  metrics?: Array<{
+    description: string;
+    currentValue: string;
+    currentUnit: string;
+    expectedValue: string;
+    expectedUnit: string;
+    evaluationPeriod: number;
+    evaluationPeriodUnit: string;
+  }>;
 }
 
 interface OutcomesReport {
@@ -90,7 +99,6 @@ export default function BusinessOutcomesReport() {
       return res.json();
     },
   });
-
   const { data: projects } = useQuery<{ id: string; title: string }[]>({
     queryKey: ["/api/timelines"],
   });
@@ -161,6 +169,7 @@ export default function BusinessOutcomesReport() {
     { key: "target", label: "Target" },
     { key: "currentValue", label: "Current Value" },
     { key: "targetDate", label: "Target Date" },
+    { key: "metrics", label: t("businessOutcomes.successMetrics") },
   ];
 
   const csvData = useMemo(() => {
@@ -176,6 +185,7 @@ export default function BusinessOutcomesReport() {
       target: item.target || "",
       currentValue: item.currentValue || "",
       targetDate: item.targetDate || "",
+      metrics: (item.metrics || []).map((m) => `${m.description}: ${m.currentValue} ${m.currentUnit} → ${m.expectedValue} ${m.expectedUnit} (${m.evaluationPeriod} ${m.evaluationPeriodUnit})`).join("\n"),
     }));
   }, [sortedItems]);
 
@@ -294,9 +304,7 @@ export default function BusinessOutcomesReport() {
                   <SortableHeader field="title">Outcome</SortableHeader>
                   <SortableHeader field="status">Status</SortableHeader>
                   <SortableHeader field="linkedName">Linked To</SortableHeader>
-                  <TableHead>Metric</TableHead>
-                  <TableHead>Target</TableHead>
-                  <TableHead>Current</TableHead>
+                   <TableHead>{t("businessOutcomes.successMetrics")}</TableHead>
                   <SortableHeader field="ownerName">Owner</SortableHeader>
                   <SortableHeader field="targetDate">Target Date</SortableHeader>
                 </TableRow>
@@ -339,18 +347,9 @@ export default function BusinessOutcomesReport() {
                           "-"
                         )}
                       </TableCell>
-                      <TableCell
-                        className="max-w-[180px] truncate"
-                        data-testid={`text-metric-${item.id}`}
-                      >
-                        {item.successMetric || "-"}
-                      </TableCell>
-                      <TableCell data-testid={`text-target-${item.id}`}>
-                        {item.target || "-"}
-                      </TableCell>
-                      <TableCell data-testid={`text-current-${item.id}`}>
-                        {item.currentValue || "-"}
-                      </TableCell>
+                       <TableCell className="min-w-[260px]" data-testid={`text-metric-${item.id}`}>
+                         {item.metrics?.length ? <div className="space-y-1">{item.metrics.map((metric, index) => <div key={index} className="text-xs"><span className="font-medium">{metric.description}</span><span className="text-muted-foreground"> · {metric.currentValue} {metric.currentUnit} → {metric.expectedValue} {metric.expectedUnit} / {metric.evaluationPeriod} {metric.evaluationPeriodUnit}</span></div>)}</div> : item.successMetric || "-"}
+                       </TableCell>
                       <TableCell
                         className="max-w-[140px] truncate"
                         data-testid={`text-owner-${item.id}`}

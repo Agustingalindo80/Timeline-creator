@@ -1,4 +1,4 @@
-import { eq, and, or, isNull, inArray, gte, lte, sql } from "drizzle-orm";
+import { eq, and, or, isNull, inArray, gte, lte, sql, asc } from "drizzle-orm";
 import { db } from "./db";
 import {
   timelines,
@@ -9,6 +9,7 @@ import {
   evmSnapshots,
   projectTeamMembers,
   businessOutcomes,
+  businessOutcomeMetrics,
   teamMembers,
   projectGates,
   flightpathStages,
@@ -335,9 +336,12 @@ export async function getPortfolioOverview(
         .where(eq(flightpathStages.tenantId, tenantId)),
       db
         .select({
+          id: businessOutcomes.id,
           projectId: businessOutcomes.projectId,
           status: businessOutcomes.status,
           successMetric: businessOutcomes.successMetric,
+           baseline: businessOutcomes.baseline,
+           target: businessOutcomes.target,
           currentValue: businessOutcomes.currentValue,
           evidence: businessOutcomes.evidence,
         })
@@ -364,6 +368,17 @@ export async function getPortfolioOverview(
     ]);
 
   const clientMap = new Map(clientRows.map((c) => [c.id, c.name]));
+  const outcomeMetricRows = outcomeRows.length
+    ? await db.select().from(businessOutcomeMetrics)
+      .where(and(eq(businessOutcomeMetrics.tenantId, tenantId), inArray(businessOutcomeMetrics.businessOutcomeId, outcomeRows.map((o) => o.id))))
+      .orderBy(asc(businessOutcomeMetrics.businessOutcomeId), asc(businessOutcomeMetrics.sortOrder), asc(businessOutcomeMetrics.createdAt))
+    : [];
+  const outcomeMetricsByOutcome = new Map<string, typeof outcomeMetricRows>();
+  for (const metric of outcomeMetricRows) {
+    const metrics = outcomeMetricsByOutcome.get(metric.businessOutcomeId) ?? [];
+    metrics.push(metric);
+    outcomeMetricsByOutcome.set(metric.businessOutcomeId, metrics);
+  }
   const stageMap = new Map(stageRows.map((s) => [s.id, s.name]));
   const stageDetailMap = new Map(stageRows.map((s) => [s.id, s]));
 
@@ -613,8 +628,8 @@ export async function getPortfolioOverview(
     .filter((o) => o.projectId != null && filteredIds.has(o.projectId))
     .map((o) => ({
       status: o.status,
-      successMetric: o.successMetric,
-      currentValue: o.currentValue,
+      metrics: outcomeMetricsByOutcome.get(o.id) ?? [],
+      hasLegacyMetric: Boolean(o.successMetric || o.baseline || o.currentValue || o.target),
       evidence: o.evidence,
     }));
 
@@ -1076,7 +1091,21 @@ export async function getBusinessOutcomesReport(
     ownerMap = Object.fromEntries(ownerRows.map(m => [m.id, m.name]));
   }
 
+  const metricRows = accessibleOutcomes.length
+    ? await db.select().from(businessOutcomeMetrics)
+      .where(and(eq(businessOutcomeMetrics.tenantId, tenantId), inArray(businessOutcomeMetrics.businessOutcomeId, accessibleOutcomes.map((o) => o.id))))
+      .orderBy(asc(businessOutcomeMetrics.businessOutcomeId), asc(businessOutcomeMetrics.sortOrder), asc(businessOutcomeMetrics.createdAt))
+    : [];
+  const metricsByOutcome = new Map<string, typeof metricRows>();
+  for (const metric of metricRows) {
+    const metrics = metricsByOutcome.get(metric.businessOutcomeId) ?? [];
+    metrics.push(metric);
+    metricsByOutcome.set(metric.businessOutcomeId, metrics);
+  }
+
   const items = accessibleOutcomes.map(o => {
+    const metrics = metricsByOutcome.get(o.id) ?? [];
+    const firstMetric = metrics[0];
     let linkedType: string | null = null;
     let linkedName: string | null = null;
     if (o.projectId && titleMap[o.projectId]) {
@@ -1095,10 +1124,11 @@ export async function getBusinessOutcomesReport(
       title: o.title,
       status: o.status,
       strategicObjective: o.strategicObjective,
-      successMetric: o.successMetric,
+      successMetric: firstMetric?.description ?? o.successMetric,
       baseline: o.baseline,
-      target: o.target,
-      currentValue: o.currentValue,
+      target: firstMetric?.expectedValue ?? o.target,
+      currentValue: firstMetric?.currentValue ?? o.currentValue,
+      metrics,
       targetDate: o.targetDate,
       clientName: o.clientId ? clientMap[o.clientId] || null : null,
       ownerName: o.ownerId ? ownerMap[o.ownerId] || null : null,

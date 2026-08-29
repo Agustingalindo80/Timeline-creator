@@ -7,6 +7,7 @@ import {
   projectGates,
   evmSnapshots,
   businessOutcomes,
+  businessOutcomeMetrics,
   flightpathStages,
   projectQualityMetrics,
   scopeChangeRequests,
@@ -324,7 +325,7 @@ export async function seedPortfolioSampleData(): Promise<void> {
       : p.profile === "at_risk" ? "at_risk"
       : p.profile === "watch" ? "active"
       : "active";
-    await tx.insert(businessOutcomes).values({
+    const [costOutcome] = await tx.insert(businessOutcomes).values({
       tenantId: TENANT,
       title: `${p.clientName}: realize target operating margin`,
       strategicObjective: "Improve operational efficiency and reduce run cost.",
@@ -337,8 +338,22 @@ export async function seedPortfolioSampleData(): Promise<void> {
       projectId: timelineId,
       stageId: currentStage.id,
       targetDate: isoDate(daysAgo(-90)),
+    }).returning();
+    await tx.insert(businessOutcomeMetrics).values({
+      tenantId: TENANT,
+      businessOutcomeId: costOutcome.id,
+      description: "Operating cost reduction (%)",
+      currentValue: p.profile === "healthy" ? "11" : p.profile === "watch" ? "7" : "3",
+      currentValueType: "percentage",
+      currentUnit: "%",
+      expectedValue: "15",
+      expectedValueType: "percentage",
+      expectedUnit: "%",
+      evaluationPeriod: 1,
+      evaluationPeriodUnit: "months",
+      sortOrder: 0,
     });
-    await tx.insert(businessOutcomes).values({
+    const [adoptionOutcome] = await tx.insert(businessOutcomes).values({
       tenantId: TENANT,
       title: `${p.clientName}: adoption of new platform`,
       strategicObjective: "Drive user adoption and time-to-value.",
@@ -351,6 +366,20 @@ export async function seedPortfolioSampleData(): Promise<void> {
       projectId: timelineId,
       stageId: currentStage.id,
       targetDate: isoDate(daysAgo(-120)),
+    }).returning();
+    await tx.insert(businessOutcomeMetrics).values({
+      tenantId: TENANT,
+      businessOutcomeId: adoptionOutcome.id,
+      description: "Active user adoption (%)",
+      currentValue: p.profile === "healthy" ? "62" : p.profile === "watch" ? "45" : "20",
+      currentValueType: "percentage",
+      currentUnit: "%",
+      expectedValue: "80",
+      expectedValueType: "percentage",
+      expectedUnit: "%",
+      evaluationPeriod: 1,
+      evaluationPeriodUnit: "months",
+      sortOrder: 0,
     });
 
     // ---- EVM snapshots (last 6 weeks; latest is current) ----

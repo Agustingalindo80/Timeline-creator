@@ -222,7 +222,7 @@ export function registerRbacRoutes(app: Express) {
       if (userRecord?.isSuperAdmin) {
         const allModules = [
           "module.dashboard", "module.coach", "module.projects", "module.opportunities",
-          "module.clients", "module.contacts", "module.allocations", "module.timesheets",
+          "module.clients", "module.contacts", "module.business_outcomes", "module.allocations", "module.timesheets",
           "module.team_members", "module.reports", "module.admin"
         ];
         const teamMemberId = await getLinkedTeamMemberId(userId);

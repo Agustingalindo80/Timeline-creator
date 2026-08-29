@@ -27,6 +27,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+type OutcomeWithMetrics = BusinessOutcome & { metrics?: Array<{ currentValue: string; currentUnit: string; expectedValue: string; expectedUnit: string }> };
 
 const STATUS_STYLES: Record<string, string> = {
   draft: "bg-slate-500/15 text-slate-700 dark:text-slate-300",
@@ -168,7 +169,10 @@ export default function BusinessOutcomesPage() {
         </Card>
       ) : (
         <div className="space-y-2">
-          {filtered.map(o => (
+           {filtered.map(o => {
+             const metrics = (o as OutcomeWithMetrics).metrics || [];
+             const firstMetric = metrics[0];
+             return (
             <Link key={o.id} href={`/business-outcomes/${o.id}`}>
               <Card className="hover-elevate cursor-pointer group" data-testid={`card-outcome-${o.id}`}>
                 <CardContent className="py-4 px-5">
@@ -186,7 +190,17 @@ export default function BusinessOutcomesPage() {
                       <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
                         {getClientName(o.clientId) && <span>{getClientName(o.clientId)}</span>}
                         {getOwnerName(o.ownerId) && <span>{getOwnerName(o.ownerId)}</span>}
-                        {o.targetDate && <span>{o.targetDate}</span>}
+                         {o.targetDate && <span>{o.targetDate}</span>}
+                          {firstMetric ? (
+                            <>
+                              <span className="font-medium text-primary/80">{t("businessOutcomes.metricCount", { count: metrics.length })}</span>
+                              <span className="tabular-nums">{firstMetric.currentValue} {firstMetric.currentUnit} → {firstMetric.expectedValue} {firstMetric.expectedUnit}</span>
+                            </>
+                          ) : o.successMetric ? (
+                            <span>{t("businessOutcomes.legacyMetric")}: {o.successMetric}</span>
+                          ) : (
+                            <span className="font-medium text-primary/80">{t("businessOutcomes.metricCount", { count: 0 })}</span>
+                          )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
@@ -205,7 +219,7 @@ export default function BusinessOutcomesPage() {
                 </CardContent>
               </Card>
             </Link>
-          ))}
+           ); })}
         </div>
       )}
 
@@ -213,6 +227,7 @@ export default function BusinessOutcomesPage() {
         <DialogContent data-testid="dialog-create-outcome">
           <DialogHeader>
             <DialogTitle>{t("businessOutcomes.createOutcome")}</DialogTitle>
+            <DialogDescription>{t("businessOutcomes.subtitle")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>

@@ -25,6 +25,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { BusinessOutcome } from "@shared/schema";
+type OutcomeWithMetrics = BusinessOutcome & { metrics?: Array<{ currentValue: string; currentUnit: string; expectedValue: string; expectedUnit: string }> };
 
 const STATUS_STYLES: Record<string, string> = {
   draft: "bg-slate-500/15 text-slate-700 dark:text-slate-300",
@@ -185,7 +186,10 @@ export function BusinessOutcomesTab({ timelineId, linkField }: BusinessOutcomesT
           </div>
         ) : (
           <div className="space-y-2">
-            {linkedOutcomes.map((o) => (
+             {linkedOutcomes.map((o) => {
+               const metrics = (o as OutcomeWithMetrics).metrics || [];
+               const firstMetric = metrics[0];
+               return (
               <Card key={o.id} className="group" data-testid={`card-linked-outcome-${o.id}`}>
                 <CardContent className="py-3 px-4">
                   <div className="flex items-center justify-between gap-3">
@@ -205,10 +209,19 @@ export function BusinessOutcomesTab({ timelineId, linkField }: BusinessOutcomesT
                       {o.strategicObjective && (
                         <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{o.strategicObjective}</p>
                       )}
-                      {(o.successMetric || o.targetDate) && (
+                      {(metrics.length > 0 || o.successMetric || o.baseline || o.currentValue || o.target || o.targetDate) && (
                         <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                          {o.successMetric && <span>{o.successMetric}</span>}
-                          {o.targetDate && <span>{o.targetDate}</span>}
+                           {o.targetDate && <span>{o.targetDate}</span>}
+                           {firstMetric ? (
+                             <>
+                               <span className="font-medium text-primary/80">{t("businessOutcomes.metricCount", { count: metrics.length })}</span>
+                               <span className="tabular-nums">{firstMetric.currentValue} {firstMetric.currentUnit} → {firstMetric.expectedValue} {firstMetric.expectedUnit}</span>
+                             </>
+                           ) : o.successMetric ? (
+                             <span>{t("businessOutcomes.legacyMetric")}: {o.successMetric}</span>
+                           ) : (
+                             <span className="font-medium text-primary/80">{t("businessOutcomes.metricCount", { count: 0 })}</span>
+                           )}
                         </div>
                       )}
                     </div>
@@ -237,7 +250,7 @@ export function BusinessOutcomesTab({ timelineId, linkField }: BusinessOutcomesT
                   </div>
                 </CardContent>
               </Card>
-            ))}
+             ); })}
           </div>
         )}
 

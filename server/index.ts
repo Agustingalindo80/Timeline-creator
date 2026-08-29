@@ -6,6 +6,7 @@ import { seedDatabase } from "./seed";
 import { migrateClientsFromSettings } from "./migrate-clients";
 import { seedRBAC, migrateExistingUsersToRBAC } from "./seed-rbac";
 import { backfillHealthHistory } from "./backfill-health-history";
+import { backfillBusinessOutcomeMetrics } from "./backfill-business-outcome-metrics";
 
 const app = express();
 const httpServer = createServer(app);
@@ -74,6 +75,7 @@ app.use((req, res, next) => {
   await seedRBAC().catch((err) => console.error("RBAC seed failed:", err));
   await migrateExistingUsersToRBAC().catch((err) => console.error("RBAC migration failed:", err));
   await backfillHealthHistory().catch((err) => console.error("Health history backfill failed:", err));
+  await backfillBusinessOutcomeMetrics().catch((err) => console.error("Business outcome metric backfill failed:", err));
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {

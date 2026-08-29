@@ -78,8 +78,8 @@ export interface PanelRiskRow {
 
 export interface PanelOutcomeRow {
   status: string;
-  successMetric: string | null;
-  currentValue: string | null;
+  metrics: Array<{ description: string; currentValue: string }>;
+  hasLegacyMetric: boolean;
   evidence: string | null;
 }
 
@@ -516,10 +516,10 @@ function computeOutcome(outcomes: PanelOutcomeRow[]): OutcomePanel {
   const onTrack = outcomes.filter((o) => o.status === "active" || o.status === "achieved").length;
   const delivered = outcomes.filter((o) => o.status === "achieved").length;
   const atRisk = outcomes.filter((o) => o.status === "at_risk").length;
-  const metricsAvailable = outcomes.filter((o) => hasText(o.successMetric)).length;
+  const metricsAvailable = outcomes.filter((o) => o.hasLegacyMetric || o.metrics.some((metric) => hasText(metric.description))).length;
   const metricsMissing = tracked - metricsAvailable;
   const notMeasurable = outcomes.filter(
-    (o) => !hasText(o.successMetric) || !hasText(o.currentValue),
+    (o) => !o.hasLegacyMetric && (o.metrics.length === 0 || o.metrics.some((metric) => !hasText(metric.description) || !hasText(metric.currentValue))),
   ).length;
   const evidenceCaptured = outcomes.filter((o) => hasText(o.evidence)).length;
 

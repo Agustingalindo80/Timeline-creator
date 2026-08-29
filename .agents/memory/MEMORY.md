@@ -2,3 +2,4 @@
 - [db:push interactive drift](db-push-interactive-drift.md) — db:push can hang on an unrelated TTY truncate prompt; for nullable columns apply ALTER ... ADD COLUMN IF NOT EXISTS via psql instead.
 - [Local password auth](local-password-auth.md) — always strip passwordHash from user responses; secure-cookie curl testing needs X-Forwarded-Proto; tenant URL rewrite must precede auth routes.
 - [ClickUp import week-ending](clickup-import-week-ending.md) — import week_ending defaults to FRIDAY (env ATLAS_WEEK_ENDING_DAY, UTC); deliberately differs from the app's Sunday-based timesheet UI.
+- [Lossless metric decimals](lossless-metric-decimals.md) — structured metric APIs use decimal strings; legacy values migrate only when exactly representable, otherwise remain visible as legacy data.

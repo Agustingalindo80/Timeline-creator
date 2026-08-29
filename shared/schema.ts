@@ -1003,6 +1003,82 @@ export const insertBusinessOutcomeSchema = createInsertSchema(businessOutcomes).
 export type InsertBusinessOutcome = z.infer<typeof insertBusinessOutcomeSchema>;
 export type BusinessOutcome = typeof businessOutcomes.$inferSelect;
 
+export const businessOutcomeMetricValueTypeEnum = pgEnum("business_outcome_metric_value_type", ["quantity", "magnitude", "percentage"]);
+export const businessOutcomeMetricPeriodUnitEnum = pgEnum("business_outcome_metric_period_unit", ["days", "months"]);
+
+export const businessOutcomeMetrics = pgTable("business_outcome_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: text("tenant_id").notNull().default("default"),
+  businessOutcomeId: varchar("business_outcome_id").notNull().references(() => businessOutcomes.id, { onDelete: "cascade" }),
+  description: text("description").notNull(),
+  currentValue: numeric("current_value", { precision: 18, scale: 4 }).notNull(),
+  currentValueType: businessOutcomeMetricValueTypeEnum("current_value_type").notNull(),
+  currentUnit: text("current_unit").notNull(),
+  expectedValue: numeric("expected_value", { precision: 18, scale: 4 }).notNull(),
+  expectedValueType: businessOutcomeMetricValueTypeEnum("expected_value_type").notNull(),
+  expectedUnit: text("expected_unit").notNull(),
+  evaluationPeriod: integer("evaluation_period").notNull(),
+  evaluationPeriodUnit: businessOutcomeMetricPeriodUnitEnum("evaluation_period_unit").notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_bom_tenant_outcome_order").on(table.tenantId, table.businessOutcomeId, table.sortOrder),
+]);
+
+const metricNumber = z.string()
+  .transform((value) => value.trim())
+  .superRefine((value, ctx) => {
+    if (!/^\d+(?:\.\d{1,4})?$/.test(value)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Value must be a non-negative number with at most 4 decimal places" });
+      return;
+    }
+    const [integerPart] = value.split(".");
+    if (integerPart.replace(/^0+/, "").length > 14) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Value exceeds the supported range" });
+    }
+  });
+const metricValueType = z.enum(["quantity", "magnitude", "percentage"]);
+const metricPeriodUnit = z.enum(["days", "months"]);
+const currencyOrTimeUnits = new Set(["USD", "EUR", "GBP", "CAD", "AUD", "JPY", "CNY", "INR", "hours", "days", "weeks", "months", "minutes", "seconds"]);
+
+function isValidMetricUnit(type: z.infer<typeof metricValueType>, unit: string): boolean {
+  if (!unit.trim()) return false;
+  if (type === "percentage") return unit === "%";
+  if (type === "quantity") return unit === "count" || unit.trim().length > 0;
+  return currencyOrTimeUnits.has(unit.toUpperCase()) || currencyOrTimeUnits.has(unit.toLowerCase()) || unit.trim().length > 0;
+}
+
+export const insertBusinessOutcomeMetricSchema = z.object({
+  tenantId: z.string().min(1),
+  businessOutcomeId: z.string().min(1),
+  description: z.string().trim().min(1),
+  currentValue: metricNumber,
+  currentValueType: metricValueType,
+  currentUnit: z.string(),
+  expectedValue: metricNumber,
+  expectedValueType: metricValueType,
+  expectedUnit: z.string(),
+  evaluationPeriod: z.coerce.number().int().positive(),
+  evaluationPeriodUnit: metricPeriodUnit,
+  sortOrder: z.coerce.number().int().nonnegative().default(0),
+}).strict().superRefine((metric, ctx) => {
+  if (metric.currentValueType === "percentage" && Number(metric.currentValue) > 100) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["currentValue"], message: "Percentage must be between 0 and 100" });
+  }
+  if (metric.expectedValueType === "percentage" && Number(metric.expectedValue) > 100) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["expectedValue"], message: "Percentage must be between 0 and 100" });
+  }
+  if (!isValidMetricUnit(metric.currentValueType, metric.currentUnit)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["currentUnit"], message: "Unit is invalid for the value type" });
+  }
+  if (!isValidMetricUnit(metric.expectedValueType, metric.expectedUnit)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["expectedUnit"], message: "Unit is invalid for the value type" });
+  }
+});
+export type InsertBusinessOutcomeMetric = z.infer<typeof insertBusinessOutcomeMetricSchema>;
+export type BusinessOutcomeMetric = typeof businessOutcomeMetrics.$inferSelect;
+
 // ---- Portfolio governance data models (Atlas executive cockpit) ----
 
 export const projectQualityMetrics = pgTable("project_quality_metrics", {
