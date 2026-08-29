@@ -4,6 +4,30 @@ import { storage } from "../storage";
 import { requirePermission, requireModuleAccess } from "../middleware/permissions";
 import { extractUserId } from "./helpers";
 
+export type OpportunityStatusValidationResult =
+  | { ok: true; statuses: { value: string; label: string }[] }
+  | { ok: false; error: string };
+
+export function validateOpportunityStatuses(opts: any): OpportunityStatusValidationResult {
+  const valid = Array.isArray(opts) && opts.every(
+    (o: any) => o && typeof o.value === "string" && o.value.trim() !== "" && typeof o.label === "string" && o.label.trim() !== ""
+  );
+  if (!valid) {
+    return { ok: false, error: "Opportunity statuses must be a list of options with a value and a label" };
+  }
+  const normalized = opts.map((o: any) => ({ value: o.value.trim(), label: o.label.trim() }));
+  const values = new Set(normalized.map((o) => o.value));
+  if (values.size !== normalized.length) {
+    return { ok: false, error: "Opportunity status values must be unique" };
+  }
+  const required = ["qualifying", "won", "lost"];
+  const missing = required.filter(v => !values.has(v));
+  if (missing.length > 0) {
+    return { ok: false, error: `Opportunity statuses must include the system statuses: ${missing.join(", ")}` };
+  }
+  return { ok: true, statuses: normalized };
+}
+
 export function registerSettingsRoutes(app: Express) {
   app.get("/api/settings", async (req, res) => {
     try {
@@ -28,22 +52,11 @@ export function registerSettingsRoutes(app: Express) {
       }
 
       if (updates.opportunityStatuses !== undefined && updates.opportunityStatuses !== null) {
-        const opts = updates.opportunityStatuses;
-        const valid = Array.isArray(opts) && opts.every(
-          (o: any) => o && typeof o.value === "string" && o.value.trim() !== "" && typeof o.label === "string" && o.label.trim() !== ""
-        );
-        if (!valid) {
-          return res.status(400).json({ message: "Opportunity statuses must be a list of options with a value and a label" });
+        const result = validateOpportunityStatuses(updates.opportunityStatuses);
+        if (!result.ok) {
+          return res.status(400).json({ message: result.error });
         }
-        const values = new Set(opts.map((o: any) => o.value));
-        if (values.size !== opts.length) {
-          return res.status(400).json({ message: "Opportunity status values must be unique" });
-        }
-        const required = ["qualifying", "won", "lost"];
-        const missing = required.filter(v => !values.has(v));
-        if (missing.length > 0) {
-          return res.status(400).json({ message: `Opportunity statuses must include the system statuses: ${missing.join(", ")}` });
-        }
+        updates.opportunityStatuses = result.statuses;
       }
 
       const settings = await storage.updateSettings(updates, req.tenantId || "default");
